@@ -28,4 +28,7 @@ android {
 
 dependencies {
     implementation(project(":core:common:kotlin"))
+
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
 }

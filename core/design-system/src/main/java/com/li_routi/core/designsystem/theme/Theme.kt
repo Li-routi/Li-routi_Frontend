@@ -1,53 +1,35 @@
 package com.li_routi.core.designsystem.theme
 
-import android.os.Build
 import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.darkColorScheme
-import androidx.compose.material3.dynamicDarkColorScheme
-import androidx.compose.material3.dynamicLightColorScheme
-import androidx.compose.material3.lightColorScheme
 import androidx.compose.runtime.Composable
-import androidx.compose.ui.platform.LocalContext
-import com.li_routi.core.designsystem.foundation.color.Pink40
-import com.li_routi.core.designsystem.foundation.color.Pink80
-import com.li_routi.core.designsystem.foundation.color.Purple40
-import com.li_routi.core.designsystem.foundation.color.Purple80
-import com.li_routi.core.designsystem.foundation.color.PurpleGrey40
-import com.li_routi.core.designsystem.foundation.color.PurpleGrey80
+import androidx.compose.runtime.CompositionLocalProvider
+import com.li_routi.core.designsystem.foundation.typography.LocalRirotiTypography
+import com.li_routi.core.designsystem.foundation.typography.RirotiTypography
 import com.li_routi.core.designsystem.foundation.typography.Typography
 
-private val DarkColorScheme = darkColorScheme(
-    primary = Purple80,
-    secondary = PurpleGrey80,
-    tertiary = Pink80
-)
-
-private val LightColorScheme = lightColorScheme(
-    primary = Purple40,
-    secondary = PurpleGrey40,
-    tertiary = Pink40
-)
-
 @Composable
-fun LiRoutiTheme(
+fun LiroutiFrontendTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
-    dynamicColor: Boolean = true,
-    content: @Composable () -> Unit
+    content: @Composable () -> Unit,
 ) {
-    val colorScheme = when {
-        dynamicColor && Build.VERSION.SDK_INT >= Build.VERSION_CODES.S -> {
-            val context = LocalContext.current
-            if (darkTheme) dynamicDarkColorScheme(context) else dynamicLightColorScheme(context)
-        }
+    val colorScheme = if (darkTheme) RirotiDarkColorScheme else RirotiLightColorScheme
 
-        darkTheme -> DarkColorScheme
-        else -> LightColorScheme
+    CompositionLocalProvider(
+        LocalRirotiColors provides colorScheme,
+        LocalRirotiTypography provides RirotiTypography(),
+    ) {
+        MaterialTheme(
+            typography = Typography,
+            content = content,
+        )
     }
+}
 
-    MaterialTheme(
-        colorScheme = colorScheme,
-        typography = Typography,
-        content = content
-    )
+object RirotiTheme {
+    val colors: RirotiColorScheme
+        @Composable get() = LocalRirotiColors.current
+
+    val typography: RirotiTypography
+        @Composable get() = LocalRirotiTypography.current
 }
