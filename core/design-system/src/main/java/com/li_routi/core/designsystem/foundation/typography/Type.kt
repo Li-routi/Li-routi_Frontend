@@ -25,7 +25,7 @@ private val EvenLineHeight = LineHeightStyle(
     trim = LineHeightStyle.Trim.None,
 )
 
-private fun riroti(
+private fun lirouti(
     size: Int,
     lineHeight: Int,
     weight: FontWeight = FontWeight.Normal,
@@ -39,26 +39,26 @@ private fun riroti(
 )
 
 @Immutable
-data class RirotiTypography(
-    val display1: TextStyle = riroti(52, 72, FontWeight.Bold),
-    val display2: TextStyle = riroti(46, 62, FontWeight.Bold),
+data class LiroutiTypography(
+    val display1: TextStyle = lirouti(52, 72, FontWeight.Bold),
+    val display2: TextStyle = lirouti(46, 62, FontWeight.Bold),
 
-    val title1: TextStyle = riroti(36, 48, FontWeight.Bold),
-    val title2: TextStyle = riroti(28, 38, FontWeight.Bold),
-    val title3: TextStyle = riroti(24, 32, FontWeight.Bold),
+    val title1: TextStyle = lirouti(36, 48, FontWeight.Bold),
+    val title2: TextStyle = lirouti(28, 38, FontWeight.Bold),
+    val title3: TextStyle = lirouti(24, 32, FontWeight.Bold),
 
-    val heading1: TextStyle = riroti(22, 30, FontWeight.SemiBold),
-    val heading2: TextStyle = riroti(18, 26, FontWeight.SemiBold),
+    val heading1: TextStyle = lirouti(22, 30, FontWeight.SemiBold),
+    val heading2: TextStyle = lirouti(18, 26, FontWeight.SemiBold),
 
-    val body1: TextStyle = riroti(16, 24, FontWeight.Normal),
-    val body1Long: TextStyle = riroti(16, 26, FontWeight.Normal),
-    val body2: TextStyle = riroti(14, 20, FontWeight.Normal),
-    val body2Long: TextStyle = riroti(14, 22, FontWeight.Normal),
-    val body3: TextStyle = riroti(13, 15, FontWeight.Normal),
+    val body1: TextStyle = lirouti(16, 24, FontWeight.Normal),
+    val body1Long: TextStyle = lirouti(16, 26, FontWeight.Normal),
+    val body2: TextStyle = lirouti(14, 20, FontWeight.Normal),
+    val body2Long: TextStyle = lirouti(14, 22, FontWeight.Normal),
+    val body3: TextStyle = lirouti(13, 15, FontWeight.Normal),
 
-    val caption: TextStyle = riroti(12, 16, FontWeight.Normal),
+    val caption: TextStyle = lirouti(12, 16, FontWeight.Normal),
 )
 
-val LocalRirotiTypography = staticCompositionLocalOf { RirotiTypography() }
+val LocalLiroutiTypography = staticCompositionLocalOf { LiroutiTypography() }
 
 val Typography = androidx.compose.material3.Typography()
