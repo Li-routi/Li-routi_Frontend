@@ -2,7 +2,7 @@ package com.cmc.li_routi_frontend.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-// ── Blue ──────────────────────────────────────────────
+// blue
 val Blue100 = Color(0xFFCCEEF6)
 val Blue200 = Color(0xFF99DDED)
 val Blue300 = Color(0xFF66CCE4)
@@ -13,7 +13,7 @@ val Blue700 = Color(0xFF00667E)
 val Blue800 = Color(0xFF004454)
 val Blue900 = Color(0xFF00222A)
 
-// ── Neutral ───────────────────────────────────────────
+// neutral
 val Neutral0   = Color(0xFF000000)
 val Neutral10  = Color(0xFF1A1A1A)
 val Neutral15  = Color(0xFF1F2A38)
@@ -35,7 +35,7 @@ val Neutral98  = Color(0xFFEFF1F4)
 val Neutral99  = Color(0xFFF6F7F9)
 val Neutral100 = Color(0xFFFFFFFF)
 
-// ── Red ───────────────────────────────────────────────
+// red
 val Red100 = Color(0xFFFFFAFA)
 val Red200 = Color(0xFFFEECEC)
 val Red300 = Color(0xFFFFB5B5)
@@ -46,6 +46,6 @@ val Red700 = Color(0xFFE52222)
 val Red800 = Color(0xFFB20C0C)
 val Red900 = Color(0xFF750404)
 
-// ── Dimmer ────────────────────────────────────────────
+// dimmer
 val DimmerDefault   = Color(0x801F1F1F)
 val DimmerSecondary = Color(0x80767676)

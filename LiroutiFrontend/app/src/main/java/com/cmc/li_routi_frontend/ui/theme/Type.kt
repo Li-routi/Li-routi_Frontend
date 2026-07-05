@@ -61,5 +61,4 @@ data class RirotiTypography(
 
 val LocalRirotiTypography = staticCompositionLocalOf { RirotiTypography() }
 
-// Material3 Typography 호환 (기존 Theme.kt에서 참조)
 val Typography = androidx.compose.material3.Typography()
