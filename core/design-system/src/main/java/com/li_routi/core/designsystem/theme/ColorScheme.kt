@@ -34,7 +34,7 @@ import com.li_routi.core.designsystem.foundation.color.Red500
 import com.li_routi.core.designsystem.foundation.color.Red600
 
 @Immutable
-data class RirotiColorScheme(
+data class LiroutiColorScheme(
     val isDark: Boolean,
 
     // Primary
@@ -81,7 +81,7 @@ data class RirotiColorScheme(
     val dangerSurface: Color,
 )
 
-val RirotiLightColorScheme = RirotiColorScheme(
+val LiroutiLightColorScheme = LiroutiColorScheme(
     isDark = false,
 
     primaryNormal = Blue500,
@@ -121,7 +121,7 @@ val RirotiLightColorScheme = RirotiColorScheme(
     dangerSurface = Red100,
 )
 
-val RirotiDarkColorScheme = RirotiColorScheme(
+val LiroutiDarkColorScheme = LiroutiColorScheme(
     isDark = true,
 
     primaryNormal = Blue500,
@@ -161,4 +161,4 @@ val RirotiDarkColorScheme = RirotiColorScheme(
     dangerSurface = Red100,
 )
 
-val LocalRirotiColors = staticCompositionLocalOf { RirotiLightColorScheme }
+val LocalLiroutiColors = staticCompositionLocalOf { LiroutiLightColorScheme }

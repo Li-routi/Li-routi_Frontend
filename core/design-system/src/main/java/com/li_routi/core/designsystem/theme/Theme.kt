@@ -4,8 +4,9 @@ import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
-import com.li_routi.core.designsystem.foundation.typography.LocalRirotiTypography
-import com.li_routi.core.designsystem.foundation.typography.RirotiTypography
+import androidx.compose.runtime.ReadOnlyComposable
+import com.li_routi.core.designsystem.foundation.typography.LocalLiroutiTypography
+import com.li_routi.core.designsystem.foundation.typography.LiroutiTypography
 import com.li_routi.core.designsystem.foundation.typography.Typography
 
 @Composable
@@ -13,11 +14,11 @@ fun LiroutiFrontendTheme(
     darkTheme: Boolean = isSystemInDarkTheme(),
     content: @Composable () -> Unit,
 ) {
-    val colorScheme = if (darkTheme) RirotiDarkColorScheme else RirotiLightColorScheme
+    val colorScheme = if (darkTheme) LiroutiDarkColorScheme else LiroutiLightColorScheme
 
     CompositionLocalProvider(
-        LocalRirotiColors provides colorScheme,
-        LocalRirotiTypography provides RirotiTypography(),
+        LocalLiroutiColors provides colorScheme,
+        LocalLiroutiTypography provides LiroutiTypography(),
     ) {
         MaterialTheme(
             typography = Typography,
@@ -26,10 +27,10 @@ fun LiroutiFrontendTheme(
     }
 }
 
-object RirotiTheme {
-    val colors: RirotiColorScheme
-        @Composable get() = LocalRirotiColors.current
+object LiroutiTheme {
+    val colors: LiroutiColorScheme
+        @Composable @ReadOnlyComposable get() = LocalLiroutiColors.current
 
-    val typography: RirotiTypography
-        @Composable get() = LocalRirotiTypography.current
+    val typography: LiroutiTypography
+        @Composable @ReadOnlyComposable get() = LocalLiroutiTypography.current
 }
