@@ -53,3 +53,6 @@ val DimmerSecondary = Color(0x80767676)
 // misc
 val BackgroundFill      = Color(0xFFFAFAFA)
 val ChipSelectedNeutral = Color(0xFF37383C)
+// Background
+val SelectedLight = Color(0xFFFFB5B5)
+val SelectedDark = Color(0xFFFFB5B5)
