@@ -216,7 +216,6 @@ private fun LiroutiBottomSheetCloseButton(
 
 private val RoutineCategoryContentPadding = PaddingValues(top = 30.dp, start = 16.dp, end = 16.dp, bottom = 32.dp)
 
-/** Figma "Bottom Sheet / list" variant: title header, four list rows, cancel + confirm footer. */
 @Preview(showBackground = true)
 @Composable
 private fun LiroutiBottomSheetListVariantPreview() {
@@ -244,7 +243,6 @@ private fun LiroutiBottomSheetListVariantPreview() {
     }
 }
 
-/** Figma "Bottom Sheet / Routine" variant: delete header, form fields, info block, confirm footer. */
 @Preview(showBackground = true)
 @Composable
 private fun LiroutiBottomSheetRoutineVariantPreview() {
@@ -313,7 +311,6 @@ private fun LiroutiBottomSheetRoutineVariantPreview() {
     }
 }
 
-/** Figma "Bottom Sheet / category" variant: title header, a single field, confirm footer. */
 @Preview(showBackground = true)
 @Composable
 private fun LiroutiBottomSheetCategoryVariantPreview() {

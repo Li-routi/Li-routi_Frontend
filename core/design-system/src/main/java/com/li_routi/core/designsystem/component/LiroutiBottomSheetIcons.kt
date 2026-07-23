@@ -85,8 +85,7 @@ internal fun LiroutiDotMarkIcon(
 ) {
     Canvas(modifier = modifier) {
         val fillColor = if (color == Color.Unspecified) Color.Black else color
-        // Figma nests two insets (31.25%, then 25%) inside the 16dp icon slot,
-        // shrinking the visible dot to 3/16 of the slot's diameter.
+
         drawCircle(
             color = fillColor,
             radius = size.minDimension * 0.09375f,

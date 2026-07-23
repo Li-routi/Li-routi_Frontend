@@ -20,10 +20,7 @@ import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-/**
- * Matches the Figma `bottom_sheet/contents` list row: leading check state,
- * a label, a trailing check state, a chevron and a switch.
- */
+
 @Composable
 fun LiroutiBottomSheetListItem(
     label: String,
@@ -75,7 +72,6 @@ fun LiroutiBottomSheetListItem(
     }
 }
 
-/** A dot-mark icon followed by a wrapping caption, matching the Figma `info-block` row. */
 @Composable
 fun LiroutiBottomSheetInfoRow(
     text: String,
@@ -98,7 +94,6 @@ fun LiroutiBottomSheetInfoRow(
     }
 }
 
-/** A label/value row on a filled background, matching the 마감시간 / 알람 시간 rows. */
 @Composable
 fun LiroutiBottomSheetField(
     label: String,
@@ -126,7 +121,6 @@ fun LiroutiBottomSheetField(
     }
 }
 
-/** The 반복 row combined with its day-of-week selector, sharing one filled background. */
 @Composable
 fun LiroutiBottomSheetRepeatField(
     value: String,
@@ -162,7 +156,6 @@ fun LiroutiBottomSheetRepeatField(
     }
 }
 
-/** The "삭제" action shown in the Routine variant header. */
 @Composable
 fun LiroutiBottomSheetDeleteButton(
     onClick: () -> Unit,

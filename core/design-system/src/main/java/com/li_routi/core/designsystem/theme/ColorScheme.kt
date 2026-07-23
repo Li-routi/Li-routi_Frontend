@@ -3,9 +3,11 @@ package com.li_routi.core.designsystem.theme
 import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
+import com.li_routi.core.designsystem.foundation.color.BackgroundFill
 import com.li_routi.core.designsystem.foundation.color.Blue500
 import com.li_routi.core.designsystem.foundation.color.Blue600
 import com.li_routi.core.designsystem.foundation.color.Blue800
+import com.li_routi.core.designsystem.foundation.color.ChipSelectedNeutral
 import com.li_routi.core.designsystem.foundation.color.DimmerDefault
 import com.li_routi.core.designsystem.foundation.color.DimmerSecondary
 import com.li_routi.core.designsystem.foundation.color.Neutral0
@@ -62,6 +64,10 @@ data class LiroutiColorScheme(
     val backgroundAlternative: Color,
     val backgroundStrong: Color,
     val backgroundSelected: Color,
+    val backgroundFill: Color,
+
+    // Chip
+    val chipSelectedBackground: Color,
 
     // Dimmer
     val dimmerDefault: Color,
@@ -105,6 +111,9 @@ val LiroutiLightColorScheme = LiroutiColorScheme(
     backgroundAlternative = Neutral99,
     backgroundStrong = Neutral95,
     backgroundSelected = Red300,
+    backgroundFill = BackgroundFill,
+
+    chipSelectedBackground = ChipSelectedNeutral,
 
     dimmerDefault = DimmerDefault,
     dimmerSecondary = DimmerSecondary,
@@ -145,6 +154,9 @@ val LiroutiDarkColorScheme = LiroutiColorScheme(
     backgroundAlternative = Neutral20,
     backgroundStrong = Neutral0,
     backgroundSelected = Red300,
+    backgroundFill = BackgroundFill,
+
+    chipSelectedBackground = ChipSelectedNeutral,
 
     dimmerDefault = DimmerDefault,
     dimmerSecondary = DimmerSecondary,
