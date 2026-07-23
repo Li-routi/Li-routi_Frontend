@@ -48,7 +48,7 @@ fun LiroutiBottomSheetListItem(
         Text(
             text = label,
             modifier = Modifier.weight(1f),
-            style = LiroutiTheme.typography.body1,
+            style = LiroutiTheme.typography.body1Regular,
             color = LiroutiTheme.colors.labelDefault,
         )
         if (trailingChecked) {
@@ -165,7 +165,7 @@ fun LiroutiBottomSheetDeleteButton(
     Text(
         text = text,
         modifier = modifier.clickable(onClick = onClick),
-        style = LiroutiTheme.typography.body1,
+        style = LiroutiTheme.typography.body1Regular,
         color = LiroutiTheme.colors.dangerText,
     )
 }
