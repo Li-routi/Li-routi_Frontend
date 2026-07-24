@@ -24,6 +24,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.foundation.color.Neutral97
@@ -70,7 +71,11 @@ fun LiroutiTabButton(
             ) {
                 Text(
                     text = title,
-                    style = if (selected) LiroutiTheme.typography.body3SemiBold else LiroutiTheme.typography.body3Medium,
+                    style = if (selected) {
+                        LiroutiTheme.typography.body3SemiBold
+                    } else {
+                        LiroutiTheme.typography.body3Medium
+                    },
                     color = if (selected) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.labelInfo,
                 )
             }
@@ -123,7 +128,9 @@ private fun LiroutiLineTabItem(
             text = text,
             softWrap = false,
             onTextLayout = { textWidth = with(density) { it.size.width.toDp() } },
-            style = if (selected) LiroutiTheme.typography.body2LongSemiBold else LiroutiTheme.typography.body2LongRegular,
+            style = LiroutiTheme.typography.body2Long.copy(
+                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
+            ),
             color = if (selected) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.labelInfo,
         )
         if (selected) {
