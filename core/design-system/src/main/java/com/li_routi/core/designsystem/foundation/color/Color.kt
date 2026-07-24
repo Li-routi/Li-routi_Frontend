@@ -32,7 +32,7 @@ val Neutral90  = Color(0xFFA1A9B2)
 val Neutral95  = Color(0xFFCCCDD1)
 val Neutral96  = Color(0xFFDBDCDF)
 val Neutral97  = Color(0xFFEAEBEC)
-val Neutral98  = Color(0xFFEFF1F4)
+val Neutral98  = Color(0xFFF4F4F5)
 val Neutral99  = Color(0xFFF7F7F8)
 val Neutral100 = Color(0xFFFFFFFF)
 
