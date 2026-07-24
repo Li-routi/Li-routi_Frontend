@@ -52,6 +52,7 @@ dependencies {
     implementation(project(":feature:home"))
     implementation(project(":feature:shopping"))
     implementation(project(":feature:mypage"))
+    implementation(project(":feature:challenge"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
