@@ -13,7 +13,6 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -36,7 +35,7 @@ fun LiroutiTextField(
         if (showLabel) {
             Text(
                 text = labelText,
-                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
+                style = LiroutiTheme.typography.body2LongSemiBold,
                 color = LiroutiTheme.colors.labelDefault,
                 modifier = Modifier.padding(bottom = 8.dp),
             )
@@ -53,21 +52,21 @@ fun LiroutiTextField(
             if (value.isEmpty()) {
                 Text(
                     text = placeholder,
-                    style = LiroutiTheme.typography.body2Long,
+                    style = LiroutiTheme.typography.body2LongRegular,
                     color = LiroutiTheme.colors.labelInfo,
                 )
             }
             BasicTextField(
                 value = value,
                 onValueChange = onValueChange,
-                textStyle = LiroutiTheme.typography.body2Long.copy(color = LiroutiTheme.colors.labelDefault),
+                textStyle = LiroutiTheme.typography.body2LongRegular.copy(color = LiroutiTheme.colors.labelDefault),
                 modifier = Modifier.fillMaxWidth(),
             )
         }
         if (showHelper) {
             Text(
                 text = helperText,
-                style = LiroutiTheme.typography.caption,
+                style = LiroutiTheme.typography.captionRegular,
                 color = LiroutiTheme.colors.labelSub,
                 modifier = Modifier.padding(top = 4.dp),
             )
