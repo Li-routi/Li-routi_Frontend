@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.li_routi.core.designsystem.foundation.color.BackgroundFill
+import com.li_routi.core.designsystem.foundation.color.BackgroundSecondary
 import com.li_routi.core.designsystem.foundation.color.Blue500
 import com.li_routi.core.designsystem.foundation.color.Blue600
 import com.li_routi.core.designsystem.foundation.color.Blue800
@@ -115,7 +116,7 @@ val LiroutiLightColorScheme = LiroutiColorScheme(
     labelReverse = Neutral100,
 
     backgroundDefault = Neutral100,
-    backgroundSecondary = Red200,
+    backgroundSecondary = BackgroundSecondary,
     backgroundAlternative = Neutral99,
     backgroundStrong = Neutral95,
     backgroundSelected = Red300,
