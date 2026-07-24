@@ -22,20 +22,5 @@ dependencyResolutionManagement {
     }
 }
 
-rootProject.name = "Li-routi-Frontend"
+rootProject.name = "Ri-routi"
 include(":app")
-
-include(":core:common:kotlin")
-include(":core:common:android")
-include(":core:common:ui")
-include(":core:domain")
-include(":core:data")
-include(":core:design-system")
-
-include(":feature:login")
-include(":feature:onboarding")
-include(":feature:home")
-include(":feature:shopping")
-include(":feature:mypage")
-include(":feature:challenge")
-include(":feature:grouproutine")

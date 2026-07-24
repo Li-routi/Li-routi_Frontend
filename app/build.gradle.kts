@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.cmc.li_routi_frontend"
+    namespace = "com.example.ri_routi"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -12,7 +12,7 @@ android {
     }
 
     defaultConfig {
-        applicationId = "com.cmc.li_routi_frontend"
+        applicationId = "com.example.ri_routi"
         minSdk = 24
         targetSdk = 36
         versionCode = 1
@@ -40,19 +40,6 @@ android {
 }
 
 dependencies {
-    implementation(project(":core:common:kotlin"))
-    implementation(project(":core:common:android"))
-    implementation(project(":core:common:ui"))
-    implementation(project(":core:domain"))
-    implementation(project(":core:data"))
-    implementation(project(":core:design-system"))
-
-    implementation(project(":feature:login"))
-    implementation(project(":feature:onboarding"))
-    implementation(project(":feature:home"))
-    implementation(project(":feature:shopping"))
-    implementation(project(":feature:mypage"))
-
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
     implementation(libs.androidx.activity.compose)
@@ -68,26 +55,4 @@ dependencies {
     androidTestImplementation(libs.androidx.compose.ui.test.junit4)
     debugImplementation(libs.androidx.compose.ui.tooling)
     debugImplementation(libs.androidx.compose.ui.test.manifest)
-
-    // Navigation
-    implementation(libs.androidx.navigation.compose)
-
-    // ViewModel
-    implementation(libs.androidx.lifecycle.viewmodel.compose)
-    implementation(libs.androidx.lifecycle.runtime.compose)
-
-    // Coroutine
-    implementation(libs.kotlinx.coroutines.android)
-
-    // Retrofit
-    implementation(libs.retrofit)
-    implementation(libs.retrofit.converter.gson)
-
-    // OkHttp
-    implementation(libs.okhttp)
-    implementation(libs.okhttp.logging)
-
-    // Hilt
-    implementation(libs.hilt.android)
-    implementation(libs.androidx.hilt.navigation.compose)
 }
