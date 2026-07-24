@@ -30,6 +30,7 @@ import com.li_routi.core.designsystem.foundation.color.Neutral97
 import com.li_routi.core.designsystem.foundation.color.Neutral98
 import com.li_routi.core.designsystem.foundation.color.Neutral99
 import com.li_routi.core.designsystem.foundation.color.Neutral100
+import com.li_routi.core.designsystem.foundation.color.OutlinedMid
 import com.li_routi.core.designsystem.foundation.color.Red100
 import com.li_routi.core.designsystem.foundation.color.Red200
 import com.li_routi.core.designsystem.foundation.color.Red300
@@ -85,6 +86,7 @@ data class LiroutiColorScheme(
     val borderAlternative: Color,
     val borderStrong: Color,
     val borderActive: Color,
+    val outlinedMid: Color,
 
     // Danger
     val dangerText: Color,
@@ -132,6 +134,7 @@ val LiroutiLightColorScheme = LiroutiColorScheme(
     borderAlternative = Neutral98,
     borderStrong = Neutral80,
     borderActive = Blue800,
+    outlinedMid = OutlinedMid,
 
     dangerText = Red600,
     dangerBase = Red500,
@@ -178,6 +181,7 @@ val LiroutiDarkColorScheme = LiroutiColorScheme(
     borderAlternative = Neutral22,
     borderStrong = Neutral40,
     borderActive = Neutral40,
+    outlinedMid = OutlinedMid,
 
     dangerText = Red600,
     dangerBase = Red500,
