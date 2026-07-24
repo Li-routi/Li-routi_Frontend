@@ -22,9 +22,15 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <!-- 앱 전체 내비게이션(AppNavHost) 테스트용 진입점. launcher가 아니므로 Android Studio에서
+             실행 구성으로 직접 지정해야 켜진다.
+             exported=true는 adb/Android Studio에서 바로 실행해 테스트하기 위한 임시 설정이며,
+             로그인 플로우가 AppNavHost에 편입되어 launcher가 옮겨지면 다시 false로 되돌린다. -->
         <activity
-            android:name="com.cmc.li_routi_frontend.PreviewHarnessActivity"
+            android:name=".MainActivity"
             android:exported="true"
+            android:label="@string/app_name"
             android:theme="@style/Theme.LiroutiFrontend" />
     </application>
 
