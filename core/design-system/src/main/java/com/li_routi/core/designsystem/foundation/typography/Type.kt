@@ -78,6 +78,21 @@ data class LiroutiTypography(
     val captionSemiBold: TextStyle = lirouti(12, 16, FontWeight.SemiBold),
     val captionMedium: TextStyle = lirouti(12, 16, FontWeight.Medium),
     val captionRegular: TextStyle = lirouti(12, 16, FontWeight.Normal),
+
+    // Short aliases (default weight) for feature UI / DS components that use the concise API.
+    val display1: TextStyle = display1Bold,
+    val display2: TextStyle = display2Bold,
+    val title1: TextStyle = title1Bold,
+    val title2: TextStyle = title2Bold,
+    val title3: TextStyle = title3Bold,
+    val heading1: TextStyle = heading1SemiBold,
+    val heading2: TextStyle = heading2SemiBold,
+    val body1: TextStyle = body1Regular,
+    val body1Long: TextStyle = body1LongRegular,
+    val body2: TextStyle = body2Regular,
+    val body2Long: TextStyle = body2LongRegular,
+    val body3: TextStyle = body3Regular,
+    val caption: TextStyle = captionRegular,
 )
 
 val LocalLiroutiTypography = staticCompositionLocalOf { LiroutiTypography() }
