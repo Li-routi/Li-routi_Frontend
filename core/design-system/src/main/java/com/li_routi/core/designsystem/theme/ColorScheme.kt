@@ -13,6 +13,7 @@ import com.li_routi.core.designsystem.foundation.color.DimmerSecondary
 import com.li_routi.core.designsystem.foundation.color.Neutral0
 import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.foundation.color.Neutral15
+import com.li_routi.core.designsystem.foundation.color.Neutral17
 import com.li_routi.core.designsystem.foundation.color.Neutral20
 import com.li_routi.core.designsystem.foundation.color.Neutral22
 import com.li_routi.core.designsystem.foundation.color.Neutral23
@@ -72,6 +73,7 @@ data class LiroutiColorScheme(
 
     // Surface
     val surfaceContainerMid: Color,
+    val surfaceInverse: Color,
 
     // Dimmer
     val dimmerDefault: Color,
@@ -120,6 +122,7 @@ val LiroutiLightColorScheme = LiroutiColorScheme(
     chipSelectedBackground = ChipSelectedNeutral,
 
     surfaceContainerMid = SurfaceContainerMid,
+    surfaceInverse = Neutral17,
 
     dimmerDefault = DimmerDefault,
     dimmerSecondary = DimmerSecondary,
@@ -165,6 +168,7 @@ val LiroutiDarkColorScheme = LiroutiColorScheme(
     chipSelectedBackground = ChipSelectedNeutral,
 
     surfaceContainerMid = SurfaceContainerMid,
+    surfaceInverse = Neutral17,
 
     dimmerDefault = DimmerDefault,
     dimmerSecondary = DimmerSecondary,
