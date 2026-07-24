@@ -116,6 +116,8 @@ fun InviteCodeScreen(
                 BasicTextField(
                     value = code,
                     onValueChange = onCodeChange,
+                    singleLine = true,
+                    maxLines = 1,
                     textStyle = LiroutiTheme.typography.body2LongRegular.copy(color = LiroutiTheme.colors.labelDefault),
                     modifier = Modifier.fillMaxWidth(),
                 )
