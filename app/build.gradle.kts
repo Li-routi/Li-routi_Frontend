@@ -1,4 +1,4 @@
- plugins {
+plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
@@ -50,6 +50,7 @@ dependencies {
     implementation(project(":feature:login"))
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:home"))
+    implementation(project(":feature:shopping"))
     implementation(project(":feature:mypage"))
 
     implementation(libs.androidx.core.ktx)
