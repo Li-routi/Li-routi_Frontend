@@ -1,6 +1,5 @@
-package com.example.ri_routi
+package com.li_routi.core.designsystem.component
 
-import com.li_routi.core.designsystem.R
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,10 +17,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-
+import com.li_routi.core.designsystem.R
 
 enum class CheckBoxState {
     A, // #AEB0B6 테두리, 투명 배경 (기본 비활성)
@@ -43,7 +43,6 @@ fun CustomCheckBox(
 ) {
     val shape = if (isCircle) CircleShape else RoundedCornerShape(4.dp)
 
-
     val borderColor = when (state) {
         CheckBoxState.A -> Color(0xFFAEB0B6)
         CheckBoxState.B -> Color(0xFF338AFF)
@@ -63,6 +62,13 @@ fun CustomCheckBox(
         else -> false
     }
 
+    // checkmark.xml is baked with a fixed dark fill (#171719), so it needs an explicit
+    // tint here — otherwise it renders dark-on-blue for state B with no contrast.
+    val checkmarkTint = when (state) {
+        CheckBoxState.B -> Color.White
+        else -> Color(0xFF171719)
+    }
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = modifier
@@ -80,24 +86,22 @@ fun CustomCheckBox(
             Image(
                 painter = painterResource(id = R.drawable.checkmark),
                 contentDescription = "Checkmark",
-                modifier = Modifier.size(10.dp)
+                modifier = Modifier.size(10.dp),
+                colorFilter = ColorFilter.tint(checkmarkTint),
             )
         }
     }
 }
-
 
 @Composable
 fun CheckBoxVariant1(onClick: () -> Unit = {}) {
     CustomCheckBox(state = CheckBoxState.A, isCircle = false, onClick = onClick)
 }
 
-
 @Composable
 fun CheckBoxVariant2(onClick: () -> Unit = {}) {
     CustomCheckBox(state = CheckBoxState.A, isCircle = true, onClick = onClick)
 }
-
 
 @Composable
 fun CheckBoxVariant3(onClick: () -> Unit = {}) {
@@ -114,24 +118,20 @@ fun CheckBoxVariant5(onClick: () -> Unit = {}) {
     CustomCheckBox(state = CheckBoxState.C, isCircle = false, onClick = onClick)
 }
 
-
 @Composable
 fun CheckBoxVariant6(onClick: () -> Unit = {}) {
     CustomCheckBox(state = CheckBoxState.C, isCircle = true, onClick = onClick)
 }
-
 
 @Composable
 fun CheckBoxVariant7(onClick: () -> Unit = {}) {
     CustomCheckBox(state = CheckBoxState.D, isCircle = false, onClick = onClick)
 }
 
-
 @Composable
 fun CheckBoxVariant8(onClick: () -> Unit = {}) {
     CustomCheckBox(state = CheckBoxState.D, isCircle = true, onClick = onClick)
 }
-
 
 @Composable
 fun CheckBoxShowcase() {
@@ -139,7 +139,6 @@ fun CheckBoxShowcase() {
         verticalArrangement = Arrangement.spacedBy(16.dp),
         modifier = Modifier.padding(20.dp)
     ) {
-
         Row(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -147,7 +146,6 @@ fun CheckBoxShowcase() {
             CheckBoxVariant1()
             CheckBoxVariant2()
         }
-
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
@@ -157,7 +155,6 @@ fun CheckBoxShowcase() {
             CheckBoxVariant4()
         }
 
-
         Row(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
             verticalAlignment = Alignment.CenterVertically
@@ -165,7 +162,6 @@ fun CheckBoxShowcase() {
             CheckBoxVariant5()
             CheckBoxVariant6()
         }
-
 
         Row(
             horizontalArrangement = Arrangement.spacedBy(20.dp),
