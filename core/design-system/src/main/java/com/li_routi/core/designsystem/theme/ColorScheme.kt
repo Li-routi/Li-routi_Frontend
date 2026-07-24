@@ -34,6 +34,7 @@ import com.li_routi.core.designsystem.foundation.color.Red200
 import com.li_routi.core.designsystem.foundation.color.Red300
 import com.li_routi.core.designsystem.foundation.color.Red500
 import com.li_routi.core.designsystem.foundation.color.Red600
+import com.li_routi.core.designsystem.foundation.color.SurfaceContainerMid
 
 @Immutable
 data class LiroutiColorScheme(
@@ -68,6 +69,9 @@ data class LiroutiColorScheme(
 
     // Chip
     val chipSelectedBackground: Color,
+
+    // Surface
+    val surfaceContainerMid: Color,
 
     // Dimmer
     val dimmerDefault: Color,
@@ -115,6 +119,8 @@ val LiroutiLightColorScheme = LiroutiColorScheme(
 
     chipSelectedBackground = ChipSelectedNeutral,
 
+    surfaceContainerMid = SurfaceContainerMid,
+
     dimmerDefault = DimmerDefault,
     dimmerSecondary = DimmerSecondary,
 
@@ -157,6 +163,8 @@ val LiroutiDarkColorScheme = LiroutiColorScheme(
     backgroundFill = BackgroundFill,
 
     chipSelectedBackground = ChipSelectedNeutral,
+
+    surfaceContainerMid = SurfaceContainerMid,
 
     dimmerDefault = DimmerDefault,
     dimmerSecondary = DimmerSecondary,
