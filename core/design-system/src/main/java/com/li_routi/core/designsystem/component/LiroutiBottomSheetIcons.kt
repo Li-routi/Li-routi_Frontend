@@ -55,7 +55,7 @@ internal fun LiroutiCheckmarkIcon(
 }
 
 @Composable
-internal fun LiroutiChevronRightIcon(
+fun LiroutiChevronRightIcon(
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
 ) {
