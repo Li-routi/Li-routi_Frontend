@@ -1,0 +1,15 @@
+addReviewers: true
+addAssignees: author
+
+reviewers:
+  - Lemon0610
+  - jeongkyueun
+  - jongheecode
+  - sua710
+  - East0219
+  - mookeunji05
+
+numberOfReviewers: 1
+
+skipKeywords:
+  - wip
