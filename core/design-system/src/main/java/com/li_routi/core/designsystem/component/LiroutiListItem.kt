@@ -78,7 +78,10 @@ fun LiroutiListItemCamera(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LiroutiCheckbox(checked = checked, onCheckedChange = onCheckedChange)
+        CustomCheckBox(
+            state = if (checked) CheckBoxState.B else CheckBoxState.A,
+            onClick = { onCheckedChange?.invoke(!checked) },
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = title,
@@ -125,7 +128,7 @@ fun LiroutiListItemComplete(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LiroutiCheckbox(checked = true)
+        CustomCheckBox(state = CheckBoxState.B)
         Text(
             text = title,
             modifier = Modifier.weight(1f),
@@ -152,7 +155,7 @@ fun LiroutiListItemRadio(
         horizontalArrangement = Arrangement.spacedBy(10.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LiroutiCheckbox(checked = checked)
+        CustomCheckBox(state = if (checked) CheckBoxState.B else CheckBoxState.A)
         Text(
             text = title,
             modifier = Modifier.weight(1f),
@@ -271,10 +274,10 @@ fun LiroutiListItemSettingPeople(
     ) {
         LiroutiAvatar(size = 24.dp)
         Text(text = title, modifier = Modifier.weight(1f), style = ListTitleTextStyle, color = LiroutiTheme.colors.labelDefault)
-        LiroutiCheckbox(
-            checked = checked,
-            shape = LiroutiCheckboxShape.Circle,
-            onCheckedChange = onCheckedChange,
+        CustomCheckBox(
+            state = if (checked) CheckBoxState.B else CheckBoxState.A,
+            isCircle = true,
+            onClick = { onCheckedChange(!checked) },
         )
     }
 }
