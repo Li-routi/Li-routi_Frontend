@@ -55,6 +55,7 @@ val DimmerSecondary = Color(0x80767676)
 val BackgroundFill        = Color(0xFFFAFAFA)
 val ChipSelectedNeutral   = Color(0xFF37383C)
 val SurfaceContainerMid   = Color(0xFF636D74)
+val OutlinedMid           = Color(0xFFCDD0D5)
 // Background
 val SelectedLight = Color(0xFFFFB5B5)
 val SelectedDark = Color(0xFFFFB5B5)
