@@ -71,7 +71,7 @@ fun LiroutiTabButton(
             ) {
                 Text(
                     text = title,
-                    style = LiroutiTheme.typography.body3.copy(
+                    style = LiroutiTheme.typography.body3Regular.copy(
                         fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
                     ),
                     color = if (selected) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.labelInfo,
@@ -126,7 +126,7 @@ private fun LiroutiLineTabItem(
             text = text,
             softWrap = false,
             onTextLayout = { textWidth = with(density) { it.size.width.toDp() } },
-            style = LiroutiTheme.typography.body2Long.copy(
+            style = LiroutiTheme.typography.body2LongRegular.copy(
                 fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
             ),
             color = if (selected) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.labelInfo,
