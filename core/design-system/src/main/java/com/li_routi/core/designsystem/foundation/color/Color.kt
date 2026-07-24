@@ -48,7 +48,7 @@ val Red800 = Color(0xFFB20C0C)
 val Red900 = Color(0xFF750404)
 
 // dimmer
-val DimmerDefault   = Color(0x801F1F1F)
+val DimmerDefault   = Color(0x99000000)
 val DimmerSecondary = Color(0x80767676)
 
 // misc
