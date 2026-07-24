@@ -4,7 +4,7 @@ plugins {
 }
 
 android {
-    namespace = "com.li_routi.feature.home"
+    namespace = "com.li_routi.feature.shopping"
     compileSdk {
         version = release(36) {
             minorApiLevel = 1
@@ -49,5 +49,4 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
-    implementation(libs.androidx.navigation.compose)
 }
