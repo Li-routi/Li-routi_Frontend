@@ -9,13 +9,14 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
  * 아이템 상점 화면 ViewModel.
  *
- * [ShopScreenActions]를 구현해 뒤로가기/재화 chip/저장 클릭을 [ShopUiEvent]로 발행한다.
- * 실제 API/구매 로직은 이후 단계에서 추가한다.
+ * [ShopScreenActions]를 구현해 아이템 선택/뒤로가기/재화 chip/저장을 처리한다.
+ * 실제 API/구매·의상 미리보기 로직은 이후 단계에서 추가한다.
  */
 class ShopViewModel(
     initialState: ShopUiState = ShopUiState(),
@@ -33,6 +34,14 @@ class ShopViewModel(
 
     override fun onCurrencyChipClick() {
         emitEvent(ShopUiEvent.NavigateToCurrencyShop)
+    }
+
+    override fun onItemClick(itemId: String) {
+        _uiState.update { state ->
+            state.copy(
+                selectedItemId = if (state.selectedItemId == itemId) null else itemId,
+            )
+        }
     }
 
     override fun onSaveClick() {

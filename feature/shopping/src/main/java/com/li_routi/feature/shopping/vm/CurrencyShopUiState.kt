@@ -10,6 +10,7 @@ import com.li_routi.feature.shopping.component.SampleCurrencyProducts
  * - [chargeDialogProductId]: 같은 상품을 한 번 더 탭했을 때 충전 팝업에 표시할 상품
  *
  * 주황보석/파란보석 탭 선택은 Screen 로컬 state로 둔다.
+ * API 연동 전: 탭별 상품 필터·잔액 동기화는 미연결.
  */
 data class CurrencyShopUiState(
     val coinBalance: Int = 450,
@@ -28,6 +29,6 @@ data class CurrencyShopUiState(
 sealed interface CurrencyShopUiEvent {
     data object NavigateBack : CurrencyShopUiEvent
 
-    /** 충전하기 확인. 결제/충전 실제 처리는 이 이벤트를 받는 쪽에서 연결한다. */
+    /** 충전하기 확인. API 연동 전: ShoppingRoute에서 no-op. */
     data class ConfirmCharge(val productId: String) : CurrencyShopUiEvent
 }

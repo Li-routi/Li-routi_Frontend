@@ -1,5 +1,7 @@
 package com.li_routi.feature.home.component
 
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
@@ -12,11 +14,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.DsPlaceholder
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -24,8 +27,6 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
  * 홈 화면의 "내 루틴" 카드 (Figma `comp/menulist`, node `2187:21658`).
  *
  * 구조: 아이콘 박스(`icon_range`) + 제목/부제 텍스트 + `chevron--right` 아이콘.
- * 카드 탭 시 [onClick]을 호출한다.
- * 빠른 인증 스와이프는 홈 화면 전체 HorizontalPager에서 처리한다.
  */
 @Composable
 fun MyRoutineCard(
@@ -46,7 +47,15 @@ fun MyRoutineCard(
                 .size(42.dp)
                 .clip(RoundedCornerShape(8.dp))
                 .background(LiroutiTheme.colors.backgroundStrong),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+            painter = painterResource(id = R.drawable.calendar),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
         )
+        }
         Column(
             modifier = Modifier
                 .weight(1f)
@@ -63,9 +72,11 @@ fun MyRoutineCard(
                 color = LiroutiTheme.colors.labelInfo,
             )
         }
-        DsPlaceholder(
-            componentName = "Icon/chevron--right",
+        Image(
+            painter = painterResource(id = R.drawable.chevron__right),
+            contentDescription = null,
             modifier = Modifier.size(16.dp),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelInfo),
         )
     }
 }

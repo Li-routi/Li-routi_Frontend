@@ -1,6 +1,10 @@
 package com.li_routi.feature.home.vm
 
 import android.net.Uri
+import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
+import com.li_routi.feature.home.component.SampleGroupRoomItems
+import com.li_routi.feature.home.component.SampleMyRoutineItems
+import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
 
 /**
  * 촬영 후 메모/루틴 선택(업로드) 화면 UI 상태.
@@ -16,7 +20,7 @@ data class RoutineAuthUploadUiState(
     val showUploadFailedToast: Boolean = false,
 ) {
     val isUploadEnabled: Boolean
-        get() = selectedRoutineIds.isNotEmpty() && !isUploading
+        get() = photoUri != null && selectedRoutineIds.isNotEmpty() && !isUploading
 }
 
 /**
@@ -39,30 +43,34 @@ enum class RoutineAuthBadgeTone {
     Challenge,
 }
 
-val SampleRoutineAuthSelectables: List<RoutineAuthSelectableUiModel> = listOf(
-    RoutineAuthSelectableUiModel(
-        id = "auth_0",
-        title = "물 마시기",
-        dueLabel = "마감 22:00",
-        subtitle = "Sub tit",
-        categoryLabel = "갓생살자",
-        badgeTone = RoutineAuthBadgeTone.Secondary,
-    ),
-    RoutineAuthSelectableUiModel(
-        id = "auth_1",
-        title = "스쿼트하기",
-        dueLabel = "마감 22:00",
-        subtitle = "Sub tit",
-        categoryLabel = "운동부",
-        badgeTone = RoutineAuthBadgeTone.Secondary,
-    ),
-    RoutineAuthSelectableUiModel(
-        id = "auth_2",
-        title = "물 1L 마시기 챌린지",
-        categoryLabel = "챌린지",
-        badgeTone = RoutineAuthBadgeTone.Challenge,
-    ),
+private fun RoutineChecklistItemUiModel.toAuthSelectable(
+    badgeTone: RoutineAuthBadgeTone = RoutineAuthBadgeTone.Secondary,
+) = RoutineAuthSelectableUiModel(
+    id = id,
+    title = title,
+    dueLabel = dueLabel,
+    subtitle = null,
+    categoryLabel = categoryLabel,
+    badgeTone = badgeTone,
 )
+
+/**
+ * 홈 체크리스트 미완료 샘플과 **같은 id**를 쓴다.
+ * 카메라 아이콘 → 업로드 미리 선택이 체크박스에 반영되도록 한다.
+ *
+ * 마지막 챌린지 행은 홈에 대응 id가 없어 미리 선택 대상이 아니다.
+ */
+val SampleRoutineAuthSelectables: List<RoutineAuthSelectableUiModel> =
+    (SampleMyRoutineItemsOnly + SampleMyRoutineItems + SampleGroupRoomItems)
+        .filter { !it.isDone }
+        .distinctBy { it.id }
+        .map { it.toAuthSelectable() } +
+        RoutineAuthSelectableUiModel(
+            id = "challenge_0",
+            title = "물 1L 마시기 챌린지",
+            categoryLabel = "챌린지",
+            badgeTone = RoutineAuthBadgeTone.Challenge,
+        )
 
 /**
  * 촬영 후 업로드 화면의 일회성 UI 이벤트.

@@ -1,19 +1,16 @@
 package com.li_routi.feature.home.component
 
-import androidx.compose.foundation.BorderStroke
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
-import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -24,14 +21,21 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
-import com.li_routi.core.designsystem.component.DsPlaceholder
+import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.component.CheckBoxState
+import com.li_routi.core.designsystem.component.CustomCheckBox
+import com.li_routi.core.designsystem.component.LiroutiBadge
+import com.li_routi.core.designsystem.component.LiroutiBadgeColor
+import com.li_routi.core.designsystem.component.LiroutiDivider
+import com.li_routi.core.designsystem.component.LiroutiDividerOrientation
+import com.li_routi.core.designsystem.component.LiroutiLabel
+import com.li_routi.core.designsystem.component.LiroutiTabButton
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -42,6 +46,11 @@ data class RoutineChecklistItemUiModel(
     val dueLabel: String,
     val categoryLabel: String,
     val isDone: Boolean = false,
+    /**
+     * 그룹 루틴 방 이름. 방 필터 chip과 매칭한다.
+     * 내 루틴 항목은 null.
+     */
+    val roomLabel: String? = null,
 )
 
 /** Preview/개발 확인용 "오늘의 루틴" 샘플 (그룹방 있을 때, 미완료→완료 정렬용). */
@@ -53,22 +62,56 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(id = "my_4", title = "물 마시기", dueLabel = "마감 22:00", categoryLabel = "카테고리", isDone = true),
 )
 
-/** Preview/개발 확인용 "오늘의 루틴" 샘플 (그룹방 없을 때). */
+/**
+ * Preview/개발 확인용 "오늘의 루틴" 샘플 (그룹방 없을 때).
+ *
+ * id는 [SampleMyRoutineItems]와 맞춘다. 업로드 미리 선택이 깨지지 않도록
+ * `solo_*` 같은 별도 prefix를 쓰지 않는다.
+ */
 val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
-    RoutineChecklistItemUiModel(id = "solo_0", title = "물 마시기", dueLabel = "마감 22:00", categoryLabel = "Sub tit"),
-    RoutineChecklistItemUiModel(id = "solo_1", title = "스트레칭하기", dueLabel = "마감 22:00", categoryLabel = "Sub tit"),
-    RoutineChecklistItemUiModel(id = "solo_2", title = "물 마시기", dueLabel = "마감 22:00", categoryLabel = "Sub tit"),
+    RoutineChecklistItemUiModel(id = "my_0", title = "물 마시기", dueLabel = "마감 22:00", categoryLabel = "Sub tit"),
+    RoutineChecklistItemUiModel(id = "my_1", title = "스트레칭하기", dueLabel = "마감 22:00", categoryLabel = "Sub tit"),
+    RoutineChecklistItemUiModel(id = "my_2", title = "물 마시기", dueLabel = "마감 22:00", categoryLabel = "Sub tit"),
 )
 
 /** Preview/개발 확인용 "그룹 루틴" 방 필터 목록. */
 val SampleGroupRoomFilters: List<String> = listOf("전체", "바디프로필", "사이드 프로젝트")
 
-/** Preview/개발 확인용 "그룹 루틴" 샘플. */
+/** Preview/개발 확인용 "그룹 루틴" 샘플. [roomLabel]이 필터 chip과 일치해야 한다. */
 val SampleGroupRoomItems: List<RoutineChecklistItemUiModel> = listOf(
-    RoutineChecklistItemUiModel(id = "group_0", title = "물 마시기", dueLabel = "마감 22:00", categoryLabel = "카테고리"),
-    RoutineChecklistItemUiModel(id = "group_1", title = "스트레칭하기", dueLabel = "마감 23:00", categoryLabel = "카테고리"),
-    RoutineChecklistItemUiModel(id = "group_2", title = "스트레칭하기", dueLabel = "마감 23:00", categoryLabel = "카테고리", isDone = true),
+    RoutineChecklistItemUiModel(
+        id = "group_0",
+        title = "물 마시기",
+        dueLabel = "마감 22:00",
+        categoryLabel = "카테고리",
+        roomLabel = "바디프로필",
+    ),
+    RoutineChecklistItemUiModel(
+        id = "group_1",
+        title = "스트레칭하기",
+        dueLabel = "마감 23:00",
+        categoryLabel = "카테고리",
+        roomLabel = "사이드 프로젝트",
+    ),
+    RoutineChecklistItemUiModel(
+        id = "group_2",
+        title = "스트레칭하기",
+        dueLabel = "마감 23:00",
+        categoryLabel = "카테고리",
+        isDone = true,
+        roomLabel = "바디프로필",
+    ),
 )
+
+/** 방 필터 chip 선택에 맞게 그룹 루틴 목록을 걸러낸다. "전체"면 원본 그대로. */
+internal fun List<RoutineChecklistItemUiModel>.filteredByRoom(
+    filters: List<String>,
+    selectedFilterIndex: Int,
+): List<RoutineChecklistItemUiModel> {
+    val selected = filters.getOrNull(selectedFilterIndex) ?: return this
+    if (selected == "전체") return this
+    return filter { it.roomLabel == selected }
+}
 
 private val HomeMainTabLabels = listOf("오늘의 루틴", "그룹 루틴")
 
@@ -78,9 +121,6 @@ private val HomeMainTabLabels = listOf("오늘의 루틴", "그룹 루틴")
  * - [hasGroupRoom]=false (내 루틴 O, 그룹방 X): 탭 없이 흰 카드 안에 "오늘의 루틴" 타이틀 + 리스트.
  * - [hasGroupRoom]=true (내 루틴 O, 그룹방 O): "오늘의 루틴"/"그룹 루틴" [HomeRoutineTabRow]로 전환.
  *   "그룹 루틴" 탭에서는 방 필터 chip이 나타나고, 선택에 따라 리스트를 교체할 수 있다.
- *
- * Tab/Filter는 Design System instance라 완성되면 [DsPlaceholder] 자리에 끼운다.
- * 지금은 화면 상태 전환(탭/필터 선택)이 보이도록 레이아웃만 구현한다.
  *
  * 완료된 항목은 Figma 주석대로 하단에 정렬한다.
  */
@@ -97,7 +137,19 @@ fun RoutineChecklistSection(
     var selectedFilterIndex by remember { mutableIntStateOf(0) }
 
     val showGroupRoomTab = hasGroupRoom && selectedMainTab == 1
-    val displayedItems = if (showGroupRoomTab) groupRoomItems else myRoutineItems
+    val displayedItems = remember(
+        showGroupRoomTab,
+        myRoutineItems,
+        groupRoomItems,
+        groupRoomFilters,
+        selectedFilterIndex,
+    ) {
+        if (showGroupRoomTab) {
+            groupRoomItems.filteredByRoom(groupRoomFilters, selectedFilterIndex)
+        } else {
+            myRoutineItems
+        }
+    }
     val sortedItems = remember(displayedItems) { displayedItems.sortedBy { it.isDone } }
     val doneCount = displayedItems.count { it.isDone }
 
@@ -109,8 +161,8 @@ fun RoutineChecklistSection(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         if (hasGroupRoom) {
-            HomeRoutineTabRow(
-                labels = HomeMainTabLabels,
+            LiroutiTabButton(
+                tabs = HomeMainTabLabels,
                 selectedIndex = selectedMainTab,
                 onTabSelected = { selectedMainTab = it },
             )
@@ -133,11 +185,10 @@ fun RoutineChecklistSection(
             }
 
             if (showGroupRoomTab) {
-                // TODO(design-system): Figma Filter 완성 시 실제 Filter 컴포넌트로 교체
                 LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                     itemsIndexed(groupRoomFilters) { index, label ->
-                        GroupRoomFilterChip(
-                            label = label,
+                        LiroutiLabel(
+                            text = label,
                             selected = index == selectedFilterIndex,
                             onClick = { selectedFilterIndex = index },
                         )
@@ -159,12 +210,7 @@ fun RoutineChecklistSection(
                 verticalArrangement = Arrangement.spacedBy(14.dp),
                 horizontalAlignment = Alignment.End,
             ) {
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(1.dp)
-                        .background(LiroutiTheme.colors.borderSub),
-                )
+                LiroutiDivider(color = LiroutiTheme.colors.borderSub)
                 Text(
                     text = "$doneCount/${displayedItems.size} 완료",
                     style = LiroutiTheme.typography.caption,
@@ -173,119 +219,6 @@ fun RoutineChecklistSection(
                 )
             }
         }
-    }
-}
-
-/**
- * "오늘의 루틴" / "그룹 루틴" 세그먼트 탭.
- *
- * Design System `Tab` instance 자리. 선택 상태 전환이 보이도록 레이아웃만 구현한다.
- * TODO(design-system): Figma Tab 완성 시 실제 Tab 컴포넌트로 교체
- */
-@Composable
-private fun HomeRoutineTabRow(
-    labels: List<String>,
-    selectedIndex: Int,
-    onTabSelected: (Int) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(40.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(LiroutiTheme.colors.backgroundStrong)
-            .padding(3.dp),
-    ) {
-        labels.forEachIndexed { index, label ->
-            val selected = index == selectedIndex
-            Box(
-                modifier = Modifier
-                    .weight(1f)
-                    .fillMaxHeight()
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(
-                        if (selected) {
-                            LiroutiTheme.colors.backgroundDefault
-                        } else {
-                            LiroutiTheme.colors.backgroundStrong
-                        },
-                    )
-                    .clickable { onTabSelected(index) },
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = label,
-                    style = LiroutiTheme.typography.body2.copy(
-                        fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
-                        fontSize = 13.sp,
-                        lineHeight = 16.sp,
-                    ),
-                    color = if (selected) {
-                        LiroutiTheme.colors.labelStrong
-                    } else {
-                        LiroutiTheme.colors.labelInfo
-                    },
-                    textAlign = TextAlign.Center,
-                )
-            }
-        }
-    }
-}
-
-/**
- * 그룹 루틴 방 필터 chip.
- *
- * Design System `Filter` instance 자리. 선택 시 primary 배경 + 체크 아이콘 placeholder.
- * TODO(design-system): Figma Filter 완성 시 실제 Filter 컴포넌트로 교체
- */
-@Composable
-private fun GroupRoomFilterChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .height(38.dp)
-            .clip(RoundedCornerShape(40.dp))
-            .background(
-                if (selected) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault,
-            )
-            .then(
-                if (selected) {
-                    Modifier
-                } else {
-                    Modifier.border(
-                        BorderStroke(1.dp, LiroutiTheme.colors.borderDefault),
-                        RoundedCornerShape(40.dp),
-                    )
-                },
-            )
-            .clickable(onClick = onClick)
-            .padding(
-                start = if (selected) 12.dp else 16.dp,
-                end = 16.dp,
-            ),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        if (selected) {
-            DsPlaceholder(
-                componentName = "Icon/checkmark",
-                modifier = Modifier.size(16.dp),
-            )
-        }
-        Text(
-            text = label,
-            style = LiroutiTheme.typography.body2,
-            color = if (selected) {
-                LiroutiTheme.colors.labelReverse
-            } else {
-                LiroutiTheme.colors.labelStrong
-            },
-        )
     }
 }
 
@@ -302,10 +235,8 @@ private fun RoutineChecklistItemRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        DsPlaceholder(
-            componentName = "Checkbox",
-            shape = RoundedCornerShape(2.dp),
-            modifier = Modifier.size(16.dp),
+        CustomCheckBox(
+            state = if (item.isDone) CheckBoxState.B else CheckBoxState.A,
         )
         Column(modifier = Modifier.weight(1f)) {
             Text(
@@ -327,11 +258,10 @@ private fun RoutineChecklistItemRow(
                         style = LiroutiTheme.typography.caption,
                         color = LiroutiTheme.colors.labelInfo,
                     )
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(10.dp)
-                            .background(LiroutiTheme.colors.borderStrong),
+                    LiroutiDivider(
+                        orientation = LiroutiDividerOrientation.Vertical,
+                        color = LiroutiTheme.colors.borderStrong,
+                        modifier = Modifier.height(10.dp),
                     )
                     Text(
                         text = item.categoryLabel,
@@ -342,18 +272,16 @@ private fun RoutineChecklistItemRow(
             }
         }
         if (item.isDone) {
-            DsPlaceholder(
-                componentName = "Badge/완료",
-                shape = RoundedCornerShape(6.dp),
-                modifier = Modifier.height(20.dp),
-            )
+            LiroutiBadge(text = "완료", color = LiroutiBadgeColor.Neutral)
         } else {
-            DsPlaceholder(
-                componentName = "Icon/camera",
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable(onClick = onCameraClick),
-            )
+            Image(
+            painter = painterResource(id = R.drawable.camera),
+            contentDescription = "루틴 인증 촬영",
+            modifier = Modifier
+                .size(20.dp)
+                .clickable(onClick = onCameraClick),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelInfo),
+        )
         }
     }
 }
