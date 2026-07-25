@@ -257,16 +257,16 @@ fun AllCustomBoxes() {
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        Text("87x30 Boxes", fontSize = 14.sp, color = Color.Gray)
-        Box87x30Left(textColor = Color(0xFF171719), fontSize = 16.sp, underline = false)
-        Box87x30Left(textColor = Color(0xFF46474C), fontSize = 16.sp, underline = false)
-        Box87x30Left(textColor = Color(0xFF878A93), fontSize = 16.sp, underline = true)
+        Text("87x28 Boxes", fontSize = 14.sp, color = Color.Gray)
+        Box87x28Left(textColor = Color(0xFF171719), fontSize = 14.sp, underline = false)
+        Box87x28Left(textColor = Color(0xFF46474C), fontSize = 14.sp, underline = false)
+        Box87x28Left(textColor = Color(0xFF878A93), fontSize = 14.sp, underline = true)
 
         Spacer(modifier = Modifier.height(8.dp))
 
-        Box87x30Right(textColor = Color(0xFF171719), fontSize = 14.sp, underline = false)
-        Box87x30Right(textColor = Color(0xFF46474C), fontSize = 14.sp, underline = false)
-        Box87x30Right(textColor = Color(0xFF878A93), fontSize = 14.sp, underline = true)
+        Box87x28Right(textColor = Color(0xFF171719), fontSize = 14.sp, underline = false)
+        Box87x28Right(textColor = Color(0xFF46474C), fontSize = 14.sp, underline = false)
+        Box87x28Right(textColor = Color(0xFF878A93), fontSize = 14.sp, underline = true)
     }
 }
 
@@ -283,8 +283,12 @@ fun Box123x36Left(textColor: Color, fontSize: TextUnit, underline: Boolean) {
             text = "Text Label",
             color = textColor,
             fontSize = fontSize,
+            maxLines = 1,
             textDecoration = if (underline) TextDecoration.Underline else null,
-            modifier = Modifier.size(width = 87.dp, height = 28.dp).align(Alignment.CenterEnd).offset(x = (-4.dp))
+            modifier = Modifier
+                .height(28.dp)
+                .align(Alignment.CenterEnd)
+                .offset(x = (-4.dp))
         )
     }
 }
@@ -296,8 +300,12 @@ fun Box123x36Right(textColor: Color, fontSize: TextUnit, underline: Boolean) {
             text = "Text Label",
             color = textColor,
             fontSize = fontSize,
+            maxLines = 1,
             textDecoration = if (underline) TextDecoration.Underline else null,
-            modifier = Modifier.size(width = 87.dp, height = 28.dp).align(Alignment.CenterStart).offset(x = 4.dp)
+            modifier = Modifier
+                .height(28.dp)
+                .align(Alignment.CenterStart)
+                .offset(x = 4.dp)
         )
         Icon(
             painter = painterResource(id = R.drawable.chevron__right),
@@ -321,8 +329,12 @@ fun Box105x32Left(textColor: Color, fontSize: TextUnit, underline: Boolean) {
             text = "Text Label",
             color = textColor,
             fontSize = fontSize,
+            maxLines = 1,
             textDecoration = if (underline) TextDecoration.Underline else null,
-            modifier = Modifier.size(width = 73.dp, height = 24.dp).align(Alignment.CenterEnd).offset(x = (-4.dp))
+            modifier = Modifier
+                .height(24.dp)
+                .align(Alignment.CenterEnd)
+                .offset(x = (-4.dp))
         )
     }
 }
@@ -334,8 +346,12 @@ fun Box105x32Right(textColor: Color, fontSize: TextUnit, underline: Boolean) {
             text = "Text Label",
             color = textColor,
             fontSize = fontSize,
+            maxLines = 1,
             textDecoration = if (underline) TextDecoration.Underline else null,
-            modifier = Modifier.size(width = 73.dp, height = 24.dp).align(Alignment.CenterStart).offset(x = 4.dp)
+            modifier = Modifier
+                .height(24.dp)
+                .align(Alignment.CenterStart)
+                .offset(x = 4.dp)
         )
         Icon(
             painter = painterResource(id = R.drawable.chevron__right),
@@ -347,40 +363,82 @@ fun Box105x32Right(textColor: Color, fontSize: TextUnit, underline: Boolean) {
 }
 
 @Composable
-fun Box87x30Left(textColor: Color, fontSize: TextUnit, underline: Boolean) {
-    Box(modifier = Modifier.size(width = 87.dp, height = 30.dp)) {
-        Icon(
-            painter = painterResource(id = R.drawable.chevron__left),
-            contentDescription = null,
-            tint = textColor,
-            modifier = Modifier.size(24.dp).align(Alignment.CenterStart).offset(x = 4.dp)
-        )
-        Text(
-            text = "Text Label",
-            color = textColor,
-            fontSize = fontSize,
-            textDecoration = if (underline) TextDecoration.Underline else null,
-            modifier = Modifier.size(width = 61.dp, height = 22.dp).align(Alignment.CenterEnd).offset(x = (-4.dp))
-        )
+fun Box87x28Left(textColor: Color, fontSize: TextUnit, underline: Boolean) {
+    Box(
+        modifier = Modifier.size(width = 87.dp, height = 28.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.chevron__left),
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+            Box(
+                modifier = Modifier.size(width = 61.dp, height = 22.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = "TextLabel",
+                    color = textColor,
+                    fontSize = fontSize,
+                    // 피그마 자간 -2.5% 적용 (-0.35.sp)
+                    letterSpacing = (-0.35).sp,
+                    maxLines = 1,
+                    textDecoration = if (underline) TextDecoration.Underline else null
+                )
+            }
+        }
     }
 }
 
 @Composable
-fun Box87x30Right(textColor: Color, fontSize: TextUnit, underline: Boolean) {
-    Box(modifier = Modifier.size(width = 87.dp, height = 30.dp)) {
-        Text(
-            text = "Text Label",
-            color = textColor,
-            fontSize = fontSize,
-            textDecoration = if (underline) TextDecoration.Underline else null,
-            modifier = Modifier.size(width = 61.dp, height = 22.dp).align(Alignment.CenterStart).offset(x = 4.dp)
-        )
-        Icon(
-            painter = painterResource(id = R.drawable.chevron__right),
-            contentDescription = null,
-            tint = textColor,
-            modifier = Modifier.size(24.dp).align(Alignment.CenterEnd).offset(x = (-4.dp))
-        )
+fun Box87x28Right(textColor: Color, fontSize: TextUnit, underline: Boolean) {
+    Box(
+        modifier = Modifier.size(width = 87.dp, height = 28.dp),
+        contentAlignment = Alignment.CenterStart
+    ) {
+        Row(
+            modifier = Modifier.padding(start = 4.dp, end = 4.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier.size(width = 61.dp, height = 22.dp),
+                contentAlignment = Alignment.CenterStart
+            ) {
+                Text(
+                    text = "Text Label",
+                    color = textColor,
+                    fontSize = fontSize,
+                    // 피그마 자간 -2.5% 적용 (-0.35.sp)
+                    letterSpacing = (-0.35).sp,
+                    maxLines = 1,
+                    textDecoration = if (underline) TextDecoration.Underline else null
+                )
+            }
+            Box(
+                modifier = Modifier.size(16.dp),
+                contentAlignment = Alignment.Center
+            ) {
+                Icon(
+                    painter = painterResource(id = R.drawable.chevron__right),
+                    contentDescription = null,
+                    tint = textColor,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
     }
 }
 
