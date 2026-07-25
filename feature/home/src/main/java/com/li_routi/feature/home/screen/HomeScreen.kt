@@ -18,7 +18,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.DsPlaceholder
+import com.li_routi.core.designsystem.component.LiroutiDivider
+import com.li_routi.core.designsystem.component.LiroutiDividerThickness
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.component.AddMenuBottomSheet
@@ -54,8 +55,6 @@ internal fun homeTooltipMessage(hasActiveRoutine: Boolean, hasGroupRoom: Boolean
  * 1. **처음 진입** (`hasActiveRoutine=false`, `hasGroupRoom=false`): 스와이프 인증 비활성
  * 2. **내 루틴만** / **내 루틴 + 그룹방**: "밀어서 빠른 인증" 힌트 표시.
  *    실제 카메라 진입은 [com.li_routi.feature.home.navigation.HomeRoute] HorizontalPager로 처리.
- *
- * Design System instance는 [DsPlaceholder]로 둔다.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -115,11 +114,9 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                DsPlaceholder(
-                    componentName = "Divider",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
+                LiroutiDivider(
+                    thickness = LiroutiDividerThickness.ExtraBold,
+                    color = LiroutiTheme.colors.backgroundAlternative,
                 )
                 RoutineChecklistSection(
                     hasGroupRoom = hasGroupRoom,
@@ -155,11 +152,9 @@ fun HomeScreen(
                         modifier = Modifier.fillMaxWidth(),
                     )
                 }
-                DsPlaceholder(
-                    componentName = "Divider",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp),
+                LiroutiDivider(
+                    thickness = LiroutiDividerThickness.ExtraBold,
+                    color = LiroutiTheme.colors.backgroundAlternative,
                 )
                 EmptyRoutineSection(modifier = Modifier.weight(1f))
             }

@@ -8,24 +8,27 @@ import com.li_routi.feature.shopping.component.ShopItemUiModel
  *
  * 카테고리 탭/보유 아이템 토글은 Screen 로컬 state로 두고,
  * 잔액·아이템 목록처럼 외부 데이터가 필요한 값만 여기서 관리한다.
+ *
+ * API 연동 전: 탭/토글 필터·저장 API는 미연결. 샘플 [items]/잔액만 표시한다.
  */
 data class ShopUiState(
     val nickname: String = "닉네임",
     val coinBalance: Int = 450,
     val gemBalance: Int = 30,
     val items: List<ShopItemUiModel> = SampleShopItems,
+    /** 그리드에서 선택된 아이템. null이면 미선택. */
+    val selectedItemId: String? = null,
 )
 
 /**
  * 아이템 상점 화면의 일회성 UI 이벤트.
  *
- * Navigation 연결은 [com.li_routi.feature.shopping.navigation.ShopRoute]의 onEvent에서
- * 다른 담당자가 구현한다.
+ * Navigation은 [com.li_routi.feature.shopping.navigation.ShoppingRoute] / AppNavHost에서 처리한다.
  */
 sealed interface ShopUiEvent {
     data object NavigateBack : ShopUiEvent
     /** 코인/보석 잔액 chip 탭 → 재화 구매 화면으로 이동 */
     data object NavigateToCurrencyShop : ShopUiEvent
-    /** 하단 저장 버튼 탭 */
+    /** 하단 저장 버튼 탭. API 연동 전: ShoppingRoute에서 no-op. */
     data object SaveSelectedItems : ShopUiEvent
 }
