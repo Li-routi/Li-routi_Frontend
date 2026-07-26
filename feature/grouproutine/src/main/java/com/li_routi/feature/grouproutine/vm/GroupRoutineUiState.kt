@@ -8,6 +8,7 @@ enum class GroupRoutineScreenMode {
     GroupSettings,
     CreateRoomName,
     CreateRoutineSelect,
+    JoinByCode,
 }
 
 data class GroupRoutineUiModel(
@@ -67,7 +68,9 @@ data class GroupRoutineUiState(
     val actionMessage: String? = null,
     val showOnlyMyCertifications: Boolean = false,
     val isEmptyState: Boolean = false,
+    val searchInput: String = "",
     val roomNameInput: String = "",
+    val inviteCodeInput: String = "",
     val selectedCategory: String = "전체",
     val categories: List<String> = listOf("전체", "건강", "운동", "공부"),
     val routineOptions: List<CreateRoutineOptionUiModel> = SampleCreateRoutineOptions,
@@ -84,7 +87,13 @@ data class GroupRoutineUiState(
     val posts: List<CertificationPostUiModel> = SampleCertificationPosts,
 ) {
     val visibleRoutines: List<GroupRoutineUiModel>
-        get() = if (isEmptyState) emptyList() else routines
+        get() = if (isEmptyState) {
+            emptyList()
+        } else if (searchInput.isBlank()) {
+            routines
+        } else {
+            routines.filter { it.title.contains(searchInput.trim(), ignoreCase = true) }
+        }
 
     val selectedRoutine: GroupRoutineUiModel?
         get() = routines.firstOrNull { it.id == selectedRoutineId } ?: routines.firstOrNull()

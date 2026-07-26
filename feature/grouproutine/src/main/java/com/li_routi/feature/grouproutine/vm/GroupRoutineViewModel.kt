@@ -51,6 +51,12 @@ class GroupRoutineViewModel : BaseViewModel() {
                     actionMessage = null,
                 )
 
+                GroupRoutineScreenMode.JoinByCode -> state.copy(
+                    screenMode = GroupRoutineScreenMode.List,
+                    inviteCodeInput = "",
+                    actionMessage = null,
+                )
+
                 GroupRoutineScreenMode.List -> state.copy(actionMessage = null)
             }
         }
@@ -88,6 +94,10 @@ class GroupRoutineViewModel : BaseViewModel() {
         _uiState.update { it.copy(isActionSheetVisible = true, actionMessage = null) }
     }
 
+    fun onSearchInputChange(value: String) {
+        _uiState.update { it.copy(searchInput = value, actionMessage = null) }
+    }
+
     fun onDismissActionSheet() {
         _uiState.update { it.copy(isActionSheetVisible = false) }
     }
@@ -105,10 +115,35 @@ class GroupRoutineViewModel : BaseViewModel() {
     fun onJoinByCodeClick() {
         _uiState.update {
             it.copy(
+                screenMode = GroupRoutineScreenMode.JoinByCode,
                 isActionSheetVisible = false,
-                actionMessage = "초대코드 참여 화면은 다음 범위에서 연결할게요.",
+                inviteCodeInput = "",
+                actionMessage = null,
             )
         }
+    }
+
+    fun onInviteCodeChange(value: String) {
+        _uiState.update { it.copy(inviteCodeInput = value, actionMessage = null) }
+    }
+
+    fun onInviteCodeConfirmClick() {
+        _uiState.update { state ->
+            if (state.inviteCodeInput.isBlank()) {
+                state.copy(actionMessage = "초대코드를 입력해주세요.")
+            } else {
+                state.copy(
+                    screenMode = GroupRoutineScreenMode.Detail,
+                    selectedRoutineId = state.routines.firstOrNull()?.id,
+                    inviteCodeInput = "",
+                    actionMessage = "그룹방에 참여했어요.",
+                )
+            }
+        }
+    }
+
+    fun onInviteCodeCopyClick() {
+        _uiState.update { it.copy(actionMessage = "초대코드가 복사됐어요.") }
     }
 
     fun onRoomNameChange(value: String) {

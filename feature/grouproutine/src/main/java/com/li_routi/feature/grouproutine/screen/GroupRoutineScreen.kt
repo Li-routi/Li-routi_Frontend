@@ -95,11 +95,14 @@ fun GroupRoutineRoute(
         onRoutineClick = viewModel::onRoutineClick,
         onBackClick = viewModel::onBackClick,
         onAddClick = viewModel::onAddClick,
+        onSearchInputChange = viewModel::onSearchInputChange,
         onDismissActionSheet = viewModel::onDismissActionSheet,
         onCreateRoomClick = viewModel::onCreateRoomClick,
         onJoinByCodeClick = viewModel::onJoinByCodeClick,
         onRoomNameChange = viewModel::onRoomNameChange,
         onCreateRoomNextClick = viewModel::onCreateRoomNextClick,
+        onInviteCodeChange = viewModel::onInviteCodeChange,
+        onInviteCodeConfirmClick = viewModel::onInviteCodeConfirmClick,
         onCreateRoutineOptionClick = viewModel::onCreateRoutineOptionClick,
         onCreateRoutineSelectAllClick = viewModel::onCreateRoutineSelectAllClick,
         onCategoryClick = viewModel::onCategoryClick,
@@ -122,6 +125,7 @@ fun GroupRoutineRoute(
         onCertificationSummaryClick = viewModel::onCertificationSummaryClick,
         onChatClick = viewModel::onChatClick,
         onSettingsClick = viewModel::onSettingsClick,
+        onInviteCodeCopyClick = viewModel::onInviteCodeCopyClick,
     )
 }
 
@@ -131,11 +135,14 @@ private fun GroupRoutineScreen(
     onRoutineClick: (Long) -> Unit,
     onBackClick: () -> Unit,
     onAddClick: () -> Unit,
+    onSearchInputChange: (String) -> Unit,
     onDismissActionSheet: () -> Unit,
     onCreateRoomClick: () -> Unit,
     onJoinByCodeClick: () -> Unit,
     onRoomNameChange: (String) -> Unit,
     onCreateRoomNextClick: () -> Unit,
+    onInviteCodeChange: (String) -> Unit,
+    onInviteCodeConfirmClick: () -> Unit,
     onCreateRoutineOptionClick: (Long) -> Unit,
     onCreateRoutineSelectAllClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
@@ -158,6 +165,7 @@ private fun GroupRoutineScreen(
     onCertificationSummaryClick: () -> Unit,
     onChatClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onInviteCodeCopyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -166,6 +174,7 @@ private fun GroupRoutineScreen(
                 uiState = uiState,
                 onRoutineClick = onRoutineClick,
                 onAddClick = onAddClick,
+                onSearchInputChange = onSearchInputChange,
             )
 
             GroupRoutineScreenMode.Detail -> GroupRoutineDetailScreen(
@@ -176,6 +185,7 @@ private fun GroupRoutineScreen(
                 onCertificationSummaryClick = onCertificationSummaryClick,
                 onChatClick = onChatClick,
                 onSettingsClick = onSettingsClick,
+                onInviteCodeClick = onInviteCodeCopyClick,
             )
 
             GroupRoutineScreenMode.CertificationCollection -> CertificationCollectionScreen(
@@ -199,6 +209,13 @@ private fun GroupRoutineScreen(
                 onRoomNameChange = onRoomNameChange,
                 onBackClick = onBackClick,
                 onNextClick = onCreateRoomNextClick,
+            )
+
+            GroupRoutineScreenMode.JoinByCode -> JoinByCodeScreen(
+                inviteCode = uiState.inviteCodeInput,
+                onInviteCodeChange = onInviteCodeChange,
+                onBackClick = onBackClick,
+                onConfirmClick = onInviteCodeConfirmClick,
             )
 
             GroupRoutineScreenMode.CreateRoutineSelect -> CreateRoutineSelectScreen(
@@ -274,6 +291,7 @@ private fun GroupRoutineListScreen(
     uiState: GroupRoutineUiState,
     onRoutineClick: (Long) -> Unit,
     onAddClick: () -> Unit,
+    onSearchInputChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -281,7 +299,7 @@ private fun GroupRoutineListScreen(
             .fillMaxSize()
             .background(ScreenBackground),
     ) {
-        if (uiState.visibleRoutines.isEmpty()) {
+        if (uiState.isEmptyState) {
             GroupRoutineEmptyState(modifier = Modifier.align(Alignment.Center))
         } else {
             LazyColumn(
@@ -289,9 +307,25 @@ private fun GroupRoutineListScreen(
                 contentPadding = PaddingValues(start = 16.dp, top = 112.dp, end = 16.dp, bottom = 112.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                item { GroupRoutineSearchField() }
-                items(uiState.visibleRoutines) { routine ->
-                    GroupRoutineCard(routine = routine, onClick = { onRoutineClick(routine.id) })
+                item {
+                    GroupRoutineSearchField(
+                        value = uiState.searchInput,
+                        onValueChange = onSearchInputChange,
+                    )
+                }
+                if (uiState.visibleRoutines.isEmpty()) {
+                    item {
+                        GroupRoutineEmptyState(
+                            message = "검색 결과가 없어요.",
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(top = 180.dp),
+                        )
+                    }
+                } else {
+                    items(uiState.visibleRoutines) { routine ->
+                        GroupRoutineCard(routine = routine, onClick = { onRoutineClick(routine.id) })
+                    }
                 }
             }
         }
@@ -359,6 +393,64 @@ private fun CreateRoomNameScreen(
             text = "다음",
             enabled = roomName.isNotBlank(),
             onClick = onNextClick,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+}
+
+@Composable
+private fun JoinByCodeScreen(
+    inviteCode: String,
+    onInviteCodeChange: (String) -> Unit,
+    onBackClick: () -> Unit,
+    onConfirmClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.White),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 100.dp, start = 16.dp, end = 16.dp, bottom = 104.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
+            Text(
+                text = "초대코드를 입력해주세요",
+                color = LabelDefault,
+                style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
+            )
+            Text(
+                text = "친구에게 받은 초대코드로 그룹방에 참여할 수 있어요.",
+                color = LabelInfo,
+                style = LiroutiTheme.typography.body3,
+            )
+            Spacer(modifier = Modifier.height(24.dp))
+            Text(
+                text = "초대코드",
+                color = LabelDefault,
+                style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+            )
+            BasicInputBox(
+                value = inviteCode,
+                onValueChange = onInviteCodeChange,
+                placeholder = "초대코드 입력",
+                showClear = inviteCode.isNotBlank(),
+            )
+        }
+
+        GroupRoutineTopBar(
+            title = "초대코드로 참여",
+            showBack = true,
+            onBackClick = onBackClick,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+        BottomFixedButton(
+            text = "참여하기",
+            enabled = inviteCode.isNotBlank(),
+            onClick = onConfirmClick,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -891,29 +983,56 @@ private fun PrimaryButton(
 }
 
 @Composable
-private fun GroupRoutineSearchField(modifier: Modifier = Modifier) {
-    Row(
+private fun GroupRoutineSearchField(
+    value: String,
+    onValueChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    OutlinedTextField(
+        value = value,
+        onValueChange = onValueChange,
+        singleLine = true,
+        textStyle = LiroutiTheme.typography.body2Long.copy(color = LabelDefault),
+        leadingIcon = {
+            Text(text = "⌕", color = LabelDefault, fontSize = 24.sp)
+        },
+        placeholder = {
+            Text(
+                text = "그룹방 검색",
+                color = LabelInfo,
+                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
+            )
+        },
+        trailingIcon = {
+            if (value.isNotBlank()) {
+                Text(
+                    text = "×",
+                    color = LabelInfo,
+                    fontSize = 18.sp,
+                    modifier = Modifier.clickable { onValueChange("") },
+                )
+            }
+        },
+        shape = RoundedCornerShape(6.dp),
+        colors = TextFieldDefaults.colors(
+            focusedContainerColor = Color.White,
+            unfocusedContainerColor = Color.White,
+            disabledContainerColor = Color.White,
+            focusedIndicatorColor = BorderDefault,
+            unfocusedIndicatorColor = BorderDefault,
+            cursorColor = PrimaryNormal,
+        ),
         modifier = modifier
             .fillMaxWidth()
-            .height(44.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
-            .border(1.dp, BorderDefault, RoundedCornerShape(6.dp))
-            .padding(horizontal = 16.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        Text(text = "⌕", color = LabelDefault, fontSize = 24.sp)
-        Spacer(modifier = Modifier.width(10.dp))
-        Text(
-            text = "그룹방 검색",
-            color = LabelInfo,
-            style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
-        )
-    }
+            .height(44.dp),
+    )
 }
 
 @Composable
-private fun GroupRoutineEmptyState(modifier: Modifier = Modifier) {
+private fun GroupRoutineEmptyState(
+    modifier: Modifier = Modifier,
+    message: String = "아직 만들어진 방이 없어요!",
+) {
     Column(
         modifier = modifier.padding(bottom = 76.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -921,7 +1040,7 @@ private fun GroupRoutineEmptyState(modifier: Modifier = Modifier) {
     ) {
         Text(text = "!", color = LabelInfo, fontSize = 26.sp)
         Text(
-            text = "아직 만들어진 방이 없어요!",
+            text = message,
             color = LabelInfo,
             style = LiroutiTheme.typography.body3,
         )
@@ -1099,6 +1218,7 @@ private fun GroupRoutineDetailScreen(
     onCertificationSummaryClick: () -> Unit,
     onChatClick: () -> Unit,
     onSettingsClick: () -> Unit,
+    onInviteCodeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val routine = uiState.selectedRoutine ?: return
@@ -1121,7 +1241,13 @@ private fun GroupRoutineDetailScreen(
                 )
             }
             item {
-                GroupMemberCard(title = routine.title, members = uiState.members, modifier = Modifier.padding(horizontal = 16.dp))
+                GroupMemberCard(
+                    title = routine.title,
+                    members = uiState.members,
+                    onMessageEditClick = onChatClick,
+                    onInviteCodeClick = onInviteCodeClick,
+                    modifier = Modifier.padding(horizontal = 16.dp),
+                )
             }
             item {
                 GroupTodoCard(
@@ -1429,6 +1555,8 @@ private fun CertificationSummaryCard(
 private fun GroupMemberCard(
     title: String,
     members: List<GroupMemberUiModel>,
+    onMessageEditClick: () -> Unit,
+    onInviteCodeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -1460,7 +1588,7 @@ private fun GroupMemberCard(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextAction(label = "메시지 수정")
+            TextAction(label = "메시지 수정", onClick = onMessageEditClick)
             Box(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
@@ -1468,7 +1596,7 @@ private fun GroupMemberCard(
                     .height(12.dp)
                     .background(BorderDefault),
             )
-            TextAction(label = "초대코드")
+            TextAction(label = "초대코드", onClick = onInviteCodeClick)
         }
     }
 }
@@ -1711,12 +1839,18 @@ private fun RoutineIconBox(
 }
 
 @Composable
-private fun TextAction(label: String) {
+private fun TextAction(
+    label: String,
+    onClick: () -> Unit = {},
+) {
     Text(
         text = label,
         color = LabelSub,
         style = LiroutiTheme.typography.body2Long,
-        modifier = Modifier.padding(4.dp),
+        modifier = Modifier
+            .clip(RoundedCornerShape(4.dp))
+            .clickable(onClick = onClick)
+            .padding(4.dp),
     )
 }
 
@@ -1893,11 +2027,14 @@ private fun GroupRoutineListPreview() {
             onRoutineClick = {},
             onBackClick = {},
             onAddClick = {},
+            onSearchInputChange = {},
             onDismissActionSheet = {},
             onCreateRoomClick = {},
             onJoinByCodeClick = {},
             onRoomNameChange = {},
             onCreateRoomNextClick = {},
+            onInviteCodeChange = {},
+            onInviteCodeConfirmClick = {},
             onCreateRoutineOptionClick = {},
             onCreateRoutineSelectAllClick = {},
             onCategoryClick = {},
@@ -1917,12 +2054,13 @@ private fun GroupRoutineListPreview() {
               onCreateRoomDoneClick = {},
               onTodoCheckedChange = { _, _ -> },
               onCertificationTabClick = {},
-              onCertificationSummaryClick = {},
-              onChatClick = {},
-              onSettingsClick = {},
-          )
-      }
-  }
+            onCertificationSummaryClick = {},
+            onChatClick = {},
+            onSettingsClick = {},
+            onInviteCodeCopyClick = {},
+        )
+    }
+}
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
@@ -1933,11 +2071,14 @@ private fun CreateRoomNamePreview() {
             onRoutineClick = {},
             onBackClick = {},
             onAddClick = {},
+            onSearchInputChange = {},
             onDismissActionSheet = {},
             onCreateRoomClick = {},
             onJoinByCodeClick = {},
             onRoomNameChange = {},
             onCreateRoomNextClick = {},
+            onInviteCodeChange = {},
+            onInviteCodeConfirmClick = {},
             onCreateRoutineOptionClick = {},
             onCreateRoutineSelectAllClick = {},
             onCategoryClick = {},
@@ -1957,9 +2098,10 @@ private fun CreateRoomNamePreview() {
               onCreateRoomDoneClick = {},
               onTodoCheckedChange = { _, _ -> },
               onCertificationTabClick = {},
-              onCertificationSummaryClick = {},
-              onChatClick = {},
-              onSettingsClick = {},
-          )
-      }
-  }
+            onCertificationSummaryClick = {},
+            onChatClick = {},
+            onSettingsClick = {},
+            onInviteCodeCopyClick = {},
+        )
+    }
+}
