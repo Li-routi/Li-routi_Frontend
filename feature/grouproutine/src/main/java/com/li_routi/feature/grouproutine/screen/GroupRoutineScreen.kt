@@ -125,6 +125,7 @@ fun GroupRoutineRoute(
         onTodoCheckedChange = viewModel::onTodoCheckedChange,
         onCertificationTabClick = viewModel::onCertificationTabClick,
         onCertificationSummaryClick = viewModel::onCertificationSummaryClick,
+        onDismissNewCertificationDialog = viewModel::onDismissNewCertificationDialog,
         onMemberClick = viewModel::onMemberClick,
         onDismissMemberDialog = viewModel::onDismissMemberDialog,
         onChatClick = viewModel::onChatClick,
@@ -175,6 +176,7 @@ private fun GroupRoutineScreen(
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
     onCertificationSummaryClick: () -> Unit,
+    onDismissNewCertificationDialog: () -> Unit,
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
     onChatClick: () -> Unit,
@@ -342,6 +344,14 @@ private fun GroupRoutineScreen(
         DeleteRoutineDialog(
             onDismissRequest = onDismissDeleteRoutineDialog,
             onConfirmClick = onConfirmDeleteRoutineClick,
+        )
+    }
+
+    if (uiState.isNewCertificationDialogVisible) {
+        NewCertificationDialog(
+            onDismissRequest = onDismissNewCertificationDialog,
+            onNegativeClick = onDismissNewCertificationDialog,
+            onPositiveClick = onDismissNewCertificationDialog,
         )
     }
 
@@ -995,6 +1005,99 @@ private fun DeleteRoutineDialog(
                         .height(48.dp),
                 ) {
                     Text(text = "삭제")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun NewCertificationDialog(
+    onDismissRequest: () -> Unit,
+    onNegativeClick: () -> Unit,
+    onPositiveClick: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 36.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.White)
+                .padding(22.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "새 인증",
+                    color = LabelDefault,
+                    style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "×",
+                    color = LabelDefault,
+                    fontSize = 28.sp,
+                    modifier = Modifier.clickable(onClick = onDismissRequest),
+                )
+            }
+            Image(
+                painter = painterResource(id = R.drawable.img_group_routine_cert_water),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(146.dp)
+                    .clip(RoundedCornerShape(4.dp)),
+            )
+            Row(
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                repeat(5) { index ->
+                    Box(
+                        modifier = Modifier
+                            .size(8.dp)
+                            .clip(CircleShape)
+                            .background(if (index == 0) LabelDefault else BorderDefault),
+                    )
+                }
+            }
+            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(
+                    text = "민지 | 물 마시기",
+                    color = LabelDefault,
+                    style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = "오늘도 1L 완료!",
+                    color = LabelSub,
+                    style = LiroutiTheme.typography.body3,
+                )
+            }
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                Button(
+                    onClick = onNegativeClick,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = FillBackground, contentColor = LabelDefault),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp),
+                ) {
+                    Text(text = "아쉬워요", style = LiroutiTheme.typography.body3)
+                }
+                Button(
+                    onClick = onPositiveClick,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(containerColor = PrimaryNormal, contentColor = Color.White),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(42.dp),
+                ) {
+                    Text(text = "좋아요", style = LiroutiTheme.typography.body3)
                 }
             }
         }
@@ -2909,6 +3012,7 @@ private fun GroupRoutineListPreview() {
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
             onCertificationSummaryClick = {},
+            onDismissNewCertificationDialog = {},
             onMemberClick = {},
             onDismissMemberDialog = {},
             onChatClick = {},
@@ -2963,6 +3067,7 @@ private fun CreateRoomNamePreview() {
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
             onCertificationSummaryClick = {},
+            onDismissNewCertificationDialog = {},
             onMemberClick = {},
             onDismissMemberDialog = {},
             onChatClick = {},

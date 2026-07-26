@@ -17,6 +17,7 @@ class GroupRoutineViewModel : BaseViewModel() {
                 screenMode = GroupRoutineScreenMode.Detail,
                 selectedRoutineId = routineId,
                 selectedMemberId = null,
+                isNewCertificationDialogVisible = true,
                 actionMessage = null,
             )
         }
@@ -30,6 +31,7 @@ class GroupRoutineViewModel : BaseViewModel() {
                     selectedRoutineId = null,
                     selectedMemberId = null,
                     showOnlyMyCertifications = false,
+                    isNewCertificationDialogVisible = false,
                     actionMessage = null,
                 )
 
@@ -108,6 +110,10 @@ class GroupRoutineViewModel : BaseViewModel() {
 
     fun onDismissMemberDialog() {
         _uiState.update { it.copy(selectedMemberId = null) }
+    }
+
+    fun onDismissNewCertificationDialog() {
+        _uiState.update { it.copy(isNewCertificationDialogVisible = false) }
     }
 
     fun onGroupRoutineManageClick() {
