@@ -200,7 +200,7 @@ private fun LiroutiBottomSheetButton(
 }
 
 @Composable
-private fun LiroutiBottomSheetCloseButton(
+fun LiroutiBottomSheetCloseButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     color: Color = LiroutiTheme.colors.labelDefault,

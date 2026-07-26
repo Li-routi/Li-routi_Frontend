@@ -1,0 +1,203 @@
+package com.li_routi.feature.grouproutine.navigation
+
+import android.net.Uri
+import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.tooling.preview.Preview
+import androidx.navigation.NavHostController
+import androidx.navigation.NavType
+import androidx.navigation.compose.NavHost
+import androidx.navigation.compose.composable
+import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
+import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
+import com.li_routi.core.common.ui.routine.RoutineChecklistItem
+import com.li_routi.core.common.ui.routine.RoutineChecklistScreen
+import com.li_routi.core.common.ui.routine.RoutineDeleteDialog
+import com.li_routi.core.common.ui.routine.RoutineEditBottomSheet
+import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
+import com.li_routi.feature.grouproutine.screen.InviteCodeScreen
+import com.li_routi.feature.grouproutine.screen.JoinRoomConfirmDialog
+import com.li_routi.feature.grouproutine.screen.MakeRoomScreen
+
+private const val RouteMakeRoom = "makeRoom"
+private const val RouteInviteCode = "inviteCode"
+private const val ArgRoomName = "roomName"
+private const val RouteRoomRoutineAdd = "roomRoutineAdd/{$ArgRoomName}"
+
+private fun roomRoutineAddRoute(roomName: String): String {
+    // URLEncoder(application/x-www-form-urlencoded)는 공백을 '+'로 바꿔 Nav 인자 디코딩 시
+    // 공백이 복원되지 않는다. Uri.encode는 경로 세그먼트 기준으로 공백을 %20으로 인코딩한다.
+    return "roomRoutineAdd/${Uri.encode(roomName)}"
+}
+
+/** [GrouproutineNavHost]가 어느 화면부터 시작할지 고르는 진입점. */
+enum class GrouproutineEntryPoint {
+    /** 홈 `+` 메뉴의 "방 만들기". */
+    CreateRoom,
+
+    /** 홈 `+` 메뉴의 "초대코드로 참여". */
+    JoinWithInviteCode,
+}
+
+/**
+ * 그룹 루틴 피처 내비게이션 그래프.
+ *
+ * "방 만들기 → 루틴 추가"와 "초대코드 입력 → 참여 확인"이라는 서로 다른 두 흐름을
+ * [entryPoint]로 선택해 시작하며, 완료 시 [onRoomCreated]/[onJoinedRoom]으로 호출부(홈)에 알린다.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun GrouproutineNavHost(
+    entryPoint: GrouproutineEntryPoint = GrouproutineEntryPoint.CreateRoom,
+    onRoomCreated: () -> Unit = {},
+    onJoinedRoom: () -> Unit = {},
+    modifier: Modifier = Modifier,
+    navController: NavHostController = rememberNavController(),
+) {
+    val startDestination = when (entryPoint) {
+        GrouproutineEntryPoint.CreateRoom -> RouteMakeRoom
+        GrouproutineEntryPoint.JoinWithInviteCode -> RouteInviteCode
+    }
+
+    NavHost(
+        navController = navController,
+        startDestination = startDestination,
+        modifier = modifier,
+    ) {
+        composable(RouteMakeRoom) {
+            var roomName by remember { mutableStateOf("") }
+
+            MakeRoomScreen(
+                roomName = roomName,
+                onRoomNameChange = { roomName = it },
+                onNextClick = { navController.navigate(roomRoutineAddRoute(roomName)) },
+                onBackClick = { navController.popBackStack() },
+                onCloseClick = { navController.popBackStack() },
+            )
+        }
+
+        composable(
+            route = RouteRoomRoutineAdd,
+            arguments = listOf(navArgument(ArgRoomName) { type = NavType.StringType }),
+        ) {
+            // roomName nav arg is reserved for the create-room API call once core:domain/core:data exist.
+            var selectedCategory by remember { mutableStateOf("전체") }
+            var items by remember {
+                mutableStateOf(
+                    listOf(
+                        RoutineChecklistItem("1", "물 마시기", true),
+                        RoutineChecklistItem("2", "비타민 먹기", false),
+                        RoutineChecklistItem("3", "스트레칭 하기", false),
+                        RoutineChecklistItem("4", "명상 하기", false),
+                    ),
+                )
+            }
+            var showRoutineSheet by remember { mutableStateOf(false) }
+            var showCategorySheet by remember { mutableStateOf(false) }
+            var showDeleteDialog by remember { mutableStateOf(false) }
+            var routineName by remember { mutableStateOf("") }
+            var categoryName by remember { mutableStateOf("") }
+            var selectedDays by remember { mutableStateOf(emptySet<Int>()) }
+
+            RoutineChecklistScreen(
+                topBarTitle = "루틴 추가",
+                heading = "함께할 루틴을 추가해보세요",
+                description = "루틴을 누르면 세부 설정을 변경할 수 있어요",
+                categories = listOf("전체", "건강", "운동", "공부"),
+                selectedCategory = selectedCategory,
+                onCategorySelected = { selectedCategory = it },
+                onAddCategoryClick = { showCategorySheet = true },
+                items = items,
+                onItemCheckedChange = { id, checked ->
+                    items = items.map { if (it.id == id) it.copy(checked = checked) else it }
+                },
+                allSelected = items.all { it.checked },
+                onSelectAllChange = { checked -> items = items.map { it.copy(checked = checked) } },
+                onAddRoutineClick = { showRoutineSheet = true },
+                primaryButtonText = "방 만들기",
+                onPrimaryButtonClick = onRoomCreated,
+                onBackClick = { navController.popBackStack() },
+                onCloseClick = { navController.popBackStack() },
+            )
+
+            if (showRoutineSheet) {
+                RoutineEditBottomSheet(
+                    name = routineName,
+                    onNameChange = { routineName = it },
+                    deadlineText = "오후 11:00",
+                    repeatText = "없음",
+                    selectedDays = selectedDays,
+                    onDayClick = { index ->
+                        selectedDays = if (index in selectedDays) selectedDays - index else selectedDays + index
+                    },
+                    alarmText = "없음",
+                    onAlarmClick = {},
+                    onDeleteClick = { showDeleteDialog = true },
+                    onConfirm = { showRoutineSheet = false },
+                    onDismissRequest = { showRoutineSheet = false },
+                )
+            }
+
+            if (showCategorySheet) {
+                CategoryAddBottomSheet(
+                    name = categoryName,
+                    onNameChange = { categoryName = it },
+                    onConfirm = { showCategorySheet = false },
+                    onDismissRequest = { showCategorySheet = false },
+                )
+            }
+
+            if (showDeleteDialog) {
+                RoutineDeleteDialog(
+                    onDismissRequest = { showDeleteDialog = false },
+                    onConfirmDelete = {
+                        showDeleteDialog = false
+                        showRoutineSheet = false
+                    },
+                )
+            }
+        }
+
+        composable(RouteInviteCode) {
+            var code by remember { mutableStateOf("") }
+            var showJoinDialog by remember { mutableStateOf(false) }
+
+            InviteCodeScreen(
+                code = code,
+                onCodeChange = { code = it },
+                errorMessage = null,
+                isConfirmEnabled = code.isNotBlank(),
+                onConfirmClick = { showJoinDialog = true },
+                onBackClick = { navController.popBackStack() },
+                onCloseClick = { navController.popBackStack() },
+            )
+
+            if (showJoinDialog) {
+                JoinRoomConfirmDialog(
+                    roomName = "갓생살자",
+                    memberCount = 3,
+                    totalRoutineCount = 7,
+                    onDismissRequest = { showJoinDialog = false },
+                    onJoinClick = {
+                        showJoinDialog = false
+                        onJoinedRoom()
+                    },
+                )
+            }
+        }
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+private fun GrouproutineNavHostPreview() {
+    LiroutiFrontendTheme {
+        GrouproutineNavHost()
+    }
+}
