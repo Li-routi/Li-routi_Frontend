@@ -2872,13 +2872,15 @@ private fun GroupRoutineTopBar(
                                   .background(DangerBase),
                           )
                       }
-                      Image(
-                          painter = painterResource(id = R.drawable.ic_group_routine_settings),
-                          contentDescription = null,
-                          modifier = Modifier
-                              .size(20.dp)
-                              .clickable(onClick = onSettingsClick),
-                      )
+                      Box(modifier = Modifier.size(24.dp).clickable(onClick = onSettingsClick)) {
+                          Image(
+                              painter = painterResource(id = R.drawable.ic_group_routine_settings),
+                              contentDescription = null,
+                              modifier = Modifier
+                                  .align(Alignment.Center)
+                                  .size(20.dp),
+                          )
+                      }
                   }
               }
         }
