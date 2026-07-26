@@ -1458,7 +1458,11 @@ private fun GroupChatScreen(
             }
         }
 
-        ChatInputBar(modifier = Modifier.align(Alignment.BottomCenter))
+        ChatInputBar(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .padding(bottom = if (messages.isEmpty()) 20.dp else 0.dp),
+        )
         GroupRoutineTopBar(
             title = routine.title,
             showBack = true,
