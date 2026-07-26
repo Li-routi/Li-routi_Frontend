@@ -54,6 +54,7 @@ dependencies {
     implementation(project(":feature:mypage"))
     implementation(project(":feature:grouproutine"))
     implementation(project(":feature:challenge"))
+    implementation(project(":feature:grouproutine"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)
