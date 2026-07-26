@@ -1680,7 +1680,7 @@ private fun GroupRoutineManageScreen(
                 Column(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .heightIn(max = 420.dp)
+                        .heightIn(max = 455.dp)
                         .clip(RoundedCornerShape(6.dp))
                         .background(Color.White)
                         .border(1.dp, BorderDefault, RoundedCornerShape(6.dp))
