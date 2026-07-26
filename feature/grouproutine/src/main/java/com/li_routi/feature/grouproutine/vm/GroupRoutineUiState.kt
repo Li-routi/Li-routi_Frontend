@@ -6,8 +6,13 @@ enum class GroupRoutineScreenMode {
     CertificationCollection,
     GroupChat,
     GroupSettings,
+    GroupRoutineManage,
+    RoomNameEdit,
+    LeaderSettings,
+    RoomAlarmSettings,
     CreateRoomName,
     CreateRoutineSelect,
+    JoinByCode,
 }
 
 data class GroupRoutineUiModel(
@@ -63,11 +68,18 @@ data class CreateRoutineOptionUiModel(
 data class GroupRoutineUiState(
     val screenMode: GroupRoutineScreenMode = GroupRoutineScreenMode.List,
     val selectedRoutineId: Long? = null,
+    val selectedMemberId: Long? = null,
+    val pendingLeaderMemberId: Long? = null,
     val isActionSheetVisible: Boolean = false,
     val actionMessage: String? = null,
+    val isRoomLocked: Boolean = false,
+    val isCurrentUserLeader: Boolean = true,
     val showOnlyMyCertifications: Boolean = false,
+    val isNewCertificationDialogVisible: Boolean = false,
     val isEmptyState: Boolean = false,
+    val searchInput: String = "",
     val roomNameInput: String = "",
+    val inviteCodeInput: String = "",
     val selectedCategory: String = "전체",
     val categories: List<String> = listOf("전체", "건강", "운동", "공부"),
     val routineOptions: List<CreateRoutineOptionUiModel> = SampleCreateRoutineOptions,
@@ -84,10 +96,19 @@ data class GroupRoutineUiState(
     val posts: List<CertificationPostUiModel> = SampleCertificationPosts,
 ) {
     val visibleRoutines: List<GroupRoutineUiModel>
-        get() = if (isEmptyState) emptyList() else routines
+        get() = if (isEmptyState) {
+            emptyList()
+        } else if (searchInput.isBlank()) {
+            routines
+        } else {
+            routines.filter { it.title.contains(searchInput.trim(), ignoreCase = true) }
+        }
 
     val selectedRoutine: GroupRoutineUiModel?
         get() = routines.firstOrNull { it.id == selectedRoutineId } ?: routines.firstOrNull()
+
+    val selectedMember: GroupMemberUiModel?
+        get() = members.firstOrNull { it.id == selectedMemberId }
 
     val selectedCreateRoutineCount: Int
         get() = routineOptions.count { it.isSelected }

@@ -16,6 +16,8 @@ class GroupRoutineViewModel : BaseViewModel() {
             it.copy(
                 screenMode = GroupRoutineScreenMode.Detail,
                 selectedRoutineId = routineId,
+                selectedMemberId = null,
+                isNewCertificationDialogVisible = true,
                 actionMessage = null,
             )
         }
@@ -27,7 +29,9 @@ class GroupRoutineViewModel : BaseViewModel() {
                 GroupRoutineScreenMode.Detail -> state.copy(
                     screenMode = GroupRoutineScreenMode.List,
                     selectedRoutineId = null,
+                    selectedMemberId = null,
                     showOnlyMyCertifications = false,
+                    isNewCertificationDialogVisible = false,
                     actionMessage = null,
                 )
 
@@ -35,6 +39,15 @@ class GroupRoutineViewModel : BaseViewModel() {
                 GroupRoutineScreenMode.GroupChat,
                 GroupRoutineScreenMode.GroupSettings -> state.copy(
                     screenMode = GroupRoutineScreenMode.Detail,
+                    actionMessage = null,
+                )
+
+                GroupRoutineScreenMode.GroupRoutineManage,
+                GroupRoutineScreenMode.RoomNameEdit,
+                GroupRoutineScreenMode.LeaderSettings,
+                GroupRoutineScreenMode.RoomAlarmSettings -> state.copy(
+                    screenMode = GroupRoutineScreenMode.GroupSettings,
+                    pendingLeaderMemberId = null,
                     actionMessage = null,
                 )
 
@@ -48,6 +61,12 @@ class GroupRoutineViewModel : BaseViewModel() {
                     roomNameInput = "",
                     routineOptions = DefaultCreateRoutineOptions,
                     selectedCategory = "전체",
+                    actionMessage = null,
+                )
+
+                GroupRoutineScreenMode.JoinByCode -> state.copy(
+                    screenMode = GroupRoutineScreenMode.List,
+                    inviteCodeInput = "",
                     actionMessage = null,
                 )
 
@@ -79,13 +98,105 @@ class GroupRoutineViewModel : BaseViewModel() {
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.GroupSettings,
+                selectedMemberId = null,
                 actionMessage = null,
             )
         }
     }
 
+    fun onMemberClick(memberId: Long) {
+        _uiState.update { it.copy(selectedMemberId = memberId, actionMessage = null) }
+    }
+
+    fun onDismissMemberDialog() {
+        _uiState.update { it.copy(selectedMemberId = null) }
+    }
+
+    fun onDismissNewCertificationDialog() {
+        _uiState.update { it.copy(isNewCertificationDialogVisible = false) }
+    }
+
+    fun onGroupRoutineManageClick() {
+        _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.GroupRoutineManage, actionMessage = null) }
+    }
+
+    fun onRoomNameEditClick() {
+        _uiState.update { state ->
+            state.copy(
+                screenMode = GroupRoutineScreenMode.RoomNameEdit,
+                roomNameInput = state.selectedRoutine?.title.orEmpty(),
+                actionMessage = null,
+            )
+        }
+    }
+
+    fun onLeaderSettingsClick() {
+        _uiState.update { state ->
+            state.copy(
+                screenMode = GroupRoutineScreenMode.LeaderSettings,
+                pendingLeaderMemberId = state.members.firstOrNull { it.isMe }?.id,
+                actionMessage = null,
+            )
+        }
+    }
+
+    fun onRoomAlarmSettingsClick() {
+        _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.RoomAlarmSettings, actionMessage = null) }
+    }
+
+    fun onLeaderMemberClick(memberId: Long) {
+        _uiState.update { it.copy(pendingLeaderMemberId = memberId, actionMessage = null) }
+    }
+
+    fun onLeaderTransferConfirmClick() {
+        _uiState.update { state ->
+            val myMemberId = state.members.firstOrNull { it.isMe }?.id
+            state.copy(
+                screenMode = GroupRoutineScreenMode.GroupSettings,
+                isCurrentUserLeader = state.pendingLeaderMemberId == myMemberId,
+                pendingLeaderMemberId = null,
+                actionMessage = if (state.pendingLeaderMemberId == myMemberId) null else "방장이 변경되었습니다.",
+            )
+        }
+    }
+
+    fun onRoomLockClick() {
+        _uiState.update { state ->
+            val nextLocked = !state.isRoomLocked
+            state.copy(
+                isRoomLocked = nextLocked,
+                actionMessage = if (nextLocked) {
+                    "더 이상 다른 사람이 참여할 수 없습니다."
+                } else {
+                    "다른 사람이 참여할 수 있습니다."
+                },
+            )
+        }
+    }
+
+    fun onRoomNameEditConfirmClick() {
+        _uiState.update { state ->
+            val title = state.roomNameInput.trim()
+            if (title.isBlank()) {
+                state.copy(actionMessage = "방 이름을 입력해주세요.")
+            } else {
+                state.copy(
+                    screenMode = GroupRoutineScreenMode.GroupSettings,
+                    routines = state.routines.map { routine ->
+                        if (routine.id == state.selectedRoutine?.id) routine.copy(title = title) else routine
+                    },
+                    actionMessage = "방 이름이 변경됐어요.",
+                )
+            }
+        }
+    }
+
     fun onAddClick() {
         _uiState.update { it.copy(isActionSheetVisible = true, actionMessage = null) }
+    }
+
+    fun onSearchInputChange(value: String) {
+        _uiState.update { it.copy(searchInput = value, actionMessage = null) }
     }
 
     fun onDismissActionSheet() {
@@ -105,10 +216,35 @@ class GroupRoutineViewModel : BaseViewModel() {
     fun onJoinByCodeClick() {
         _uiState.update {
             it.copy(
+                screenMode = GroupRoutineScreenMode.JoinByCode,
                 isActionSheetVisible = false,
-                actionMessage = "초대코드 참여 화면은 다음 범위에서 연결할게요.",
+                inviteCodeInput = "",
+                actionMessage = null,
             )
         }
+    }
+
+    fun onInviteCodeChange(value: String) {
+        _uiState.update { it.copy(inviteCodeInput = value, actionMessage = null) }
+    }
+
+    fun onInviteCodeConfirmClick() {
+        _uiState.update { state ->
+            if (state.inviteCodeInput.isBlank()) {
+                state.copy(actionMessage = "초대코드를 입력해주세요.")
+            } else {
+                state.copy(
+                    screenMode = GroupRoutineScreenMode.Detail,
+                    selectedRoutineId = state.routines.firstOrNull()?.id,
+                    inviteCodeInput = "",
+                    actionMessage = "그룹방에 참여했어요.",
+                )
+            }
+        }
+    }
+
+    fun onInviteCodeCopyClick() {
+        _uiState.update { it.copy(actionMessage = "초대코드가 복사되었습니다!") }
     }
 
     fun onRoomNameChange(value: String) {
@@ -317,8 +453,8 @@ class GroupRoutineViewModel : BaseViewModel() {
 
     fun onCreateRoomDoneClick() {
         _uiState.update { state ->
-            val selectedCount = state.selectedCreateRoutineCount
-            if (selectedCount == 0) {
+            val selectedOptions = state.routineOptions.filter { it.isSelected }
+            if (selectedOptions.isEmpty()) {
                 state.copy(actionMessage = "함께할 루틴을 선택해주세요.")
             } else {
                 val newId = (state.routines.maxOfOrNull { it.id } ?: 0L) + 1L
@@ -327,15 +463,24 @@ class GroupRoutineViewModel : BaseViewModel() {
                     title = state.roomNameInput.trim(),
                     lastActiveLabel = "방금 전 활동",
                     memberCount = 1,
-                    routineCount = selectedCount,
+                    routineCount = selectedOptions.size,
                     statusLabel = "진행중",
                     isCompleted = false,
                     todayCompletedCount = 0,
-                    todayTotalCount = selectedCount,
+                    todayTotalCount = selectedOptions.size,
                     streakDays = 0,
                     monthlyAchievementRate = 0,
                     todayCertificationCount = 0,
                 )
+                val selectedTodos = selectedOptions.map { option ->
+                    GroupTodoUiModel(
+                        id = option.id,
+                        title = option.title,
+                        deadline = option.deadline,
+                        category = option.category,
+                        isDone = false,
+                    )
+                }
 
                 state.copy(
                     screenMode = GroupRoutineScreenMode.Detail,
@@ -344,6 +489,7 @@ class GroupRoutineViewModel : BaseViewModel() {
                     routineOptions = DefaultCreateRoutineOptions,
                     selectedCategory = "전체",
                     routines = listOf(newRoutine) + state.routines,
+                    todos = selectedTodos,
                     actionMessage = "방이 만들어졌어요.",
                 )
             }

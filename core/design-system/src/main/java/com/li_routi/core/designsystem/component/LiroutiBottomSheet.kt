@@ -78,7 +78,10 @@ internal val InfoTextStyle = TextStyle(
 fun LiroutiBottomSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    sheetState: SheetState = rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = { true },
+    ),
     title: String? = null,
     contentPadding: PaddingValues = DefaultContentPadding,
     primaryButtonText: String? = null,

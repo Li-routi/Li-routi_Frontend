@@ -225,10 +225,70 @@ private fun ChallengeInfoSection(
                 style = LiroutiTheme.typography.body1SemiBold,
                 color = LiroutiTheme.colors.labelDefault,
             )
-            Text(
-                text = uiState.description,
-                style = LiroutiTheme.typography.captionRegular,
-                color = LiroutiTheme.colors.labelDefault,
+        }
+    }
+}
+
+@Composable
+private fun ChallengeStatsRow(uiState: ChallengeDetailUiState, modifier: Modifier = Modifier) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(74.dp)
+            .background(BgFill, RoundedCornerShape(8.dp))
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(25.dp, Alignment.CenterHorizontally),
+    ) {
+        ChallengeStat(value = uiState.participantCount, label = "참여자")
+        ChallengeStatDivider()
+        ChallengeStat(value = uiState.activityCount, label = "리워드")
+        ChallengeStatDivider()
+        ChallengeStat(value = uiState.postCount, label = "인증 게시글")
+    }
+}
+
+@Composable
+private fun ChallengeStat(value: Int, label: String, modifier: Modifier = Modifier) {
+    Column(
+        modifier = modifier.width(60.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Text(text = value.toString(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = LabelSub)
+        Text(text = label, fontSize = 13.sp, color = LabelSub)
+    }
+}
+
+@Composable
+private fun ChallengeStatDivider(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .width(1.dp)
+            .height(50.dp)
+            .background(BorderDefault),
+    )
+}
+
+// "인증"/"내 인증 보기" 탭. 탭 전환 시 아래 리스트 내용이 바뀐다(화면 이동 아님).
+@Composable
+private fun ChallengeCertificationTabRow(
+    selectedTab: CertificationTab,
+    onTabSelected: (CertificationTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
+        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            CertificationTabItem(
+                label = "인증",
+                selected = selectedTab == CertificationTab.All,
+                onClick = { onTabSelected(CertificationTab.All) },
+                modifier = Modifier.weight(1f),
+            )
+            CertificationTabItem(
+                label = "내 인증 보기",
+                selected = selectedTab == CertificationTab.Mine,
+                onClick = { onTabSelected(CertificationTab.Mine) },
+                modifier = Modifier.weight(1f),
             )
         }
 

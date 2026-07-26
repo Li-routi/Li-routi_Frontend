@@ -204,7 +204,20 @@ fun LiroutiRoutineDetailCard(
             badgeText?.let { LiroutiBadge(text = it, color = LiroutiBadgeColor.Blue) }
         }
         LiroutiDivider(color = LiroutiTheme.colors.borderDefault)
-        LiroutiRoutineStatsRow(participants = participants, activity = activity, posts = posts, activityLabel = activityLabel)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(LiroutiTheme.colors.backgroundFill, StatsRowShape)
+                .padding(horizontal = 16.dp, vertical = 12.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            RoutineStatBlock(value = participants, label = "참여자")
+            StatDivider()
+            RoutineStatBlock(value = activity, label = "리워드")
+            StatDivider()
+            RoutineStatBlock(value = posts, label = "인증 게시글")
+        }
     }
 }
 
