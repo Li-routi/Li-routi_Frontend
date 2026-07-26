@@ -340,8 +340,8 @@ private fun GroupRoutineListScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(start = 16.dp, top = 112.dp, end = 16.dp, bottom = 112.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                contentPadding = PaddingValues(start = 16.dp, top = 112.dp, end = 16.dp, bottom = 176.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 item {
                     GroupRoutineSearchField(
@@ -1101,15 +1101,15 @@ private fun GroupRoutineCard(
             .clip(RoundedCornerShape(6.dp))
             .background(Color.White)
             .clickable(onClick = onClick)
-            .padding(20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+            .padding(horizontal = 20.dp, vertical = 16.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RoutineIconBox(size = 50)
+            RoutineIconBox(size = 44)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -1202,10 +1202,10 @@ private fun RoutineStatsRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(74.dp)
+            .height(66.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(FillBackground)
-            .padding(horizontal = 16.dp, vertical = 12.dp),
+            .padding(horizontal = 16.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.SpaceBetween,
     ) {
