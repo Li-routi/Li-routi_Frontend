@@ -1582,7 +1582,7 @@ private fun GroupSettingsScreen(
             item {
                 SettingsSectionHeader(text = "방 알림 설정")
                 SettingsNavigationRow(
-                    iconRes = R.drawable.ic_group_routine_alarm_setting,
+                    iconRes = R.drawable.ic_group_routine_alarm,
                     label = "방 알림 설정",
                     onClick = onRoomAlarmSettingsClick,
                 )
