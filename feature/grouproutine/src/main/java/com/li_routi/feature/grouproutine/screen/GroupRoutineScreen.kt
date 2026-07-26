@@ -2085,31 +2085,37 @@ private fun CertificationPostItem(
     post: CertificationPostUiModel,
     modifier: Modifier = Modifier,
 ) {
-    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(
+            Image(
+                painter = painterResource(id = R.drawable.img_group_routine_profile),
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
                 modifier = Modifier
-                    .size(32.dp)
-                    .clip(CircleShape)
-                    .background(Color(0xFFDFF6EC)),
-                contentAlignment = Alignment.Center,
-            ) {
+                    .size(34.dp)
+                    .clip(CircleShape),
+            )
+            Spacer(modifier = Modifier.width(8.dp))
+            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(
-                    text = post.userName.take(1),
-                    color = SecondaryNormal,
-                    style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+                    text = post.userName,
+                    color = LabelDefault,
+                    style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
+                )
+                Text(
+                    text = post.timeAgo,
+                    color = LabelInfo,
+                    style = LiroutiTheme.typography.caption,
                 )
             }
-            Spacer(modifier = Modifier.width(8.dp))
-            Text(
-                text = post.userName,
-                color = LabelDefault,
-                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
-            )
             Spacer(modifier = Modifier.weight(1f))
             Text(text = "...", color = LabelInfo, fontSize = 18.sp)
         }
-        Text(text = post.body, color = LabelDefault, style = LiroutiTheme.typography.body2Long)
+        Text(
+            text = post.body,
+            color = LabelDefault,
+            style = LiroutiTheme.typography.body2Long,
+        )
         Image(
             painter = painterResource(id = R.drawable.img_group_routine_cert_water),
             contentDescription = null,
@@ -2119,15 +2125,23 @@ private fun CertificationPostItem(
                 .height(144.dp)
                 .clip(RoundedCornerShape(6.dp)),
         )
-        Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Text(text = "Like ", color = LabelDefault, fontSize = 12.sp)
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            Text(text = "♡", color = LabelDefault, fontSize = 15.sp)
             Text(
-                text = post.likeCount.toString(),
+                text = "좋아요 ${post.likeCount}",
                 color = LabelDefault,
-                style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+                style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
             )
             Spacer(modifier = Modifier.weight(1f))
-            Text(text = post.timeAgo, color = LabelInfo, style = LiroutiTheme.typography.body3)
+            Text(
+                text = if (post.isMine) "내 인증" else "멤버 인증",
+                color = LabelInfo,
+                style = LiroutiTheme.typography.caption,
+            )
         }
     }
 }
