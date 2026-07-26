@@ -132,6 +132,8 @@ fun GroupRoutineRoute(
         onGroupRoutineManageClick = viewModel::onGroupRoutineManageClick,
         onRoomNameEditClick = viewModel::onRoomNameEditClick,
         onLeaderSettingsClick = viewModel::onLeaderSettingsClick,
+        onLeaderMemberClick = viewModel::onLeaderMemberClick,
+        onLeaderTransferConfirmClick = viewModel::onLeaderTransferConfirmClick,
         onRoomAlarmSettingsClick = viewModel::onRoomAlarmSettingsClick,
         onRoomLockClick = viewModel::onRoomLockClick,
         onRoomNameEditConfirmClick = viewModel::onRoomNameEditConfirmClick,
@@ -180,6 +182,8 @@ private fun GroupRoutineScreen(
     onGroupRoutineManageClick: () -> Unit,
     onRoomNameEditClick: () -> Unit,
     onLeaderSettingsClick: () -> Unit,
+    onLeaderMemberClick: (Long) -> Unit,
+    onLeaderTransferConfirmClick: () -> Unit,
     onRoomAlarmSettingsClick: () -> Unit,
     onRoomLockClick: () -> Unit,
     onRoomNameEditConfirmClick: () -> Unit,
@@ -251,6 +255,8 @@ private fun GroupRoutineScreen(
             GroupRoutineScreenMode.LeaderSettings -> LeaderSettingsScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
+                onMemberClick = onLeaderMemberClick,
+                onConfirmClick = onLeaderTransferConfirmClick,
             )
 
             GroupRoutineScreenMode.RoomAlarmSettings -> RoomAlarmSettingsScreen(
@@ -1543,7 +1549,7 @@ private fun GroupSettingsScreen(
     onInviteCodeCopyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isLeader = uiState.members.firstOrNull { it.isMe }?.id == uiState.members.firstOrNull()?.id
+    val isLeader = uiState.isCurrentUserLeader
 
     Box(
         modifier = modifier
@@ -1771,6 +1777,8 @@ private fun RoomNameEditScreen(
 private fun LeaderSettingsScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
+    onMemberClick: (Long) -> Unit,
+    onConfirmClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -1783,7 +1791,11 @@ private fun LeaderSettingsScreen(
             contentPadding = PaddingValues(top = 98.dp, bottom = 110.dp),
         ) {
             items(uiState.members) { member ->
-                LeaderMemberRow(member = member, selected = member.id == uiState.members.lastOrNull()?.id)
+                LeaderMemberRow(
+                    member = member,
+                    selected = member.id == uiState.pendingLeaderMemberId,
+                    onClick = { onMemberClick(member.id) },
+                )
             }
         }
 
@@ -1799,7 +1811,7 @@ private fun LeaderSettingsScreen(
             leftText = "취소",
             rightText = "확인",
             onLeftClick = onBackClick,
-            onRightClick = onBackClick,
+            onRightClick = onConfirmClick,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
     }
@@ -1809,6 +1821,7 @@ private fun LeaderSettingsScreen(
 private fun LeaderMemberRow(
     member: GroupMemberUiModel,
     selected: Boolean,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -1816,6 +1829,7 @@ private fun LeaderMemberRow(
             .fillMaxWidth()
             .height(58.dp)
             .background(Color.White)
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -2878,6 +2892,8 @@ private fun GroupRoutineListPreview() {
             onGroupRoutineManageClick = {},
             onRoomNameEditClick = {},
             onLeaderSettingsClick = {},
+            onLeaderMemberClick = {},
+            onLeaderTransferConfirmClick = {},
             onRoomAlarmSettingsClick = {},
             onRoomLockClick = {},
             onRoomNameEditConfirmClick = {},
@@ -2930,6 +2946,8 @@ private fun CreateRoomNamePreview() {
             onGroupRoutineManageClick = {},
             onRoomNameEditClick = {},
             onLeaderSettingsClick = {},
+            onLeaderMemberClick = {},
+            onLeaderTransferConfirmClick = {},
             onRoomAlarmSettingsClick = {},
             onRoomLockClick = {},
             onRoomNameEditConfirmClick = {},

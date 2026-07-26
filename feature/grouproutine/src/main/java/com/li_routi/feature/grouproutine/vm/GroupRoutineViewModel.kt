@@ -45,6 +45,7 @@ class GroupRoutineViewModel : BaseViewModel() {
                 GroupRoutineScreenMode.LeaderSettings,
                 GroupRoutineScreenMode.RoomAlarmSettings -> state.copy(
                     screenMode = GroupRoutineScreenMode.GroupSettings,
+                    pendingLeaderMemberId = null,
                     actionMessage = null,
                 )
 
@@ -124,11 +125,33 @@ class GroupRoutineViewModel : BaseViewModel() {
     }
 
     fun onLeaderSettingsClick() {
-        _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.LeaderSettings, actionMessage = null) }
+        _uiState.update { state ->
+            state.copy(
+                screenMode = GroupRoutineScreenMode.LeaderSettings,
+                pendingLeaderMemberId = state.members.firstOrNull { it.isMe }?.id,
+                actionMessage = null,
+            )
+        }
     }
 
     fun onRoomAlarmSettingsClick() {
         _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.RoomAlarmSettings, actionMessage = null) }
+    }
+
+    fun onLeaderMemberClick(memberId: Long) {
+        _uiState.update { it.copy(pendingLeaderMemberId = memberId, actionMessage = null) }
+    }
+
+    fun onLeaderTransferConfirmClick() {
+        _uiState.update { state ->
+            val myMemberId = state.members.firstOrNull { it.isMe }?.id
+            state.copy(
+                screenMode = GroupRoutineScreenMode.GroupSettings,
+                isCurrentUserLeader = state.pendingLeaderMemberId == myMemberId,
+                pendingLeaderMemberId = null,
+                actionMessage = if (state.pendingLeaderMemberId == myMemberId) null else "방장이 변경되었습니다.",
+            )
+        }
     }
 
     fun onRoomLockClick() {
