@@ -2300,6 +2300,7 @@ private fun GroupMemberCard(
     modifier: Modifier = Modifier,
 ) {
     val visibleMembers = members.take(6)
+    val seatLayoutHeight = if (visibleMembers.size <= 3) 104.dp else 204.dp
 
     Column(
         modifier = modifier
@@ -2319,7 +2320,7 @@ private fun GroupMemberCard(
             onMemberClick = onMemberClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(224.dp),
+                .height(seatLayoutHeight),
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -2358,6 +2359,11 @@ private fun MemberSeatLayout(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         rows.forEach { rowMembers ->
+            val itemWidth = when (rowMembers.size) {
+                1 -> 92.dp
+                2 -> 138.dp
+                else -> 92.dp
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
@@ -2366,7 +2372,7 @@ private fun MemberSeatLayout(
                     MemberSeat(
                         member = member,
                         onClick = { onMemberClick(member.id) },
-                        modifier = Modifier.width(if (rowMembers.size == 3) 92.dp else 138.dp),
+                        modifier = Modifier.width(itemWidth),
                     )
                 }
             }
