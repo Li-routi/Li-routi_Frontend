@@ -399,8 +399,8 @@ class GroupRoutineViewModel : BaseViewModel() {
 
     fun onCreateRoomDoneClick() {
         _uiState.update { state ->
-            val selectedCount = state.selectedCreateRoutineCount
-            if (selectedCount == 0) {
+            val selectedOptions = state.routineOptions.filter { it.isSelected }
+            if (selectedOptions.isEmpty()) {
                 state.copy(actionMessage = "함께할 루틴을 선택해주세요.")
             } else {
                 val newId = (state.routines.maxOfOrNull { it.id } ?: 0L) + 1L
@@ -409,15 +409,24 @@ class GroupRoutineViewModel : BaseViewModel() {
                     title = state.roomNameInput.trim(),
                     lastActiveLabel = "방금 전 활동",
                     memberCount = 1,
-                    routineCount = selectedCount,
+                    routineCount = selectedOptions.size,
                     statusLabel = "진행중",
                     isCompleted = false,
                     todayCompletedCount = 0,
-                    todayTotalCount = selectedCount,
+                    todayTotalCount = selectedOptions.size,
                     streakDays = 0,
                     monthlyAchievementRate = 0,
                     todayCertificationCount = 0,
                 )
+                val selectedTodos = selectedOptions.map { option ->
+                    GroupTodoUiModel(
+                        id = option.id,
+                        title = option.title,
+                        deadline = option.deadline,
+                        category = option.category,
+                        isDone = false,
+                    )
+                }
 
                 state.copy(
                     screenMode = GroupRoutineScreenMode.Detail,
@@ -426,6 +435,7 @@ class GroupRoutineViewModel : BaseViewModel() {
                     routineOptions = DefaultCreateRoutineOptions,
                     selectedCategory = "전체",
                     routines = listOf(newRoutine) + state.routines,
+                    todos = selectedTodos,
                     actionMessage = "방이 만들어졌어요.",
                 )
             }
