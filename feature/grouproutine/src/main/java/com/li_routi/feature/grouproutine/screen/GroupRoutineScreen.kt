@@ -30,6 +30,7 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
@@ -1030,44 +1031,50 @@ private fun GroupRoutineSearchField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    OutlinedTextField(
-        value = value,
-        onValueChange = onValueChange,
-        singleLine = true,
-        textStyle = LiroutiTheme.typography.body2Long.copy(color = LabelDefault),
-        leadingIcon = {
-            Text(text = "⌕", color = LabelDefault, fontSize = 24.sp)
-        },
-        placeholder = {
-            Text(
-                text = "그룹방 검색",
-                color = LabelInfo,
-                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
-            )
-        },
-        trailingIcon = {
-            if (value.isNotBlank()) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White)
+            .border(1.dp, BorderDefault, RoundedCornerShape(6.dp))
+            .padding(horizontal = 18.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(text = "⌕", color = LabelDefault, fontSize = 24.sp, lineHeight = 24.sp)
+        BasicTextField(
+            value = value,
+            onValueChange = onValueChange,
+            singleLine = true,
+            textStyle = LiroutiTheme.typography.body2Long.copy(
+                color = LabelDefault,
+                fontWeight = FontWeight.Medium,
+            ),
+            modifier = Modifier.weight(1f),
+            decorationBox = { innerTextField ->
+                Box(contentAlignment = Alignment.CenterStart) {
+                    if (value.isBlank()) {
+                        Text(
+                            text = "그룹방 검색",
+                            color = LabelInfo,
+                            style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
+                            maxLines = 1,
+                        )
+                    }
+                    innerTextField()
+                }
+            },
+        )
+        if (value.isNotBlank()) {
                 Text(
                     text = "×",
                     color = LabelInfo,
                     fontSize = 18.sp,
                     modifier = Modifier.clickable { onValueChange("") },
                 )
-            }
-        },
-        shape = RoundedCornerShape(6.dp),
-        colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            disabledContainerColor = Color.White,
-            focusedIndicatorColor = BorderDefault,
-            unfocusedIndicatorColor = BorderDefault,
-            cursorColor = PrimaryNormal,
-        ),
-        modifier = modifier
-            .fillMaxWidth()
-            .height(44.dp),
-    )
+        }
+    }
 }
 
 @Composable
