@@ -219,21 +219,6 @@ private fun FindChallengeScreenPreview() {
             onChallengeClick = {},
             onTabSelected = {},
         )
-
-        // ---------- 참여자/활동/인증 게시글 통계 ----------
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(BgFill, RoundedCornerShape(8.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            ChallengeStat(value = challenge.participantCount, label = "참여자")
-            ChallengeStatDivider()
-            ChallengeStat(value = challenge.activityCount, label = "리워드")
-            ChallengeStatDivider()
-            ChallengeStat(value = challenge.postCount, label = "인증 게시글")
-        }
     }
 }
 
