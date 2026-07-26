@@ -1541,7 +1541,7 @@ private fun GroupSettingsScreen(
                 item {
                     SettingsSectionHeader(text = "그룹 루틴 설정")
                     SettingsNavigationRow(
-                        iconRes = R.drawable.ic_group_routine_manage_setting,
+                        iconRes = R.drawable.ic_group_routine_calendar_add,
                         label = "그룹 루틴 관리",
                         onClick = onGroupRoutineManageClick,
                     )
@@ -1550,12 +1550,12 @@ private fun GroupSettingsScreen(
                 item {
                     SettingsSectionHeader(text = "방 정보 설정")
                     SettingsNavigationRow(
-                        iconRes = R.drawable.ic_group_routine_room_edit,
+                        iconRes = R.drawable.ic_group_routine_edit,
                         label = "방 이름 변경",
                         onClick = onRoomNameEditClick,
                     )
                     SettingsNavigationRow(
-                        iconRes = R.drawable.ic_group_routine_leader_setting,
+                        iconRes = R.drawable.ic_group_routine_group,
                         label = "방장 설정",
                         onClick = onLeaderSettingsClick,
                     )
@@ -1940,12 +1940,10 @@ private fun InviteLockRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = "▢",
-            color = LabelDefault,
-            fontSize = 20.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(24.dp),
+        Image(
+            painter = painterResource(id = R.drawable.ic_group_routine_locked),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
         )
         Text(
             text = "방 잠금",
@@ -1972,12 +1970,10 @@ private fun InviteCodeRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = "□",
-            color = LabelDefault,
-            fontSize = 18.sp,
-            textAlign = TextAlign.Center,
-            modifier = Modifier.width(24.dp),
+        Image(
+            painter = painterResource(id = R.drawable.ic_group_routine_mail),
+            contentDescription = null,
+            modifier = Modifier.size(24.dp),
         )
         Text(
             text = "초대코드",
@@ -2528,7 +2524,13 @@ private fun GroupRoutineTopBar(
                       verticalAlignment = Alignment.CenterVertically,
                   ) {
                       Box(modifier = Modifier.size(24.dp).clickable(onClick = onChatClick)) {
-                          Text(text = "▱", color = LabelDefault, fontSize = 22.sp, modifier = Modifier.align(Alignment.Center))
+                          Image(
+                              painter = painterResource(id = R.drawable.ic_group_routine_chat),
+                              contentDescription = null,
+                              modifier = Modifier
+                                  .align(Alignment.Center)
+                                  .size(20.dp),
+                          )
                           Text(
                               text = "3",
                               color = Color.White,
@@ -2542,11 +2544,12 @@ private fun GroupRoutineTopBar(
                                   .background(DangerBase),
                           )
                       }
-                      Text(
-                          text = "⚙",
-                          color = LabelDefault,
-                          fontSize = 20.sp,
-                          modifier = Modifier.clickable(onClick = onSettingsClick),
+                      Image(
+                          painter = painterResource(id = R.drawable.ic_group_routine_settings),
+                          contentDescription = null,
+                          modifier = Modifier
+                              .size(20.dp)
+                              .clickable(onClick = onSettingsClick),
                       )
                   }
               }
