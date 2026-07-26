@@ -1,47 +1,110 @@
 package com.cmc.li_routi_frontend.navigation
 
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.navigation.NavHostController
-import androidx.navigation.compose.NavHost
-import androidx.navigation.compose.composable
-import androidx.navigation.compose.rememberNavController
+import com.li_routi.core.common.ui.nav.AppBottomNavBar
+import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.challenge.navigation.ChallengeNavHost
-
-private const val RouteChallenge = "challenge"
+import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
+import com.li_routi.feature.grouproutine.navigation.GrouproutineRootNavHost
+import com.li_routi.feature.home.navigation.HomeNavHost
 
 /**
  * 앱 전체 최상위 내비게이션 그래프.
  *
- * 각 feature는 자기 화면(컴포저블 진입점)만 노출하고, feature 간 이동은 여기서 중계한다
- * (feature가 다른 feature를 직접 의존하면 안 되기 때문). 지금은 [feature:challenge]만
- * 연결된 상태이고, 나머지 feature는 아래 패턴을 따라 추가하면 된다:
+ * 홈/그룹 루틴/챌린지/마이 4탭을 여기서 직접 스위칭한다 — feature는 자기 화면만 노출하고,
+ * 탭 전환 자체는 각 feature의 루트 화면이 [AppBottomNavBar]를 통해 이리로 위임한다.
+ * 홈 화면 "+" 메뉴의 "방 만들기"/"초대코드로 참여"는 그룹 루틴 탭으로 전환하면서
+ * 해당 진입점으로 바로 들어가도록 [groupRoutineEntryPoint]로 넘긴다.
  *
- * ```
- * composable("home") {
- *     HomeRoute(
- *         onEvent = { event ->
- *             when (event) {
- *                 HomeUiEvent.NavigateToShop -> navController.navigate("shop")
- *                 // ...
- *             }
- *         },
- *     )
- * }
- * ```
+ * 로그인 화면이 아직 없어서 시작 탭은 홈으로 고정한다.
  */
 @Composable
 fun AppNavHost(
     modifier: Modifier = Modifier,
-    navController: NavHostController = rememberNavController(),
 ) {
-    NavHost(
-        navController = navController,
-        startDestination = RouteChallenge,
-        modifier = modifier,
-    ) {
-        composable(RouteChallenge) {
-            ChallengeNavHost()
+    var selectedTab by rememberSaveable { mutableStateOf(AppBottomTab.Home) }
+    var groupRoutineEntryPoint by rememberSaveable { mutableStateOf<GrouproutineEntryPoint?>(null) }
+    val saveableStateHolder = rememberSaveableStateHolder()
+
+    Box(modifier = modifier) {
+        when (selectedTab) {
+            AppBottomTab.Home -> saveableStateHolder.SaveableStateProvider(AppBottomTab.Home.name) {
+                HomeNavHost(
+                    onCreateRoomClick = {
+                        groupRoutineEntryPoint = GrouproutineEntryPoint.CreateRoom
+                        selectedTab = AppBottomTab.GroupRoutine
+                    },
+                    onJoinRoomWithInviteCodeClick = {
+                        groupRoutineEntryPoint = GrouproutineEntryPoint.JoinWithInviteCode
+                        selectedTab = AppBottomTab.GroupRoutine
+                    },
+                    onTabSelected = { selectedTab = it },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            AppBottomTab.GroupRoutine -> saveableStateHolder.SaveableStateProvider(AppBottomTab.GroupRoutine.name) {
+                GrouproutineRootNavHost(
+                    initialEntryPoint = groupRoutineEntryPoint,
+                    onInitialEntryPointConsumed = { groupRoutineEntryPoint = null },
+                    onTabSelected = { selectedTab = it },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            AppBottomTab.Challenge -> saveableStateHolder.SaveableStateProvider(AppBottomTab.Challenge.name) {
+                ChallengeNavHost(
+                    onTabSelected = { selectedTab = it },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+
+            AppBottomTab.My -> saveableStateHolder.SaveableStateProvider(AppBottomTab.My.name) {
+                MyPagePlaceholder(
+                    onTabSelected = { selectedTab = it },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
+    }
+}
+
+/**
+ * 마이 탭 placeholder. `feature:mypage`가 아직 실제 화면을 갖추기 전까지, 다른 탭으로
+ * 돌아갈 수 있도록 공용 하단 GNB만 붙인 임시 화면을 여기 둔다.
+ */
+@Composable
+private fun MyPagePlaceholder(
+    onTabSelected: (AppBottomTab) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxSize(),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.Center,
+        ) {
+            Text(
+                text = "마이 화면은 준비 중이에요",
+                style = LiroutiTheme.typography.body1SemiBold,
+                color = LiroutiTheme.colors.labelDefault,
+            )
+        }
+        AppBottomNavBar(selectedTab = AppBottomTab.My, onTabSelected = onTabSelected)
     }
 }

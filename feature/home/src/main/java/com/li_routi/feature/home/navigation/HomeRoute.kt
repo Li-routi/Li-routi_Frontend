@@ -14,6 +14,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.feature.home.screen.HomeScreen
 import com.li_routi.feature.home.screen.RoutineAuthCameraScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
@@ -49,6 +50,7 @@ private val NullableUriSaver = Saver<Uri?, String>(
 fun HomeRoute(
     onEvent: (HomeUiEvent) -> Unit = {},
     onCameraEvent: (RoutineAuthCameraUiEvent) -> Unit = {},
+    onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel {
         HomeViewModel(initialState = HomeUiState.empty())
@@ -150,6 +152,7 @@ fun HomeRoute(
                     HomeScreenContent(
                         viewModel = viewModel,
                         uiState = uiState,
+                        onTabSelected = onTabSelected,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -159,6 +162,7 @@ fun HomeRoute(
         HomeScreenContent(
             viewModel = viewModel,
             uiState = uiState,
+            onTabSelected = onTabSelected,
             modifier = modifier,
         )
     }
@@ -168,10 +172,12 @@ fun HomeRoute(
 private fun HomeScreenContent(
     viewModel: HomeViewModel,
     uiState: HomeUiState,
+    onTabSelected: (AppBottomTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     HomeScreen(
         actions = viewModel,
+        onTabSelected = onTabSelected,
         hasActiveRoutine = uiState.hasActiveRoutine,
         hasGroupRoom = uiState.hasGroupRoom,
         nickname = uiState.nickname,
