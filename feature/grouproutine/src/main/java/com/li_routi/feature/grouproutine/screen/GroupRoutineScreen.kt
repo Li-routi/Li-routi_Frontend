@@ -126,6 +126,11 @@ fun GroupRoutineRoute(
         onChatClick = viewModel::onChatClick,
         onSettingsClick = viewModel::onSettingsClick,
         onInviteCodeCopyClick = viewModel::onInviteCodeCopyClick,
+        onGroupRoutineManageClick = viewModel::onGroupRoutineManageClick,
+        onRoomNameEditClick = viewModel::onRoomNameEditClick,
+        onLeaderSettingsClick = viewModel::onLeaderSettingsClick,
+        onRoomAlarmSettingsClick = viewModel::onRoomAlarmSettingsClick,
+        onRoomNameEditConfirmClick = viewModel::onRoomNameEditConfirmClick,
     )
 }
 
@@ -166,6 +171,11 @@ private fun GroupRoutineScreen(
     onChatClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onInviteCodeCopyClick: () -> Unit,
+    onGroupRoutineManageClick: () -> Unit,
+    onRoomNameEditClick: () -> Unit,
+    onLeaderSettingsClick: () -> Unit,
+    onRoomAlarmSettingsClick: () -> Unit,
+    onRoomNameEditConfirmClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -201,6 +211,32 @@ private fun GroupRoutineScreen(
 
             GroupRoutineScreenMode.GroupSettings -> GroupSettingsScreen(
                 uiState = uiState,
+                onBackClick = onBackClick,
+                onGroupRoutineManageClick = onGroupRoutineManageClick,
+                onRoomNameEditClick = onRoomNameEditClick,
+                onLeaderSettingsClick = onLeaderSettingsClick,
+                onRoomAlarmSettingsClick = onRoomAlarmSettingsClick,
+            )
+
+            GroupRoutineScreenMode.GroupRoutineManage -> GroupRoutineManageScreen(
+                uiState = uiState,
+                onBackClick = onBackClick,
+                onTodoCheckedChange = onTodoCheckedChange,
+            )
+
+            GroupRoutineScreenMode.RoomNameEdit -> RoomNameEditScreen(
+                roomName = uiState.roomNameInput,
+                onRoomNameChange = onRoomNameChange,
+                onBackClick = onBackClick,
+                onConfirmClick = onRoomNameEditConfirmClick,
+            )
+
+            GroupRoutineScreenMode.LeaderSettings -> LeaderSettingsScreen(
+                uiState = uiState,
+                onBackClick = onBackClick,
+            )
+
+            GroupRoutineScreenMode.RoomAlarmSettings -> RoomAlarmSettingsScreen(
                 onBackClick = onBackClick,
             )
 
@@ -1450,6 +1486,10 @@ private fun ChatInputBar(
 private fun GroupSettingsScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
+    onGroupRoutineManageClick: () -> Unit,
+    onRoomNameEditClick: () -> Unit,
+    onLeaderSettingsClick: () -> Unit,
+    onRoomAlarmSettingsClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -1463,18 +1503,18 @@ private fun GroupSettingsScreen(
         ) {
             item {
                 SettingsSectionHeader(text = "그룹 루틴 설정")
-                SettingsNavigationRow(icon = "＋", label = "그룹 루틴 관리")
+                SettingsNavigationRow(icon = "＋", label = "그룹 루틴 관리", onClick = onGroupRoutineManageClick)
                 SettingsSectionDivider()
             }
             item {
                 SettingsSectionHeader(text = "방 정보 설정")
-                SettingsNavigationRow(icon = "✎", label = "방 이름 변경")
-                SettingsNavigationRow(icon = "♙", label = "방장 설정")
+                SettingsNavigationRow(icon = "✎", label = "방 이름 변경", onClick = onRoomNameEditClick)
+                SettingsNavigationRow(icon = "♙", label = "방장 설정", onClick = onLeaderSettingsClick)
                 SettingsSectionDivider()
             }
             item {
                 SettingsSectionHeader(text = "방 알림 설정")
-                SettingsNavigationRow(icon = "◷", label = "방 알림 설정")
+                SettingsNavigationRow(icon = "◷", label = "방 알림 설정", onClick = onRoomAlarmSettingsClick)
             }
         }
 
@@ -1497,6 +1537,209 @@ private fun GroupSettingsScreen(
 
         GroupRoutineTopBar(
             title = "방 설정",
+            showBack = true,
+            onBackClick = onBackClick,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+    }
+}
+
+@Composable
+private fun GroupRoutineManageScreen(
+    uiState: GroupRoutineUiState,
+    onBackClick: () -> Unit,
+    onTodoCheckedChange: (Long, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.White),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 98.dp, start = 16.dp, end = 16.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            item {
+                Text(
+                    text = "그룹 루틴 설정",
+                    color = LabelSub,
+                    style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+                )
+            }
+            item {
+                GroupTodoCard(
+                    todos = uiState.todos,
+                    progressLabel = uiState.todoProgressLabel,
+                    onTodoCheckedChange = onTodoCheckedChange,
+                )
+            }
+            item {
+                DashedRoutineAddButton(onClick = {})
+            }
+        }
+
+        GroupRoutineTopBar(
+            title = "그룹 루틴 관리",
+            showBack = true,
+            onBackClick = onBackClick,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+    }
+}
+
+@Composable
+private fun RoomNameEditScreen(
+    roomName: String,
+    onRoomNameChange: (String) -> Unit,
+    onBackClick: () -> Unit,
+    onConfirmClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.White),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(top = 98.dp, start = 16.dp, end = 16.dp, bottom = 104.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                text = "방 이름",
+                color = LabelDefault,
+                style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+            )
+            BasicInputBox(
+                value = roomName,
+                onValueChange = onRoomNameChange,
+                placeholder = "최대 20자",
+                showClear = roomName.isNotBlank(),
+            )
+        }
+
+        GroupRoutineTopBar(
+            title = "방 이름 변경",
+            showBack = true,
+            onBackClick = onBackClick,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+        BottomFixedButton(
+            text = "확인",
+            enabled = roomName.isNotBlank(),
+            onClick = onConfirmClick,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+    }
+}
+
+@Composable
+private fun LeaderSettingsScreen(
+    uiState: GroupRoutineUiState,
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.White),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 98.dp, bottom = 32.dp),
+        ) {
+            item { SettingsSectionHeader(text = "방장 선택") }
+            items(uiState.members) { member ->
+                LeaderMemberRow(member = member)
+            }
+        }
+
+        GroupRoutineTopBar(
+            title = "방장 설정",
+            showBack = true,
+            onBackClick = onBackClick,
+            modifier = Modifier.align(Alignment.TopCenter),
+        )
+    }
+}
+
+@Composable
+private fun LeaderMemberRow(
+    member: GroupMemberUiModel,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .background(Color.White)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.img_group_routine_character),
+            contentDescription = null,
+            modifier = Modifier
+                .size(32.dp)
+                .clip(CircleShape)
+                .background(ScreenBackground),
+        )
+        Text(
+            text = member.name,
+            color = LabelDefault,
+            style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.weight(1f),
+        )
+        if (member.isMe) {
+            StatusBadge(label = "현재 방장", completed = false)
+        }
+        Text(text = ">", color = LabelDefault, fontSize = 22.sp)
+    }
+}
+
+@Composable
+private fun RoomAlarmSettingsScreen(
+    onBackClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.White),
+    ) {
+        LazyColumn(
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(top = 98.dp, bottom = 32.dp),
+        ) {
+            item { SettingsSectionHeader(text = "방 알림 설정") }
+            item {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(54.dp)
+                        .background(Color.White)
+                        .padding(horizontal = 16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(text = "◷", color = LabelDefault, fontSize = 22.sp, modifier = Modifier.width(24.dp), textAlign = TextAlign.Center)
+                    Text(
+                        text = "방 알림",
+                        color = LabelDefault,
+                        style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+                        modifier = Modifier.weight(1f),
+                    )
+                    Text(text = "켜짐", color = PrimaryNormal, style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold))
+                }
+            }
+        }
+
+        GroupRoutineTopBar(
+            title = "방 알림 설정",
             showBack = true,
             onBackClick = onBackClick,
             modifier = Modifier.align(Alignment.TopCenter),
@@ -1535,6 +1778,7 @@ private fun SettingsSectionDivider(modifier: Modifier = Modifier) {
 private fun SettingsNavigationRow(
     icon: String,
     label: String,
+    onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -1542,6 +1786,7 @@ private fun SettingsNavigationRow(
             .fillMaxWidth()
             .height(54.dp)
             .background(Color.White)
+            .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -2130,6 +2375,11 @@ private fun GroupRoutineListPreview() {
             onChatClick = {},
             onSettingsClick = {},
             onInviteCodeCopyClick = {},
+            onGroupRoutineManageClick = {},
+            onRoomNameEditClick = {},
+            onLeaderSettingsClick = {},
+            onRoomAlarmSettingsClick = {},
+            onRoomNameEditConfirmClick = {},
         )
     }
 }
@@ -2174,6 +2424,11 @@ private fun CreateRoomNamePreview() {
             onChatClick = {},
             onSettingsClick = {},
             onInviteCodeCopyClick = {},
+            onGroupRoutineManageClick = {},
+            onRoomNameEditClick = {},
+            onLeaderSettingsClick = {},
+            onRoomAlarmSettingsClick = {},
+            onRoomNameEditConfirmClick = {},
         )
     }
 }

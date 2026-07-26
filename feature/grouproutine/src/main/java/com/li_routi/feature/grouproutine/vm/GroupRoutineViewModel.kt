@@ -38,6 +38,14 @@ class GroupRoutineViewModel : BaseViewModel() {
                     actionMessage = null,
                 )
 
+                GroupRoutineScreenMode.GroupRoutineManage,
+                GroupRoutineScreenMode.RoomNameEdit,
+                GroupRoutineScreenMode.LeaderSettings,
+                GroupRoutineScreenMode.RoomAlarmSettings -> state.copy(
+                    screenMode = GroupRoutineScreenMode.GroupSettings,
+                    actionMessage = null,
+                )
+
                 GroupRoutineScreenMode.CreateRoutineSelect -> state.copy(
                     screenMode = GroupRoutineScreenMode.CreateRoomName,
                     actionMessage = null,
@@ -87,6 +95,45 @@ class GroupRoutineViewModel : BaseViewModel() {
                 screenMode = GroupRoutineScreenMode.GroupSettings,
                 actionMessage = null,
             )
+        }
+    }
+
+    fun onGroupRoutineManageClick() {
+        _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.GroupRoutineManage, actionMessage = null) }
+    }
+
+    fun onRoomNameEditClick() {
+        _uiState.update { state ->
+            state.copy(
+                screenMode = GroupRoutineScreenMode.RoomNameEdit,
+                roomNameInput = state.selectedRoutine?.title.orEmpty(),
+                actionMessage = null,
+            )
+        }
+    }
+
+    fun onLeaderSettingsClick() {
+        _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.LeaderSettings, actionMessage = null) }
+    }
+
+    fun onRoomAlarmSettingsClick() {
+        _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.RoomAlarmSettings, actionMessage = null) }
+    }
+
+    fun onRoomNameEditConfirmClick() {
+        _uiState.update { state ->
+            val title = state.roomNameInput.trim()
+            if (title.isBlank()) {
+                state.copy(actionMessage = "방 이름을 입력해주세요.")
+            } else {
+                state.copy(
+                    screenMode = GroupRoutineScreenMode.GroupSettings,
+                    routines = state.routines.map { routine ->
+                        if (routine.id == state.selectedRoutine?.id) routine.copy(title = title) else routine
+                    },
+                    actionMessage = "방 이름이 변경됐어요.",
+                )
+            }
         }
     }
 
