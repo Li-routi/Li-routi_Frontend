@@ -18,10 +18,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -2855,38 +2857,57 @@ private fun GroupRoutineTopBar(
                       horizontalArrangement = Arrangement.spacedBy(14.dp),
                       verticalAlignment = Alignment.CenterVertically,
                   ) {
-                      Box(modifier = Modifier.size(24.dp).clickable(onClick = onChatClick)) {
-                          Image(
-                              painter = painterResource(id = R.drawable.ic_group_routine_chat),
-                              contentDescription = null,
-                              modifier = Modifier
-                                  .align(Alignment.Center)
-                                  .size(20.dp),
-                          )
-                          Text(
-                              text = "3",
-                              color = Color.White,
-                              fontSize = 8.sp,
-                              fontWeight = FontWeight.Bold,
-                              textAlign = TextAlign.Center,
-                              modifier = Modifier
-                                  .align(Alignment.TopEnd)
-                                  .size(14.dp)
-                                  .clip(CircleShape)
-                                  .background(DangerBase),
-                          )
-                      }
-                      Box(modifier = Modifier.size(24.dp).clickable(onClick = onSettingsClick)) {
-                          Image(
-                              painter = painterResource(id = R.drawable.ic_group_routine_settings),
-                              contentDescription = null,
-                              modifier = Modifier
-                                  .align(Alignment.Center)
-                                  .size(20.dp),
-                          )
-                      }
+                      TopBarActionButton(
+                          iconRes = R.drawable.ic_group_routine_chat,
+                          badgeCount = 3,
+                          onClick = onChatClick,
+                      )
+                      TopBarActionButton(
+                          iconRes = R.drawable.ic_group_routine_settings,
+                          badgeCount = 4,
+                          onClick = onSettingsClick,
+                      )
                   }
               }
+        }
+    }
+}
+
+@Composable
+private fun TopBarActionButton(
+    @DrawableRes iconRes: Int,
+    badgeCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(20.dp),
+        )
+        if (badgeCount > 0) {
+            Text(
+                text = badgeCount.toString(),
+                color = Color.White,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 12.dp, y = (-4).dp)
+                    .height(18.dp)
+                    .widthIn(min = 18.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(DangerBase)
+                    .padding(horizontal = if (badgeCount >= 10) 5.dp else 0.dp),
+            )
         }
     }
 }
