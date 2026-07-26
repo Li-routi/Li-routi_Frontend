@@ -2270,7 +2270,11 @@ private fun CertificationSummaryCard(
                 .background(Color(0xFFF3F4F5)),
             contentAlignment = Alignment.Center,
           ) {
-              Text(text = "🔥", fontSize = 22.sp)
+              Image(
+                  painter = painterResource(id = R.drawable.ic_group_routine_flame),
+                  contentDescription = null,
+                  modifier = Modifier.size(24.dp),
+              )
           }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
