@@ -43,7 +43,6 @@ import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
 import com.li_routi.core.designsystem.component.LiroutiLineTab
-import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.component.LiroutiRoutineStatsRow
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -240,79 +239,6 @@ private fun ChallengeInfoSection(
                 color = LiroutiTheme.colors.labelDefault,
             )
         }
-    }
-}
-
-@Composable
-private fun ChallengeStatsRow(uiState: ChallengeDetailUiState, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(74.dp)
-            .background(BgFill, RoundedCornerShape(8.dp))
-            .padding(horizontal = 16.dp, vertical = 12.dp),
-        horizontalArrangement = Arrangement.spacedBy(25.dp, Alignment.CenterHorizontally),
-    ) {
-        ChallengeStat(value = uiState.participantCount, label = "참여자")
-        ChallengeStatDivider()
-        ChallengeStat(value = uiState.activityCount, label = "리워드")
-        ChallengeStatDivider()
-        ChallengeStat(value = uiState.postCount, label = "인증 게시글")
-    }
-}
-
-@Composable
-private fun ChallengeStat(value: Int, label: String, modifier: Modifier = Modifier) {
-    Column(
-        modifier = modifier.width(60.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        Text(text = value.toString(), fontWeight = FontWeight.Bold, fontSize = 16.sp, color = LabelSub)
-        Text(text = label, fontSize = 13.sp, color = LabelSub)
-    }
-}
-
-@Composable
-private fun ChallengeStatDivider(modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .width(1.dp)
-            .height(50.dp)
-            .background(BorderDefault),
-    )
-}
-
-// "인증"/"내 인증 보기" 탭. 탭 전환 시 아래 리스트 내용이 바뀐다(화면 이동 아님).
-@Composable
-private fun ChallengeCertificationTabRow(
-    selectedTab: CertificationTab,
-    onTabSelected: (CertificationTab) -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier.fillMaxWidth().padding(horizontal = 20.dp)) {
-        Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            CertificationTabItem(
-                label = "인증",
-                selected = selectedTab == CertificationTab.All,
-                onClick = { onTabSelected(CertificationTab.All) },
-                modifier = Modifier.weight(1f),
-            )
-            CertificationTabItem(
-                label = "내 인증 보기",
-                selected = selectedTab == CertificationTab.Mine,
-                onClick = { onTabSelected(CertificationTab.Mine) },
-                modifier = Modifier.weight(1f),
-            )
-        }
-
-        // "참여하기" 탭 시 참여 상태로 바뀌고 서버에 참여 신호를 보낸다(ViewModel에서 처리, 이번 범위는 로컬 상태만).
-        // 참여 후 "인증하기"는 별도 인증 업로드 플로우로 연결될 예정 — 이번 범위 제외. 버튼 색은 참여 여부와
-        // 무관하게 항상 파란색으로 유지하고(Figma 두 상태 모두 동일), 클릭만 참여 전에만 동작하도록 막는다.
-        LiroutiPrimaryButton(
-            text = if (uiState.isJoined) "인증하기" else "참여하기",
-            onClick = { if (!uiState.isJoined) onJoinClick() },
-        )
     }
 }
 
