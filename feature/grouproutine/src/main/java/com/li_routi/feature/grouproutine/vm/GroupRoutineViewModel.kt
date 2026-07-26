@@ -16,6 +16,7 @@ class GroupRoutineViewModel : BaseViewModel() {
             it.copy(
                 screenMode = GroupRoutineScreenMode.Detail,
                 selectedRoutineId = routineId,
+                selectedMemberId = null,
                 actionMessage = null,
             )
         }
@@ -27,6 +28,7 @@ class GroupRoutineViewModel : BaseViewModel() {
                 GroupRoutineScreenMode.Detail -> state.copy(
                     screenMode = GroupRoutineScreenMode.List,
                     selectedRoutineId = null,
+                    selectedMemberId = null,
                     showOnlyMyCertifications = false,
                     actionMessage = null,
                 )
@@ -93,9 +95,18 @@ class GroupRoutineViewModel : BaseViewModel() {
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.GroupSettings,
+                selectedMemberId = null,
                 actionMessage = null,
             )
         }
+    }
+
+    fun onMemberClick(memberId: Long) {
+        _uiState.update { it.copy(selectedMemberId = memberId, actionMessage = null) }
+    }
+
+    fun onDismissMemberDialog() {
+        _uiState.update { it.copy(selectedMemberId = null) }
     }
 
     fun onGroupRoutineManageClick() {

@@ -68,6 +68,7 @@ data class CreateRoutineOptionUiModel(
 data class GroupRoutineUiState(
     val screenMode: GroupRoutineScreenMode = GroupRoutineScreenMode.List,
     val selectedRoutineId: Long? = null,
+    val selectedMemberId: Long? = null,
     val isActionSheetVisible: Boolean = false,
     val actionMessage: String? = null,
     val isRoomLocked: Boolean = false,
@@ -102,6 +103,9 @@ data class GroupRoutineUiState(
 
     val selectedRoutine: GroupRoutineUiModel?
         get() = routines.firstOrNull { it.id == selectedRoutineId } ?: routines.firstOrNull()
+
+    val selectedMember: GroupMemberUiModel?
+        get() = members.firstOrNull { it.id == selectedMemberId }
 
     val selectedCreateRoutineCount: Int
         get() = routineOptions.count { it.isSelected }

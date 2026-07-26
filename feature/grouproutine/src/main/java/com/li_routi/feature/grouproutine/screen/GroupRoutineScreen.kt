@@ -124,6 +124,8 @@ fun GroupRoutineRoute(
         onTodoCheckedChange = viewModel::onTodoCheckedChange,
         onCertificationTabClick = viewModel::onCertificationTabClick,
         onCertificationSummaryClick = viewModel::onCertificationSummaryClick,
+        onMemberClick = viewModel::onMemberClick,
+        onDismissMemberDialog = viewModel::onDismissMemberDialog,
         onChatClick = viewModel::onChatClick,
         onSettingsClick = viewModel::onSettingsClick,
         onInviteCodeCopyClick = viewModel::onInviteCodeCopyClick,
@@ -170,6 +172,8 @@ private fun GroupRoutineScreen(
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
     onCertificationSummaryClick: () -> Unit,
+    onMemberClick: (Long) -> Unit,
+    onDismissMemberDialog: () -> Unit,
     onChatClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onInviteCodeCopyClick: () -> Unit,
@@ -196,6 +200,8 @@ private fun GroupRoutineScreen(
                 onTodoCheckedChange = onTodoCheckedChange,
                 onCertificationTabClick = onCertificationTabClick,
                 onCertificationSummaryClick = onCertificationSummaryClick,
+                onMemberClick = onMemberClick,
+                onDismissMemberDialog = onDismissMemberDialog,
                 onChatClick = onChatClick,
                 onSettingsClick = onSettingsClick,
                 onInviteCodeClick = onInviteCodeCopyClick,
@@ -1284,6 +1290,8 @@ private fun GroupRoutineDetailScreen(
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
     onCertificationSummaryClick: () -> Unit,
+    onMemberClick: (Long) -> Unit,
+    onDismissMemberDialog: () -> Unit,
     onChatClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onInviteCodeClick: () -> Unit,
@@ -1314,6 +1322,7 @@ private fun GroupRoutineDetailScreen(
                     members = uiState.members,
                     onMessageEditClick = onChatClick,
                     onInviteCodeClick = onInviteCodeClick,
+                    onMemberClick = onMemberClick,
                     modifier = Modifier.padding(horizontal = 16.dp),
                 )
             }
@@ -1345,6 +1354,14 @@ private fun GroupRoutineDetailScreen(
             modifier = Modifier.align(Alignment.TopCenter),
         )
         GroupRoutineBottomBar(modifier = Modifier.align(Alignment.BottomCenter))
+    }
+
+    uiState.selectedMember?.let { member ->
+        MemberProfileDialog(
+            member = member,
+            onDismissRequest = onDismissMemberDialog,
+            onPokeClick = onDismissMemberDialog,
+        )
     }
 }
 
@@ -2131,8 +2148,11 @@ private fun GroupMemberCard(
     members: List<GroupMemberUiModel>,
     onMessageEditClick: () -> Unit,
     onInviteCodeClick: () -> Unit,
+    onMemberClick: (Long) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val visibleMembers = members.take(6)
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -2146,17 +2166,13 @@ private fun GroupMemberCard(
             color = LabelDefault,
             style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
         )
-        LazyVerticalGrid(
-            columns = GridCells.Fixed(3),
+        MemberSeatLayout(
+            members = visibleMembers,
+            onMemberClick = onMemberClick,
             modifier = Modifier
                 .fillMaxWidth()
                 .height(224.dp),
-            userScrollEnabled = false,
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            items(members) { member -> MemberSeat(member = member) }
-        }
+        )
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.Center,
@@ -2176,13 +2192,58 @@ private fun GroupMemberCard(
 }
 
 @Composable
-private fun MemberSeat(member: GroupMemberUiModel) {
-    Column(horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(4.dp)) {
+private fun MemberSeatLayout(
+    members: List<GroupMemberUiModel>,
+    onMemberClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val rows = when (members.size) {
+        0 -> emptyList()
+        1, 2, 3 -> listOf(members)
+        4 -> members.chunked(2)
+        5 -> listOf(members.take(3), members.drop(3))
+        else -> members.chunked(3)
+    }
+
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        rows.forEach { rowMembers ->
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
+            ) {
+                rowMembers.forEach { member ->
+                    MemberSeat(
+                        member = member,
+                        onClick = { onMemberClick(member.id) },
+                        modifier = Modifier.width(if (rowMembers.size == 3) 92.dp else 138.dp),
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemberSeat(
+    member: GroupMemberUiModel,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier.clickable(onClick = onClick),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             Text(
-                text = member.message,
+                text = member.message.take(8),
                 color = Color.White,
                 fontSize = 11.sp,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
                     .background(Color(0xFF878A93))
@@ -2213,6 +2274,131 @@ private fun MemberSeat(member: GroupMemberUiModel) {
             Text(text = "F${member.streak}", color = DangerBase, fontSize = 10.sp)
         }
     }
+}
+
+@Composable
+private fun MemberProfileDialog(
+    member: GroupMemberUiModel,
+    onDismissRequest: () -> Unit,
+    onPokeClick: () -> Unit,
+) {
+    Dialog(onDismissRequest = onDismissRequest) {
+        Surface(
+            shape = RoundedCornerShape(6.dp),
+            color = Color.White,
+            modifier = Modifier.width(320.dp),
+        ) {
+            Column(
+                modifier = Modifier.padding(24.dp),
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.End,
+                ) {
+                    Text(
+                        text = "×",
+                        color = LabelDefault,
+                        fontSize = 24.sp,
+                        modifier = Modifier.clickable(onClick = onDismissRequest),
+                    )
+                }
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(60.dp)
+                            .clip(CircleShape)
+                            .background(ScreenBackground),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.img_group_routine_character),
+                            contentDescription = null,
+                            modifier = Modifier.size(60.dp),
+                        )
+                    }
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(5.dp),
+                    ) {
+                        Text(
+                            text = member.name,
+                            color = LabelDefault,
+                            style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                            Text(
+                                text = "얼리버드",
+                                color = Color(0xFFD26D00),
+                                style = LiroutiTheme.typography.caption,
+                                modifier = Modifier
+                                    .clip(RoundedCornerShape(6.dp))
+                                    .background(Color(0xFFFFDDB8))
+                                    .padding(horizontal = 6.dp, vertical = 3.dp),
+                            )
+                            Text(text = "🔥${member.streak}", color = DangerBase, fontSize = 10.sp)
+                        }
+                    }
+                }
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(FillBackground)
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    MemberProfileInfoRow(label = "오늘 루틴 진행도", value = "3/4 완료")
+                    MemberProfileInfoRow(label = "연속 달성", value = "14일 째")
+                    Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        ReactionBadge(text = "좋아요 42")
+                        ReactionBadge(text = "아쉬워요 3")
+                        ReactionBadge(text = "쿡쿡 7")
+                    }
+                }
+                PrimaryButton(text = "쿡쿡 찔러보기", enabled = true, onClick = onPokeClick)
+            }
+        }
+    }
+}
+
+@Composable
+private fun MemberProfileInfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = label,
+            color = LabelSub,
+            style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.width(93.dp),
+        )
+        Text(
+            text = value,
+            color = LabelDefault,
+            style = LiroutiTheme.typography.body3,
+        )
+    }
+}
+
+@Composable
+private fun ReactionBadge(text: String) {
+    Text(
+        text = text,
+        color = LabelInfo,
+        style = LiroutiTheme.typography.caption,
+        modifier = Modifier
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color(0xFFEAEBEC))
+            .padding(horizontal = 6.dp, vertical = 3.dp),
+    )
 }
 
 @Composable
@@ -2681,9 +2867,11 @@ private fun GroupRoutineListPreview() {
             onDismissDeleteRoutineDialog = {},
             onConfirmDeleteRoutineClick = {},
               onCreateRoomDoneClick = {},
-              onTodoCheckedChange = { _, _ -> },
-              onCertificationTabClick = {},
+            onTodoCheckedChange = { _, _ -> },
+            onCertificationTabClick = {},
             onCertificationSummaryClick = {},
+            onMemberClick = {},
+            onDismissMemberDialog = {},
             onChatClick = {},
             onSettingsClick = {},
             onInviteCodeCopyClick = {},
@@ -2731,9 +2919,11 @@ private fun CreateRoomNamePreview() {
             onDismissDeleteRoutineDialog = {},
             onConfirmDeleteRoutineClick = {},
               onCreateRoomDoneClick = {},
-              onTodoCheckedChange = { _, _ -> },
-              onCertificationTabClick = {},
+            onTodoCheckedChange = { _, _ -> },
+            onCertificationTabClick = {},
             onCertificationSummaryClick = {},
+            onMemberClick = {},
+            onDismissMemberDialog = {},
             onChatClick = {},
             onSettingsClick = {},
             onInviteCodeCopyClick = {},
