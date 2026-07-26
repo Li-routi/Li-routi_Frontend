@@ -803,8 +803,11 @@ private fun RoutineSettingSheet(
                     .background(FillBackground),
             ) {
                 SettingInfoRow(label = "마감시간", value = "오후 11:00")
+                RoutineSettingDivider()
                 SettingInfoRow(label = "반복", value = repeatDaysLabel(repeatDays))
+                RoutineSettingDivider()
                 RepeatDayRow(selectedDays = repeatDays, onRepeatDayClick = onRepeatDayClick)
+                RoutineSettingDivider()
                 SettingInfoRow(label = "알람 시간", value = "없음  >")
             }
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -819,7 +822,7 @@ private fun RoutineSettingSheet(
                     style = LiroutiTheme.typography.caption,
                 )
             }
-            PrimaryButton(text = "확인", enabled = routineName.isNotBlank(), onClick = onConfirmClick)
+            PrimaryButton(text = "확인", enabled = true, onClick = onConfirmClick)
         }
     }
 }
@@ -882,6 +885,14 @@ private fun SettingInfoRow(label: String, value: String) {
             style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
         )
     }
+}
+
+@Composable
+private fun RoutineSettingDivider() {
+    HorizontalDivider(
+        color = Color(0xFFEDEEF0),
+        modifier = Modifier.padding(horizontal = 14.dp),
+    )
 }
 
 @Composable
