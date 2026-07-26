@@ -131,6 +131,7 @@ fun GroupRoutineRoute(
         onRoomNameEditClick = viewModel::onRoomNameEditClick,
         onLeaderSettingsClick = viewModel::onLeaderSettingsClick,
         onRoomAlarmSettingsClick = viewModel::onRoomAlarmSettingsClick,
+        onRoomLockClick = viewModel::onRoomLockClick,
         onRoomNameEditConfirmClick = viewModel::onRoomNameEditConfirmClick,
     )
 }
@@ -176,6 +177,7 @@ private fun GroupRoutineScreen(
     onRoomNameEditClick: () -> Unit,
     onLeaderSettingsClick: () -> Unit,
     onRoomAlarmSettingsClick: () -> Unit,
+    onRoomLockClick: () -> Unit,
     onRoomNameEditConfirmClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -217,6 +219,8 @@ private fun GroupRoutineScreen(
                 onRoomNameEditClick = onRoomNameEditClick,
                 onLeaderSettingsClick = onLeaderSettingsClick,
                 onRoomAlarmSettingsClick = onRoomAlarmSettingsClick,
+                onRoomLockClick = onRoomLockClick,
+                onInviteCodeCopyClick = onInviteCodeCopyClick,
             )
 
             GroupRoutineScreenMode.GroupRoutineManage -> GroupRoutineManageScreen(
@@ -276,18 +280,27 @@ private fun GroupRoutineScreen(
         }
 
         uiState.actionMessage?.let { message ->
-            Text(
-                text = message,
-                color = Color.White,
-                style = LiroutiTheme.typography.body3,
+            Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
                     .padding(bottom = 92.dp)
-                    .clip(RoundedCornerShape(100.dp))
+                    .fillMaxWidth()
+                    .padding(horizontal = 20.dp)
+                    .clip(RoundedCornerShape(4.dp))
                     .background(Color(0xCC171719))
-                    .padding(horizontal = 14.dp, vertical = 8.dp),
-            )
+                    .padding(horizontal = 16.dp, vertical = 13.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                Text(
+                    text = message,
+                    color = Color.White,
+                    style = LiroutiTheme.typography.body3,
+                    modifier = Modifier.weight(1f),
+                )
+                Text(text = "×", color = Color.White, fontSize = 24.sp, lineHeight = 24.sp)
+            }
         }
     }
 
@@ -1509,6 +1522,8 @@ private fun GroupSettingsScreen(
     onRoomNameEditClick: () -> Unit,
     onLeaderSettingsClick: () -> Unit,
     onRoomAlarmSettingsClick: () -> Unit,
+    onRoomLockClick: () -> Unit,
+    onInviteCodeCopyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isLeader = uiState.members.firstOrNull { it.isMe }?.id == uiState.members.firstOrNull()?.id
@@ -1554,6 +1569,17 @@ private fun GroupSettingsScreen(
                     label = "방 알림 설정",
                     onClick = onRoomAlarmSettingsClick,
                 )
+                if (isLeader) SettingsSectionDivider()
+            }
+            if (isLeader) {
+                item {
+                    SettingsSectionHeader(text = "초대 설정")
+                    InviteLockRow(
+                        locked = uiState.isRoomLocked,
+                        onClick = onRoomLockClick,
+                    )
+                    InviteCodeRow(onClick = onInviteCodeCopyClick)
+                }
             }
         }
 
@@ -1899,6 +1925,75 @@ private fun SettingsNavigationRow(
 }
 
 @Composable
+private fun InviteLockRow(
+    locked: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(54.dp)
+            .background(Color.White)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "▢",
+            color = LabelDefault,
+            fontSize = 20.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(24.dp),
+        )
+        Text(
+            text = "방 잠금",
+            color = LabelDefault,
+            style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.weight(1f),
+        )
+        StaticSwitch(checked = locked)
+    }
+}
+
+@Composable
+private fun InviteCodeRow(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(42.dp)
+            .background(Color.White)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Text(
+            text = "□",
+            color = LabelDefault,
+            fontSize = 18.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(24.dp),
+        )
+        Text(
+            text = "초대코드",
+            color = LabelDefault,
+            style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = "a1b2c3",
+            color = LabelSub,
+            style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
+        )
+    }
+}
+
+@Composable
 private fun RoomAlarmToggleRow(
     title: String,
     description: String,
@@ -1926,19 +2021,22 @@ private fun RoomAlarmToggleRow(
                 style = LiroutiTheme.typography.caption,
             )
         }
-        StaticOnSwitch()
+        StaticSwitch(checked = true)
     }
 }
 
 @Composable
-private fun StaticOnSwitch(modifier: Modifier = Modifier) {
+private fun StaticSwitch(
+    checked: Boolean,
+    modifier: Modifier = Modifier,
+) {
     Box(
         modifier = modifier
             .size(width = 44.dp, height = 26.dp)
             .clip(RoundedCornerShape(100.dp))
-            .background(PrimaryNormal)
+            .background(if (checked) Color(0xFF6688F4) else Color(0xFFE1E3E6))
             .padding(2.dp),
-        contentAlignment = Alignment.CenterEnd,
+        contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
     ) {
         Box(
             modifier = Modifier
@@ -2590,6 +2688,7 @@ private fun GroupRoutineListPreview() {
             onRoomNameEditClick = {},
             onLeaderSettingsClick = {},
             onRoomAlarmSettingsClick = {},
+            onRoomLockClick = {},
             onRoomNameEditConfirmClick = {},
         )
     }
@@ -2639,6 +2738,7 @@ private fun CreateRoomNamePreview() {
             onRoomNameEditClick = {},
             onLeaderSettingsClick = {},
             onRoomAlarmSettingsClick = {},
+            onRoomLockClick = {},
             onRoomNameEditConfirmClick = {},
         )
     }

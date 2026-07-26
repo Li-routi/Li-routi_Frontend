@@ -70,6 +70,7 @@ data class GroupRoutineUiState(
     val selectedRoutineId: Long? = null,
     val isActionSheetVisible: Boolean = false,
     val actionMessage: String? = null,
+    val isRoomLocked: Boolean = false,
     val showOnlyMyCertifications: Boolean = false,
     val isEmptyState: Boolean = false,
     val searchInput: String = "",

@@ -120,6 +120,20 @@ class GroupRoutineViewModel : BaseViewModel() {
         _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.RoomAlarmSettings, actionMessage = null) }
     }
 
+    fun onRoomLockClick() {
+        _uiState.update { state ->
+            val nextLocked = !state.isRoomLocked
+            state.copy(
+                isRoomLocked = nextLocked,
+                actionMessage = if (nextLocked) {
+                    "더 이상 다른 사람이 참여할 수 없습니다."
+                } else {
+                    "다른 사람이 참여할 수 있습니다."
+                },
+            )
+        }
+    }
+
     fun onRoomNameEditConfirmClick() {
         _uiState.update { state ->
             val title = state.roomNameInput.trim()
@@ -190,7 +204,7 @@ class GroupRoutineViewModel : BaseViewModel() {
     }
 
     fun onInviteCodeCopyClick() {
-        _uiState.update { it.copy(actionMessage = "초대코드가 복사됐어요.") }
+        _uiState.update { it.copy(actionMessage = "초대코드가 복사되었습니다!") }
     }
 
     fun onRoomNameChange(value: String) {
