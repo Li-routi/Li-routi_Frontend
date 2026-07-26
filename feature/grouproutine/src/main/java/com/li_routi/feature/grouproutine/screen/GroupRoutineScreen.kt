@@ -2095,9 +2095,8 @@ private fun CertificationPostItem(
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Image(
-                painter = painterResource(id = R.drawable.img_group_routine_profile),
+                painter = painterResource(id = R.drawable.img_group_routine_character),
                 contentDescription = null,
-                contentScale = ContentScale.Crop,
                 modifier = Modifier
                     .size(34.dp)
                     .clip(CircleShape),
