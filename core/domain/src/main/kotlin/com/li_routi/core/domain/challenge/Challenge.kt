@@ -24,6 +24,8 @@ data class Challenge(
     val imageUrl: String,
     val category: ChallengeCategory,
     val routineCycle: RoutineCycle,
+    /** 챌린지 달성 시 부여되는 재화 수량. */
+    val reward: Int,
     val participantCount: Long,
     val verificationPostCount: Long,
 )

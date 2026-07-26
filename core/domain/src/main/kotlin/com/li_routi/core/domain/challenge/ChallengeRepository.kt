@@ -18,4 +18,33 @@ interface ChallengeRepository {
         cursor: Long?,
         size: Int?,
     ): ResultState<ChallengePage>
+
+    /** 챌린지 상세를 조회한다. */
+    suspend fun getChallengeDetail(challengeId: Long): ResultState<ChallengeDetail>
+
+    /**
+     * 챌린지의 인증 피드를 최신순으로 조회한다 (무한 스크롤 커서 방식, 커서 값 = verificationId).
+     */
+    suspend fun getVerifications(
+        challengeId: Long,
+        cursor: Long?,
+        size: Int?,
+    ): ResultState<CertificationPage>
+
+    /** 로그인한 회원이 챌린지에 참여한다. */
+    suspend fun participate(challengeId: Long): ResultState<Participation>
+
+    /** 로그인한 회원이 참여 중인 챌린지를 그만둔다. */
+    suspend fun leaveChallenge(challengeId: Long): ResultState<Participation>
+
+    /**
+     * 로그인한 회원이 현재 참여 중인 챌린지 목록을 조회한다.
+     *
+     * @param category 분류 필터. null이면 전체.
+     * @param keyword 챌린지 이름 부분 검색어.
+     */
+    suspend fun getMyChallenges(
+        category: ChallengeCategory?,
+        keyword: String?,
+    ): ResultState<List<MyChallenge>>
 }

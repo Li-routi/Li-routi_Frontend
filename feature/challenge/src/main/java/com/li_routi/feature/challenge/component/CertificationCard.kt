@@ -16,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.R
@@ -64,30 +65,14 @@ fun CertificationCard(
                     .height(144.dp)
                     .background(LiroutiTheme.colors.backgroundSecondary, RoundedCornerShape(6.dp)),
             )
-            Row(
+            // 인증 피드 API에 좋아요 기능이 없어 시간만 표시한다.
+            Text(
+                text = certification.timeLabel,
+                style = LiroutiTheme.typography.body3Regular,
+                color = LiroutiTheme.colors.labelInfo,
                 modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Image(
-                        painter = painterResource(id = R.drawable.favorite),
-                        contentDescription = null,
-                        modifier = Modifier.size(16.dp),
-                        colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelDefault),
-                    )
-                    Text(
-                        text = certification.likeCount.toString(),
-                        style = LiroutiTheme.typography.body3Medium,
-                        color = LiroutiTheme.colors.labelDefault,
-                    )
-                }
-                Text(
-                    text = certification.timeLabel,
-                    style = LiroutiTheme.typography.body3Regular,
-                    color = LiroutiTheme.colors.labelInfo,
-                )
-            }
+                textAlign = TextAlign.End,
+            )
         }
     }
 }
@@ -101,7 +86,6 @@ private fun CertificationCardPreview() {
                 id = 1L,
                 authorName = "민지",
                 content = "물 마시기 1일차 입니다~ 다들 열심히 하고 있지?",
-                likeCount = 1,
                 timeLabel = "9시간 전",
             ),
         )

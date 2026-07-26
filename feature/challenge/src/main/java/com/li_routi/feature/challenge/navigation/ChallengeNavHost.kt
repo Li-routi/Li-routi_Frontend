@@ -19,6 +19,7 @@ import com.li_routi.feature.challenge.screen.ChallengeDetailScreen
 import com.li_routi.feature.challenge.screen.ChallengeScreen
 import com.li_routi.feature.challenge.screen.FindChallengeScreen
 import com.li_routi.feature.challenge.vm.ChallengeDetailViewModel
+import com.li_routi.feature.challenge.vm.ChallengeViewModel
 import com.li_routi.feature.challenge.vm.FindChallengeViewModel
 
 private const val RouteChallengeHome = "challenge_home"
@@ -44,8 +45,13 @@ fun ChallengeNavHost(
         modifier = modifier,
     ) {
         composable(RouteChallengeHome) {
+            val challengeViewModel: ChallengeViewModel = viewModel {
+                ChallengeViewModel(ChallengeContainer.getMyChallengesUseCase)
+            }
+            val challengeUiState by challengeViewModel.uiState.collectAsStateWithLifecycle()
+
             ChallengeScreen(
-                routines = emptyList(),
+                uiState = challengeUiState,
                 onFindNewChallengeClick = {
                     navController.navigate(RouteFindChallenge)
                 },
@@ -74,7 +80,13 @@ fun ChallengeNavHost(
         ) { backStackEntry ->
             val challengeId = backStackEntry.arguments?.getLong(ArgChallengeId) ?: 0L
             val detailViewModel: ChallengeDetailViewModel = viewModel(key = "challenge_detail_$challengeId") {
-                ChallengeDetailViewModel(challengeId = challengeId)
+                ChallengeDetailViewModel(
+                    challengeId = challengeId,
+                    getChallengeDetailUseCase = ChallengeContainer.getChallengeDetailUseCase,
+                    getVerificationsUseCase = ChallengeContainer.getVerificationsUseCase,
+                    participateChallengeUseCase = ChallengeContainer.participateChallengeUseCase,
+                    leaveChallengeUseCase = ChallengeContainer.leaveChallengeUseCase,
+                )
             }
             val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
 

@@ -1,7 +1,7 @@
 package com.li_routi.core.data.network.dto.response
 
-/** GET /api/challenges 응답의 챌린지 카드 한 건. */
-data class ChallengeSummaryResponse(
+/** GET /api/challenges/{challengeId} 응답 result. */
+data class ChallengeDetailResponse(
     val challengeId: Long,
     val name: String,
     val description: String,
@@ -9,6 +9,8 @@ data class ChallengeSummaryResponse(
     val category: String,
     val routineCycle: String,
     val reward: Int,
+    val participating: Boolean,
     val participantCount: Long,
     val verificationPostCount: Long,
+    val todayCompletionCount: Long,
 )
