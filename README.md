@@ -8,6 +8,7 @@
 
 Li-routi(리루티)는 사용자가 개인 루틴을 만들고 사진으로 인증하며, 챌린지에 참여하거나
 친구와 그룹 루틴 방(모임)을 꾸려 함께 습관을 이어갈 수 있도록 돕는 Android 애플리케이션입니다.
+Figma: https://www.figma.com/design/VzJt8ozfEDxZJVf7GDtebx/%EB%A6%AC%EB%A3%A8%ED%8B%B0-%EC%99%80%EC%9D%B4%EC%96%B4%ED%94%84%EB%A0%88%EC%9E%84?node-id=2150-24226&p=f&m=dev
 
 ---
 
@@ -24,10 +25,10 @@ Li-routi(리루티)는 사용자가 개인 루틴을 만들고 사진으로 인�
 ## 🛠 기술 스택 및 환경
 
 - **Language**
-  - Kotlin
+  - Kotlin 2.2.10
 
 - **UI**
-  - Jetpack Compose
+  - Jetpack Compose (Compose BOM 2024.09.00)
   - Material3
 
 - **Architecture**
@@ -35,11 +36,14 @@ Li-routi(리루티)는 사용자가 개인 루틴을 만들고 사진으로 인�
   - Multi-Module (core / feature)
 
 - **주요 라이브러리**
-  - Navigation Compose
-  - ViewModel
-  - StateFlow
-  - Coroutines
-  - Retrofit2 + OkHttp + Gson
+  - Navigation Compose 2.9.3
+  - Lifecycle(ViewModel) 2.9.2
+  - Coroutines 1.10.2
+  - Retrofit 2.11.0 + OkHttp 4.12.0 + Gson
+
+- **빌드 환경**
+  - AGP 9.1.1
+  - compileSdk / targetSdk 36, minSdk 24
 
 - **의존성 관리**
   - `core:data`의 `NetworkModule`/`XxxContainer` 기반 수동 DI
@@ -67,7 +71,7 @@ Li-routi(리루티)는 사용자가 개인 루틴을 만들고 사진으로 인�
     ├── onboarding/                # 온보딩 — 구현 예정
     ├── home/                      # 홈, 내 루틴, 루틴 인증(촬영/업로드)
     ├── grouproutine/               # 그룹 루틴(모임) 목록/상세, 방 만들기, 초대코드 참여
-    ├── challenge/                  # 챌린지 메인/찾아보기/상세
+    ├── challenge/                  # 챌린지 메인/찾아보기/상세 (MVP)
     ├── shopping/                  # 상점, 재화 구매 — 앱 내비게이션 연결 예정
     └── mypage/                    # 마이페이지 — 구현 예정
 ```

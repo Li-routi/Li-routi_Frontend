@@ -15,6 +15,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -35,14 +36,8 @@ import com.li_routi.core.designsystem.component.LiroutiSearchField
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
-
-// 챌린지에 딸린 루틴 하나. categories가 여러 개일 수 있음 (하나의 챌린지에 여러 카테고리 매핑 가능).
-data class RoutineUiModel(
-    val id: Long,
-    val title: String,
-    val categories: List<String>,
-    val badge: String,
-)
+import com.li_routi.feature.challenge.vm.ChallengeUiState
+import com.li_routi.feature.challenge.vm.RoutineUiModel
 
 private val filterOptions = listOf("전체", "건강", "운동", "공부", "생활", "취미")
 
@@ -50,7 +45,7 @@ private val filterOptions = listOf("전체", "건강", "운동", "공부", "생�
 // routines가 비어있으면 2187:37494(빈 상태)를, 있으면 2380:37243(리스트)를 보여줍니다.
 @Composable
 fun ChallengeScreen(
-    routines: List<RoutineUiModel>,
+    uiState: ChallengeUiState,
     onFindNewChallengeClick: () -> Unit,
     onTabSelected: (AppBottomTab) -> Unit,
 ) {
@@ -81,10 +76,18 @@ fun ChallengeScreen(
                 )
             }
 
-            if (routines.isEmpty()) {
-                EmptyChallengeContent(onFindNewChallengeClick = onFindNewChallengeClick)
-            } else {
-                ChallengeListContent(routines = routines)
+            when {
+                uiState.isLoading -> {
+                    Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        CircularProgressIndicator(color = LiroutiTheme.colors.labelDefault)
+                    }
+                }
+                uiState.routines.isEmpty() -> {
+                    EmptyChallengeContent(onFindNewChallengeClick = onFindNewChallengeClick)
+                }
+                else -> {
+                    ChallengeListContent(routines = uiState.routines)
+                }
             }
         }
 

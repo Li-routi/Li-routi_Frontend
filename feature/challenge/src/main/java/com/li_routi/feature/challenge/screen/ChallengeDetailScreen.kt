@@ -18,6 +18,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -49,6 +50,7 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.challenge.component.CertificationCard
 import com.li_routi.feature.challenge.navigation.ChallengeDetailScreenActions
 import com.li_routi.feature.challenge.vm.CertificationTab
+import com.li_routi.feature.challenge.vm.CertificationUiModel
 import com.li_routi.feature.challenge.vm.ChallengeDetailUiState
 
 // 챌린지 대표 이미지 자리의 배경. Figma 목업 기준 옅은 블루 톤(디자인 시스템에 대응하는 시맨틱 컬러 없음).
@@ -64,6 +66,18 @@ fun ChallengeDetailScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    if (uiState.isLoading) {
+        Box(
+            modifier = modifier
+                .fillMaxSize()
+                .background(LiroutiTheme.colors.backgroundDefault),
+            contentAlignment = Alignment.Center,
+        ) {
+            CircularProgressIndicator(color = LiroutiTheme.colors.labelDefault)
+        }
+        return
+    }
+
     // 더보기 바텀시트 노출 여부는 화면 로컬 UI 상태(서버/재사용 데이터가 아님).
     var showMoreSheet by remember { mutableStateOf(false) }
     val listState = rememberLazyListState()
@@ -309,12 +323,34 @@ private object PreviewChallengeDetailScreenActions : ChallengeDetailScreenAction
     override fun onLeaveChallengeClick() = Unit
 }
 
+private val PreviewCertifications = List(4) { index ->
+    CertificationUiModel(
+        id = index.toLong(),
+        authorName = "민지",
+        content = "물 마시기 1일차 입니다~ 다들 열심히 하고 있지?",
+        timeLabel = "9시간 전",
+    )
+}
+
+private val PreviewChallengeDetailUiState = ChallengeDetailUiState(
+    challengeId = 1L,
+    isLoading = false,
+    title = "우유 한잔 마시기",
+    badge = "매일 루틴",
+    description = "매일 우유를 마시며 건강 관리를 해요",
+    participantCount = 300,
+    activityCount = 14000,
+    postCount = 80,
+    allCertifications = PreviewCertifications,
+    allHasNext = false,
+)
+
 @Preview(showBackground = true, heightDp = 900, name = "1. 참여 전")
 @Composable
 private fun ChallengeDetailScreenNotJoinedPreview() {
     LiroutiFrontendTheme {
         ChallengeDetailScreen(
-            uiState = ChallengeDetailUiState(challengeId = 1L),
+            uiState = PreviewChallengeDetailUiState,
             actions = PreviewChallengeDetailScreenActions,
             onBackClick = {},
         )
@@ -326,7 +362,19 @@ private fun ChallengeDetailScreenNotJoinedPreview() {
 private fun ChallengeDetailScreenJoinedPreview() {
     LiroutiFrontendTheme {
         ChallengeDetailScreen(
-            uiState = ChallengeDetailUiState(challengeId = 1L, isJoined = true),
+            uiState = PreviewChallengeDetailUiState.copy(isJoined = true),
+            actions = PreviewChallengeDetailScreenActions,
+            onBackClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 900, name = "3. 로딩")
+@Composable
+private fun ChallengeDetailScreenLoadingPreview() {
+    LiroutiFrontendTheme {
+        ChallengeDetailScreen(
+            uiState = ChallengeDetailUiState(challengeId = 1L, isLoading = true),
             actions = PreviewChallengeDetailScreenActions,
             onBackClick = {},
         )
