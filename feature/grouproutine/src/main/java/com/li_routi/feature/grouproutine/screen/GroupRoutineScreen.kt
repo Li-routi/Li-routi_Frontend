@@ -1734,14 +1734,11 @@ private fun TodoRow(
             .fillMaxWidth()
             .height(56.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(10.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Checkbox(
-            checked = todo.isDone,
-            onCheckedChange = onCheckedChange,
-            colors = CheckboxDefaults.colors(checkedColor = PrimaryNormal, uncheckedColor = BorderStrong),
-            modifier = Modifier.size(22.dp),
-        )
+        Box(modifier = Modifier.clickable { onCheckedChange(!todo.isDone) }) {
+            SmallSquareCheckbox(checked = todo.isDone, modifier = Modifier.size(16.dp))
+        }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = todo.title,
@@ -1749,13 +1746,30 @@ private fun TodoRow(
                 style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
                 maxLines = 1,
             )
-            if (!todo.isDone) {
-                Text(
-                    text = "마감 ${todo.deadline}  |  ${todo.category}",
-                    color = LabelInfo,
-                    style = LiroutiTheme.typography.caption,
-                    maxLines = 1,
-                )
+              if (!todo.isDone) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    Text(
+                        text = "마감 ${todo.deadline}",
+                        color = LabelInfo,
+                        style = LiroutiTheme.typography.caption,
+                        maxLines = 1,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(10.dp)
+                            .background(BorderDefault),
+                    )
+                    Text(
+                        text = todo.category,
+                        color = LabelInfo,
+                        style = LiroutiTheme.typography.caption,
+                        maxLines = 1,
+                    )
+                }
             }
         }
         if (todo.isDone) {
@@ -1769,7 +1783,7 @@ private fun TodoRow(
                     .padding(horizontal = 7.dp, vertical = 3.dp),
             )
         } else {
-            Text(text = "□", color = LabelInfo, fontSize = 14.sp)
+            Text(text = "▣", color = LabelInfo, fontSize = 18.sp)
         }
     }
 }
