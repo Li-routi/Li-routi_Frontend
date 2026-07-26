@@ -710,7 +710,12 @@ private fun CreateRoutineOptionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(modifier = Modifier.clickable(onClick = onCheckClick)) {
+        Box(
+            modifier = Modifier.clickable {
+                onCheckClick()
+                onSettingClick()
+            },
+        ) {
             SmallSquareCheckbox(checked = option.isSelected)
         }
         Text(
