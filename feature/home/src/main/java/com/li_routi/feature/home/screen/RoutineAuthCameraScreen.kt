@@ -8,6 +8,7 @@ import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -23,7 +24,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.WindowInsets
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -36,9 +36,11 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
@@ -47,7 +49,7 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
-import com.li_routi.core.designsystem.component.DsPlaceholder
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.component.RoutineAuthCameraPreview
@@ -116,12 +118,14 @@ fun RoutineAuthCameraScreen(
                         .padding(horizontal = 16.dp, vertical = 10.dp),
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
-                    DsPlaceholder(
-                        componentName = "Icon/chevron--left",
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clickable(onClick = actions::onBackClick),
-                    )
+                    Image(
+            painter = painterResource(id = R.drawable.chevron__left),
+            contentDescription = "뒤로가기",
+            modifier = Modifier
+                .size(20.dp)
+                .clickable(onClick = actions::onBackClick),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
+        )
                     Text(
                         text = "루틴 인증하기",
                         style = LiroutiTheme.typography.heading2,
@@ -145,7 +149,7 @@ fun RoutineAuthCameraScreen(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 CameraControlAction(
-                    iconComponentName = "Icon/refresh",
+                    iconResId = R.drawable.cameraswitch,
                     label = "전환",
                     onClick = {
                         lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
@@ -155,9 +159,7 @@ fun RoutineAuthCameraScreen(
                         }
                     },
                 )
-                DsPlaceholder(
-                    componentName = "Button_Filled/shutter",
-                    shape = CircleShape,
+                Box(
                     modifier = Modifier
                         .size(64.dp)
                         .clickable(enabled = !isCapturing && hasCameraPermission) {
@@ -176,9 +178,21 @@ fun RoutineAuthCameraScreen(
                                 },
                             )
                         },
-                )
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Image(
+                        painter = painterResource(id = R.drawable.shutter__outer),
+                        contentDescription = null,
+                        modifier = Modifier.size(64.dp),
+                    )
+                    Image(
+                        painter = painterResource(id = R.drawable.shutter),
+                        contentDescription = "촬영",
+                        modifier = Modifier.size(52.dp),
+                    )
+                }
                 CameraControlAction(
-                    iconComponentName = "Icon/flash--filled",
+                    iconResId = R.drawable.flash,
                     label = if (flashMode == ImageCapture.FLASH_MODE_ON) "플래시 켜짐" else "플래시",
                     onClick = {
                         flashMode = if (flashMode == ImageCapture.FLASH_MODE_OFF) {
@@ -263,7 +277,7 @@ private fun CameraPermissionDenied(
 
 @Composable
 private fun CameraControlAction(
-    iconComponentName: String,
+    @androidx.annotation.DrawableRes iconResId: Int,
     label: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -272,9 +286,11 @@ private fun CameraControlAction(
         modifier = modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        DsPlaceholder(
-            componentName = iconComponentName,
+        Image(
+            painter = painterResource(id = iconResId),
+            contentDescription = label,
             modifier = Modifier.size(24.dp),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(

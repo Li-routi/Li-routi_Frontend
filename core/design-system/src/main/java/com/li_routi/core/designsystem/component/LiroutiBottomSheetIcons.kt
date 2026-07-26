@@ -31,7 +31,7 @@ internal fun DrawScope.drawCloseIcon(color: Color) {
 }
 
 @Composable
-internal fun LiroutiCheckmarkIcon(
+fun LiroutiCheckmarkIcon(
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
 ) {
@@ -55,7 +55,7 @@ internal fun LiroutiCheckmarkIcon(
 }
 
 @Composable
-internal fun LiroutiChevronRightIcon(
+fun LiroutiChevronRightIcon(
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
 ) {
@@ -74,6 +74,54 @@ internal fun LiroutiChevronRightIcon(
                 cap = StrokeCap.Round,
                 join = StrokeJoin.Round,
             ),
+        )
+    }
+}
+
+@Composable
+fun LiroutiChevronLeftIcon(
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+) {
+    Canvas(modifier = modifier) {
+        val strokeColor = if (color == Color.Unspecified) Color.Black else color
+        val path = Path().apply {
+            moveTo(size.width * 0.625f, size.height * 0.1875f)
+            lineTo(size.width * 0.3125f, size.height * 0.5f)
+            lineTo(size.width * 0.625f, size.height * 0.8125f)
+        }
+        drawPath(
+            path = path,
+            color = strokeColor,
+            style = Stroke(
+                width = 1.6.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round,
+            ),
+        )
+    }
+}
+
+@Composable
+fun LiroutiPlusIcon(
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+) {
+    Canvas(modifier = modifier) {
+        val strokeColor = if (color == Color.Unspecified) Color.Black else color
+        drawLine(
+            color = strokeColor,
+            start = Offset(size.width / 2f, size.height * 0.15f),
+            end = Offset(size.width / 2f, size.height * 0.85f),
+            strokeWidth = 1.6.dp.toPx(),
+            cap = StrokeCap.Round,
+        )
+        drawLine(
+            color = strokeColor,
+            start = Offset(size.width * 0.15f, size.height / 2f),
+            end = Offset(size.width * 0.85f, size.height / 2f),
+            strokeWidth = 1.6.dp.toPx(),
+            cap = StrokeCap.Round,
         )
     }
 }

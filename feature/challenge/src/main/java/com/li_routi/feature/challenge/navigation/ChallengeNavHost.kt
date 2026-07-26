@@ -12,11 +12,14 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.data.di.ChallengeContainer
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.feature.challenge.screen.ChallengeDetailScreen
 import com.li_routi.feature.challenge.screen.ChallengeScreen
 import com.li_routi.feature.challenge.screen.FindChallengeScreen
 import com.li_routi.feature.challenge.vm.ChallengeDetailViewModel
+import com.li_routi.feature.challenge.vm.FindChallengeViewModel
 
 private const val RouteChallengeHome = "challenge_home"
 private const val RouteFindChallenge = "challenge_find"
@@ -31,6 +34,7 @@ private const val RouteChallengeDetail = "challenge_detail/{$ArgChallengeId}"
  */
 @Composable
 fun ChallengeNavHost(
+    onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -45,14 +49,23 @@ fun ChallengeNavHost(
                 onFindNewChallengeClick = {
                     navController.navigate(RouteFindChallenge)
                 },
+                onTabSelected = onTabSelected,
             )
         }
         composable(RouteFindChallenge) {
+            val findChallengeViewModel: FindChallengeViewModel = viewModel {
+                FindChallengeViewModel(ChallengeContainer.getChallengesUseCase)
+            }
+            val findChallengeUiState by findChallengeViewModel.uiState.collectAsStateWithLifecycle()
+
             FindChallengeScreen(
+                uiState = findChallengeUiState,
+                actions = findChallengeViewModel,
                 onBackClick = { navController.popBackStack() },
                 onChallengeClick = { challengeId ->
                     navController.navigate("challenge_detail/$challengeId")
                 },
+                onTabSelected = onTabSelected,
             )
         }
         composable(

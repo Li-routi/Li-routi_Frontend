@@ -1,8 +1,10 @@
 package com.li_routi.feature.shopping.component
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,11 +22,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.DsPlaceholder
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -35,10 +38,6 @@ data class ShopItemUiModel(
     val price: Int,
 )
 
-/**
- * Preview/개발 확인용 샘플 데이터(8건, Figma `item-coin-3` 인스턴스 개수와 동일). 실제 데이터 연동은
- * 이번 범위 제외.
- */
 val SampleShopItems: List<ShopItemUiModel> = List(8) { index ->
     ShopItemUiModel(id = "item_$index", name = "아이템 ${index + 1}", price = 600)
 }
@@ -46,12 +45,13 @@ val SampleShopItems: List<ShopItemUiModel> = List(8) { index ->
 /**
  * 상점 아이템 그리드 (Figma node `2299:23502`, 4열 x 2행).
  *
- * 썸네일은 비-DS 이미지 자산이라 단순 [Box]로, 가격 옆 다이아 아이콘은 Design System instance라
- * [DsPlaceholder]로 대체한다. 가격 텍스트만 실제 구현.
+ * 탭 → [selectedItemId]에 파란 테두리(선택됨). 재화구매 리스트와 동일한 선택 스타일.
  */
 @Composable
 fun ShopItemGrid(
     items: List<ShopItemUiModel>,
+    selectedItemId: String?,
+    onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LazyVerticalGrid(
@@ -61,25 +61,41 @@ fun ShopItemGrid(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         items(items = items, key = { it.id }) { item ->
-            ShopItemCell(item = item)
+            ShopItemCell(
+                item = item,
+                selected = item.id == selectedItemId,
+                onClick = { onItemClick(item.id) },
+            )
         }
     }
 }
 
 @Composable
-private fun ShopItemCell(item: ShopItemUiModel, modifier: Modifier = Modifier) {
+private fun ShopItemCell(
+    item: ShopItemUiModel,
+    selected: Boolean,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val borderWidth = if (selected) 1.5.dp else 1.dp
+    val borderColor = if (selected) {
+        LiroutiTheme.colors.primaryNormal
+    } else {
+        LiroutiTheme.colors.borderSub
+    }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
             .border(
-                border = BorderStroke(1.dp, LiroutiTheme.colors.borderSub),
+                border = BorderStroke(borderWidth, borderColor),
                 shape = RoundedCornerShape(6.dp),
             )
+            .clickable(onClick = onClick)
             .padding(top = 8.dp, bottom = 12.dp, start = 10.dp, end = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        // 아이템 썸네일 (비-DS 이미지 자산) — 실제 에셋 반영은 이번 범위 제외
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -89,8 +105,9 @@ private fun ShopItemCell(item: ShopItemUiModel, modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
-            DsPlaceholder(
-                componentName = "Diamond",
+            Image(
+                painter = painterResource(id = R.drawable.diamond_blue),
+                contentDescription = null,
                 modifier = Modifier.size(16.dp),
             )
             Spacer(modifier = Modifier.width(4.dp))
@@ -103,10 +120,26 @@ private fun ShopItemCell(item: ShopItemUiModel, modifier: Modifier = Modifier) {
     }
 }
 
-@Preview(showBackground = true, heightDp = 320)
+@Preview(showBackground = true, heightDp = 320, name = "기본")
 @Composable
 private fun ShopItemGridPreview() {
     LiroutiFrontendTheme {
-        ShopItemGrid(items = SampleShopItems)
+        ShopItemGrid(
+            items = SampleShopItems,
+            selectedItemId = null,
+            onItemClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 320, name = "선택됨")
+@Composable
+private fun ShopItemGridSelectedPreview() {
+    LiroutiFrontendTheme {
+        ShopItemGrid(
+            items = SampleShopItems,
+            selectedItemId = "item_1",
+            onItemClick = {},
+        )
     }
 }

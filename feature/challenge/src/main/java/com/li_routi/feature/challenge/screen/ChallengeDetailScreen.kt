@@ -1,5 +1,6 @@
 package com.li_routi.feature.challenge.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -13,19 +14,11 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
-import androidx.compose.material.icons.automirrored.filled.KeyboardArrowRight
-import androidx.compose.material.icons.filled.FavoriteBorder
-import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -34,36 +27,32 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.sp
+import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.component.LiroutiBadge
+import com.li_routi.core.designsystem.component.LiroutiBadgeColor
+import com.li_routi.core.designsystem.component.LiroutiBadgeSize
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
+import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
+import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
+import com.li_routi.core.designsystem.component.LiroutiLineTab
+import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
+import com.li_routi.core.designsystem.component.LiroutiRoutineStatsRow
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
+import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.feature.challenge.component.CertificationCard
 import com.li_routi.feature.challenge.navigation.ChallengeDetailScreenActions
 import com.li_routi.feature.challenge.vm.CertificationTab
-import com.li_routi.feature.challenge.vm.CertificationUiModel
 import com.li_routi.feature.challenge.vm.ChallengeDetailUiState
 
-// ============================================================
-// 색상 (Design Token 프레임 기준, 다른 챌린지 화면들과 동일한 값) - 컴포넌트 라이브러리가
-// 완성되면 AppColors 오브젝트로 옮기면 됩니다. 지금은 로컬 상수로 둡니다.
-// ============================================================
-private val BgDefault = Color(0xFFFFFFFF)
-private val BgSecondary = Color(0xFFF4F7FB)
-private val BgFill = Color(0xFFFAFAFA)
-private val BorderDefault = Color(0xFFDBDCDF)
-private val LabelDefault = Color(0xFF171719)
-private val LabelSub = Color(0xFF46474C)
-private val LabelInfo = Color(0xFF878A93)
-private val PrimaryNormal = Color(0xFF338AFF)
-private val SecondaryNormal = Color(0xFF00AAD2)
+// 챌린지 대표 이미지 자리의 배경. Figma 목업 기준 옅은 블루 톤(디자인 시스템에 대응하는 시맨틱 컬러 없음).
 private val HeroBg = Color(0xFFF3F6FF)
-private val ButtonLabel = Color(0xFFF7F7F8)
 
 // Figma node: 2380:40108(참여 전) / 2372:49856(참여 후, 버튼 문구만 다름) / 2222:22836(더보기 바텀시트)
 // "챌린지 찾아보기" 카드를 눌렀을 때 넘어오는 챌린지 상세 화면. 화면 전체가 스크롤된다(LazyColumn).
@@ -80,7 +69,6 @@ fun ChallengeDetailScreen(
     val listState = rememberLazyListState()
 
     // 리스트 끝에 가까워지면 다음 페이지를 불러오는 간단한 무한 스크롤 트리거.
-    // TODO: 컴포넌트/유틸 완성되면 공용 페이지네이션 헬퍼로 교체
     val shouldLoadMore by remember {
         derivedStateOf {
             val layoutInfo = listState.layoutInfo
@@ -98,7 +86,7 @@ fun ChallengeDetailScreen(
         state = listState,
         modifier = modifier
             .fillMaxSize()
-            .background(BgDefault),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         item {
             ChallengeHeroSection(
@@ -115,14 +103,22 @@ fun ChallengeDetailScreen(
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 ChallengeInfoSection(uiState = uiState, onJoinClick = actions::onJoinClick)
-                ChallengeStatsRow(uiState = uiState)
+                LiroutiRoutineStatsRow(
+                    participants = uiState.participantCount.toString(),
+                    activity = uiState.activityCount.toString(),
+                    posts = uiState.postCount.toString(),
+                )
             }
         }
         item {
             Spacer(modifier = Modifier.height(24.dp))
-            ChallengeCertificationTabRow(
-                selectedTab = uiState.selectedTab,
-                onTabSelected = actions::onTabSelected,
+            LiroutiLineTab(
+                tabs = listOf("인증", "내 인증 보기"),
+                selectedIndex = if (uiState.selectedTab == CertificationTab.All) 0 else 1,
+                onTabSelected = { index ->
+                    actions.onTabSelected(if (index == 0) CertificationTab.All else CertificationTab.Mine)
+                },
+                equalWidth = true,
             )
             Spacer(modifier = Modifier.height(20.dp))
         }
@@ -156,8 +152,15 @@ fun ChallengeDetailScreen(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(text = "챌린지 나가기", fontSize = 16.sp, fontWeight = FontWeight.Medium, color = LabelDefault)
-                Icon(imageVector = Icons.AutoMirrored.Filled.KeyboardArrowRight, contentDescription = null, tint = LabelDefault)
+                Text(
+                    text = "챌린지 나가기",
+                    style = LiroutiTheme.typography.body1Medium,
+                    color = LiroutiTheme.colors.labelDefault,
+                )
+                LiroutiChevronRightIcon(
+                    modifier = Modifier.size(24.dp),
+                    color = LiroutiTheme.colors.labelDefault,
+                )
             }
         }
     }
@@ -180,22 +183,30 @@ private fun ChallengeHeroSection(
             modifier = Modifier
                 .align(Alignment.Center)
                 .size(84.dp)
-                .background(BgSecondary, RoundedCornerShape(8.dp)),
+                .background(LiroutiTheme.colors.backgroundSecondary, RoundedCornerShape(8.dp)),
         )
 
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 8.dp, vertical = 4.dp),
+                .padding(horizontal = 16.dp, vertical = 12.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            IconButton(onClick = onBackClick) {
-                Icon(imageVector = Icons.AutoMirrored.Filled.ArrowBack, contentDescription = "뒤로가기")
-            }
-            IconButton(onClick = onMoreClick) {
-                Icon(imageVector = Icons.Default.MoreVert, contentDescription = "더보기")
-            }
+            LiroutiChevronLeftIcon(
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable(onClick = onBackClick),
+                color = LiroutiTheme.colors.labelDefault,
+            )
+            Image(
+                painter = painterResource(id = R.drawable.overflow_menu__vertical),
+                contentDescription = "더보기",
+                modifier = Modifier
+                    .size(24.dp)
+                    .clickable(onClick = onMoreClick),
+                colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelDefault),
+            )
         }
     }
 }
@@ -208,32 +219,11 @@ private fun ChallengeInfoSection(
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-            Box(
-                modifier = Modifier
-                    .background(BgSecondary, RoundedCornerShape(6.dp))
-                    .padding(horizontal = 7.dp, vertical = 2.dp),
-            ) {
-                Text(text = uiState.badge, fontSize = 11.sp, color = SecondaryNormal)
-            }
-            Text(text = uiState.title, fontWeight = FontWeight.Bold, fontSize = 16.sp, color = LabelDefault)
-            Text(text = uiState.description, fontSize = 12.sp, color = LabelDefault)
-        }
-
-        // "참여하기" 탭 시 참여 상태로 바뀌고 서버에 참여 신호를 보낸다(ViewModel에서 처리, 이번 범위는 로컬 상태만).
-        // 참여 후 "인증하기"는 별도 인증 업로드 플로우로 연결될 예정 — 이번 범위 제외.
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .background(PrimaryNormal, RoundedCornerShape(6.dp))
-                .clickable(enabled = !uiState.isJoined, onClick = onJoinClick),
-            contentAlignment = Alignment.Center,
-        ) {
+            LiroutiBadge(text = uiState.badge, color = LiroutiBadgeColor.Blue, size = LiroutiBadgeSize.XSmall)
             Text(
-                text = if (uiState.isJoined) "인증하기" else "참여하기",
-                fontSize = 14.sp,
-                fontWeight = FontWeight.Medium,
-                color = ButtonLabel,
+                text = uiState.title,
+                style = LiroutiTheme.typography.body1SemiBold,
+                color = LiroutiTheme.colors.labelDefault,
             )
         }
     }
@@ -301,97 +291,14 @@ private fun ChallengeCertificationTabRow(
                 modifier = Modifier.weight(1f),
             )
         }
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(1.dp)
-                .background(BorderDefault),
-        )
-    }
-}
 
-@Composable
-private fun CertificationTabItem(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Column(
-        modifier = modifier
-            .clickable(onClick = onClick)
-            .padding(top = 14.dp, bottom = if (selected) 0.dp else 14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Text(
-            text = label,
-            fontSize = 14.sp,
-            fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            color = if (selected) LabelDefault else LabelInfo,
+        // "참여하기" 탭 시 참여 상태로 바뀌고 서버에 참여 신호를 보낸다(ViewModel에서 처리, 이번 범위는 로컬 상태만).
+        // 참여 후 "인증하기"는 별도 인증 업로드 플로우로 연결될 예정 — 이번 범위 제외. 버튼 색은 참여 여부와
+        // 무관하게 항상 파란색으로 유지하고(Figma 두 상태 모두 동일), 클릭만 참여 전에만 동작하도록 막는다.
+        LiroutiPrimaryButton(
+            text = if (uiState.isJoined) "인증하기" else "참여하기",
+            onClick = { if (!uiState.isJoined) onJoinClick() },
         )
-        if (selected) {
-            Spacer(modifier = Modifier.height(12.dp))
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(2.dp)
-                    .background(LabelDefault),
-            )
-        }
-    }
-}
-
-// 인증 게시글 카드 한 건 (Figma "Certification_IMG", node 2372:39010).
-@Composable
-private fun CertificationCard(
-    certification: CertificationUiModel,
-    modifier: Modifier = Modifier,
-) {
-    Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            // 프로필 이미지(비-DS 이미지 자산) — 실제 에셋은 백엔드에서 제공, 지금은 자리만
-            Box(modifier = Modifier.size(32.dp).background(BgSecondary, CircleShape))
-            Text(
-                text = certification.authorName,
-                fontWeight = FontWeight.Bold,
-                fontSize = 14.sp,
-                color = LabelDefault,
-                modifier = Modifier.weight(1f),
-            )
-            // 게시글별 수정/삭제/신고 메뉴는 이후 단계에서 연결 — 지금은 아이콘만
-            Icon(
-                imageVector = Icons.Default.MoreVert,
-                contentDescription = null,
-                tint = LabelInfo,
-                modifier = Modifier.size(20.dp),
-            )
-        }
-        Text(text = certification.content, fontSize = 14.sp, color = LabelDefault)
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            // 인증 사진(비-DS 이미지 자산) — 실제 에셋은 백엔드에서 제공, 지금은 자리만
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(144.dp)
-                    .background(BgSecondary, RoundedCornerShape(6.dp)),
-            )
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
-                    Icon(
-                        imageVector = Icons.Default.FavoriteBorder,
-                        contentDescription = null,
-                        tint = LabelDefault,
-                        modifier = Modifier.size(16.dp),
-                    )
-                    Text(text = certification.likeCount.toString(), fontSize = 13.sp, fontWeight = FontWeight.Medium, color = LabelDefault)
-                }
-                Text(text = certification.timeLabel, fontSize = 13.sp, color = LabelInfo)
-            }
-        }
     }
 }
 

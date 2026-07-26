@@ -1,23 +1,23 @@
 # Li-routi Frontend
 
-> 집안일 루틴과 소모품을 관리하고, 필요한 상품까지 연결해주는 Android 애플리케이션
+> 루틴 인증·챌린지·그룹 루틴(모임)으로 습관 형성을 돕는 Android 애플리케이션
 
 ---
 
 # 프로젝트 소개
 
-Li-routi는 사용자의 집안일 루틴과 소모품 사용 주기를 관리하고,
-필요한 시점에 쇼핑 기능과 연계하여 효율적인 생활을 돕는 Android 애플리케이션입니다.
+Li-routi(리루티)는 사용자가 개인 루틴을 만들고 사진으로 인증하며, 챌린지에 참여하거나
+친구와 그룹 루틴 방(모임)을 꾸려 함께 습관을 이어갈 수 있도록 돕는 Android 애플리케이션입니다.
 
 ---
 
 ### 💙 팀원 소개
 
-|                                  김지아 (팀장)                                  |                                  강수아                                  |                                  이동진                                  |                                  정규은                                  |                                  최종희                                  |                                  임은지                                  |
-|:---------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|
-| <img src="https://github.com/Lemon0610.png" width="150" height="150">       | <img src="https://github.com/sua710.png" width="150" height="150">        | <img src="https://github.com/East0219.png" width="150" height="150">      | <img src="https://github.com/jeongkyueun.png" width="150" height="150">   | <img src="https://github.com/jongheecode.png" width="150" height="150">   | <img src="https://github.com/mookeunji05.png" width="150" height="150">   |
+|                                  김지아 (팀장)                                  |                                  강수아                                  |                                  이동진                                  |                                   정규은                                   |                                  최종희                                  |                                   임은지                                   |
+|:---------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-----------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-----------------------------------------------------------------------:|
+| <img src="https://github.com/Lemon0610.png" width="150" height="150">       | <img src="https://github.com/sua710.png" width="150" height="150">        | <img src="https://github.com/East0219.png" width="150" height="150">      | <img src="https://github.com/jeongkyueun.png" width="150" height="150"> | <img src="https://github.com/jongheecode.png" width="150" height="150">   | <img src="https://github.com/mookeunji05.png" width="150" height="150"> |
 |                  [@Lemon0610](https://github.com/Lemon0610)                  |                 [@sua710](https://github.com/sua710)                  |                 [@East0219](https://github.com/East0219)                |             [@jeongkyueun](https://github.com/jeongkyueun)              |             [@jongheecode](https://github.com/jongheecode)              |             [@mookeunji05](https://github.com/mookeunji05)              |
-|                     스플래시, 로그인, 회원가입, 휴대폰 인증                     |                       메인 화면, 루틴 관리, 소모품 관리                       |                                   캘린더                                   |                     마이페이지, 주문내역, 정기구독, 결제수단                     |                              알림, 코치마크                              |                       쇼핑, 상품 검색, 장바구니, 결제                       |
+|                     챌린지 화면 구현, 앱 내비게이션                     |                       그룹 루틴(모임) 화면 구현                       |                                   홈 화면 구현                                   |                         공용 컴포넌트 구현, 마이페이지 화면 구현                         |                              홈 화면 구현, 컬러·타이포그래피                              |                          공용 컴포넌트 구현, 로그인 화면 구현                          |
 
 ---
 
@@ -39,9 +39,10 @@ Li-routi는 사용자의 집안일 루틴과 소모품 사용 주기를 관리�
   - ViewModel
   - StateFlow
   - Coroutines
-  - Hilt
-  - Retrofit2
-  - Coil
+  - Retrofit2 + OkHttp + Gson
+
+- **의존성 관리**
+  - `core:data`의 `NetworkModule`/`XxxContainer` 기반 수동 DI
 
 ---
 
@@ -62,11 +63,13 @@ Li-routi는 사용자의 집안일 루틴과 소모품 사용 주기를 관리�
 │   └── design-system/            # Theme, Color, Typography, 공용 컴포넌트
 │
 └── feature/
-    ├── login/                    # 로그인, 회원가입, 휴대폰 인증
-    ├── onboarding/                # 온보딩
-    ├── home/                      # 메인 화면, 루틴/소모품 관리
-    ├── shopping/                  # 쇼핑, 상품 검색, 장바구니, 결제
-    └── mypage/                    # 마이페이지, 주문내역, 정기구독
+    ├── login/                    # 로그인 — 구현 예정
+    ├── onboarding/                # 온보딩 — 구현 예정
+    ├── home/                      # 홈, 내 루틴, 루틴 인증(촬영/업로드)
+    ├── grouproutine/               # 그룹 루틴(모임) 목록/상세, 방 만들기, 초대코드 참여
+    ├── challenge/                  # 챌린지 메인/찾아보기/상세
+    ├── shopping/                  # 상점, 재화 구매 — 앱 내비게이션 연결 예정
+    └── mypage/                    # 마이페이지 — 구현 예정
 ```
 
 각 `feature` 모듈은 `component / navigation / screen / vm` 패키지로 구성합니다.
@@ -195,34 +198,28 @@ Li-routi는 사용자의 집안일 루틴과 소모품 사용 주기를 관리�
 
 # 화면 목록
 
-| 화면 이름 | 스크린 ID | 진입 경로 | 담당자 |
-|-----------|-----------|-----------|--------|
-| 스플래시 화면 | SplashScreen | 앱 실행 | 김지아 |
-| 로그인 화면 | LoginScreen | 앱 최초 진입 | 김지아 |
-| 회원가입 화면 | SignUpScreen | 로그인 → 회원가입 | 김지아 |
-| 휴대폰 인증 화면 | PhoneVerificationScreen | 회원가입 | 김지아 |
-| 코치마크 화면 | CoachMarkScreen | 최초 회원가입 완료 후 | 최종희 |
-| 메인 화면 | MainScreen | 로그인/코치마크 완료 | 강수아 |
-| 루틴 추가 화면 | RoutineCreateScreen | 메인, 캘린더 | 강수아 |
-| 루틴 수정 화면 | RoutineEditScreen | 캘린더 | 강수아 |
-| 소모품 추가 화면 | ItemCreateScreen | 메인, 캘린더 | 강수아 |
-| 소모품 수정 화면 | ItemEditScreen | 캘린더 | 강수아 |
-| 캘린더 화면 | CalendarScreen | 하단 네비게이션 | 이동진 |
-| 날짜 상세 BottomSheet | CalendarBottomSheet | 캘린더 날짜 선택 | 이동진 |
-| 쇼핑 메인 화면 | ShoppingScreen | 하단 네비게이션 | 임은지 |
-| 상품 검색 화면 | SearchScreen | 쇼핑 → 검색 | 임은지 |
-| 카테고리 상품 목록 | CategoryScreen | 쇼핑 → 카테고리 | 임은지 |
-| 상품 상세 화면 | ProductDetailScreen | 상품 선택 | 임은지 |
-| 장바구니 화면 | CartScreen | 쇼핑 | 임은지 |
-| 결제 화면 | PaymentScreen | 장바구니 / 바로구매 | 임은지 |
-| 결제 완료 화면 | PaymentCompleteScreen | 결제 완료 | 임은지 |
-| 마이페이지 | MyPageScreen | 하단 네비게이션 | 정규은 |
-| 주문내역 화면 | OrderHistoryScreen | 마이페이지 | 정규은 |
-| 정기구독 관리 | SubscriptionScreen | 마이페이지 | 정규은 |
-| 찜 목록 | WishlistScreen | 마이페이지 | 정규은 |
-| 결제수단 관리 | PaymentMethodScreen | 마이페이지 | 정규은 |
-| 알림함 | NotificationScreen | 상단 알림 버튼 | 최종희 |
-| 알림 설정 | NotificationSettingScreen | 알림함 | 최종희 |
+> 앱 시작 탭은 홈으로 고정되어 있습니다. 하단 GNB(홈 / 그룹 루틴 / 챌린지 / 마이)는
+> `app`의 `AppNavHost`가 직접 스위칭하며, 각 feature는 자기 화면만 노출합니다.
+
+| 화면 이름 | 스크린 ID | 진입 경로 | 담당자      |
+|-----------|-----------|-----------|----------|
+| 챌린지 메인 | ChallengeScreen | 챌린지 탭 (하단 GNB) | 김지아      |
+| 챌린지 찾아보기 | FindChallengeScreen | 챌린지 메인 → "새 챌린지 찾아보기" (백엔드 `GET /api/challenges` 연동) | 김지아      |
+| 챌린지 상세 | ChallengeDetailScreen | 챌린지 찾아보기 → 카드 탭 | 김지아      |
+| 홈 메인 | HomeScreen | 홈 탭 (하단 GNB) | 이동진, 최종희 |
+| 내 루틴 | MyRoutineScreen | 홈 → "내 루틴" 카드 | 이동진, 최종희 |
+| 루틴 인증 촬영 | RoutineAuthCameraScreen | 홈 스와이프 / 체크리스트 카메라 아이콘 | 이동진, 최종희 |
+| 루틴 인증 작성 | RoutineAuthUploadScreen | 루틴 인증 촬영 → 촬영 완료 | 이동진, 최종희 |
+| 모임 메인 | RoomListScreen | 그룹 루틴 탭 (하단 GNB) | 강수아      |
+| 모임방 상세 | RoomDetailScreen | 모임 메인 → 방 카드 탭 (채팅·인증·관리는 다음 단계에서 확장 예정) | 강수아      |
+| 방 만들기 | MakeRoomScreen | 홈/모임 메인 → `+` 메뉴 → "방 만들기" | 강수아      |
+| 초대코드 입력 | InviteCodeScreen | 홈/모임 메인 → `+` 메뉴 → "초대코드로 참여" | 강수아      |
+| 방 참여 확인 | JoinRoomConfirmDialog | 초대코드 입력 → 확인 | 강수아      |
+| 루틴 체크리스트(내 루틴 관리 / 방 루틴 추가 공용) | RoutineChecklistScreen 외 | 홈 `+` 메뉴 → "내 루틴 관리" / 방 만들기 → 다음 | 정규은, 임은지 |
+| 공용 하단 GNB | AppBottomNavBar | 홈/그룹 루틴/챌린지 루트 화면 공통 | 정규은, 임은지 |
+| 상점 / 재화 구매 | ShopScreen / CurrencyShopScreen | 앱 내비게이션 연결 예정 | 이동진, 최종희 |
+| 마이 | - | 마이 탭 (하단 GNB) — 화면 구현 예정 | 정규은      |
+| 로그인 / 온보딩 | - | 구현 예정 | 임은지      |
 
 ---
 
@@ -232,140 +229,76 @@ Li-routi는 사용자의 집안일 루틴과 소모품 사용 주기를 관리�
 앱 실행
 │
 ▼
-SplashScreen
-│
+MainActivity → AppNavHost
+│   ※ 시작 탭: 홈
 ▼
-저장된 로그인 여부 확인
-├───────────────┐
-│               │
-로그인 O        로그인 X
-│               │
-▼               ▼
-코치마크 완료?   LoginScreen
-   │               │
-┌──┴──────┐        │
-│         │        │
-YES       NO       │
-│         │        │
-▼         ▼        │
-Main   CoachMark   │
-│         │        │
-└─────┬───┘        │
-      ▼            │
-MainScreen   ◀─────┘
-
-
-==============================
-Main Navigation
-==============================
-```
-
-```text
-MainScreen
-├── CalendarScreen
-├── ShoppingScreen
-└── MyPageScreen
+하단 GNB (홈 / 그룹 루틴 / 챌린지 / 마이)
+├── 홈 탭        → HomeNavHost (시작 화면: HomeScreen)
+├── 그룹 루틴 탭  → GrouproutineRootNavHost (시작 화면: RoomListScreen)
+├── 챌린지 탭    → ChallengeNavHost (시작 화면: ChallengeScreen)
+└── 마이 탭      → placeholder
 ```
 
 ==============================
-로그인
+홈
 ==============================
 
 ```text
-LoginScreen
-├── 일반 로그인
-├── 카카오 로그인
-├── 구글 로그인
-└── 회원가입
-│
-▼
-SignUpScreen
-│
-▼
-PhoneVerificationScreen
-│
-▼
-CoachMarkScreen
-│
-▼
-MainScreen
+HomeScreen
+├── "내 루틴" 카드 → MyRoutineScreen
+├── "+" 메뉴 (AddMenuBottomSheet)
+│      ├── 내 루틴 관리 → RoutineChecklistScreen
+│      ├── 방 만들기 ─────────────┐ (그룹 루틴 탭으로 전환)
+│      └── 초대코드로 참여 ───────┤ (그룹 루틴 탭으로 전환)
+└── 스와이프 / 체크리스트 카메라 아이콘
+       │
+       ▼
+   RoutineAuthCameraScreen
+       │
+       ▼
+   RoutineAuthUploadScreen
 ```
 
 ==============================
-메인
+챌린지
 ==============================
 
 ```text
-MainScreen
-├── 루틴 추가
-├── 소모품 추가
-├── NotificationScreen
-└── CalendarScreen
+ChallengeScreen (챌린지 메인)
+└── "새 챌린지 찾아보기"
+       │
+       ▼
+   FindChallengeScreen
+       │
+       ▼ (카드 탭)
+   ChallengeDetailScreen
 ```
 
 ==============================
-캘린더
+그룹 루틴 (모임)
 ==============================
 
 ```text
-CalendarScreen
-├── 날짜 선택
+RoomListScreen (모임 메인)
+├── 참여 중인 방 카드 탭
 │      │
 │      ▼
-│ CalendarBottomSheet
-│      ├── 루틴 수정
-│      └── 소모품 수정
+│  RoomDetailScreen (채팅·인증·관리는 다음 단계에서 확장 예정)
 │
-├── 루틴 추가
-└── 소모품 추가
+└── "+" 메뉴
+       ├── 방 만들기
+       │      │
+       │      ▼
+       │  MakeRoomScreen → 방 루틴 추가(RoutineChecklistScreen)
+       │
+       └── 초대코드로 참여
+              │
+              ▼
+          InviteCodeScreen → JoinRoomConfirmDialog
 ```
 
-==============================
-쇼핑
-==============================
-
-```text
-ShoppingScreen
-├── SearchScreen
-├── CategoryScreen
-├── ProductDetailScreen
-│          │
-│          ├── CartScreen
-│          │      │
-│          │      ▼
-│          │ PaymentScreen
-│          │      │
-│          │      ▼
-│          │ PaymentCompleteScreen
-│          │
-│          └── 바로구매
-│                 │
-│                 ▼
-│            PaymentScreen
-│
-└── 장바구니
-```
-
-==============================
-마이페이지
-==============================
-
-```text
-MyPageScreen
-├── OrderHistoryScreen
-├── SubscriptionScreen
-├── WishlistScreen
-└── PaymentMethodScreen
-```
-
-==============================
-알림
-==============================
-
-```text
-NotificationScreen
-└── NotificationSettingScreen
-```
+> 모임 메인은 참여 중인 방을 카드로 보여주고, 방 만들기/초대코드 참여를 마치면 모임 메인으로 돌아옵니다.
+> 방 목록 조회 API 연동은 다음 단계로 진행할 예정입니다.
 
 ---
 
