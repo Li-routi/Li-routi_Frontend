@@ -1325,10 +1325,10 @@ private fun GroupChatScreen(
 ) {
     val routine = uiState.selectedRoutine ?: return
     val messages = listOf(
-        Triple("민지", "오늘 물 마시기 인증했어요!", false),
-        Triple("서현", "저녁 전에 스트레칭 같이 해요.", false),
-        Triple("나", "좋아요. 9시에 체크할게요.", true),
-        Triple("민지", "이번 주도 연속 달성 가봅시다!", false),
+        Triple("", "오늘 너무 힘들다", false),
+        Triple("", "루틴 못할 것 같은데", false),
+        Triple("오후 1:00", "나는 포기", false),
+        Triple("오후 1:02", "ㅃㄹ 하라고", true),
     )
 
     Box(
@@ -1338,26 +1338,17 @@ private fun GroupChatScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 72.dp, start = 16.dp, end = 16.dp, bottom = 104.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+            contentPadding = PaddingValues(top = 98.dp, start = 16.dp, end = 16.dp, bottom = 92.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
-            item {
-                Text(
-                    text = routine.title,
-                    color = LabelInfo,
-                    style = LiroutiTheme.typography.caption,
-                    modifier = Modifier.fillMaxWidth(),
-                    textAlign = TextAlign.Center,
-                )
-            }
-            items(messages) { (name, message, isMine) ->
-                ChatMessageBubble(name = name, message = message, isMine = isMine)
+            items(messages) { (time, message, isMine) ->
+                ChatMessageBubble(time = time, message = message, isMine = isMine)
             }
         }
 
         ChatInputBar(modifier = Modifier.align(Alignment.BottomCenter))
         GroupRoutineTopBar(
-            title = "그룹방 채팅",
+            title = routine.title,
             showBack = true,
             onBackClick = onBackClick,
             modifier = Modifier.align(Alignment.TopCenter),
@@ -1367,7 +1358,7 @@ private fun GroupChatScreen(
 
 @Composable
 private fun ChatMessageBubble(
-    name: String,
+    time: String,
     message: String,
     isMine: Boolean,
     modifier: Modifier = Modifier,
@@ -1375,24 +1366,44 @@ private fun ChatMessageBubble(
     Row(
         modifier = modifier.fillMaxWidth(),
         horizontalArrangement = if (isMine) Arrangement.End else Arrangement.Start,
+        verticalAlignment = Alignment.Bottom,
     ) {
-        Column(
-            modifier = Modifier
-                .fillMaxWidth(0.76f)
-                .clip(RoundedCornerShape(8.dp))
-                .background(if (isMine) PrimaryNormal else Color.White)
-                .padding(horizontal = 14.dp, vertical = 12.dp),
-            verticalArrangement = Arrangement.spacedBy(4.dp),
-        ) {
-            Text(
-                text = name,
-                color = if (isMine) Color.White.copy(alpha = 0.82f) else LabelInfo,
-                style = LiroutiTheme.typography.caption,
+        if (!isMine && time.isBlank()) {
+            Image(
+                painter = painterResource(id = R.drawable.img_group_routine_character),
+                contentDescription = null,
+                modifier = Modifier
+                    .size(40.dp)
+                    .clip(CircleShape)
+                    .background(Color.White),
             )
+            Spacer(modifier = Modifier.width(8.dp))
+        } else if (!isMine) {
+            Spacer(modifier = Modifier.width(48.dp))
+        }
+        if (isMine && time.isNotBlank()) {
             Text(
-                text = message,
-                color = if (isMine) Color.White else LabelDefault,
-                style = LiroutiTheme.typography.body3,
+                text = time,
+                color = LabelDefault,
+                style = LiroutiTheme.typography.caption,
+                modifier = Modifier.padding(end = 4.dp, bottom = 2.dp),
+            )
+        }
+        Text(
+            text = message,
+            color = if (isMine) Color.White else LabelDefault,
+            style = LiroutiTheme.typography.body3,
+            modifier = Modifier
+                .clip(RoundedCornerShape(12.dp))
+                .background(if (isMine) PrimaryNormal else Color.White)
+                .padding(horizontal = 16.dp, vertical = 8.dp),
+        )
+        if (!isMine && time.isNotBlank()) {
+            Text(
+                text = time,
+                color = LabelDefault,
+                style = LiroutiTheme.typography.caption,
+                modifier = Modifier.padding(start = 4.dp, bottom = 2.dp),
             )
         }
     }
@@ -1405,26 +1416,33 @@ private fun ChatInputBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .navigationBarsPadding()
             .background(Color.White)
             .border(1.dp, BorderDefault)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Box(
             modifier = Modifier
                 .weight(1f)
-                .height(42.dp)
+                .height(44.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(FillBackground)
+                .background(Color.White)
                 .border(1.dp, BorderDefault, RoundedCornerShape(6.dp))
-                .padding(horizontal = 14.dp),
+                .padding(horizontal = 16.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
-            Text(text = "메시지 입력", color = LabelInfo, style = LiroutiTheme.typography.body3)
+            Text(text = "메세지 보내기", color = LabelInfo, style = LiroutiTheme.typography.body3)
         }
-        Text(text = "전송", color = PrimaryNormal, style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold))
+        Box(
+            modifier = Modifier
+                .size(44.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0xFFD6E8FF)),
+            contentAlignment = Alignment.Center,
+        ) {
+            Text(text = "➤", color = PrimaryNormal, fontSize = 28.sp)
+        }
     }
 }
 
