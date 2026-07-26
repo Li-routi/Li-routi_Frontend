@@ -18,10 +18,12 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -1720,17 +1722,17 @@ private fun GroupSettingsScreen(
                     label = "방 알림 설정",
                     onClick = onRoomAlarmSettingsClick,
                 )
-                if (isLeader) SettingsSectionDivider()
+                SettingsSectionDivider()
             }
-            if (isLeader) {
-                item {
-                    SettingsSectionHeader(text = "초대 설정")
+            item {
+                SettingsSectionHeader(text = "초대 설정")
+                if (isLeader) {
                     InviteLockRow(
                         locked = uiState.isRoomLocked,
                         onClick = onRoomLockClick,
                     )
-                    InviteCodeRow(onClick = onInviteCodeCopyClick)
                 }
+                InviteCodeRow(onClick = onInviteCodeCopyClick)
             }
         }
 
@@ -2270,7 +2272,11 @@ private fun CertificationSummaryCard(
                 .background(Color(0xFFF3F4F5)),
             contentAlignment = Alignment.Center,
           ) {
-              Text(text = "🔥", fontSize = 22.sp)
+              Image(
+                  painter = painterResource(id = R.drawable.ic_group_routine_flame),
+                  contentDescription = null,
+                  modifier = Modifier.size(24.dp),
+              )
           }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
@@ -2294,6 +2300,7 @@ private fun GroupMemberCard(
     modifier: Modifier = Modifier,
 ) {
     val visibleMembers = members.take(6)
+    val seatLayoutHeight = if (visibleMembers.size <= 3) 104.dp else 204.dp
 
     Column(
         modifier = modifier
@@ -2313,7 +2320,7 @@ private fun GroupMemberCard(
             onMemberClick = onMemberClick,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(224.dp),
+                .height(seatLayoutHeight),
         )
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -2352,6 +2359,11 @@ private fun MemberSeatLayout(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         rows.forEach { rowMembers ->
+            val itemWidth = when (rowMembers.size) {
+                1 -> 92.dp
+                2 -> 138.dp
+                else -> 92.dp
+            }
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally),
@@ -2360,7 +2372,7 @@ private fun MemberSeatLayout(
                     MemberSeat(
                         member = member,
                         onClick = { onMemberClick(member.id) },
-                        modifier = Modifier.width(if (rowMembers.size == 3) 92.dp else 138.dp),
+                        modifier = Modifier.width(itemWidth),
                     )
                 }
             }
@@ -2851,36 +2863,57 @@ private fun GroupRoutineTopBar(
                       horizontalArrangement = Arrangement.spacedBy(14.dp),
                       verticalAlignment = Alignment.CenterVertically,
                   ) {
-                      Box(modifier = Modifier.size(24.dp).clickable(onClick = onChatClick)) {
-                          Image(
-                              painter = painterResource(id = R.drawable.ic_group_routine_chat),
-                              contentDescription = null,
-                              modifier = Modifier
-                                  .align(Alignment.Center)
-                                  .size(20.dp),
-                          )
-                          Text(
-                              text = "3",
-                              color = Color.White,
-                              fontSize = 8.sp,
-                              fontWeight = FontWeight.Bold,
-                              textAlign = TextAlign.Center,
-                              modifier = Modifier
-                                  .align(Alignment.TopEnd)
-                                  .size(14.dp)
-                                  .clip(CircleShape)
-                                  .background(DangerBase),
-                          )
-                      }
-                      Image(
-                          painter = painterResource(id = R.drawable.ic_group_routine_settings),
-                          contentDescription = null,
-                          modifier = Modifier
-                              .size(20.dp)
-                              .clickable(onClick = onSettingsClick),
+                      TopBarActionButton(
+                          iconRes = R.drawable.ic_group_routine_chat,
+                          badgeCount = 3,
+                          onClick = onChatClick,
+                      )
+                      TopBarActionButton(
+                          iconRes = R.drawable.ic_group_routine_settings,
+                          badgeCount = 4,
+                          onClick = onSettingsClick,
                       )
                   }
               }
+        }
+    }
+}
+
+@Composable
+private fun TopBarActionButton(
+    @DrawableRes iconRes: Int,
+    badgeCount: Int,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .size(24.dp)
+            .clickable(onClick = onClick),
+    ) {
+        Image(
+            painter = painterResource(id = iconRes),
+            contentDescription = null,
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(20.dp),
+        )
+        if (badgeCount > 0) {
+            Text(
+                text = badgeCount.toString(),
+                color = Color.White,
+                fontSize = 10.sp,
+                fontWeight = FontWeight.Bold,
+                textAlign = TextAlign.Center,
+                modifier = Modifier
+                    .align(Alignment.TopEnd)
+                    .offset(x = 12.dp, y = (-4).dp)
+                    .height(18.dp)
+                    .widthIn(min = 18.dp)
+                    .clip(RoundedCornerShape(9.dp))
+                    .background(DangerBase)
+                    .padding(horizontal = if (badgeCount >= 10) 5.dp else 0.dp),
+            )
         }
     }
 }
