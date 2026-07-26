@@ -282,7 +282,7 @@ private fun ChallengeCardItem(
         ) {
             ChallengeStat(value = challenge.participantCount, label = "참여자")
             ChallengeStatDivider()
-            ChallengeStat(value = challenge.activityCount, label = "활동")
+            ChallengeStat(value = challenge.activityCount, label = "리워드")
             ChallengeStatDivider()
             ChallengeStat(value = challenge.postCount, label = "인증 게시글")
         }

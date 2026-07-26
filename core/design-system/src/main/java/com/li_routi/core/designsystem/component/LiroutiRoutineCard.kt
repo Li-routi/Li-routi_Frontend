@@ -177,7 +177,7 @@ fun LiroutiRoutineDetailCard(
         ) {
             RoutineStatBlock(value = participants, label = "참여자")
             StatDivider()
-            RoutineStatBlock(value = activity, label = "활동")
+            RoutineStatBlock(value = activity, label = "리워드")
             StatDivider()
             RoutineStatBlock(value = posts, label = "인증 게시글")
         }

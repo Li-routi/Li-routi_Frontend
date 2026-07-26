@@ -251,7 +251,7 @@ private fun ChallengeStatsRow(uiState: ChallengeDetailUiState, modifier: Modifie
     ) {
         ChallengeStat(value = uiState.participantCount, label = "참여자")
         ChallengeStatDivider()
-        ChallengeStat(value = uiState.activityCount, label = "활동")
+        ChallengeStat(value = uiState.activityCount, label = "리워드")
         ChallengeStatDivider()
         ChallengeStat(value = uiState.postCount, label = "인증 게시글")
     }
