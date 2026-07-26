@@ -1585,9 +1585,9 @@ private fun CertificationSummaryCard(
                 .clip(RoundedCornerShape(8.dp))
                 .background(Color(0xFFF3F4F5)),
             contentAlignment = Alignment.Center,
-        ) {
-            Text(text = "F", color = DangerBase, fontSize = 20.sp, fontWeight = FontWeight.Bold)
-        }
+          ) {
+              Text(text = "🔥", fontSize = 22.sp)
+          }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(1.dp)) {
             Text(
                 text = "인증 모아보기",
@@ -1953,26 +1953,35 @@ private fun GroupRoutineTopBar(
                         .clickable(onClick = onAddClick),
                 )
             }
-            if (showActions) {
-                Row(
-                    modifier = Modifier.align(Alignment.CenterEnd),
-                    horizontalArrangement = Arrangement.spacedBy(14.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Text(
-                        text = "채팅",
-                        color = LabelDefault,
-                        fontSize = 11.sp,
-                        modifier = Modifier.clickable(onClick = onChatClick),
-                    )
-                    Text(
-                        text = "설정",
-                        color = LabelDefault,
-                        fontSize = 11.sp,
-                        modifier = Modifier.clickable(onClick = onSettingsClick),
-                    )
-                }
-            }
+              if (showActions) {
+                  Row(
+                      modifier = Modifier.align(Alignment.CenterEnd),
+                      horizontalArrangement = Arrangement.spacedBy(14.dp),
+                      verticalAlignment = Alignment.CenterVertically,
+                  ) {
+                      Box(modifier = Modifier.size(24.dp).clickable(onClick = onChatClick)) {
+                          Text(text = "▱", color = LabelDefault, fontSize = 22.sp, modifier = Modifier.align(Alignment.Center))
+                          Text(
+                              text = "3",
+                              color = Color.White,
+                              fontSize = 8.sp,
+                              fontWeight = FontWeight.Bold,
+                              textAlign = TextAlign.Center,
+                              modifier = Modifier
+                                  .align(Alignment.TopEnd)
+                                  .size(14.dp)
+                                  .clip(CircleShape)
+                                  .background(DangerBase),
+                          )
+                      }
+                      Text(
+                          text = "⚙",
+                          color = LabelDefault,
+                          fontSize = 20.sp,
+                          modifier = Modifier.clickable(onClick = onSettingsClick),
+                      )
+                  }
+              }
         }
     }
 }
