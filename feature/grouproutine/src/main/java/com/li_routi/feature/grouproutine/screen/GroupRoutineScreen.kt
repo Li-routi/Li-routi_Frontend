@@ -1722,17 +1722,17 @@ private fun GroupSettingsScreen(
                     label = "방 알림 설정",
                     onClick = onRoomAlarmSettingsClick,
                 )
-                if (isLeader) SettingsSectionDivider()
+                SettingsSectionDivider()
             }
-            if (isLeader) {
-                item {
-                    SettingsSectionHeader(text = "초대 설정")
+            item {
+                SettingsSectionHeader(text = "초대 설정")
+                if (isLeader) {
                     InviteLockRow(
                         locked = uiState.isRoomLocked,
                         onClick = onRoomLockClick,
                     )
-                    InviteCodeRow(onClick = onInviteCodeCopyClick)
                 }
+                InviteCodeRow(onClick = onInviteCodeCopyClick)
             }
         }
 
