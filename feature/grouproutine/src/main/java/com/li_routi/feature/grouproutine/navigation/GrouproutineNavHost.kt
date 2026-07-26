@@ -1,5 +1,6 @@
 package com.li_routi.feature.grouproutine.navigation
 
+import android.net.Uri
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -23,7 +24,6 @@ import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.feature.grouproutine.screen.InviteCodeScreen
 import com.li_routi.feature.grouproutine.screen.JoinRoomConfirmDialog
 import com.li_routi.feature.grouproutine.screen.MakeRoomScreen
-import java.net.URLEncoder
 
 private const val RouteMakeRoom = "makeRoom"
 private const val RouteInviteCode = "inviteCode"
@@ -31,7 +31,9 @@ private const val ArgRoomName = "roomName"
 private const val RouteRoomRoutineAdd = "roomRoutineAdd/{$ArgRoomName}"
 
 private fun roomRoutineAddRoute(roomName: String): String {
-    return "roomRoutineAdd/${URLEncoder.encode(roomName, "UTF-8")}"
+    // URLEncoder(application/x-www-form-urlencoded)는 공백을 '+'로 바꿔 Nav 인자 디코딩 시
+    // 공백이 복원되지 않는다. Uri.encode는 경로 세그먼트 기준으로 공백을 %20으로 인코딩한다.
+    return "roomRoutineAdd/${Uri.encode(roomName)}"
 }
 
 /** [GrouproutineNavHost]가 어느 화면부터 시작할지 고르는 진입점. */
