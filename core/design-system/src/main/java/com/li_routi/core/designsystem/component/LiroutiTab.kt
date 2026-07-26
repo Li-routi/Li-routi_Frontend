@@ -83,12 +83,18 @@ fun LiroutiTabButton(
     }
 }
 
+/**
+ * @param equalWidth 탭이 정확히 몇 개뿐이고 화면 폭을 꽉 채워야 할 때(예: 챌린지 상세의 "인증"/"내 인증
+ * 보기") true로 설정한다. 카테고리처럼 여러 개를 가로 스크롤하는 경우엔 기본값(false, 텍스트 너비만큼만
+ * 차지)을 쓴다.
+ */
 @Composable
 fun LiroutiLineTab(
     tabs: List<String>,
     selectedIndex: Int,
     onTabSelected: (Int) -> Unit,
     modifier: Modifier = Modifier,
+    equalWidth: Boolean = false,
 ) {
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
@@ -100,6 +106,8 @@ fun LiroutiLineTab(
                     text = title,
                     selected = index == selectedIndex,
                     onClick = { onTabSelected(index) },
+                    fullWidthIndicator = equalWidth,
+                    modifier = if (equalWidth) Modifier.weight(1f) else Modifier,
                 )
             }
         }
@@ -113,6 +121,7 @@ private fun LiroutiLineTabItem(
     selected: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    fullWidthIndicator: Boolean = false,
 ) {
     val density = LocalDensity.current
     var textWidth by remember { mutableStateOf(0.dp) }
@@ -135,7 +144,7 @@ private fun LiroutiLineTabItem(
         )
         if (selected) {
             LiroutiDivider(
-                modifier = Modifier.width(textWidth),
+                modifier = if (fullWidthIndicator) Modifier.fillMaxWidth() else Modifier.width(textWidth),
                 thickness = LiroutiDividerThickness.Regular,
                 color = LiroutiTheme.colors.labelDefault,
             )

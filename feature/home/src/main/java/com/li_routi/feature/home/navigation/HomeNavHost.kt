@@ -12,6 +12,7 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
+import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.RoutineChecklistItem
 import com.li_routi.core.common.ui.routine.RoutineChecklistScreen
@@ -37,6 +38,7 @@ private const val RouteRoutineManage = "routineManage"
 fun HomeNavHost(
     onCreateRoomClick: () -> Unit = {},
     onJoinRoomWithInviteCodeClick: () -> Unit = {},
+    onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -61,6 +63,7 @@ fun HomeNavHost(
                         -> Unit
                     }
                 },
+                onTabSelected = onTabSelected,
             )
         }
 

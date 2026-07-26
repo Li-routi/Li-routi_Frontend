@@ -18,13 +18,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.common.ui.nav.AppBottomNavBar
+import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.designsystem.component.LiroutiDivider
 import com.li_routi.core.designsystem.component.LiroutiDividerThickness
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.component.AddMenuBottomSheet
 import com.li_routi.feature.home.component.EmptyRoutineSection
-import com.li_routi.feature.home.component.HomeBottomNav
 import com.li_routi.feature.home.component.HomeTopBar
 import com.li_routi.feature.home.component.MyRoutineCard
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
@@ -60,6 +61,7 @@ internal fun homeTooltipMessage(hasActiveRoutine: Boolean, hasGroupRoom: Boolean
 @Composable
 fun HomeScreen(
     actions: HomeScreenActions,
+    onTabSelected: (AppBottomTab) -> Unit,
     hasActiveRoutine: Boolean = false,
     hasGroupRoom: Boolean = false,
     nickname: String = "닉네임",
@@ -78,14 +80,14 @@ fun HomeScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
-        containerColor = LiroutiTheme.colors.backgroundAlternative,
+        containerColor = LiroutiTheme.colors.backgroundSecondary,
         topBar = {
             HomeTopBar(
                 onAddRoutineClick = { showAddMenuSheet = true },
                 onNotificationClick = actions::onNotificationClick,
             )
         },
-        bottomBar = { HomeBottomNav() },
+        bottomBar = { AppBottomNavBar(selectedTab = AppBottomTab.Home, onTabSelected = onTabSelected) },
     ) { innerPadding ->
         if (hasActiveRoutine) {
             Column(
@@ -185,7 +187,7 @@ private object PreviewHomeScreenActions : HomeScreenActions {
 @Composable
 private fun HomeScreenEmptyPreview() {
     LiroutiFrontendTheme {
-        HomeScreen(actions = PreviewHomeScreenActions, hasActiveRoutine = false)
+        HomeScreen(actions = PreviewHomeScreenActions, onTabSelected = {}, hasActiveRoutine = false)
     }
 }
 
@@ -195,6 +197,7 @@ private fun HomeScreenRoutineOnlyPreview() {
     LiroutiFrontendTheme {
         HomeScreen(
             actions = PreviewHomeScreenActions,
+            onTabSelected = {},
             hasActiveRoutine = true,
             hasGroupRoom = false,
             myRoutineItems = SampleMyRoutineItemsOnly,
@@ -208,6 +211,7 @@ private fun HomeScreenRoutineAndGroupRoomPreview() {
     LiroutiFrontendTheme {
         HomeScreen(
             actions = PreviewHomeScreenActions,
+            onTabSelected = {},
             hasActiveRoutine = true,
             hasGroupRoom = true,
             myRoutineItems = SampleMyRoutineItems,

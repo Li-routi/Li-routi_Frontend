@@ -100,6 +100,35 @@ private fun StatDivider(modifier: Modifier = Modifier) {
     )
 }
 
+/**
+ * 참여자/(활동 또는 리워드)/인증 게시글 3분할 통계 행 (Figma node 2380:40546, 2380:40179).
+ * 가운데 칸의 라벨은 화면마다 다르다 — 챌린지 상세는 "활동"(node 2380:40179), 챌린지 찾아보기는
+ * "리워드"(node 2380:40546)를 쓴다.
+ */
+@Composable
+fun LiroutiRoutineStatsRow(
+    participants: String,
+    activity: String,
+    posts: String,
+    modifier: Modifier = Modifier,
+    activityLabel: String = "활동",
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(LiroutiTheme.colors.backgroundFill, StatsRowShape)
+            .padding(horizontal = 16.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        RoutineStatBlock(value = participants, label = "참여자")
+        StatDivider()
+        RoutineStatBlock(value = activity, label = activityLabel)
+        StatDivider()
+        RoutineStatBlock(value = posts, label = "인증 게시글")
+    }
+}
+
 @Composable
 fun LiroutiRoutineSimpleCard(
     title: String,
@@ -139,14 +168,16 @@ fun LiroutiRoutineDetailCard(
     activity: String,
     posts: String,
     modifier: Modifier = Modifier,
+    tagText: String? = null,
     badgeText: String? = "매일 루틴",
+    activityLabel: String = "활동",
     icon: @Composable () -> Unit = { LiroutiRoutineIcon() },
 ) {
     Column(
         modifier = modifier
             .fillMaxWidth()
             .background(LiroutiTheme.colors.backgroundDefault, CardShape)
-            .padding(16.dp),
+            .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Row(
@@ -155,7 +186,13 @@ fun LiroutiRoutineDetailCard(
         ) {
             RoutineIconBox(content = icon)
             Column(modifier = Modifier.weight(1f)) {
-                Text(text = title, style = CardTitleTextStyle, color = LiroutiTheme.colors.labelDefault)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(text = title, style = CardTitleTextStyle, color = LiroutiTheme.colors.labelDefault)
+                    tagText?.let { Text(text = it, style = AccentCaptionTextStyle, color = LiroutiTheme.colors.primaryNormal) }
+                }
                 Text(
                     text = subtitle,
                     style = InfoTextStyle,
@@ -167,20 +204,7 @@ fun LiroutiRoutineDetailCard(
             badgeText?.let { LiroutiBadge(text = it, color = LiroutiBadgeColor.Blue) }
         }
         LiroutiDivider(color = LiroutiTheme.colors.borderDefault)
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(LiroutiTheme.colors.backgroundFill, StatsRowShape)
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            RoutineStatBlock(value = participants, label = "참여자")
-            StatDivider()
-            RoutineStatBlock(value = activity, label = "활동")
-            StatDivider()
-            RoutineStatBlock(value = posts, label = "인증 게시글")
-        }
+        LiroutiRoutineStatsRow(participants = participants, activity = activity, posts = posts, activityLabel = activityLabel)
     }
 }
 

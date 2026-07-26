@@ -30,4 +30,12 @@ dependencies {
     implementation(project(":core:common:kotlin"))
     implementation(project(":core:common:android"))
     implementation(project(":core:domain"))
+
+    // Retrofit
+    implementation(libs.retrofit)
+    implementation(libs.retrofit.converter.gson)
+
+    // OkHttp
+    implementation(libs.okhttp)
+    implementation(libs.okhttp.logging)
 }
