@@ -1,5 +1,6 @@
 package com.li_routi.feature.shopping.component
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -17,11 +18,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.DsPlaceholder
+import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.component.LiroutiBadge
+import com.li_routi.core.designsystem.component.LiroutiBadgeColor
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -179,10 +183,11 @@ private fun CurrencyProductRow(
             modifier = Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            DsPlaceholder(
-                componentName = "Diamond",
-                modifier = Modifier.size(16.dp),
-            )
+            Image(
+            painter = painterResource(id = R.drawable.diamond_blue),
+            contentDescription = null,
+            modifier = Modifier.size(16.dp),
+        )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
@@ -193,10 +198,7 @@ private fun CurrencyProductRow(
                     )
                     if (item.isPopular) {
                         Spacer(modifier = Modifier.width(6.dp))
-                        DsPlaceholder(
-                            componentName = "Badge",
-                            modifier = Modifier.height(16.dp),
-                        )
+                        LiroutiBadge(text = "인기", color = LiroutiBadgeColor.Blue)
                     }
                 }
                 Text(

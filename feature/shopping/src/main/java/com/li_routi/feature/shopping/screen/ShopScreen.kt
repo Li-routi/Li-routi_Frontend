@@ -12,8 +12,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -26,9 +25,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.DsPlaceholder
+import com.li_routi.core.designsystem.component.LiroutiLineTab
+import com.li_routi.core.designsystem.component.LiroutiSwitch
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.shopping.component.SampleShopItems
@@ -37,18 +38,15 @@ import com.li_routi.feature.shopping.component.ShopItemUiModel
 import com.li_routi.feature.shopping.component.ShopTopBar
 import com.li_routi.feature.shopping.navigation.ShopScreenActions
 
-/** Figma node `2299:22819`(tabbar)의 탭 라벨. 카테고리 탭 2개는 Figma 원본에도 확정 명칭이 없다. */
 private val ShopCategoryTabLabels = listOf("전체", "카테고리", "카테고리")
 
 /**
  * 상점(아이템 상점) 화면 (Figma node `2222:25595`).
  *
- * 레이아웃과 사용자 흐름(카테고리 탭/보유 아이템 토글 선택)만 구현한다.
- * Design System instance는 전부 [DsPlaceholder]로 대체하며, 실제 화면 전환은 [actions]를
- * 구현하는 다른 담당자가 처리한다.
+ * 아이템 선택은 [actions.onItemClick] → ViewModel [selectedItemId]로 관리한다.
  *
- * 실제 앱에서는 [com.li_routi.feature.shopping.navigation.ShopRoute]를 통해
- * [com.li_routi.feature.shopping.vm.ShopViewModel]과 연결한다.
+ * API 연동 전: 카테고리 탭·보유 아이템 토글은 UI 선택만 반영하고 목록 필터는 하지 않는다.
+ * 저장 버튼 실처리는 [ShopUiEvent.SaveSelectedItems] 수신 측(API)에서 연결한다.
  */
 @Composable
 fun ShopScreen(
@@ -57,8 +55,10 @@ fun ShopScreen(
     coinBalance: Int = 450,
     gemBalance: Int = 30,
     items: List<ShopItemUiModel> = SampleShopItems,
+    selectedItemId: String? = null,
     modifier: Modifier = Modifier,
 ) {
+    // API 연동 전: 선택 UI만. 목록 필터/서버 조회는 미연결.
     var selectedCategoryIndex by remember { mutableIntStateOf(0) }
     var showOwnedOnly by remember { mutableStateOf(false) }
 
@@ -74,15 +74,23 @@ fun ShopScreen(
             )
         },
         bottomBar = {
-            DsPlaceholder(
-                componentName = "Button_Filled",
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .navigationBarsPadding()
                     .padding(16.dp)
                     .height(44.dp)
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(LiroutiTheme.colors.primaryNormal)
                     .clickable(onClick = actions::onSaveClick),
-            )
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "저장",
+                    style = LiroutiTheme.typography.body2,
+                    color = LiroutiTheme.colors.labelReverse,
+                )
+            }
         },
     ) { innerPadding ->
         Column(
@@ -91,7 +99,6 @@ fun ShopScreen(
                 .padding(innerPadding)
                 .padding(horizontal = 16.dp),
         ) {
-            // "닉네임" 카드: 캐릭터 illustration(비-DS) + Tooltip(DS instance)
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -107,10 +114,21 @@ fun ShopScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-                DsPlaceholder(
-                    componentName = "Tooltip",
-                    modifier = Modifier.height(48.dp),
-                )
+                Box(
+                    modifier = Modifier
+                        .widthIn(max = 256.dp)
+                        .clip(RoundedCornerShape(8.dp))
+                        .background(LiroutiTheme.colors.labelDefault.copy(alpha = 0.88f))
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = "원하는 아이템을 골라보세요!",
+                        style = LiroutiTheme.typography.body2,
+                        color = LiroutiTheme.colors.labelReverse,
+                        textAlign = TextAlign.Center,
+                    )
+                }
                 Box(
                     modifier = Modifier
                         .fillMaxWidth(0.6f)
@@ -123,9 +141,7 @@ fun ShopScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable { showOwnedOnly = !showOwnedOnly },
+                modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.End,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -133,31 +149,28 @@ fun ShopScreen(
                     text = "보유 중인 아이템만 보기",
                     style = LiroutiTheme.typography.caption,
                     color = LiroutiTheme.colors.labelStrong,
+                    modifier = Modifier.padding(end = 6.dp),
                 )
-                Spacer(modifier = Modifier.width(6.dp))
-                DsPlaceholder(
-                    componentName = "Toggle",
-                    modifier = Modifier.size(width = 28.dp, height = 16.dp),
+                LiroutiSwitch(
+                    checked = showOwnedOnly,
+                    onCheckedChange = { showOwnedOnly = it },
                 )
             }
 
             Spacer(modifier = Modifier.height(14.dp))
 
-            Row(horizontalArrangement = Arrangement.spacedBy(20.dp)) {
-                ShopCategoryTabLabels.forEachIndexed { index, _ ->
-                    DsPlaceholder(
-                        componentName = "Tab",
-                        modifier = Modifier
-                            .height(36.dp)
-                            .clickable { selectedCategoryIndex = index },
-                    )
-                }
-            }
+            LiroutiLineTab(
+                tabs = ShopCategoryTabLabels,
+                selectedIndex = selectedCategoryIndex,
+                onTabSelected = { selectedCategoryIndex = it },
+            )
 
             Spacer(modifier = Modifier.height(10.dp))
 
             ShopItemGrid(
                 items = items,
+                selectedItemId = selectedItemId,
+                onItemClick = actions::onItemClick,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -167,13 +180,25 @@ fun ShopScreen(
 private object PreviewShopScreenActions : ShopScreenActions {
     override fun onBackClick() = Unit
     override fun onCurrencyChipClick() = Unit
+    override fun onItemClick(itemId: String) = Unit
     override fun onSaveClick() = Unit
 }
 
-@Preview(showBackground = true, heightDp = 800)
+@Preview(showBackground = true, heightDp = 800, name = "기본")
 @Composable
 private fun ShopScreenPreview() {
     LiroutiFrontendTheme {
         ShopScreen(actions = PreviewShopScreenActions)
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800, name = "선택됨")
+@Composable
+private fun ShopScreenSelectedPreview() {
+    LiroutiFrontendTheme {
+        ShopScreen(
+            actions = PreviewShopScreenActions,
+            selectedItemId = "item_1",
+        )
     }
 }

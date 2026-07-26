@@ -29,9 +29,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
@@ -40,7 +42,15 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.DsPlaceholder
+import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.component.CheckBoxState
+import com.li_routi.core.designsystem.component.CustomCheckBox
+import com.li_routi.core.designsystem.component.LiroutiBadge
+import com.li_routi.core.designsystem.component.LiroutiBadgeColor
+import com.li_routi.core.designsystem.component.LiroutiDivider
+import com.li_routi.core.designsystem.component.LiroutiDividerOrientation
+import com.li_routi.core.designsystem.component.LiroutiTextField
+import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.navigation.RoutineAuthUploadScreenActions
@@ -181,12 +191,14 @@ private fun RoutineAuthUploadTopBar(
             .statusBarsPadding()
             .padding(horizontal = 16.dp, vertical = 10.dp),
     ) {
-        DsPlaceholder(
-            componentName = "Icon/chevron--left",
+        Image(
+            painter = painterResource(id = R.drawable.chevron__left),
+            contentDescription = "뒤로가기",
             modifier = Modifier
                 .align(Alignment.CenterStart)
                 .size(20.dp)
                 .clickable(onClick = onBackClick),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
         )
         Text(
             text = "루틴 인증하기",
@@ -195,12 +207,14 @@ private fun RoutineAuthUploadTopBar(
             modifier = Modifier.align(Alignment.Center),
             textAlign = TextAlign.Center,
         )
-        DsPlaceholder(
-            componentName = "Icon/close",
+        Image(
+            painter = painterResource(id = R.drawable.close),
+            contentDescription = "닫기",
             modifier = Modifier
                 .align(Alignment.CenterEnd)
                 .size(20.dp)
                 .clickable(onClick = onCloseClick),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
         )
     }
 }
@@ -211,48 +225,16 @@ private fun MemoSection(
     onMemoChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.fillMaxWidth(),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        Text(
-            text = "메모",
-            style = LiroutiTheme.typography.body2,
-            color = LiroutiTheme.colors.labelStrong,
-        )
-        // TODO(design-system): Textfield 완성 시 실제 Textfield로 교체
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(44.dp)
-                .clip(RoundedCornerShape(6.dp))
-                .border(
-                    width = 1.dp,
-                    color = LiroutiTheme.colors.borderDefault,
-                    shape = RoundedCornerShape(6.dp),
-                )
-                .padding(horizontal = 16.dp, vertical = 10.dp),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            if (memo.isEmpty()) {
-                Text(
-                    text = "한줄 메모 (선택, 최대 ${MEMO_MAX_LENGTH}자)",
-                    style = LiroutiTheme.typography.body2,
-                    color = LiroutiTheme.colors.labelInfo,
-                )
-            }
-            BasicTextField(
-                value = memo,
-                onValueChange = onMemoChange,
-                modifier = Modifier.fillMaxWidth(),
-                singleLine = true,
-                textStyle = LiroutiTheme.typography.body2.copy(
-                    color = LiroutiTheme.colors.labelStrong,
-                ),
-                cursorBrush = SolidColor(LiroutiTheme.colors.primaryNormal),
-            )
-        }
-    }
+    LiroutiTextField(
+        value = memo,
+        onValueChange = onMemoChange,
+        modifier = modifier,
+        placeholder = "한줄 메모 (선택, 최대 ${MEMO_MAX_LENGTH}자)",
+        labelText = "메모",
+        helperText = "",
+        showLabel = true,
+        showHelper = false,
+    )
 }
 
 @Composable
@@ -304,32 +286,10 @@ private fun RoutineSelectRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        // TODO(design-system): Checkbox 완성 시 교체. 선택 상태는 UX상 지금 표시한다.
-        Box(
-            modifier = Modifier
-                .size(16.dp)
-                .clip(RoundedCornerShape(2.dp))
-                .then(
-                    if (selected) {
-                        Modifier.background(LiroutiTheme.colors.primaryNormal)
-                    } else {
-                        Modifier.border(
-                            width = 1.dp,
-                            color = LiroutiTheme.colors.borderStrong,
-                            shape = RoundedCornerShape(2.dp),
-                        )
-                    },
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (selected) {
-                Text(
-                    text = "✓",
-                    style = LiroutiTheme.typography.caption,
-                    color = LiroutiTheme.colors.labelReverse,
-                )
-            }
-        }
+        CustomCheckBox(
+            state = if (selected) CheckBoxState.B else CheckBoxState.A,
+            onClick = onClick,
+        )
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = item.title,
@@ -349,11 +309,10 @@ private fun RoutineSelectRow(
                         color = LiroutiTheme.colors.labelInfo,
                     )
                     if (item.subtitle != null) {
-                        Box(
-                            modifier = Modifier
-                                .width(1.dp)
-                                .height(10.dp)
-                                .background(LiroutiTheme.colors.borderStrong),
+                        LiroutiDivider(
+                            orientation = LiroutiDividerOrientation.Vertical,
+                            color = LiroutiTheme.colors.borderStrong,
+                            modifier = Modifier.height(10.dp),
                         )
                         Text(
                             text = item.subtitle,
@@ -364,38 +323,12 @@ private fun RoutineSelectRow(
                 }
             }
         }
-        // TODO(design-system): Badge 완성 시 교체
-        CategoryBadgePlaceholder(
-            label = item.categoryLabel,
-            tone = item.badgeTone,
-        )
-    }
-}
-
-@Composable
-private fun CategoryBadgePlaceholder(
-    label: String,
-    tone: RoutineAuthBadgeTone,
-    modifier: Modifier = Modifier,
-) {
-    val background = when (tone) {
-        RoutineAuthBadgeTone.Secondary -> SecondaryBadgeBackground
-        RoutineAuthBadgeTone.Challenge -> ChallengeBadgeBackground
-    }
-    val contentColor = when (tone) {
-        RoutineAuthBadgeTone.Secondary -> LiroutiTheme.colors.secondaryNormal
-        RoutineAuthBadgeTone.Challenge -> ChallengeBadgeText
-    }
-    Box(
-        modifier = modifier
-            .clip(RoundedCornerShape(6.dp))
-            .background(background)
-            .padding(horizontal = 6.dp, vertical = 3.dp),
-    ) {
-        Text(
-            text = label,
-            style = LiroutiTheme.typography.caption,
-            color = contentColor,
+        LiroutiBadge(
+            text = item.categoryLabel,
+            color = when (item.badgeTone) {
+                RoutineAuthBadgeTone.Secondary -> LiroutiBadgeColor.Blue
+                RoutineAuthBadgeTone.Challenge -> LiroutiBadgeColor.Green
+            },
         )
     }
 }
@@ -405,29 +338,11 @@ private fun UploadFailedToast(
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // TODO(design-system): Toast 완성 시 교체
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .background(ToastBackground)
-            .padding(horizontal = 20.dp, vertical = 20.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(20.dp),
-    ) {
-        Text(
-            text = "업로드 실패",
-            style = LiroutiTheme.typography.body2,
-            color = LiroutiTheme.colors.labelReverse,
-            modifier = Modifier.weight(1f),
-        )
-        DsPlaceholder(
-            componentName = "Icon/close",
-            modifier = Modifier
-                .size(20.dp)
-                .clickable(onClick = onDismiss),
-        )
-    }
+    LiroutiToast(
+        message = "업로드 실패",
+        modifier = modifier,
+        onCloseClick = onDismiss,
+    )
 }
 
 @Composable
@@ -473,18 +388,6 @@ private fun UploadActionButton(
     }
 }
 
-/** Figma badge secondary 배경 */
-private val SecondaryBadgeBackground = Color(0xFFF4F7FB)
-
-/** Figma badge/bg-orange */
-private val ChallengeBadgeBackground = Color(0xFFFFDDB8)
-
-/** Figma badge/text-orange */
-private val ChallengeBadgeText = Color(0xFFD26D00)
-
-/** Figma neutral17 toast 배경 */
-private val ToastBackground = Color(0xFF212225)
-
 private object PreviewRoutineAuthUploadScreenActions : RoutineAuthUploadScreenActions {
     override fun onBackClick() = Unit
     override fun onCloseClick() = Unit
@@ -518,7 +421,7 @@ private fun RoutineAuthUploadScreenEnabledPreview() {
             actions = PreviewRoutineAuthUploadScreenActions,
             memo = "오늘의 루틴 끝",
             routines = SampleRoutineAuthSelectables,
-            selectedRoutineIds = setOf("auth_0"),
+            selectedRoutineIds = setOf("my_0"),
             isUploadEnabled = true,
             isUploading = false,
             showUploadFailedToast = false,
@@ -534,7 +437,7 @@ private fun RoutineAuthUploadScreenFailedPreview() {
             actions = PreviewRoutineAuthUploadScreenActions,
             memo = "오늘의 루틴 끝",
             routines = SampleRoutineAuthSelectables,
-            selectedRoutineIds = setOf("auth_0"),
+            selectedRoutineIds = setOf("my_0"),
             isUploadEnabled = true,
             isUploading = false,
             showUploadFailedToast = true,

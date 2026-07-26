@@ -8,11 +8,13 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.feature.home.screen.HomeScreen
 import com.li_routi.feature.home.screen.RoutineAuthCameraScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
@@ -27,10 +29,19 @@ private const val PageCamera = 0
 private const val PageHome = 1
 
 /**
+ * [Uri]는 Bundle에 바로 못 넣으므로 문자열로 저장/복원한다.
+ * 구성 변경(회전 등) 후에도 업로드 화면이 유지되도록 한다.
+ */
+private val NullableUriSaver = Saver<Uri?, String>(
+    save = { uri -> uri?.toString().orEmpty() },
+    restore = { saved -> saved.takeIf { it.isNotEmpty() }?.let(Uri::parse) },
+)
+
+/**
  * 홈 화면 진입점. [HomeViewModel]과 [HomeScreen]을 연결한다.
  *
  * 루틴 또는 그룹 루틴방이 있으면 HorizontalPager로 홈↔카메라 스와이프를 제공한다.
- * 셔터 촬영 성공 시 업로드 화면을 표시한다.
+ * 체크리스트 카메라 아이콘 / 셔터 촬영 성공 시 카메라·업로드 화면으로 이어진다.
  *
  * @param onEvent 홈 일회성 UI 이벤트 콜백.
  * @param onCameraEvent 카메라 일회성 이벤트 보조 콜백(선택). 업로드 전환 시에도 전달된다.
@@ -39,6 +50,7 @@ private const val PageHome = 1
 fun HomeRoute(
     onEvent: (HomeUiEvent) -> Unit = {},
     onCameraEvent: (RoutineAuthCameraUiEvent) -> Unit = {},
+    onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel {
         HomeViewModel(initialState = HomeUiState.empty())
@@ -47,19 +59,35 @@ fun HomeRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val canSwipeToAuth = uiState.hasActiveRoutine || uiState.hasGroupRoom
-    var capturedPhotoUri by remember { mutableStateOf<Uri?>(null) }
-    var pendingPagerPage by remember { mutableStateOf<Int?>(null) }
+    var capturedPhotoUri by rememberSaveable(stateSaver = NullableUriSaver) {
+        mutableStateOf(null)
+    }
+    var pendingPagerPage by rememberSaveable { mutableStateOf<Int?>(null) }
+    /** 체크리스트 카메라 아이콘으로 진입 시, 업로드 화면에서 미리 선택할 루틴 id. */
+    var pendingAuthRoutineId by rememberSaveable { mutableStateOf<String?>(null) }
 
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
+            when (event) {
+                HomeUiEvent.NavigateToRoutineAuthCamera -> {
+                    pendingPagerPage = PageCamera
+                }
+                is HomeUiEvent.NavigateToRoutineAuthCameraWithId -> {
+                    pendingAuthRoutineId = event.routineId
+                    pendingPagerPage = PageCamera
+                }
+                else -> Unit
+            }
             onEvent(event)
         }
     }
 
     val photoUri = capturedPhotoUri
     if (photoUri != null) {
+        val preselected = pendingAuthRoutineId?.let { setOf(it) }.orEmpty()
         RoutineAuthUploadRoute(
             photoUri = photoUri,
+            initialSelectedRoutineIds = preselected,
             onEvent = { event ->
                 when (event) {
                     RoutineAuthUploadUiEvent.NavigateBack -> {
@@ -70,6 +98,7 @@ fun HomeRoute(
                     RoutineAuthUploadUiEvent.NavigateToHome,
                     -> {
                         capturedPhotoUri = null
+                        pendingAuthRoutineId = null
                         pendingPagerPage = PageHome
                     }
                 }
@@ -87,7 +116,7 @@ fun HomeRoute(
 
         LaunchedEffect(pendingPagerPage) {
             val page = pendingPagerPage ?: return@LaunchedEffect
-            pagerState.scrollToPage(page)
+            pagerState.animateScrollToPage(page)
             pendingPagerPage = null
         }
 
@@ -95,6 +124,7 @@ fun HomeRoute(
             cameraViewModel.uiEvent.collect { event ->
                 when (event) {
                     RoutineAuthCameraUiEvent.NavigateBack -> {
+                        pendingAuthRoutineId = null
                         pagerState.animateScrollToPage(PageHome)
                     }
                     is RoutineAuthCameraUiEvent.NavigateToRoutineAuthUpload -> {
@@ -122,6 +152,7 @@ fun HomeRoute(
                     HomeScreenContent(
                         viewModel = viewModel,
                         uiState = uiState,
+                        onTabSelected = onTabSelected,
                         modifier = Modifier.fillMaxSize(),
                     )
                 }
@@ -131,6 +162,7 @@ fun HomeRoute(
         HomeScreenContent(
             viewModel = viewModel,
             uiState = uiState,
+            onTabSelected = onTabSelected,
             modifier = modifier,
         )
     }
@@ -140,10 +172,12 @@ fun HomeRoute(
 private fun HomeScreenContent(
     viewModel: HomeViewModel,
     uiState: HomeUiState,
+    onTabSelected: (AppBottomTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     HomeScreen(
         actions = viewModel,
+        onTabSelected = onTabSelected,
         hasActiveRoutine = uiState.hasActiveRoutine,
         hasGroupRoom = uiState.hasGroupRoom,
         nickname = uiState.nickname,

@@ -1,0 +1,12 @@
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="64dp"
+    android:height="64dp"
+    android:viewportWidth="64"
+    android:viewportHeight="64">
+  <!-- Figma shutter-outer ring: rounded rect stroke (원형 링) -->
+  <path
+      android:pathData="M32,1.52381C48.84,1.52381 62.4762,15.16 62.4762,32C62.4762,48.84 48.84,62.4762 32,62.4762C15.16,62.4762 1.52381,48.84 1.52381,32C1.52381,15.16 15.16,1.52381 32,1.52381Z"
+      android:fillColor="#00000000"
+      android:strokeWidth="3.04762"
+      android:strokeColor="#338AFF" />
+</vector>
