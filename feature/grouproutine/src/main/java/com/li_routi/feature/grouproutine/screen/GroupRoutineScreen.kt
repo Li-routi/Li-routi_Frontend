@@ -1434,47 +1434,47 @@ private fun GroupSettingsScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val routine = uiState.selectedRoutine ?: return
-
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(ScreenBackground),
+            .background(Color.White),
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 70.dp, bottom = 36.dp),
-            verticalArrangement = Arrangement.spacedBy(14.dp),
+            contentPadding = PaddingValues(top = 98.dp, bottom = 108.dp),
         ) {
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .background(Color.White)
-                        .padding(horizontal = 20.dp, vertical = 22.dp),
-                    verticalArrangement = Arrangement.spacedBy(4.dp),
-                ) {
-                    Text(text = routine.title, color = LabelDefault, style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold))
-                    Text(text = "멤버 ${routine.memberCount}명 · 루틴 ${routine.routineCount}개", color = LabelInfo, style = LiroutiTheme.typography.caption)
-                }
+                SettingsSectionHeader(text = "그룹 루틴 설정")
+                SettingsNavigationRow(icon = "＋", label = "그룹 루틴 관리")
+                SettingsSectionDivider()
             }
             item {
-                Column(modifier = Modifier.background(Color.White)) {
-                    SettingsMenuRow(label = "방 이름", value = routine.title)
-                    SettingsMenuRow(label = "멤버 관리", value = "${uiState.members.size}명")
-                    SettingsMenuRow(label = "초대코드", value = "공유")
-                    SettingsMenuRow(label = "알림 설정", value = "켜짐")
-                    SettingsMenuRow(label = "루틴 관리", value = "${uiState.todos.size}개")
-                }
+                SettingsSectionHeader(text = "방 정보 설정")
+                SettingsNavigationRow(icon = "✎", label = "방 이름 변경")
+                SettingsNavigationRow(icon = "♙", label = "방장 설정")
+                SettingsSectionDivider()
             }
             item {
-                SettingsMenuRow(
-                    label = "방 나가기",
-                    value = "",
-                    labelColor = DangerBase,
-                    modifier = Modifier.background(Color.White),
-                )
+                SettingsSectionHeader(text = "방 알림 설정")
+                SettingsNavigationRow(icon = "◷", label = "방 알림 설정")
             }
+        }
+
+        Button(
+            onClick = {},
+            shape = RoundedCornerShape(6.dp),
+            colors = ButtonDefaults.buttonColors(
+                containerColor = DangerBase,
+                contentColor = Color.White,
+            ),
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(start = 16.dp, end = 16.dp, bottom = 32.dp)
+                .height(44.dp),
+        ) {
+            Text(text = "방 나가기", style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium))
         }
 
         GroupRoutineTopBar(
@@ -1487,30 +1487,61 @@ private fun GroupSettingsScreen(
 }
 
 @Composable
-private fun SettingsMenuRow(
-    label: String,
-    value: String,
+private fun SettingsSectionHeader(
+    text: String,
     modifier: Modifier = Modifier,
-    labelColor: Color = LabelDefault,
+) {
+    Text(
+        text = text,
+        color = LabelSub,
+        style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp)
+            .height(22.dp),
+    )
+}
+
+@Composable
+private fun SettingsSectionDivider(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = 12.dp, bottom = 25.dp)
+            .height(8.dp)
+            .background(Color(0xFFF4F4F5)),
+    )
+}
+
+@Composable
+private fun SettingsNavigationRow(
+    icon: String,
+    label: String,
+    modifier: Modifier = Modifier,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp)
-            .padding(horizontal = 20.dp),
+            .height(54.dp)
+            .background(Color.White)
+            .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Text(
+            text = icon,
+            color = LabelDefault,
+            fontSize = 22.sp,
+            textAlign = TextAlign.Center,
+            modifier = Modifier.width(24.dp),
+        )
+        Text(
             text = label,
-            color = labelColor,
-            style = LiroutiTheme.typography.body2.copy(fontWeight = FontWeight.Bold),
+            color = LabelDefault,
+            style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.weight(1f),
         )
-        if (value.isNotBlank()) {
-            Text(text = value, color = LabelInfo, style = LiroutiTheme.typography.body3)
-        }
-        Text(text = ">", color = LabelInfo, fontSize = 18.sp)
+        Text(text = ">", color = LabelDefault, fontSize = 22.sp)
     }
 }
 
