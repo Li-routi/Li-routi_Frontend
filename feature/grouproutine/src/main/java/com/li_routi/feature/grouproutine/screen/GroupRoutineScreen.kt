@@ -422,7 +422,9 @@ private fun CreateRoomNameScreen(
         GroupRoutineTopBar(
             title = "방 만들기",
             showBack = true,
+            showClose = true,
             onBackClick = onBackClick,
+            onCloseClick = onBackClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
         BottomFixedButton(
@@ -480,7 +482,9 @@ private fun JoinByCodeScreen(
         GroupRoutineTopBar(
             title = "초대코드로 참여",
             showBack = true,
+            showClose = true,
             onBackClick = onBackClick,
+            onCloseClick = onBackClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
         BottomFixedButton(
@@ -570,7 +574,9 @@ private fun CreateRoutineSelectScreen(
         GroupRoutineTopBar(
             title = "루틴 추가",
             showBack = true,
+            showClose = true,
             onBackClick = onBackClick,
+            onCloseClick = onBackClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
         Column(
@@ -586,9 +592,9 @@ private fun CreateRoutineSelectScreen(
                 text = "총 ${selectedCount}개 선택됨",
                 color = LabelSub,
                 style = LiroutiTheme.typography.body3,
-                modifier = Modifier.align(Alignment.End),
+                modifier = Modifier.align(Alignment.CenterHorizontally),
             )
-            PrimaryButton(text = "완료", enabled = selectedCount > 0, onClick = onDoneClick)
+            PrimaryButton(text = "방 만들기", enabled = selectedCount > 0, onClick = onDoneClick)
         }
     }
 }
@@ -2168,9 +2174,11 @@ private fun GroupRoutineTopBar(
     modifier: Modifier = Modifier,
     showBack: Boolean = false,
     showAdd: Boolean = false,
+    showClose: Boolean = false,
     showActions: Boolean = false,
     onBackClick: () -> Unit = {},
     onAddClick: () -> Unit = {},
+    onCloseClick: () -> Unit = {},
     onChatClick: () -> Unit = {},
     onSettingsClick: () -> Unit = {},
 ) {
@@ -2210,6 +2218,16 @@ private fun GroupRoutineTopBar(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .clickable(onClick = onAddClick),
+                )
+            }
+            if (showClose) {
+                Text(
+                    text = "×",
+                    color = LabelDefault,
+                    fontSize = 22.sp,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .clickable(onClick = onCloseClick),
                 )
             }
               if (showActions) {
