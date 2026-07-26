@@ -38,6 +38,7 @@ fun ShopRoute(
         coinBalance = uiState.coinBalance,
         gemBalance = uiState.gemBalance,
         items = uiState.items,
+        selectedItemId = uiState.selectedItemId,
         modifier = modifier,
     )
 }

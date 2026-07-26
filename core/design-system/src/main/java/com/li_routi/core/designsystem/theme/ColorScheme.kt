@@ -4,6 +4,7 @@ import androidx.compose.runtime.Immutable
 import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.ui.graphics.Color
 import com.li_routi.core.designsystem.foundation.color.BackgroundFill
+import com.li_routi.core.designsystem.foundation.color.BackgroundSecondary
 import com.li_routi.core.designsystem.foundation.color.Blue500
 import com.li_routi.core.designsystem.foundation.color.Blue600
 import com.li_routi.core.designsystem.foundation.color.Blue800
@@ -13,6 +14,7 @@ import com.li_routi.core.designsystem.foundation.color.DimmerSecondary
 import com.li_routi.core.designsystem.foundation.color.Neutral0
 import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.foundation.color.Neutral15
+import com.li_routi.core.designsystem.foundation.color.Neutral17
 import com.li_routi.core.designsystem.foundation.color.Neutral20
 import com.li_routi.core.designsystem.foundation.color.Neutral22
 import com.li_routi.core.designsystem.foundation.color.Neutral23
@@ -29,6 +31,7 @@ import com.li_routi.core.designsystem.foundation.color.Neutral97
 import com.li_routi.core.designsystem.foundation.color.Neutral98
 import com.li_routi.core.designsystem.foundation.color.Neutral99
 import com.li_routi.core.designsystem.foundation.color.Neutral100
+import com.li_routi.core.designsystem.foundation.color.OutlinedMid
 import com.li_routi.core.designsystem.foundation.color.Red100
 import com.li_routi.core.designsystem.foundation.color.Red200
 import com.li_routi.core.designsystem.foundation.color.Red300
@@ -72,6 +75,7 @@ data class LiroutiColorScheme(
 
     // Surface
     val surfaceContainerMid: Color,
+    val surfaceInverse: Color,
 
     // Dimmer
     val dimmerDefault: Color,
@@ -83,6 +87,7 @@ data class LiroutiColorScheme(
     val borderAlternative: Color,
     val borderStrong: Color,
     val borderActive: Color,
+    val outlinedMid: Color,
 
     // Danger
     val dangerText: Color,
@@ -111,7 +116,7 @@ val LiroutiLightColorScheme = LiroutiColorScheme(
     labelReverse = Neutral100,
 
     backgroundDefault = Neutral100,
-    backgroundSecondary = Red200,
+    backgroundSecondary = BackgroundSecondary,
     backgroundAlternative = Neutral99,
     backgroundStrong = Neutral95,
     backgroundSelected = Red300,
@@ -120,6 +125,7 @@ val LiroutiLightColorScheme = LiroutiColorScheme(
     chipSelectedBackground = ChipSelectedNeutral,
 
     surfaceContainerMid = SurfaceContainerMid,
+    surfaceInverse = Neutral17,
 
     dimmerDefault = DimmerDefault,
     dimmerSecondary = DimmerSecondary,
@@ -129,6 +135,7 @@ val LiroutiLightColorScheme = LiroutiColorScheme(
     borderAlternative = Neutral98,
     borderStrong = Neutral80,
     borderActive = Blue800,
+    outlinedMid = OutlinedMid,
 
     dangerText = Red600,
     dangerBase = Red500,
@@ -165,6 +172,7 @@ val LiroutiDarkColorScheme = LiroutiColorScheme(
     chipSelectedBackground = ChipSelectedNeutral,
 
     surfaceContainerMid = SurfaceContainerMid,
+    surfaceInverse = Neutral17,
 
     dimmerDefault = DimmerDefault,
     dimmerSecondary = DimmerSecondary,
@@ -174,6 +182,7 @@ val LiroutiDarkColorScheme = LiroutiColorScheme(
     borderAlternative = Neutral22,
     borderStrong = Neutral40,
     borderActive = Neutral40,
+    outlinedMid = OutlinedMid,
 
     dangerText = Red600,
     dangerBase = Red500,

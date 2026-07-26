@@ -1,5 +1,7 @@
 package com.li_routi.feature.home.component
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,28 +18,29 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.DsPlaceholder
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-private data class HomeBottomNavTab(val label: String, val iconName: String)
+private data class HomeBottomNavTab(
+    val label: String,
+    @DrawableRes val defaultIcon: Int,
+    @DrawableRes val activeIcon: Int,
+)
 
-// 아이콘 이름은 Figma `BottomGnb`의 `Component` variant(`property1`)와 동일하게 맞춘다: home/group/medal/ic_my
 private val HomeBottomNavTabs = listOf(
-    HomeBottomNavTab(label = "홈", iconName = "Icon/home"),
-    HomeBottomNavTab(label = "그룹 루틴", iconName = "Icon/group"),
-    HomeBottomNavTab(label = "챌린지", iconName = "Icon/medal"),
-    HomeBottomNavTab(label = "마이", iconName = "Icon/ic_my"),
+    HomeBottomNavTab("홈", R.drawable.home__default, R.drawable.home__active),
+    HomeBottomNavTab("그룹 루틴", R.drawable.group__default, R.drawable.group__active),
+    HomeBottomNavTab("챌린지", R.drawable.medal__default, R.drawable.medal__active),
+    HomeBottomNavTab("마이", R.drawable.ic_my__default, R.drawable.ic_my__active),
 )
 
 /**
  * 홈/그룹 루틴/챌린지/마이 4-tab 하단 GNB.
- *
- * 탭 선택은 화면 이동이 아닌 로컬 UI 상태이므로 이 컴포넌트 내부에서 직접 관리한다.
- * 아이콘은 Design System instance라 [DsPlaceholder]로 대체한다.
  *
  * edge-to-edge에서도 시스템 내비/제스처 바 바로 위에 보이도록 [navigationBarsPadding]을 적용한다.
  */
@@ -74,8 +77,9 @@ private fun HomeBottomNavItem(
         modifier = modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        DsPlaceholder(
-            componentName = tab.iconName,
+        Image(
+            painter = painterResource(id = if (selected) tab.activeIcon else tab.defaultIcon),
+            contentDescription = tab.label,
             modifier = Modifier.size(24.dp),
         )
         Text(

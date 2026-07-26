@@ -13,6 +13,9 @@ interface ShopScreenActions {
     /** 상단 코인/보석 잔액 chip 탭 */
     fun onCurrencyChipClick()
 
+    /** 아이템 그리드 셀 탭 (선택/해제) */
+    fun onItemClick(itemId: String)
+
     /** 하단 저장 버튼 탭 */
     fun onSaveClick()
 }
