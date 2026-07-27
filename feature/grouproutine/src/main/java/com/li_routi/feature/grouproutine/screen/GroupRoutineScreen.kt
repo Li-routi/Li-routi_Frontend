@@ -313,7 +313,7 @@ private fun GroupRoutineScreen(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
-                    .padding(bottom = 92.dp)
+                    .padding(bottom = 100.dp)
                     .fillMaxWidth()
                     .padding(horizontal = 20.dp)
                     .clip(RoundedCornerShape(4.dp))
