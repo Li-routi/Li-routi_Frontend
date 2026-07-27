@@ -1745,7 +1745,11 @@ private fun ChatInputBar(
                 .background(Color(0xFFD6E8FF)),
             contentAlignment = Alignment.Center,
         ) {
-            Text(text = "➤", color = PrimaryNormal, fontSize = 28.sp)
+            Image(
+                painter = painterResource(id = R.drawable.ic_group_routine_send),
+                contentDescription = "메시지 보내기",
+                modifier = Modifier.size(30.dp),
+            )
         }
     }
 }
