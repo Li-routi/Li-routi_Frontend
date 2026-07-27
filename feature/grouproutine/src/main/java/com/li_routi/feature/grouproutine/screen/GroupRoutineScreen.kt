@@ -131,6 +131,10 @@ fun GroupRoutineRoute(
         onMemberClick = viewModel::onMemberClick,
         onDismissMemberDialog = viewModel::onDismissMemberDialog,
         onChatClick = viewModel::onChatClick,
+        onMessageEditClick = viewModel::onMessageEditClick,
+        onMessageDraftChange = viewModel::onMessageDraftChange,
+        onDismissMessageEditDialog = viewModel::onDismissMessageEditDialog,
+        onMessageEditConfirmClick = viewModel::onMessageEditConfirmClick,
         onSettingsClick = viewModel::onSettingsClick,
         onInviteCodeCopyClick = viewModel::onInviteCodeCopyClick,
         onGroupRoutineManageClick = viewModel::onGroupRoutineManageClick,
@@ -182,6 +186,10 @@ private fun GroupRoutineScreen(
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
     onChatClick: () -> Unit,
+    onMessageEditClick: () -> Unit,
+    onMessageDraftChange: (String) -> Unit,
+    onDismissMessageEditDialog: () -> Unit,
+    onMessageEditConfirmClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onInviteCodeCopyClick: () -> Unit,
     onGroupRoutineManageClick: () -> Unit,
@@ -212,6 +220,10 @@ private fun GroupRoutineScreen(
                 onMemberClick = onMemberClick,
                 onDismissMemberDialog = onDismissMemberDialog,
                 onChatClick = onChatClick,
+                onMessageEditClick = onMessageEditClick,
+                onMessageDraftChange = onMessageDraftChange,
+                onDismissMessageEditDialog = onDismissMessageEditDialog,
+                onMessageEditConfirmClick = onMessageEditConfirmClick,
                 onSettingsClick = onSettingsClick,
                 onInviteCodeClick = onInviteCodeCopyClick,
             )
@@ -1014,6 +1026,64 @@ private fun DeleteRoutineDialog(
 }
 
 @Composable
+private fun MessageEditDialog(
+    value: String,
+    onValueChange: (String) -> Unit,
+    onDismissRequest: () -> Unit,
+    onConfirmClick: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 38.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.White)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(18.dp),
+        ) {
+            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                Text(
+                    text = "메시지 수정",
+                    color = LabelDefault,
+                    style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
+                    modifier = Modifier.weight(1f),
+                )
+                Text(
+                    text = "×",
+                    color = LabelDefault,
+                    fontSize = 28.sp,
+                    modifier = Modifier.clickable(onClick = onDismissRequest),
+                )
+            }
+            OutlinedTextField(
+                value = value,
+                onValueChange = onValueChange,
+                placeholder = { Text(text = "최대 8자") },
+                singleLine = true,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            Button(
+                onClick = onConfirmClick,
+                shape = RoundedCornerShape(6.dp),
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = PrimaryNormal,
+                    contentColor = Color.White,
+                ),
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(48.dp),
+            ) {
+                Text(text = "확인")
+            }
+        }
+    }
+}
+
+@Composable
 private fun NewCertificationDialog(
     onDismissRequest: () -> Unit,
     onNegativeClick: () -> Unit,
@@ -1425,6 +1495,10 @@ private fun GroupRoutineDetailScreen(
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
     onChatClick: () -> Unit,
+    onMessageEditClick: () -> Unit,
+    onMessageDraftChange: (String) -> Unit,
+    onDismissMessageEditDialog: () -> Unit,
+    onMessageEditConfirmClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onInviteCodeClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -1452,7 +1526,7 @@ private fun GroupRoutineDetailScreen(
                 GroupMemberCard(
                     title = routine.title,
                     members = uiState.members,
-                    onMessageEditClick = onChatClick,
+                    onMessageEditClick = onMessageEditClick,
                     onInviteCodeClick = onInviteCodeClick,
                     onMemberClick = onMemberClick,
                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -1486,11 +1560,20 @@ private fun GroupRoutineDetailScreen(
             modifier = Modifier.align(Alignment.TopCenter),
         )
         GroupRoutineBottomBar(modifier = Modifier.align(Alignment.BottomCenter))
-    }
+        }
 
-    uiState.selectedMember?.let { member ->
-        MemberProfileDialog(
-            member = member,
+        if (uiState.isMessageEditDialogVisible) {
+            MessageEditDialog(
+                value = uiState.messageDraft,
+                onValueChange = onMessageDraftChange,
+                onDismissRequest = onDismissMessageEditDialog,
+                onConfirmClick = onMessageEditConfirmClick,
+            )
+        }
+
+        uiState.selectedMember?.let { member ->
+            MemberProfileDialog(
+                member = member,
             onDismissRequest = onDismissMemberDialog,
             onPokeClick = onDismissMemberDialog,
         )
@@ -2300,7 +2383,7 @@ private fun GroupMemberCard(
     modifier: Modifier = Modifier,
 ) {
     val visibleMembers = members.take(6)
-    val seatLayoutHeight = if (visibleMembers.size <= 3) 104.dp else 204.dp
+    val seatLayoutHeight = if (visibleMembers.size <= 3) 116.dp else 252.dp
 
     Column(
         modifier = modifier
@@ -2327,7 +2410,11 @@ private fun GroupMemberCard(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextAction(label = "메시지 수정", onClick = onMessageEditClick)
+            TextAction(
+                iconRes = R.drawable.ic_group_routine_message_edit,
+                label = "메시지 수정",
+                onClick = onMessageEditClick,
+            )
             Box(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
@@ -2335,7 +2422,11 @@ private fun GroupMemberCard(
                     .height(12.dp)
                     .background(BorderDefault),
             )
-            TextAction(label = "초대코드", onClick = onInviteCodeClick)
+            TextAction(
+                iconRes = R.drawable.ic_group_routine_invite_copy,
+                label = "초대코드",
+                onClick = onInviteCodeClick,
+            )
         }
     }
 }
@@ -2372,7 +2463,9 @@ private fun MemberSeatLayout(
                     MemberSeat(
                         member = member,
                         onClick = { onMemberClick(member.id) },
-                        modifier = Modifier.width(itemWidth),
+                        modifier = Modifier
+                            .width(itemWidth)
+                            .height(116.dp),
                     )
                 }
             }
@@ -2781,18 +2874,31 @@ private fun RoutineIconBox(
 
 @Composable
 private fun TextAction(
+    @DrawableRes iconRes: Int? = null,
     label: String,
     onClick: () -> Unit = {},
 ) {
-    Text(
-        text = label,
-        color = LabelSub,
-        style = LiroutiTheme.typography.body2Long,
+    Row(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
             .clickable(onClick = onClick)
             .padding(4.dp),
-    )
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (iconRes != null) {
+            Image(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
+        }
+        Text(
+            text = label,
+            color = LabelSub,
+            style = LiroutiTheme.typography.body2Long,
+        )
+    }
 }
 
 @Composable
@@ -3049,6 +3155,10 @@ private fun GroupRoutineListPreview() {
             onMemberClick = {},
             onDismissMemberDialog = {},
             onChatClick = {},
+            onMessageEditClick = {},
+            onMessageDraftChange = {},
+            onDismissMessageEditDialog = {},
+            onMessageEditConfirmClick = {},
             onSettingsClick = {},
             onInviteCodeCopyClick = {},
             onGroupRoutineManageClick = {},
@@ -3104,6 +3214,10 @@ private fun CreateRoomNamePreview() {
             onMemberClick = {},
             onDismissMemberDialog = {},
             onChatClick = {},
+            onMessageEditClick = {},
+            onMessageDraftChange = {},
+            onDismissMessageEditDialog = {},
+            onMessageEditConfirmClick = {},
             onSettingsClick = {},
             onInviteCodeCopyClick = {},
             onGroupRoutineManageClick = {},

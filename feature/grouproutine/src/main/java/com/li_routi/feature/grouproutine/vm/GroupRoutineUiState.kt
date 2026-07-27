@@ -76,6 +76,8 @@ data class GroupRoutineUiState(
     val isCurrentUserLeader: Boolean = true,
     val showOnlyMyCertifications: Boolean = false,
     val isNewCertificationDialogVisible: Boolean = false,
+    val isMessageEditDialogVisible: Boolean = false,
+    val messageDraft: String = "",
     val isEmptyState: Boolean = false,
     val searchInput: String = "",
     val roomNameInput: String = "",

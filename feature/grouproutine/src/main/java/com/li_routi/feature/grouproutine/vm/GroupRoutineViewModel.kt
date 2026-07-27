@@ -94,6 +94,38 @@ class GroupRoutineViewModel : BaseViewModel() {
         }
     }
 
+    fun onMessageEditClick() {
+        _uiState.update { state ->
+            state.copy(
+                isMessageEditDialogVisible = true,
+                messageDraft = state.members.firstOrNull { it.isMe }?.message.orEmpty(),
+                actionMessage = null,
+            )
+        }
+    }
+
+    fun onMessageDraftChange(value: String) {
+        _uiState.update { it.copy(messageDraft = value.take(8), actionMessage = null) }
+    }
+
+    fun onDismissMessageEditDialog() {
+        _uiState.update { it.copy(isMessageEditDialogVisible = false, messageDraft = "") }
+    }
+
+    fun onMessageEditConfirmClick() {
+        _uiState.update { state ->
+            val nextMessage = state.messageDraft.trim().ifBlank { "반가워요!" }
+            state.copy(
+                isMessageEditDialogVisible = false,
+                messageDraft = "",
+                members = state.members.map { member ->
+                    if (member.isMe) member.copy(message = nextMessage) else member
+                },
+                actionMessage = null,
+            )
+        }
+    }
+
     fun onSettingsClick() {
         _uiState.update {
             it.copy(
