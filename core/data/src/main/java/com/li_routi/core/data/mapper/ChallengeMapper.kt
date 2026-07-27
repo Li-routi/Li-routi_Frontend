@@ -22,7 +22,7 @@ fun ChallengeSummaryResponse.toDomain(): Challenge = Challenge(
     id = challengeId,
     name = name,
     description = description,
-    imageUrl = imageUrl,
+    imageUrl = imageUrl.orEmpty(),
     category = ChallengeCategory.valueOf(category),
     routineCycle = RoutineCycle.valueOf(routineCycle),
     reward = reward,
@@ -40,7 +40,7 @@ fun ChallengeDetailResponse.toDomain(): ChallengeDetail = ChallengeDetail(
     id = challengeId,
     name = name,
     description = description,
-    imageUrl = imageUrl,
+    imageUrl = imageUrl.orEmpty(),
     category = ChallengeCategory.valueOf(category),
     routineCycle = RoutineCycle.valueOf(routineCycle),
     reward = reward,
@@ -54,7 +54,7 @@ fun VerificationResponse.toDomain(): Certification = Certification(
     id = verificationId,
     authorName = nickname,
     content = content,
-    imageUrl = imageUrl,
+    imageUrl = imageUrl.orEmpty(),
     verifiedAt = verifiedAt,
 )
 
@@ -74,7 +74,7 @@ fun MyChallengeSummaryResponse.toDomain(): MyChallenge = MyChallenge(
     id = challengeId,
     name = name,
     description = description,
-    imageUrl = imageUrl,
+    imageUrl = imageUrl.orEmpty(),
     category = ChallengeCategory.valueOf(category),
 )
 
