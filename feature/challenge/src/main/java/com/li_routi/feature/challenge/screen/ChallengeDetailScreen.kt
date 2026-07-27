@@ -118,8 +118,9 @@ fun ChallengeDetailScreen(
                 ChallengeInfoSection(uiState = uiState, onJoinClick = actions::onJoinClick)
                 LiroutiRoutineStatsRow(
                     participants = uiState.participantCount.toString(),
-                    activity = uiState.activityCount.toString(),
+                    activity = uiState.rewardCount.toString(),
                     posts = uiState.postCount.toString(),
+                    activityLabel = "리워드",
                 )
             }
         }
@@ -265,7 +266,7 @@ private val PreviewChallengeDetailUiState = ChallengeDetailUiState(
     badge = "매일 루틴",
     description = "매일 우유를 마시며 건강 관리를 해요",
     participantCount = 300,
-    activityCount = 14000,
+    rewardCount = 14000,
     postCount = 80,
     allCertifications = PreviewCertifications,
     allHasNext = false,

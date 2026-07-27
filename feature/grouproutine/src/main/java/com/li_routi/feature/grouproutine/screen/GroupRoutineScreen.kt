@@ -61,6 +61,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -91,11 +92,13 @@ private val DangerBase = Color(0xFFFF6363)
 @Composable
 fun GroupRoutineRoute(
     viewModel: GroupRoutineViewModel = viewModel(),
+    onTabSelected: (AppBottomTab) -> Unit = {},
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     GroupRoutineScreen(
         uiState = uiState,
+        onTabSelected = onTabSelected,
         onRoutineClick = viewModel::onRoutineClick,
         onBackClick = viewModel::onBackClick,
         onAddClick = viewModel::onAddClick,
@@ -192,6 +195,7 @@ private fun GroupRoutineScreen(
     onRoomAlarmSettingsClick: () -> Unit,
     onRoomLockClick: () -> Unit,
     onRoomNameEditConfirmClick: () -> Unit,
+    onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -201,6 +205,7 @@ private fun GroupRoutineScreen(
                 onRoutineClick = onRoutineClick,
                 onAddClick = onAddClick,
                 onSearchInputChange = onSearchInputChange,
+                onTabSelected = onTabSelected,
             )
 
             GroupRoutineScreenMode.Detail -> GroupRoutineDetailScreen(
@@ -214,12 +219,14 @@ private fun GroupRoutineScreen(
                 onChatClick = onChatClick,
                 onSettingsClick = onSettingsClick,
                 onInviteCodeClick = onInviteCodeCopyClick,
+                onTabSelected = onTabSelected,
             )
 
             GroupRoutineScreenMode.CertificationCollection -> CertificationCollectionScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
                 onCertificationTabClick = onCertificationTabClick,
+                onTabSelected = onTabSelected,
             )
 
             GroupRoutineScreenMode.GroupChat -> GroupChatScreen(
@@ -373,6 +380,7 @@ private fun GroupRoutineListScreen(
     onRoutineClick: (Long) -> Unit,
     onAddClick: () -> Unit,
     onSearchInputChange: (String) -> Unit,
+    onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -417,7 +425,11 @@ private fun GroupRoutineListScreen(
             onAddClick = onAddClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
-        GroupRoutineBottomBar(modifier = Modifier.align(Alignment.BottomCenter))
+        GroupRoutineBottomBar(
+            selectedTab = AppBottomTab.GroupRoutine,
+            onTabSelected = onTabSelected,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 
@@ -1427,6 +1439,7 @@ private fun GroupRoutineDetailScreen(
     onChatClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onInviteCodeClick: () -> Unit,
+    onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val routine = uiState.selectedRoutine ?: return
@@ -1485,7 +1498,11 @@ private fun GroupRoutineDetailScreen(
             onSettingsClick = onSettingsClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
-        GroupRoutineBottomBar(modifier = Modifier.align(Alignment.BottomCenter))
+        GroupRoutineBottomBar(
+            selectedTab = AppBottomTab.GroupRoutine,
+            onTabSelected = onTabSelected,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 
     uiState.selectedMember?.let { member ->
@@ -1502,6 +1519,7 @@ private fun CertificationCollectionScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
+    onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -1530,7 +1548,11 @@ private fun CertificationCollectionScreen(
             onBackClick = onBackClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
-        GroupRoutineBottomBar(modifier = Modifier.align(Alignment.BottomCenter))
+        GroupRoutineBottomBar(
+            selectedTab = AppBottomTab.GroupRoutine,
+            onTabSelected = onTabSelected,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 }
 
@@ -2920,13 +2942,15 @@ private fun TopBarActionButton(
 
 @Composable
 private fun GroupRoutineBottomBar(
+    selectedTab: AppBottomTab = AppBottomTab.GroupRoutine,
+    onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     val items = listOf(
-        BottomNavItem(R.drawable.ic_group_routine_home, "홈"),
-        BottomNavItem(R.drawable.ic_group_routine_group_active, "그룹 루틴"),
-        BottomNavItem(R.drawable.ic_group_routine_challenge, "챌린지"),
-        BottomNavItem(R.drawable.ic_group_routine_my, "마이"),
+        BottomNavItem(R.drawable.ic_group_routine_home, "홈", AppBottomTab.Home),
+        BottomNavItem(R.drawable.ic_group_routine_group_active, "그룹 루틴", AppBottomTab.GroupRoutine),
+        BottomNavItem(R.drawable.ic_group_routine_challenge, "챌린지", AppBottomTab.Challenge),
+        BottomNavItem(R.drawable.ic_group_routine_my, "마이", AppBottomTab.My),
     )
 
     Row(
@@ -2939,9 +2963,11 @@ private fun GroupRoutineBottomBar(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         items.forEach { item ->
-            val active = item.label == "그룹 루틴"
+            val active = item.tab == selectedTab
             Column(
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .clickable { onTabSelected(item.tab) },
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center,
             ) {
@@ -2965,6 +2991,7 @@ private fun GroupRoutineBottomBar(
 private data class BottomNavItem(
     @param:DrawableRes val iconRes: Int,
     val label: String,
+    val tab: AppBottomTab,
 )
 
 @OptIn(ExperimentalMaterial3Api::class)

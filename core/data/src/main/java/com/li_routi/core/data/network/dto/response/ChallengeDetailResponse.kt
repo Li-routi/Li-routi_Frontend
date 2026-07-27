@@ -5,7 +5,7 @@ data class ChallengeDetailResponse(
     val challengeId: Long,
     val name: String,
     val description: String,
-    val imageUrl: String,
+    val imageUrl: String?,
     val category: String,
     val routineCycle: String,
     val reward: Int,

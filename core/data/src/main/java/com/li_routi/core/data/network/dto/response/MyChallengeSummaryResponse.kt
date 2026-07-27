@@ -5,6 +5,6 @@ data class MyChallengeSummaryResponse(
     val challengeId: Long,
     val name: String,
     val description: String,
-    val imageUrl: String,
+    val imageUrl: String?,
     val category: String,
 )

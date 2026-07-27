@@ -116,7 +116,7 @@ private fun ChallengeDetailUiState.applyDetail(detail: ChallengeDetail): Challen
     badge = detail.routineCycle.toBadgeLabel(),
     description = detail.description,
     participantCount = detail.participantCount.toIntClamped(),
-    activityCount = detail.todayCompletionCount.toIntClamped(),
+    rewardCount = detail.reward,
     postCount = detail.verificationPostCount.toIntClamped(),
     isJoined = detail.participating,
 )

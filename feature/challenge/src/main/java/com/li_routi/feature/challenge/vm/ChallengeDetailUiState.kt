@@ -42,7 +42,7 @@ data class ChallengeDetailUiState(
     val badge: String = "",
     val description: String = "",
     val participantCount: Int = 0,
-    val activityCount: Int = 0,
+    val rewardCount: Int = 0,
     val postCount: Int = 0,
     val isJoined: Boolean = false,
     val selectedTab: CertificationTab = CertificationTab.All,
