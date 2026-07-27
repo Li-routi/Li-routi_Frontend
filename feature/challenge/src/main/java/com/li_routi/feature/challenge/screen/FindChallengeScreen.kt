@@ -26,20 +26,19 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
-import com.li_routi.core.designsystem.component.LiroutiLabel
-import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
-import com.li_routi.core.designsystem.component.LiroutiSearchField
-import com.li_routi.core.designsystem.theme.LiroutiTheme
-import com.li_routi.core.domain.challenge.ChallengeCategory
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
+import com.li_routi.core.designsystem.component.LiroutiLabel
+import com.li_routi.core.designsystem.component.LiroutiSearchField
+import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
+import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.core.domain.challenge.ChallengeCategory
 import com.li_routi.feature.challenge.component.ChallengeCard
 import com.li_routi.feature.challenge.component.ChallengeCardUiModel
 import com.li_routi.feature.challenge.navigation.FindChallengeScreenActions
 import com.li_routi.feature.challenge.vm.FindChallengeUiState
 
-// 필터 칩 표시 라벨 <-> 서버 category 쿼리 매핑 ("전체" 칩은 category 생략).
 private val filterOptions: List<Pair<String, ChallengeCategory?>> = listOf(
     "전체" to null,
     "건강" to ChallengeCategory.HEALTH,
@@ -49,10 +48,6 @@ private val filterOptions: List<Pair<String, ChallengeCategory?>> = listOf(
     "취미" to ChallengeCategory.HOBBY,
 )
 
-// Figma node: 2380:40517 ("챌린지 찾아보기")
-// "챌린지" 화면(디폴트/빈 상태)의 "새 챌린지 찾아보기" 버튼에서 넘어오는 화면.
-// 카드를 누르면 상세 화면(ChallengeDetailScreen)으로 이동한다.
-// 하단 GNB는 챌린지 상세 화면에는 노출되지 않고 이 화면까지만 보인다.
 @Composable
 fun FindChallengeScreen(
     uiState: FindChallengeUiState,
@@ -62,13 +57,10 @@ fun FindChallengeScreen(
     onTabSelected: (AppBottomTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // 검색어 입력 자체는 화면 로컬 UI 상태. 검색 실행(백엔드 keyword 연동)은 이번 범위 제외.
     var searchQuery by remember { mutableStateOf("") }
 
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.weight(1f)) {
-
-            // ---------- 상단 네비게이션 (뒤로가기 + "챌린지 찾아보기") ----------
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -101,15 +93,11 @@ fun FindChallengeScreen(
                     .padding(top = 25.dp, bottom = 50.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-
-                // ---------- 검색바 ----------
                 LiroutiSearchField(
                     value = searchQuery,
                     onValueChange = { searchQuery = it },
                 )
 
-                // ---------- 필터 칩 ----------
-                // (Figma: Dim > Filter, node 2380:40523)
                 Row(
                     modifier = Modifier.horizontalScroll(rememberScrollState()),
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
@@ -123,8 +111,6 @@ fun FindChallengeScreen(
                     }
                 }
 
-                // ---------- 챌린지 카드 리스트 (백엔드 GET /api/challenges 연동) ----------
-                // (Figma node 2380:40530 / 2380:40558).
                 when {
                     uiState.isLoading -> {
                         Box(
@@ -175,7 +161,6 @@ fun FindChallengeScreen(
             }
         }
 
-        // 홈/그룹 루틴/챌린지/마이 4탭 하단 GNB.
         AppBottomNavBar(selectedTab = AppBottomTab.Challenge, onTabSelected = onTabSelected)
     }
 }
@@ -219,21 +204,6 @@ private fun FindChallengeScreenPreview() {
             onChallengeClick = {},
             onTabSelected = {},
         )
-
-        // ---------- 참여자/활동/인증 게시글 통계 ----------
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .background(BgFill, RoundedCornerShape(8.dp))
-                .padding(horizontal = 16.dp, vertical = 12.dp),
-            horizontalArrangement = Arrangement.SpaceBetween,
-        ) {
-            ChallengeStat(value = challenge.participantCount, label = "참여자")
-            ChallengeStatDivider()
-            ChallengeStat(value = challenge.activityCount, label = "리워드")
-            ChallengeStatDivider()
-            ChallengeStat(value = challenge.postCount, label = "인증 게시글")
-        }
     }
 }
 
