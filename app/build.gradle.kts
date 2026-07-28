@@ -1,7 +1,15 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
 }
+
+val localProperties = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val kakaoAppId: String = localProperties.getProperty("KAKAO_APP_ID").orEmpty()
 
 android {
     namespace = "com.cmc.li_routi_frontend"
@@ -19,6 +27,9 @@ android {
         versionName = "1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "KAKAO_APP_ID", "\"$kakaoAppId\"")
+        manifestPlaceholders["kakaoAppId"] = kakaoAppId
     }
 
     buildTypes {
@@ -36,6 +47,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 
@@ -93,4 +105,7 @@ dependencies {
     // Hilt
     implementation(libs.hilt.android)
     implementation(libs.androidx.hilt.navigation.compose)
+
+    // Kakao SDK (Application에서 KakaoSdk.init 호출용)
+    implementation(libs.kakao.sdk.user)
 }

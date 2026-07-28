@@ -184,7 +184,7 @@ private val SampleGroupMembers = listOf(
 private val SampleGroupTodos = listOf(
     GroupTodoUiModel(1L, "물 마시기", "22:00", "건강", false),
     GroupTodoUiModel(2L, "스트레칭하기", "23:00", "운동", false),
-    GroupTodoUiModel(3L, "물 마시기", "22:00", "건강", true),
+    GroupTodoUiModel(3L, "물 마시기", "22:00", "건강", false),
 )
 
 private val SampleCertificationPosts = listOf(
