@@ -77,6 +77,7 @@ import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.component.LiroutiSearchField
 import com.li_routi.core.designsystem.component.LiroutiSwitch
+import com.li_routi.core.designsystem.R as DesignSystemR
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
@@ -136,6 +137,7 @@ fun GroupRoutineRoute(
         onJoinByCodeClick = viewModel::onJoinByCodeClick,
         onRoomNameChange = viewModel::onRoomNameChange,
         onCreateRoomNextClick = viewModel::onCreateRoomNextClick,
+        onCreateFlowCloseClick = viewModel::onCreateFlowCloseClick,
         onInviteCodeChange = viewModel::onInviteCodeChange,
         onInviteCodeConfirmClick = viewModel::onInviteCodeConfirmClick,
         onCreateRoutineOptionClick = viewModel::onCreateRoutineOptionClick,
@@ -188,6 +190,7 @@ private fun GroupRoutineScreen(
     onJoinByCodeClick: () -> Unit,
     onRoomNameChange: (String) -> Unit,
     onCreateRoomNextClick: () -> Unit,
+    onCreateFlowCloseClick: () -> Unit = onBackClick,
     onInviteCodeChange: (String) -> Unit,
     onInviteCodeConfirmClick: () -> Unit,
     onCreateRoutineOptionClick: (Long) -> Unit,
@@ -322,6 +325,7 @@ private fun GroupRoutineScreen(
                 uiState = uiState,
                 selectedCount = uiState.selectedCreateRoutineCount,
                 onBackClick = onBackClick,
+                onCloseClick = onCreateFlowCloseClick,
                 onOptionClick = onCreateRoutineOptionClick,
                 onSelectAllClick = onCreateRoutineSelectAllClick,
                 onCategoryClick = onCategoryClick,
@@ -587,6 +591,7 @@ private fun CreateRoutineSelectScreen(
     uiState: GroupRoutineUiState,
     selectedCount: Int,
     onBackClick: () -> Unit,
+    onCloseClick: () -> Unit,
     onOptionClick: (Long) -> Unit,
     onSelectAllClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
@@ -646,7 +651,7 @@ private fun CreateRoutineSelectScreen(
             showBack = true,
             showClose = true,
             onBackClick = onBackClick,
-            onCloseClick = onBackClick,
+            onCloseClick = onCloseClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
         Column(
@@ -1496,7 +1501,7 @@ private fun GroupRoutineDetailScreen(
             }
             item {
                 GroupMemberCard(
-                    title = "그룹1",
+                    title = routine.title,
                     members = uiState.members,
                     onMessageEditClick = onChatClick,
                     onInviteCodeClick = onInviteCodeClick,
@@ -1562,7 +1567,7 @@ private fun CertificationCollectionScreen(
     ) {
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
-            contentPadding = PaddingValues(top = 69.dp, bottom = 104.dp),
+            contentPadding = PaddingValues(top = 112.dp, bottom = 104.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             item {
@@ -1749,7 +1754,7 @@ private fun GroupSettingsScreen(
                 item {
                     SettingsSectionHeader(text = "그룹 루틴 설정")
                     SettingsNavigationRow(
-                        iconRes = R.drawable.ic_group_routine_calendar_add,
+                        iconRes = DesignSystemR.drawable.calendar__add,
                         label = "그룹 루틴 관리",
                         onClick = onGroupRoutineManageClick,
                     )
@@ -1758,12 +1763,12 @@ private fun GroupSettingsScreen(
                 item {
                     SettingsSectionHeader(text = "방 정보 설정")
                     SettingsNavigationRow(
-                        iconRes = R.drawable.ic_group_routine_edit,
+                        iconRes = DesignSystemR.drawable.edit,
                         label = "방 이름 변경",
                         onClick = onRoomNameEditClick,
                     )
                     SettingsNavigationRow(
-                        iconRes = R.drawable.ic_group_routine_group,
+                        iconRes = DesignSystemR.drawable.group,
                         label = "방장 설정",
                         onClick = onLeaderSettingsClick,
                     )
@@ -1773,7 +1778,7 @@ private fun GroupSettingsScreen(
             item {
                 SettingsSectionHeader(text = "방 알림 설정")
                 SettingsNavigationRow(
-                    iconRes = R.drawable.ic_group_routine_alarm,
+                    iconRes = DesignSystemR.drawable.alarm,
                     label = "방 알림 설정",
                     onClick = onRoomAlarmSettingsClick,
                 )
@@ -2141,7 +2146,7 @@ private fun InviteLockRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Image(
-            painter = painterResource(id = R.drawable.ic_group_routine_locked),
+            painter = painterResource(id = DesignSystemR.drawable.locked),
             contentDescription = null,
             modifier = Modifier.size(24.dp),
         )
@@ -2174,7 +2179,7 @@ private fun InviteCodeRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         Image(
-            painter = painterResource(id = R.drawable.ic_group_routine_mail),
+            painter = painterResource(id = DesignSystemR.drawable.mail),
             contentDescription = null,
             modifier = Modifier.size(24.dp),
         )
@@ -2882,12 +2887,12 @@ private fun GroupRoutineTopBar(
                 modifier = Modifier.align(Alignment.Center),
             )
             if (showAdd) {
-                Text(
-                    text = "+",
-                    color = LabelDefault,
-                    fontSize = 24.sp,
+                Image(
+                    painter = painterResource(id = DesignSystemR.drawable.add__alt),
+                    contentDescription = "방 만들기",
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
+                        .size(24.dp)
                         .clickable(onClick = onAddClick),
                 )
             }
@@ -2908,13 +2913,13 @@ private fun GroupRoutineTopBar(
                       verticalAlignment = Alignment.CenterVertically,
                   ) {
                       TopBarActionButton(
-                          iconRes = R.drawable.ic_group_routine_chat,
+                          iconRes = DesignSystemR.drawable.chat,
                           badgeCount = 3,
                           onClick = onChatClick,
                       )
                       TopBarActionButton(
-                          iconRes = R.drawable.ic_group_routine_settings,
-                          badgeCount = 4,
+                          iconRes = DesignSystemR.drawable.settings,
+                          badgeCount = 0,
                           onClick = onSettingsClick,
                       )
                   }
@@ -2943,21 +2948,26 @@ private fun TopBarActionButton(
                 .size(20.dp),
         )
         if (badgeCount > 0) {
-            Text(
-                text = badgeCount.toString(),
-                color = Color.White,
-                fontSize = 10.sp,
-                fontWeight = FontWeight.Bold,
-                textAlign = TextAlign.Center,
+            Box(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
-                    .offset(x = 12.dp, y = (-4).dp)
-                    .height(18.dp)
-                    .widthIn(min = 18.dp)
-                    .clip(RoundedCornerShape(9.dp))
+                    .offset(x = 8.dp, y = (-4).dp)
+                    .height(16.dp)
+                    .widthIn(min = 16.dp)
+                    .clip(RoundedCornerShape(8.dp))
                     .background(DangerBase)
-                    .padding(horizontal = if (badgeCount >= 10) 5.dp else 0.dp),
-            )
+                    .padding(horizontal = if (badgeCount >= 10) 4.dp else 0.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = badgeCount.toString(),
+                    color = Color.White,
+                    fontSize = 10.sp,
+                    lineHeight = 10.sp,
+                    fontWeight = FontWeight.Bold,
+                    textAlign = TextAlign.Center,
+                )
+            }
         }
     }
 }
