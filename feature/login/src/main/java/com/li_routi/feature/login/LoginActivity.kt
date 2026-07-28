@@ -5,13 +5,9 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.padding
-import androidx.compose.material3.Scaffold
-import androidx.compose.material3.Text
-import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.tooling.preview.Preview
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
+import com.li_routi.feature.login.screen.LoginScreen
 
 class LoginActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -19,29 +15,21 @@ class LoginActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             LiroutiFrontendTheme {
-                Scaffold(modifier = Modifier.fillMaxSize()) { innerPadding ->
-                    Greeting(
-                        name = "Login",
-                        modifier = Modifier.padding(innerPadding)
-                    )
-                }
+                LoginScreen(
+                    onKakaoLoginClick = ::goToHome,
+                    onGoogleLoginClick = ::goToHome,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         }
     }
-}
 
-@Composable
-fun Greeting(name: String, modifier: Modifier = Modifier) {
-    Text(
-        text = "Hello $name!",
-        modifier = modifier
-    )
-}
-
-@Preview(showBackground = true)
-@Composable
-fun GreetingPreview() {
-    LiroutiFrontendTheme {
-        Greeting("Login")
+    /**
+     * feature:login은 app 모듈을 의존하지 않으므로 MainActivity를 직접 참조하지 않고,
+     * 앱의 launcher 인텐트로 홈 화면(AppNavHost)에 진입한다.
+     */
+    private fun goToHome() {
+        packageManager.getLaunchIntentForPackage(packageName)?.let(::startActivity)
+        finish()
     }
 }
