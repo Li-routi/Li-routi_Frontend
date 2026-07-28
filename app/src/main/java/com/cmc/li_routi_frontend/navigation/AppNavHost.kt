@@ -29,7 +29,8 @@ import com.li_routi.feature.home.navigation.HomeNavHost
  * 홈 화면 "+" 메뉴의 "방 만들기"/"초대코드로 참여"는 그룹 루틴 탭으로 전환하면서
  * 해당 진입점으로 바로 들어가도록 [groupRoutineEntryPoint]로 넘긴다.
  *
- * 로그인 화면이 아직 없어서 시작 탭은 홈으로 고정한다.
+ * 로그인 게이트는 `MainActivity`가 담당하므로(비로그인 시 `LoginActivity`로 리다이렉트) 여기 도달했다는 건
+ * 이미 로그인된 상태라는 뜻이다. 탭 간 구분과 무관하게 시작 탭은 홈으로 고정한다.
  */
 @Composable
 fun AppNavHost(
