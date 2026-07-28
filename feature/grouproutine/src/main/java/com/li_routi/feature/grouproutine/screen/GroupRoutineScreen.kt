@@ -2,6 +2,7 @@ package com.li_routi.feature.grouproutine.screen
 
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -9,10 +10,12 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -20,6 +23,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
@@ -44,28 +48,39 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.designsystem.component.CheckBoxState
+import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
+import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
+import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
+import com.li_routi.core.designsystem.component.LiroutiSearchField
+import com.li_routi.core.designsystem.component.LiroutiSwitch
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
+import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
 import com.li_routi.feature.grouproutine.vm.CertificationPostUiModel
 import com.li_routi.feature.grouproutine.vm.CreateRoutineOptionUiModel
 import com.li_routi.feature.grouproutine.vm.GroupMemberUiModel
@@ -74,6 +89,7 @@ import com.li_routi.feature.grouproutine.vm.GroupRoutineUiModel
 import com.li_routi.feature.grouproutine.vm.GroupRoutineUiState
 import com.li_routi.feature.grouproutine.vm.GroupRoutineViewModel
 import com.li_routi.feature.grouproutine.vm.GroupTodoUiModel
+import kotlin.math.roundToInt
 
 private val ScreenBackground = Color(0xFFF4F7FB)
 private val FillBackground = Color(0xFFFAFAFA)
@@ -91,10 +107,22 @@ private val DangerBase = Color(0xFFFF6363)
 
 @Composable
 fun GroupRoutineRoute(
+    initialEntryPoint: GrouproutineEntryPoint? = null,
+    onInitialEntryPointConsumed: () -> Unit = {},
     viewModel: GroupRoutineViewModel = viewModel(),
     onTabSelected: (AppBottomTab) -> Unit = {},
+    modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(initialEntryPoint) {
+        when (initialEntryPoint) {
+            GrouproutineEntryPoint.CreateRoom -> viewModel.onCreateRoomClick()
+            GrouproutineEntryPoint.JoinWithInviteCode -> viewModel.onJoinByCodeClick()
+            null -> Unit
+        }
+        if (initialEntryPoint != null) onInitialEntryPointConsumed()
+    }
 
     GroupRoutineScreen(
         uiState = uiState,
@@ -144,6 +172,7 @@ fun GroupRoutineRoute(
         onRoomAlarmSettingsClick = viewModel::onRoomAlarmSettingsClick,
         onRoomLockClick = viewModel::onRoomLockClick,
         onRoomNameEditConfirmClick = viewModel::onRoomNameEditConfirmClick,
+        modifier = modifier,
     )
 }
 
@@ -425,7 +454,7 @@ private fun GroupRoutineListScreen(
             onAddClick = onAddClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
-        GroupRoutineBottomBar(
+        AppBottomNavBar(
             selectedTab = AppBottomTab.GroupRoutine,
             onTabSelected = onTabSelected,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -599,29 +628,13 @@ private fun CreateRoutineSelectScreen(
                 }
             }
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 390.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color.White)
-                        .border(1.dp, BorderDefault, RoundedCornerShape(6.dp))
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                ) {
-                    SelectAllRoutineRow(
-                        checked = uiState.allVisibleRoutineOptionsSelected,
-                        onClick = onSelectAllClick,
-                    )
-                    HorizontalDivider(color = BorderDefault)
-                    uiState.visibleRoutineOptions.forEach { option ->
-                        CreateRoutineOptionRow(
-                            option = option,
-                            onCheckClick = { onOptionClick(option.id) },
-                            onSettingClick = { onRoutineSettingClick(option.id) },
-                        )
-                    }
-                }
+                RoutineOptionsCard(
+                    uiState = uiState,
+                    maxHeight = 390.dp,
+                    onSelectAllClick = onSelectAllClick,
+                    onOptionClick = onOptionClick,
+                    onRoutineSettingClick = onRoutineSettingClick,
+                )
             }
             item {
                 DashedRoutineAddButton(onClick = onRoutineAddClick)
@@ -710,11 +723,89 @@ private fun SelectAllRoutineRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SmallSquareCheckbox(checked = checked)
+        SmallSquareCheckbox(checked = checked, onClick = onClick)
         Text(
             text = "전체 선택",
             color = LabelDefault,
             style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+        )
+    }
+}
+
+@Composable
+private fun RoutineOptionsCard(
+    uiState: GroupRoutineUiState,
+    maxHeight: Dp,
+    onSelectAllClick: () -> Unit,
+    onOptionClick: (Long) -> Unit,
+    onRoutineSettingClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val scrollState = rememberScrollState()
+
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(max = maxHeight)
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White)
+            .border(1.dp, BorderDefault, RoundedCornerShape(6.dp)),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(scrollState)
+                .padding(horizontal = 16.dp, vertical = 6.dp),
+        ) {
+            SelectAllRoutineRow(
+                checked = uiState.allVisibleRoutineOptionsSelected,
+                onClick = onSelectAllClick,
+            )
+            HorizontalDivider(color = BorderDefault)
+            uiState.visibleRoutineOptions.forEach { option ->
+                CreateRoutineOptionRow(
+                    option = option,
+                    onCheckClick = { onOptionClick(option.id) },
+                    onSettingClick = { onRoutineSettingClick(option.id) },
+                )
+            }
+        }
+        RoutineScrollIndicator(
+            scrollState = scrollState,
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(top = 8.dp, end = 4.dp, bottom = 8.dp),
+        )
+    }
+}
+
+@Composable
+private fun RoutineScrollIndicator(
+    scrollState: ScrollState,
+    modifier: Modifier = Modifier,
+) {
+    if (scrollState.maxValue <= 0) return
+
+    val density = LocalDensity.current
+
+    BoxWithConstraints(
+        modifier = modifier
+            .width(4.dp)
+            .fillMaxHeight(),
+    ) {
+        val trackHeightPx = with(density) { maxHeight.toPx() }
+        val thumbHeightPx = (trackHeightPx * trackHeightPx / (trackHeightPx + scrollState.maxValue))
+            .coerceIn(with(density) { 42.dp.toPx() }, trackHeightPx)
+        val thumbOffsetPx = (scrollState.value.toFloat() / scrollState.maxValue) *
+            (trackHeightPx - thumbHeightPx)
+
+        Box(
+            modifier = Modifier
+                .offset(y = with(density) { thumbOffsetPx.roundToInt().toDp() })
+                .width(4.dp)
+                .height(with(density) { thumbHeightPx.toDp() })
+                .clip(RoundedCornerShape(99.dp))
+                .background(Color(0xFF9CA3AF)),
         )
     }
 }
@@ -734,14 +825,13 @@ private fun CreateRoutineOptionRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(
-            modifier = Modifier.clickable {
+        SmallSquareCheckbox(
+            checked = option.isSelected,
+            onClick = {
                 onCheckClick()
                 onSettingClick()
             },
-        ) {
-            SmallSquareCheckbox(checked = option.isSelected)
-        }
+        )
         Text(
             text = option.title,
             color = LabelDefault,
@@ -752,19 +842,17 @@ private fun CreateRoutineOptionRow(
 }
 
 @Composable
-private fun SmallSquareCheckbox(checked: Boolean, modifier: Modifier = Modifier) {
-    Box(
-        modifier = modifier
-            .size(18.dp)
-            .clip(RoundedCornerShape(2.dp))
-            .background(if (checked) PrimaryNormal else Color.White)
-            .border(1.dp, if (checked) PrimaryNormal else BorderStrong, RoundedCornerShape(2.dp)),
-        contentAlignment = Alignment.Center,
-    ) {
-        if (checked) {
-            Text(text = "✓", color = Color.White, fontSize = 12.sp, fontWeight = FontWeight.Bold)
-        }
-    }
+private fun SmallSquareCheckbox(
+    checked: Boolean,
+    modifier: Modifier = Modifier,
+    onClick: () -> Unit = {},
+) {
+    CustomCheckBox(
+        state = if (checked) CheckBoxState.B else CheckBoxState.A,
+        isCircle = false,
+        onClick = onClick,
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -772,19 +860,10 @@ private fun DashedRoutineAddButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Text(
-        text = "루틴 추가  +",
-        color = LabelDefault,
-        style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
-        textAlign = TextAlign.Center,
-        modifier = modifier
-            .fillMaxWidth()
-            .height(45.dp)
-            .clip(RoundedCornerShape(4.dp))
-            .background(Color.White)
-            .border(1.dp, BorderDefault, RoundedCornerShape(4.dp))
-            .clickable(onClick = onClick)
-            .padding(top = 12.dp),
+    LiroutiDashedAddButton(
+        text = "루틴 추가",
+        onClick = onClick,
+        modifier = modifier,
     )
 }
 
@@ -1176,22 +1255,14 @@ private fun PrimaryButton(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Button(
+    LiroutiPrimaryButton(
+        text = text,
         onClick = onClick,
         enabled = enabled,
-        shape = RoundedCornerShape(6.dp),
-        colors = ButtonDefaults.buttonColors(
-            containerColor = PrimaryNormal,
-            disabledContainerColor = Color(0xFFC8D9F3),
-            contentColor = Color.White,
-            disabledContentColor = Color.White,
-        ),
         modifier = modifier
             .fillMaxWidth()
             .height(48.dp),
-    ) {
-        Text(text = text, style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold))
-    }
+    )
 }
 
 @Composable
@@ -1200,50 +1271,12 @@ private fun GroupRoutineSearchField(
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .height(48.dp)
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
-            .border(1.dp, BorderDefault, RoundedCornerShape(6.dp))
-            .padding(horizontal = 18.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-    ) {
-        Text(text = "⌕", color = LabelDefault, fontSize = 24.sp, lineHeight = 24.sp)
-        BasicTextField(
-            value = value,
-            onValueChange = onValueChange,
-            singleLine = true,
-            textStyle = LiroutiTheme.typography.body2Long.copy(
-                color = LabelDefault,
-                fontWeight = FontWeight.Medium,
-            ),
-            modifier = Modifier.weight(1f),
-            decorationBox = { innerTextField ->
-                Box(contentAlignment = Alignment.CenterStart) {
-                    if (value.isBlank()) {
-                        Text(
-                            text = "그룹방 검색",
-                            color = LabelInfo,
-                            style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
-                            maxLines = 1,
-                        )
-                    }
-                    innerTextField()
-                }
-            },
-        )
-        if (value.isNotBlank()) {
-                Text(
-                    text = "×",
-                    color = LabelInfo,
-                    fontSize = 18.sp,
-                    modifier = Modifier.clickable { onValueChange("") },
-                )
-        }
-    }
+    LiroutiSearchField(
+        value = value,
+        onValueChange = onValueChange,
+        placeholder = "그룹방 검색",
+        modifier = modifier.fillMaxWidth(),
+    )
 }
 
 @Composable
@@ -1463,7 +1496,7 @@ private fun GroupRoutineDetailScreen(
             }
             item {
                 GroupMemberCard(
-                    title = routine.title,
+                    title = "그룹1",
                     members = uiState.members,
                     onMessageEditClick = onChatClick,
                     onInviteCodeClick = onInviteCodeClick,
@@ -1498,7 +1531,7 @@ private fun GroupRoutineDetailScreen(
             onSettingsClick = onSettingsClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
-        GroupRoutineBottomBar(
+        AppBottomNavBar(
             selectedTab = AppBottomTab.GroupRoutine,
             onTabSelected = onTabSelected,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -1548,7 +1581,7 @@ private fun CertificationCollectionScreen(
             onBackClick = onBackClick,
             modifier = Modifier.align(Alignment.TopCenter),
         )
-        GroupRoutineBottomBar(
+        AppBottomNavBar(
             selectedTab = AppBottomTab.GroupRoutine,
             onTabSelected = onTabSelected,
             modifier = Modifier.align(Alignment.BottomCenter),
@@ -1818,29 +1851,13 @@ private fun GroupRoutineManageScreen(
                 )
             }
             item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .heightIn(max = 455.dp)
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(Color.White)
-                        .border(1.dp, BorderDefault, RoundedCornerShape(6.dp))
-                        .verticalScroll(rememberScrollState())
-                        .padding(horizontal = 16.dp, vertical = 6.dp),
-                ) {
-                    SelectAllRoutineRow(
-                        checked = uiState.allVisibleRoutineOptionsSelected,
-                        onClick = onSelectAllClick,
-                    )
-                    HorizontalDivider(color = BorderDefault)
-                    uiState.visibleRoutineOptions.forEach { option ->
-                        CreateRoutineOptionRow(
-                            option = option,
-                            onCheckClick = { onOptionClick(option.id) },
-                            onSettingClick = { onRoutineSettingClick(option.id) },
-                        )
-                    }
-                }
+                RoutineOptionsCard(
+                    uiState = uiState,
+                    maxHeight = 455.dp,
+                    onSelectAllClick = onSelectAllClick,
+                    onOptionClick = onOptionClick,
+                    onRoutineSettingClick = onRoutineSettingClick,
+                )
             }
             item {
                 DashedRoutineAddButton(onClick = onRoutineAddClick)
@@ -2134,7 +2151,10 @@ private fun InviteLockRow(
             style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.weight(1f),
         )
-        StaticSwitch(checked = locked)
+        StaticSwitch(
+            checked = locked,
+            onCheckedChange = { onClick() },
+        )
     }
 }
 
@@ -2208,22 +2228,14 @@ private fun RoomAlarmToggleRow(
 private fun StaticSwitch(
     checked: Boolean,
     modifier: Modifier = Modifier,
+    onCheckedChange: (Boolean) -> Unit = {},
 ) {
-    Box(
+    LiroutiSwitch(
+        checked = checked,
+        onCheckedChange = onCheckedChange,
         modifier = modifier
-            .size(width = 44.dp, height = 26.dp)
-            .clip(RoundedCornerShape(100.dp))
-            .background(if (checked) Color(0xFF6688F4) else Color(0xFFE1E3E6))
-            .padding(2.dp),
-        contentAlignment = if (checked) Alignment.CenterEnd else Alignment.CenterStart,
-    ) {
-        Box(
-            modifier = Modifier
-                .size(22.dp)
-                .clip(CircleShape)
-                .background(Color.White),
-        )
-    }
+            .size(width = 44.dp, height = 26.dp),
+    )
 }
 
 @Composable
@@ -2322,20 +2334,23 @@ private fun GroupMemberCard(
     modifier: Modifier = Modifier,
 ) {
     val visibleMembers = members.take(6)
-    val seatLayoutHeight = if (visibleMembers.size <= 3) 104.dp else 204.dp
+    val seatLayoutHeight = if (visibleMembers.size <= 3) 120.dp else 252.dp
 
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = 360.dp)
             .clip(RoundedCornerShape(6.dp))
             .background(Color.White)
             .padding(horizontal = 20.dp, vertical = 20.dp),
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.Top),
+        horizontalAlignment = Alignment.Start,
     ) {
         Text(
             text = title,
             color = LabelDefault,
             style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.fillMaxWidth(),
         )
         MemberSeatLayout(
             members = visibleMembers,
@@ -2378,13 +2393,13 @@ private fun MemberSeatLayout(
 
     Column(
         modifier = modifier,
-        verticalArrangement = Arrangement.spacedBy(20.dp),
+        verticalArrangement = Arrangement.spacedBy(16.dp),
     ) {
         rows.forEach { rowMembers ->
             val itemWidth = when (rowMembers.size) {
-                1 -> 92.dp
-                2 -> 138.dp
-                else -> 92.dp
+                1 -> 104.dp
+                2 -> 124.dp
+                else -> 104.dp
             }
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -2411,23 +2426,28 @@ private fun MemberSeat(
     Column(
         modifier = modifier.clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp),
+        verticalArrangement = Arrangement.spacedBy(10.dp, Alignment.Top),
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Text(
-                text = member.message.take(8),
-                color = Color.White,
-                fontSize = 11.sp,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF878A93))
-                    .padding(horizontal = 8.dp, vertical = 5.dp),
-            )
             Box(
                 modifier = Modifier
-                    .size(60.dp)
+                    .widthIn(min = 57.dp)
+                    .height(30.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFF878A93))
+                    .padding(horizontal = 8.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = member.message.take(8),
+                    color = Color.White,
+                    fontSize = 11.sp,
+                    maxLines = 1,
+                )
+            }
+            Box(
+                modifier = Modifier
+                    .requiredSize(48.dp)
                     .clip(CircleShape)
                     .background(Color.White),
                 contentAlignment = Alignment.Center,
@@ -2435,7 +2455,7 @@ private fun MemberSeat(
                 Image(
                     painter = painterResource(id = R.drawable.img_group_routine_character),
                     contentDescription = null,
-                    modifier = Modifier.size(60.dp),
+                    modifier = Modifier.requiredSize(48.dp),
                 )
             }
         }
@@ -2623,9 +2643,11 @@ private fun TodoRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Box(modifier = Modifier.clickable { onCheckedChange(!todo.isDone) }) {
-            SmallSquareCheckbox(checked = todo.isDone, modifier = Modifier.size(16.dp))
-        }
+        SmallSquareCheckbox(
+            checked = todo.isDone,
+            modifier = Modifier.size(16.dp),
+            onClick = { onCheckedChange(!todo.isDone) },
+        )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
                 text = todo.title,
@@ -2939,60 +2961,6 @@ private fun TopBarActionButton(
         }
     }
 }
-
-@Composable
-private fun GroupRoutineBottomBar(
-    selectedTab: AppBottomTab = AppBottomTab.GroupRoutine,
-    onTabSelected: (AppBottomTab) -> Unit = {},
-    modifier: Modifier = Modifier,
-) {
-    val items = listOf(
-        BottomNavItem(R.drawable.ic_group_routine_home, "홈", AppBottomTab.Home),
-        BottomNavItem(R.drawable.ic_group_routine_group_active, "그룹 루틴", AppBottomTab.GroupRoutine),
-        BottomNavItem(R.drawable.ic_group_routine_challenge, "챌린지", AppBottomTab.Challenge),
-        BottomNavItem(R.drawable.ic_group_routine_my, "마이", AppBottomTab.My),
-    )
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(Color.White)
-            .border(1.dp, BorderDefault)
-            .navigationBarsPadding()
-            .height(80.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        items.forEach { item ->
-            val active = item.tab == selectedTab
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .clickable { onTabSelected(item.tab) },
-                horizontalAlignment = Alignment.CenterHorizontally,
-                verticalArrangement = Arrangement.Center,
-            ) {
-                Image(
-                    painter = painterResource(id = item.iconRes),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                )
-                Spacer(modifier = Modifier.height(2.dp))
-                Text(
-                    text = item.label,
-                    color = if (active) PrimaryActive else LabelInfo,
-                    style = LiroutiTheme.typography.caption.copy(fontSize = 10.sp, lineHeight = 14.sp),
-                    maxLines = 1,
-                )
-            }
-        }
-    }
-}
-
-private data class BottomNavItem(
-    @param:DrawableRes val iconRes: Int,
-    val label: String,
-    val tab: AppBottomTab,
-)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
