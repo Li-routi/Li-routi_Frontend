@@ -14,6 +14,7 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
+import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.RoutineChecklistItem
 import com.li_routi.core.common.ui.routine.RoutineChecklistScreen
 import com.li_routi.core.common.ui.routine.RoutineDeleteDialog
@@ -69,19 +70,42 @@ fun HomeNavHost(
 
         composable(RouteMyRoutine) {
             var query by remember { mutableStateOf("") }
+            var selectedCategory by remember { mutableStateOf("전체") }
             var showRoutineSheet by remember { mutableStateOf(false) }
+            var showCategorySheet by remember { mutableStateOf(false) }
             var showDeleteDialog by remember { mutableStateOf(false) }
             var routineName by remember { mutableStateOf("") }
+            var categoryName by remember { mutableStateOf("") }
+            var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
             var selectedDays by remember { mutableStateOf(emptySet<Int>()) }
 
             MyRoutineScreen(
                 query = query,
                 onQueryChange = { query = it },
-                routines = listOf("비타민 먹기", "스트레칭 하기", "명상 하기"),
+                categories = listOf("전체", "건강", "운동", "공부"),
+                selectedCategory = selectedCategory,
+                onCategorySelected = { selectedCategory = it },
+                onAddCategoryClick = { showCategorySheet = true },
+                routines = listOf(
+                    RoutineChecklistItem("1", "물 마시기", false, "마감 22:00", "건강", "주중"),
+                    RoutineChecklistItem("2", "물 마시기", false, "마감 22:00", "건강", "월,수,금"),
+                    RoutineChecklistItem("3", "물 마시기", false, "마감 22:00", "건강", "금요일마다"),
+                ),
                 onAddRoutineClick = { showRoutineSheet = true },
                 onBackClick = { navController.popBackStack() },
                 onCloseClick = { navController.popBackStack() },
             )
+
+            if (showCategorySheet) {
+                CategoryAddBottomSheet(
+                    name = categoryName,
+                    onNameChange = { categoryName = it },
+                    selectedColor = categoryColor,
+                    onColorSelected = { categoryColor = it },
+                    onConfirm = { showCategorySheet = false },
+                    onDismissRequest = { showCategorySheet = false },
+                )
+            }
 
             if (showRoutineSheet) {
                 RoutineEditBottomSheet(
@@ -117,10 +141,9 @@ fun HomeNavHost(
             var items by remember {
                 mutableStateOf(
                     listOf(
-                        RoutineChecklistItem("1", "물 마시기", true),
-                        RoutineChecklistItem("2", "비타민 먹기", false),
-                        RoutineChecklistItem("3", "스트레칭 하기", false),
-                        RoutineChecklistItem("4", "명상 하기", false),
+                        RoutineChecklistItem("1", "물 마시기", true, "마감 22:00", "건강", "주중"),
+                        RoutineChecklistItem("2", "물 마시기", false, "마감 22:00", "건강", "월,수,금"),
+                        RoutineChecklistItem("3", "물 마시기", false, "마감 22:00", "건강", "금요일마다"),
                     ),
                 )
             }
@@ -129,10 +152,13 @@ fun HomeNavHost(
             var showDeleteDialog by remember { mutableStateOf(false) }
             var routineName by remember { mutableStateOf("") }
             var categoryName by remember { mutableStateOf("") }
+            var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
             var selectedDays by remember { mutableStateOf(emptySet<Int>()) }
 
             RoutineChecklistScreen(
-                topBarTitle = "루틴 관리",
+                topBarTitle = "루틴 추가",
+                heading = "내 루틴을 추가해 보세요",
+                description = "루틴을 누르면 세부 설정을 변경할 수 있어요",
                 categories = listOf("전체", "건강", "운동", "공부"),
                 selectedCategory = selectedCategory,
                 onCategorySelected = { selectedCategory = it },
@@ -172,6 +198,8 @@ fun HomeNavHost(
                 CategoryAddBottomSheet(
                     name = categoryName,
                     onNameChange = { categoryName = it },
+                    selectedColor = categoryColor,
+                    onColorSelected = { categoryColor = it },
                     onConfirm = { showCategorySheet = false },
                     onDismissRequest = { showCategorySheet = false },
                 )

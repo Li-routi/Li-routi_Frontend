@@ -13,8 +13,10 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,11 +30,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.designsystem.component.LiroutiBadge
+import com.li_routi.core.designsystem.component.LiroutiBadgeColor
 import com.li_routi.core.designsystem.component.LiroutiBottomSheetCloseButton
-import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiCheckmarkIcon
+import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
 import com.li_routi.core.designsystem.component.LiroutiDivider
 import com.li_routi.core.designsystem.component.LiroutiPlusIcon
@@ -44,6 +49,9 @@ data class RoutineChecklistItem(
     val id: String,
     val name: String,
     val checked: Boolean,
+    val deadlineText: String = "",
+    val category: String = "",
+    val repeatLabel: String = "",
 )
 
 @Composable
@@ -70,6 +78,8 @@ fun RoutineChecklistScreen(
         modifier = modifier
             .fillMaxSize()
             .background(LiroutiTheme.colors.backgroundDefault)
+            .statusBarsPadding()
+            .navigationBarsPadding()
             .padding(horizontal = 16.dp),
     ) {
         Row(
@@ -112,33 +122,18 @@ fun RoutineChecklistScreen(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            categories.forEach { category ->
-                RoutineCategoryChip(
-                    label = category,
-                    selected = category == selectedCategory,
-                    onClick = { onCategorySelected(category) },
-                )
-            }
-            AddCategoryChip(onClick = onAddCategoryClick)
-        }
+        RoutineCategoryChipRow(
+            categories = categories,
+            selectedCategory = selectedCategory,
+            onCategorySelected = onCategorySelected,
+            onAddCategoryClick = onAddCategoryClick,
+        )
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .border(1.dp, LiroutiTheme.colors.borderDefault, RoundedCornerShape(6.dp))
-                .padding(horizontal = 16.dp, vertical = 4.dp),
-        ) {
-            RoutineCheckRow(
-                label = "전체 선택",
+        Column(modifier = Modifier.fillMaxWidth()) {
+            RoutineItemRow(
+                name = "전체 선택",
                 checked = allSelected,
                 onCheckedChange = onSelectAllChange,
                 bold = true,
@@ -150,21 +145,24 @@ fun RoutineChecklistScreen(
                     .verticalScroll(rememberScrollState()),
             ) {
                 items.forEach { item ->
-                    RoutineCheckRow(
-                        label = item.name,
+                    RoutineItemRow(
+                        name = item.name,
+                        deadlineText = item.deadlineText,
+                        category = item.category,
+                        repeatLabel = item.repeatLabel,
                         checked = item.checked,
                         onCheckedChange = { onItemCheckedChange(item.id, it) },
                     )
                 }
             }
-            LiroutiDashedAddButton(
-                text = "루틴 추가",
-                onClick = onAddRoutineClick,
-                modifier = Modifier.padding(vertical = 8.dp),
-            )
         }
 
         Spacer(modifier = Modifier.weight(1f))
+
+        LiroutiDashedAddButton(
+            text = "루틴 추가",
+            onClick = onAddRoutineClick,
+        )
 
         Text(
             text = "총 ${items.count { it.checked }}개 선택됨",
@@ -173,7 +171,7 @@ fun RoutineChecklistScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(vertical = 8.dp),
-            textAlign = androidx.compose.ui.text.style.TextAlign.End,
+            textAlign = TextAlign.Center,
         )
 
         LiroutiPrimaryButton(
@@ -185,7 +183,33 @@ fun RoutineChecklistScreen(
 }
 
 @Composable
-private fun RoutineCategoryChip(
+fun RoutineCategoryChipRow(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategorySelected: (String) -> Unit,
+    onAddCategoryClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        categories.forEach { category ->
+            RoutineCategoryChip(
+                label = category,
+                selected = category == selectedCategory,
+                onClick = { onCategorySelected(category) },
+            )
+        }
+        AddCategoryChip(onClick = onAddCategoryClick)
+    }
+}
+
+@Composable
+fun RoutineCategoryChip(
     label: String,
     selected: Boolean,
     onClick: () -> Unit,
@@ -197,7 +221,7 @@ private fun RoutineCategoryChip(
             .clip(RoundedCornerShape(50))
             .then(
                 if (selected) {
-                    Modifier.background(LiroutiTheme.colors.labelDefault)
+                    Modifier.background(LiroutiTheme.colors.primaryNormal)
                 } else {
                     Modifier.border(1.dp, LiroutiTheme.colors.borderStrong, RoundedCornerShape(50))
                 },
@@ -222,7 +246,7 @@ private fun RoutineCategoryChip(
 }
 
 @Composable
-private fun AddCategoryChip(
+fun AddCategoryChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -241,46 +265,74 @@ private fun AddCategoryChip(
     }
 }
 
+/**
+ * 루틴 한 건을 나타내는 행. [checked]가 null이면 체크박스 없이 표시한다(내 루틴 화면처럼 다건 선택이 필요
+ * 없는 목록용). [deadlineText]/[category]가 비어있지 않으면 이름 아래에 "마감시간 | 카테고리" 서브텍스트를,
+ * [repeatLabel]이 비어있지 않으면 오른쪽에 반복 배지를 표시한다.
+ */
 @Composable
-private fun RoutineCheckRow(
-    label: String,
-    checked: Boolean,
-    onCheckedChange: (Boolean) -> Unit,
+fun RoutineItemRow(
+    name: String,
     modifier: Modifier = Modifier,
+    deadlineText: String = "",
+    category: String = "",
+    repeatLabel: String = "",
+    checked: Boolean? = null,
+    onCheckedChange: ((Boolean) -> Unit)? = null,
     bold: Boolean = false,
 ) {
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clickable { onCheckedChange(!checked) }
+            .then(
+                if (onCheckedChange != null) {
+                    Modifier.clickable { onCheckedChange(!(checked ?: false)) }
+                } else {
+                    Modifier
+                },
+            )
             .padding(vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .size(20.dp)
-                .clip(RoundedCornerShape(4.dp))
-                .background(if (checked) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
-                .border(
-                    width = 1.dp,
-                    color = if (checked) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.borderStrong,
-                    shape = RoundedCornerShape(4.dp),
-                ),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (checked) {
-                LiroutiCheckmarkIcon(
-                    modifier = Modifier.size(12.dp),
-                    color = LiroutiTheme.colors.labelReverse,
+        if (checked != null) {
+            Box(
+                modifier = Modifier
+                    .size(20.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(if (checked) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
+                    .border(
+                        width = 1.dp,
+                        color = if (checked) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.borderStrong,
+                        shape = RoundedCornerShape(4.dp),
+                    ),
+                contentAlignment = Alignment.Center,
+            ) {
+                if (checked) {
+                    LiroutiCheckmarkIcon(
+                        modifier = Modifier.size(12.dp),
+                        color = LiroutiTheme.colors.labelReverse,
+                    )
+                }
+            }
+        }
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = name,
+                style = if (bold) LiroutiTheme.typography.body1SemiBold else LiroutiTheme.typography.body1Regular,
+                color = LiroutiTheme.colors.labelDefault,
+            )
+            if (deadlineText.isNotEmpty() || category.isNotEmpty()) {
+                Text(
+                    text = listOf(deadlineText, category).filter { it.isNotEmpty() }.joinToString(" | "),
+                    style = LiroutiTheme.typography.captionRegular,
+                    color = LiroutiTheme.colors.labelInfo,
                 )
             }
         }
-        Text(
-            text = label,
-            style = if (bold) LiroutiTheme.typography.body1SemiBold else LiroutiTheme.typography.body1Regular,
-            color = LiroutiTheme.colors.labelDefault,
-        )
+        if (repeatLabel.isNotEmpty()) {
+            LiroutiBadge(text = repeatLabel, color = LiroutiBadgeColor.Blue)
+        }
     }
 }
 
@@ -291,17 +343,16 @@ private fun RoutineChecklistScreenPreview() {
     var items by remember {
         mutableStateOf(
             listOf(
-                RoutineChecklistItem("1", "물 마시기", true),
-                RoutineChecklistItem("2", "비타민 먹기", false),
-                RoutineChecklistItem("3", "스트레칭 하기", false),
-                RoutineChecklistItem("4", "명상 하기", false),
+                RoutineChecklistItem("1", "물 마시기", true, "마감 22:00", "건강", "주중"),
+                RoutineChecklistItem("2", "물 마시기", false, "마감 22:00", "건강", "월,수,금"),
+                RoutineChecklistItem("3", "물 마시기", false, "마감 22:00", "건강", "금요일마다"),
             ),
         )
     }
     LiroutiFrontendTheme {
         RoutineChecklistScreen(
             topBarTitle = "루틴 추가",
-            heading = "함께할 루틴을 추가해보세요",
+            heading = "내 루틴을 추가해 보세요",
             description = "루틴을 누르면 세부 설정을 변경할 수 있어요",
             categories = listOf("전체", "건강", "운동", "공부"),
             selectedCategory = selectedCategory,
