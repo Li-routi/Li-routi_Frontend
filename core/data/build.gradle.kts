@@ -38,4 +38,7 @@ dependencies {
     // OkHttp
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
+
+    // Security (토큰 저장용)
+    implementation(libs.androidx.security.crypto)
 }
