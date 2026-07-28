@@ -21,7 +21,7 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        if (AuthTokenPreference(applicationContext).getAccessToken().isNullOrBlank()) {
+        if (AuthTokenPreference(applicationContext).getAccessTokenBlocking().isNullOrBlank()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
             return
