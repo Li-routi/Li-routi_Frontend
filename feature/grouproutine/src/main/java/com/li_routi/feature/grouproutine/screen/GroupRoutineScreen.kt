@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.pager.HorizontalPager
+import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
@@ -90,6 +92,7 @@ import com.li_routi.feature.grouproutine.vm.GroupRoutineUiModel
 import com.li_routi.feature.grouproutine.vm.GroupRoutineUiState
 import com.li_routi.feature.grouproutine.vm.GroupRoutineViewModel
 import com.li_routi.feature.grouproutine.vm.GroupTodoUiModel
+import com.li_routi.feature.grouproutine.vm.NewCertificationUiModel
 import kotlin.math.roundToInt
 
 private val ScreenBackground = Color(0xFFF4F7FB)
@@ -164,6 +167,10 @@ fun GroupRoutineRoute(
         onMemberClick = viewModel::onMemberClick,
         onDismissMemberDialog = viewModel::onDismissMemberDialog,
         onChatClick = viewModel::onChatClick,
+        onMessageEditClick = viewModel::onMessageEditClick,
+        onMessageDraftChange = viewModel::onMessageDraftChange,
+        onDismissMessageEditSheet = viewModel::onDismissMessageEditSheet,
+        onMessageEditConfirmClick = viewModel::onMessageEditConfirmClick,
         onSettingsClick = viewModel::onSettingsClick,
         onInviteCodeCopyClick = viewModel::onInviteCodeCopyClick,
         onGroupRoutineManageClick = viewModel::onGroupRoutineManageClick,
@@ -217,6 +224,10 @@ private fun GroupRoutineScreen(
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
     onChatClick: () -> Unit,
+    onMessageEditClick: () -> Unit,
+    onMessageDraftChange: (String) -> Unit,
+    onDismissMessageEditSheet: () -> Unit,
+    onMessageEditConfirmClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onInviteCodeCopyClick: () -> Unit,
     onGroupRoutineManageClick: () -> Unit,
@@ -249,6 +260,7 @@ private fun GroupRoutineScreen(
                 onMemberClick = onMemberClick,
                 onDismissMemberDialog = onDismissMemberDialog,
                 onChatClick = onChatClick,
+                onMessageEditClick = onMessageEditClick,
                 onSettingsClick = onSettingsClick,
                 onInviteCodeClick = onInviteCodeCopyClick,
                 onTabSelected = onTabSelected,
@@ -391,6 +403,7 @@ private fun GroupRoutineScreen(
 
     if (uiState.isNewCertificationDialogVisible) {
         NewCertificationDialog(
+            certifications = uiState.newCertifications,
             onDismissRequest = onDismissNewCertificationDialog,
             onNegativeClick = onDismissNewCertificationDialog,
             onPositiveClick = onDismissNewCertificationDialog,
@@ -403,6 +416,15 @@ private fun GroupRoutineScreen(
             onDismissRequest = onDismissCategorySheet,
             onCategoryChange = onCategoryInputChange,
             onConfirmClick = onCategoryConfirmClick,
+        )
+    }
+
+    if (uiState.isMessageEditSheetVisible) {
+        MessageEditSheet(
+            message = uiState.messageDraft,
+            onDismissRequest = onDismissMessageEditSheet,
+            onMessageChange = onMessageDraftChange,
+            onConfirmClick = onMessageEditConfirmClick,
         )
     }
 }
@@ -1111,10 +1133,14 @@ private fun DeleteRoutineDialog(
 
 @Composable
 private fun NewCertificationDialog(
+    certifications: List<NewCertificationUiModel>,
     onDismissRequest: () -> Unit,
     onNegativeClick: () -> Unit,
     onPositiveClick: () -> Unit,
 ) {
+    if (certifications.isEmpty()) return
+    val pagerState = rememberPagerState(pageCount = { certifications.size })
+
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -1142,36 +1168,39 @@ private fun NewCertificationDialog(
                     modifier = Modifier.clickable(onClick = onDismissRequest),
                 )
             }
-            Image(
-                painter = painterResource(id = R.drawable.img_group_routine_cert_water),
-                contentDescription = null,
-                contentScale = ContentScale.Crop,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(146.dp)
-                    .clip(RoundedCornerShape(4.dp)),
-            )
+            HorizontalPager(state = pagerState) {
+                Image(
+                    painter = painterResource(id = R.drawable.img_group_routine_cert_water),
+                    contentDescription = null,
+                    contentScale = ContentScale.Crop,
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(146.dp)
+                        .clip(RoundedCornerShape(4.dp)),
+                )
+            }
             Row(
                 modifier = Modifier.align(Alignment.CenterHorizontally),
                 horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
-                repeat(5) { index ->
+                certifications.indices.forEach { index ->
                     Box(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(if (index == 0) LabelDefault else BorderDefault),
+                            .background(if (index == pagerState.currentPage) LabelDefault else BorderDefault),
                     )
                 }
             }
+            val current = certifications[pagerState.currentPage]
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
-                    text = "민지 | 물 마시기",
+                    text = "${current.memberName} | ${current.routineName}",
                     color = LabelDefault,
                     style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
                 )
                 Text(
-                    text = "오늘도 1L 완료!",
+                    text = current.message,
                     color = LabelSub,
                     style = LiroutiTheme.typography.body3,
                 )
@@ -1231,6 +1260,39 @@ private fun CategoryAddSheet(
                 showClear = false,
             )
             PrimaryButton(text = "확인", enabled = category.isNotBlank(), onClick = onConfirmClick)
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun MessageEditSheet(
+    message: String,
+    onDismissRequest: () -> Unit,
+    onMessageChange: (String) -> Unit,
+    onConfirmClick: () -> Unit,
+) {
+    LiroutiBottomSheet(
+        onDismissRequest = onDismissRequest,
+        contentPadding = PaddingValues(start = 20.dp, top = 30.dp, end = 20.dp, bottom = 28.dp),
+    ) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(modifier = Modifier.fillMaxWidth()) {
+                Spacer(modifier = Modifier.weight(1f))
+                Text(text = "×", color = LabelDefault, fontSize = 28.sp, modifier = Modifier.clickable(onClick = onDismissRequest))
+            }
+            Text(
+                text = "상태 메시지",
+                color = LabelDefault,
+                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
+            )
+            BasicInputBox(
+                value = message,
+                onValueChange = onMessageChange,
+                placeholder = "최대 8자",
+                showClear = false,
+            )
+            PrimaryButton(text = "확인", enabled = message.isNotBlank(), onClick = onConfirmClick)
         }
     }
 }
@@ -1475,6 +1537,7 @@ private fun GroupRoutineDetailScreen(
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
     onChatClick: () -> Unit,
+    onMessageEditClick: () -> Unit,
     onSettingsClick: () -> Unit,
     onInviteCodeClick: () -> Unit,
     onTabSelected: (AppBottomTab) -> Unit = {},
@@ -1503,7 +1566,7 @@ private fun GroupRoutineDetailScreen(
                 GroupMemberCard(
                     title = routine.title,
                     members = uiState.members,
-                    onMessageEditClick = onChatClick,
+                    onMessageEditClick = onMessageEditClick,
                     onInviteCodeClick = onInviteCodeClick,
                     onMemberClick = onMemberClick,
                     modifier = Modifier.padding(horizontal = 16.dp),
@@ -1892,7 +1955,7 @@ private fun GroupRoutineManageScreen(
                 style = LiroutiTheme.typography.body3,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
-            PrimaryButton(text = "방 만들기", enabled = true, onClick = onDoneClick)
+            PrimaryButton(text = "완료", enabled = true, onClick = onDoneClick)
         }
     }
 }
@@ -3054,6 +3117,10 @@ private fun GroupRoutineListPreview() {
             onMemberClick = {},
             onDismissMemberDialog = {},
             onChatClick = {},
+            onMessageEditClick = {},
+            onMessageDraftChange = {},
+            onDismissMessageEditSheet = {},
+            onMessageEditConfirmClick = {},
             onSettingsClick = {},
             onInviteCodeCopyClick = {},
             onGroupRoutineManageClick = {},
@@ -3109,6 +3176,10 @@ private fun CreateRoomNamePreview() {
             onMemberClick = {},
             onDismissMemberDialog = {},
             onChatClick = {},
+            onMessageEditClick = {},
+            onMessageDraftChange = {},
+            onDismissMessageEditSheet = {},
+            onMessageEditConfirmClick = {},
             onSettingsClick = {},
             onInviteCodeCopyClick = {},
             onGroupRoutineManageClick = {},
