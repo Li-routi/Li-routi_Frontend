@@ -75,6 +75,21 @@ class GroupRoutineViewModel : BaseViewModel() {
         }
     }
 
+    fun onCreateFlowCloseClick() {
+        _uiState.update {
+            it.copy(
+                screenMode = GroupRoutineScreenMode.List,
+                roomNameInput = "",
+                routineOptions = DefaultCreateRoutineOptions,
+                selectedCategory = "전체",
+                isCategorySheetVisible = false,
+                isRoutineSettingSheetVisible = false,
+                isDeleteRoutineDialogVisible = false,
+                actionMessage = null,
+            )
+        }
+    }
+
     fun onCertificationSummaryClick() {
         _uiState.update {
             it.copy(
