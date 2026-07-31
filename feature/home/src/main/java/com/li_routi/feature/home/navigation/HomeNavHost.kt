@@ -22,10 +22,13 @@ import com.li_routi.core.common.ui.routine.RoutineEditBottomSheet
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.feature.home.screen.MyRoutineScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
+import com.li_routi.feature.home.vm.NotificationUiEvent
 
 private const val RouteHomeMain = "home_main"
 private const val RouteMyRoutine = "myRoutine"
 private const val RouteRoutineManage = "routineManage"
+private const val RouteNotification = "notification"
+private const val RouteNotificationSettings = "notification_settings"
 
 /**
  * 홈 피처 내비게이션 그래프.
@@ -56,15 +59,34 @@ fun HomeNavHost(
                         HomeUiEvent.NavigateToManageMyRoutine -> navController.navigate(RouteRoutineManage)
                         HomeUiEvent.NavigateToCreateRoom -> onCreateRoomClick()
                         HomeUiEvent.NavigateToJoinRoomWithInviteCode -> onJoinRoomWithInviteCodeClick()
-                        // TODO: 상점/알림/체크리스트 카메라 진입 연결은 이번 범위 밖.
+                        HomeUiEvent.NavigateToNotification -> navController.navigate(RouteNotification)
+                        // TODO: 상점/체크리스트 카메라 진입 연결은 이번 범위 밖.
                         HomeUiEvent.NavigateToShop,
-                        HomeUiEvent.NavigateToNotification,
                         HomeUiEvent.NavigateToRoutineAuthCamera,
                         is HomeUiEvent.NavigateToRoutineAuthCameraWithId,
                         -> Unit
                     }
                 },
                 onTabSelected = onTabSelected,
+            )
+        }
+
+        composable(RouteNotification) {
+            NotificationRoute(
+                onEvent = { event ->
+                    when (event) {
+                        NotificationUiEvent.NavigateBack -> navController.popBackStack()
+                        NotificationUiEvent.NavigateToSettings -> {
+                            navController.navigate(RouteNotificationSettings)
+                        }
+                    }
+                },
+            )
+        }
+
+        composable(RouteNotificationSettings) {
+            NotificationSettingsRoute(
+                onNavigateBack = { navController.popBackStack() },
             )
         }
 
