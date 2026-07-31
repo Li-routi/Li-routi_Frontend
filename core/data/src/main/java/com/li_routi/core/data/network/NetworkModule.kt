@@ -1,6 +1,7 @@
 package com.li_routi.core.data.network
 
 import android.content.Context
+import com.li_routi.core.data.BuildConfig
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.ChallengeApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
@@ -18,7 +19,7 @@ import retrofit2.converter.gson.GsonConverterFactory
  */
 object NetworkModule {
 
-    private const val BASE_URL = "http://13.125.35.99:8080/"
+    private val BASE_URL = BuildConfig.BASE_URL
 
     internal lateinit var appContext: Context
         private set
