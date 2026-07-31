@@ -5,6 +5,7 @@ import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.data.repository.AuthRepositoryImpl
 import com.li_routi.core.domain.auth.AuthRepository
 import com.li_routi.core.domain.auth.IssueGoogleNonceUseCase
+import com.li_routi.core.domain.auth.LogoutUseCase
 import com.li_routi.core.domain.auth.SocialLoginUseCase
 
 /**
@@ -27,5 +28,9 @@ object AuthContainer {
 
     val issueGoogleNonceUseCase: IssueGoogleNonceUseCase by lazy {
         IssueGoogleNonceUseCase(repository)
+    }
+
+    val logoutUseCase: LogoutUseCase by lazy {
+        LogoutUseCase(repository)
     }
 }
