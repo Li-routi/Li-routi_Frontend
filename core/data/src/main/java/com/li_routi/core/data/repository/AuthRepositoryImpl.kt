@@ -1,6 +1,5 @@
 package com.li_routi.core.data.repository
 
-import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.kotlin.util.safeApiCall
 import com.li_routi.core.data.mapper.toDomain
