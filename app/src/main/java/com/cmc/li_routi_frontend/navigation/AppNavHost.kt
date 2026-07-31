@@ -20,7 +20,7 @@ import com.li_routi.feature.mypage.navigation.MyPageRoute
  * 앱 전체 최상위 내비게이션 그래프.
  *
  * 홈/그룹 루틴/챌린지/마이 4탭을 여기서 직접 스위칭한다 — feature는 자기 화면만 노출하고,
- * 탭 전환 자체는 각 feature의 루트 화면이 [AppBottomNavBar]를 통해 이리로 위임한다.
+ * 탭 전환 자체는 각 feature의 루트 화면이 공용 하단 GNB(`AppBottomNavBar`)를 통해 이리로 위임한다.
  * 홈 화면 "+" 메뉴의 "방 만들기"/"초대코드로 참여"는 그룹 루틴 탭으로 전환하면서
  * 해당 진입점으로 바로 들어가도록 [groupRoutineEntryPoint]로 넘긴다.
  *
