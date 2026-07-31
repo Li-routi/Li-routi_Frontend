@@ -3,6 +3,7 @@ package com.li_routi.core.data.network
 import android.content.Context
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.ChallengeApiService
+import com.li_routi.core.data.network.service.GroupRoutineApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -51,5 +52,9 @@ object NetworkModule {
 
     val authApiService: AuthApiService by lazy {
         retrofit.create(AuthApiService::class.java)
+    }
+
+    val groupRoutineApiService: GroupRoutineApiService by lazy {
+        retrofit.create(GroupRoutineApiService::class.java)
     }
 }
