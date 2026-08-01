@@ -33,6 +33,9 @@ class FindChallengeViewModel(
     val uiState: StateFlow<FindChallengeUiState> = _uiState.asStateFlow()
 
     private var searchDebounceJob: Job? = null
+    // 카테고리 변경/디바운스된 검색/재시도가 겹치면 먼저 시작된 느린 요청이 나중에 끝나 최신 상태를
+    // 덮어쓸 수 있다. 새 조회를 시작할 때마다 이전 조회 job을 취소해 항상 마지막 요청만 반영되게 한다.
+    private var loadJob: Job? = null
 
     init {
         loadChallenges(category = null, keyword = null)
@@ -54,12 +57,14 @@ class FindChallengeViewModel(
     }
 
     override fun onRetryClick() {
+        searchDebounceJob?.cancel()
         loadChallenges(_uiState.value.selectedCategory, _uiState.value.searchQuery)
     }
 
     private fun loadChallenges(category: ChallengeCategory?, keyword: String?) {
+        loadJob?.cancel()
         _uiState.update { it.copy(isLoading = true, selectedCategory = category, errorMessage = null) }
-        viewModelScope.launch {
+        loadJob = viewModelScope.launch {
             when (
                 val result = getChallengesUseCase(
                     category = category,

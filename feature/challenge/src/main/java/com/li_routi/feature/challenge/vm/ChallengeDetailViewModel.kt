@@ -237,6 +237,9 @@ class ChallengeDetailViewModel(
                 myCursor = null,
                 myHasNext = true,
                 myLoaded = false,
+                // 방금 오늘 인증을 등록했으니, 아래에서 "내 인증 보기"를 다시 안 불러오는 탭(All)에
+                // 있어도 버튼 문구가 즉시 "다시 인증하기"로 바뀌도록 여기서 바로 반영한다.
+                verifiedToday = true,
             )
         }
         loadVerifications(cursor = null)
