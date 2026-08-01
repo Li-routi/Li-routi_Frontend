@@ -39,6 +39,12 @@ import com.li_routi.core.designsystem.component.LiroutiTabButton
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
+/** 체크리스트 항목이 개인 루틴인지 그룹 루틴인지. 인증 API path 분기용. */
+enum class RoutineChecklistKind {
+    Member,
+    Group,
+}
+
 /** "오늘의 루틴"/"그룹 루틴" 체크리스트 한 항목 (Figma `List` instance). */
 data class RoutineChecklistItemUiModel(
     val id: String,
@@ -51,6 +57,11 @@ data class RoutineChecklistItemUiModel(
      * 내 루틴 항목은 null.
      */
     val roomLabel: String? = null,
+    val kind: RoutineChecklistKind = RoutineChecklistKind.Member,
+    val routineId: Long? = null,
+    val groupId: Long? = null,
+    /** 카메라/업로드 선택 가능 여부. 완료·MISSED 등은 false. */
+    val canVerify: Boolean = !isDone,
 )
 
 /** Preview/개발 확인용 "오늘의 루틴" 샘플 (그룹방 있을 때, 미완료→완료 정렬용). */
@@ -273,6 +284,8 @@ private fun RoutineChecklistItemRow(
         }
         if (item.isDone) {
             LiroutiBadge(text = "완료", color = LiroutiBadgeColor.Neutral)
+        } else if (!item.canVerify) {
+            LiroutiBadge(text = "기간 만료", color = LiroutiBadgeColor.Neutral)
         } else {
             Image(
             painter = painterResource(id = R.drawable.camera),
