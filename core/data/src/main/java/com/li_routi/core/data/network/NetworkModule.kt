@@ -18,7 +18,7 @@ import retrofit2.converter.gson.GsonConverterFactory
  */
 object NetworkModule {
 
-    private const val BASE_URL = "http://13.125.35.99:8080/"
+    private const val BASE_URL = "https://lirouti.kro.kr/"
 
     internal lateinit var appContext: Context
         private set
@@ -27,12 +27,15 @@ object NetworkModule {
         appContext = context.applicationContext
     }
 
+    private val authTokenPreference: AuthTokenPreference by lazy { AuthTokenPreference(appContext) }
+
     private val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
         OkHttpClient.Builder()
-            .addInterceptor(AuthInterceptor(AuthTokenPreference(appContext)))
+            .addInterceptor(AuthInterceptor(authTokenPreference))
+            .authenticator(TokenAuthenticator(authTokenPreference) { authApiService })
             .addInterceptor(logging)
             .build()
     }

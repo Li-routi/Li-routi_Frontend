@@ -47,4 +47,22 @@ interface ChallengeRepository {
         category: ChallengeCategory?,
         keyword: String?,
     ): ResultState<List<MyChallenge>>
+
+    /**
+     * 로그인한 회원 본인이 작성한 인증 피드를 최신순으로 조회한다 (무한 스크롤 커서 방식).
+     */
+    suspend fun getMyVerifications(
+        challengeId: Long,
+        cursor: Long?,
+        size: Int?,
+    ): ResultState<MyCertificationPage>
+
+    /** 인증 게시글을 신고한다. */
+    suspend fun reportVerification(challengeId: Long, verificationId: Long, reason: String?): ResultState<Unit>
+
+    /** 인증 게시글에 좋아요를 누른다. */
+    suspend fun likeVerification(challengeId: Long, verificationId: Long): ResultState<LikeResult>
+
+    /** 인증 게시글의 좋아요를 취소한다. */
+    suspend fun unlikeVerification(challengeId: Long, verificationId: Long): ResultState<LikeResult>
 }

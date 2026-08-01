@@ -43,6 +43,7 @@ import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
 import com.li_routi.core.designsystem.component.LiroutiLineTab
+import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.component.LiroutiRoutineStatsRow
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -79,7 +80,25 @@ fun ChallengeDetailScreen(
 
     // 더보기 바텀시트 노출 여부는 화면 로컬 UI 상태(서버/재사용 데이터가 아님).
     var showMoreSheet by remember { mutableStateOf(false) }
+    // 인증 게시글별 더보기 바텀시트 대상. null이면 닫힘, 값이 있으면 그 게시글 기준으로
+    // "내 인증 보기" 탭이면 "수정하기", "인증" 탭이면 "신고하기"를 보여준다.
+    var moreSheetCertification by remember { mutableStateOf<CertificationUiModel?>(null) }
+    // "수정하기"를 누르면 이 값이 채워지고, 화면 전체가 인증 수정 화면으로 전환된다.
+    var editingCertification by remember { mutableStateOf<CertificationUiModel?>(null) }
     val listState = rememberLazyListState()
+
+    editingCertification?.let { certification ->
+        CertificationEditScreen(
+            certification = certification,
+            onClose = { editingCertification = null },
+            onSubmit = { content ->
+                actions.onEditCertificationSubmit(certification.id, content)
+                editingCertification = null
+            },
+            modifier = modifier,
+        )
+        return
+    }
 
     // 리스트 끝에 가까워지면 다음 페이지를 불러오는 간단한 무한 스크롤 트리거.
     val shouldLoadMore by remember {
@@ -139,6 +158,9 @@ fun ChallengeDetailScreen(
         items(uiState.visibleCertifications, key = { it.id }) { certification ->
             CertificationCard(
                 certification = certification,
+                onMoreClick = { moreSheetCertification = certification },
+                // "내 인증 보기" 응답엔 liked 상태가 없어 그 탭에서는 좋아요를 누를 수 없게 한다.
+                onLikeClick = if (certification.isMine) null else { { actions.onLikeToggleClick(certification.id) } },
                 modifier = Modifier
                     .fillMaxWidth()
                     .padding(horizontal = 16.dp)
@@ -149,33 +171,76 @@ fun ChallengeDetailScreen(
     }
 
     if (showMoreSheet) {
-        // Figma node 2222:22836 ("더보기" 바텀시트). LiroutiBottomSheet가 dim 배경 + 시트 형태를
-        // 이미 처리해준다. title을 빈 문자열로 둬서 닫기(X) 버튼만 우측에 뜨도록 함(디자인엔 타이틀 텍스트가 없음).
+        // Figma node 3610:30072 ("더보기" 바텀시트, 챌린지 상세). LiroutiBottomSheet가 dim 배경 + 시트
+        // 형태를 이미 처리해준다. title을 빈 문자열로 둬서 닫기(X) 버튼만 우측에 뜨도록 함(타이틀 텍스트 없음).
         LiroutiBottomSheet(
             onDismissRequest = { showMoreSheet = false },
             title = "",
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .clickable {
-                        actions.onLeaveChallengeClick()
-                        showMoreSheet = false
-                    }
-                    .padding(vertical = 10.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "챌린지 나가기",
-                    style = LiroutiTheme.typography.body1Medium,
-                    color = LiroutiTheme.colors.labelDefault,
+            MoreSheetActionRow(
+                text = "챌린지 나가기",
+                showChevron = true,
+                onClick = {
+                    actions.onLeaveChallengeClick()
+                    showMoreSheet = false
+                },
+            )
+        }
+    }
+
+    // 인증 게시글 더보기 바텀시트. 내 글이면 수정하기(Figma 3610:30078),
+    // 타인 글이면 신고하기(Figma 3610:30075)를 보여준다. 둘 다 챌린지 나가기와 달리 화살표가 없다.
+    moreSheetCertification?.let { certification ->
+        LiroutiBottomSheet(
+            onDismissRequest = { moreSheetCertification = null },
+            title = "",
+        ) {
+            if (certification.isMine) {
+                MoreSheetActionRow(
+                    text = "수정하기",
+                    onClick = {
+                        editingCertification = certification
+                        moreSheetCertification = null
+                    },
                 )
-                LiroutiChevronRightIcon(
-                    modifier = Modifier.size(24.dp),
-                    color = LiroutiTheme.colors.labelDefault,
+            } else {
+                MoreSheetActionRow(
+                    text = "신고하기",
+                    onClick = {
+                        actions.onReportCertificationClick(certification.id)
+                        moreSheetCertification = null
+                    },
                 )
             }
+        }
+    }
+}
+
+@Composable
+private fun MoreSheetActionRow(
+    text: String,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    showChevron: Boolean = false,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
+            .padding(vertical = 10.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = text,
+            style = LiroutiTheme.typography.body1Medium,
+            color = LiroutiTheme.colors.labelDefault,
+        )
+        if (showChevron) {
+            LiroutiChevronRightIcon(
+                modifier = Modifier.size(24.dp),
+                color = LiroutiTheme.colors.labelDefault,
+            )
         }
     }
 }
@@ -239,7 +304,20 @@ private fun ChallengeInfoSection(
                 style = LiroutiTheme.typography.body1SemiBold,
                 color = LiroutiTheme.colors.labelDefault,
             )
+            Text(
+                text = uiState.description,
+                style = LiroutiTheme.typography.captionRegular,
+                color = LiroutiTheme.colors.labelDefault,
+            )
         }
+
+        // "참여하기" 탭 시 참여 상태로 바뀌고 서버에 참여 신호를 보낸다(ViewModel에서 처리, 이번 범위는 로컬 상태만).
+        // 참여 후 "인증하기"는 별도 인증 업로드 플로우로 연결될 예정 — 이번 범위 제외. 버튼 색은 참여 여부와
+        // 무관하게 항상 파란색으로 유지하고(Figma 두 상태 모두 동일), 클릭만 참여 전에만 동작하도록 막는다.
+        LiroutiPrimaryButton(
+            text = if (uiState.isJoined) "인증하기" else "참여하기",
+            onClick = { if (!uiState.isJoined) onJoinClick() },
+        )
     }
 }
 
@@ -248,6 +326,9 @@ private object PreviewChallengeDetailScreenActions : ChallengeDetailScreenAction
     override fun onTabSelected(tab: CertificationTab) = Unit
     override fun onLoadMore() = Unit
     override fun onLeaveChallengeClick() = Unit
+    override fun onEditCertificationSubmit(certificationId: Long, content: String) = Unit
+    override fun onReportCertificationClick(certificationId: Long) = Unit
+    override fun onLikeToggleClick(certificationId: Long) = Unit
 }
 
 private val PreviewCertifications = List(4) { index ->
@@ -255,7 +336,11 @@ private val PreviewCertifications = List(4) { index ->
         id = index.toLong(),
         authorName = "민지",
         content = "물 마시기 1일차 입니다~ 다들 열심히 하고 있지?",
+        imageUrl = "",
         timeLabel = "9시간 전",
+        likeCount = 1,
+        liked = false,
+        isMine = false,
     )
 }
 
