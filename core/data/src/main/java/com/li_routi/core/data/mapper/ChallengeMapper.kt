@@ -66,6 +66,7 @@ fun VerificationResponse.toDomain(): Certification = Certification(
     verifiedAt = verifiedAt,
     likeCount = likeCount,
     liked = liked,
+    isMine = mine,
 )
 
 fun VerificationFeedResponse.toDomain(): CertificationPage = CertificationPage(
@@ -78,6 +79,7 @@ fun MyVerificationResponse.toDomain(): MyCertification = MyCertification(
     id = verificationId,
     content = content,
     imageUrl = imageUrl.orEmpty(),
+    verifiedDate = verifiedDate,
     verifiedAt = verifiedAt,
     likeCount = likeCount,
 )

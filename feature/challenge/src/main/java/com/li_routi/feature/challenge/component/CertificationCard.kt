@@ -35,12 +35,15 @@ import com.li_routi.feature.challenge.vm.CertificationUiModel
  *
  * [onLikeClick]이 null이면 좋아요 아이콘은 개수만 보여주고 탭할 수 없다 — "내 인증 보기" 응답에는
  * liked 여부가 내려오지 않아, 잘못된 상태로 토글되는 것을 막기 위해 그 탭에서는 null을 넘긴다.
+ *
+ * [onMoreClick]이 null이면 더보기 버튼 자체가 렌더링되지 않는다 — "인증"(전체) 탭에서 본인 글에는
+ * 신고하기를 띄울 수 없으니 아예 버튼을 숨기기 위해 화면에서 null을 넘긴다.
  */
 @Composable
 fun CertificationCard(
     certification: CertificationUiModel,
-    onMoreClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onMoreClick: (() -> Unit)? = null,
     onLikeClick: (() -> Unit)? = null,
 ) {
     Column(modifier = modifier, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -54,14 +57,16 @@ fun CertificationCard(
                 modifier = Modifier.weight(1f),
             )
             // 게시글 컨텍스트(내 글=수정하기 / 타인 글=신고하기)에 맞는 바텀시트를 화면에서 띄운다.
-            Image(
-                painter = painterResource(id = R.drawable.overflow_menu__vertical),
-                contentDescription = "더보기",
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable(onClick = onMoreClick),
-                colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelInfo),
-            )
+            if (onMoreClick != null) {
+                Image(
+                    painter = painterResource(id = R.drawable.overflow_menu__vertical),
+                    contentDescription = "더보기",
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable(onClick = onMoreClick),
+                    colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelInfo),
+                )
+            }
         }
         Text(
             text = certification.content,
