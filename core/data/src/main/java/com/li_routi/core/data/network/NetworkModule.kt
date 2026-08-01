@@ -31,12 +31,15 @@ object NetworkModule {
         appContext = context.applicationContext
     }
 
+    private val authTokenPreference: AuthTokenPreference by lazy { AuthTokenPreference(appContext) }
+
     private val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
         OkHttpClient.Builder()
-            .addInterceptor(AuthInterceptor(AuthTokenPreference(appContext)))
+            .addInterceptor(AuthInterceptor(authTokenPreference))
+            .authenticator(TokenAuthenticator(authTokenPreference) { authApiService })
             .addInterceptor(logging)
             .build()
     }

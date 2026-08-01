@@ -3,12 +3,17 @@ package com.li_routi.core.data.di
 import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.repository.ChallengeRepositoryImpl
 import com.li_routi.core.domain.challenge.ChallengeRepository
+import com.li_routi.core.domain.challenge.CreateVerificationUseCase
 import com.li_routi.core.domain.challenge.GetChallengeDetailUseCase
 import com.li_routi.core.domain.challenge.GetChallengesUseCase
 import com.li_routi.core.domain.challenge.GetMyChallengesUseCase
+import com.li_routi.core.domain.challenge.GetMyVerificationsUseCase
 import com.li_routi.core.domain.challenge.GetVerificationsUseCase
 import com.li_routi.core.domain.challenge.LeaveChallengeUseCase
+import com.li_routi.core.domain.challenge.LikeVerificationUseCase
 import com.li_routi.core.domain.challenge.ParticipateChallengeUseCase
+import com.li_routi.core.domain.challenge.ReportVerificationUseCase
+import com.li_routi.core.domain.challenge.UnlikeVerificationUseCase
 
 /**
  * Hilt 등 DI 프레임워크가 붙기 전까지 사용하는 수동 구성 root.
@@ -42,5 +47,25 @@ object ChallengeContainer {
 
     val getMyChallengesUseCase: GetMyChallengesUseCase by lazy {
         GetMyChallengesUseCase(repository)
+    }
+
+    val getMyVerificationsUseCase: GetMyVerificationsUseCase by lazy {
+        GetMyVerificationsUseCase(repository)
+    }
+
+    val reportVerificationUseCase: ReportVerificationUseCase by lazy {
+        ReportVerificationUseCase(repository)
+    }
+
+    val likeVerificationUseCase: LikeVerificationUseCase by lazy {
+        LikeVerificationUseCase(repository)
+    }
+
+    val unlikeVerificationUseCase: UnlikeVerificationUseCase by lazy {
+        UnlikeVerificationUseCase(repository)
+    }
+
+    val createVerificationUseCase: CreateVerificationUseCase by lazy {
+        CreateVerificationUseCase(repository)
     }
 }

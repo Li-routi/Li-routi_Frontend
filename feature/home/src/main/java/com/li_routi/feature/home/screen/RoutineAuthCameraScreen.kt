@@ -49,11 +49,11 @@ import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
 import androidx.lifecycle.compose.LocalLifecycleOwner
+import com.li_routi.core.common.ui.camera.LiroutiCameraPreview
+import com.li_routi.core.common.ui.camera.captureLiroutiCameraPhoto
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
-import com.li_routi.feature.home.component.RoutineAuthCameraPreview
-import com.li_routi.feature.home.component.takeRoutineAuthPhoto
 import com.li_routi.feature.home.navigation.RoutineAuthCameraScreenActions
 
 /**
@@ -165,7 +165,7 @@ fun RoutineAuthCameraScreen(
                         .clickable(enabled = !isCapturing && hasCameraPermission) {
                             val capture = imageCapture ?: return@clickable
                             isCapturing = true
-                            takeRoutineAuthPhoto(
+                            captureLiroutiCameraPhoto(
                                 context = context,
                                 imageCapture = capture,
                                 executor = ContextCompat.getMainExecutor(context),
@@ -176,6 +176,7 @@ fun RoutineAuthCameraScreen(
                                 onError = {
                                     isCapturing = false
                                 },
+                                filePrefix = "routine_auth",
                             )
                         },
                     contentAlignment = Alignment.Center,
@@ -211,7 +212,7 @@ fun RoutineAuthCameraScreen(
                 .padding(innerPadding),
         ) {
             if (hasCameraPermission) {
-                RoutineAuthCameraPreview(
+                LiroutiCameraPreview(
                     lensFacing = lensFacing,
                     flashMode = flashMode,
                     isActive = isCameraActive,
