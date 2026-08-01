@@ -1,20 +1,28 @@
 package com.cmc.li_routi_frontend.navigation
 
+import android.app.Activity
+import android.widget.Toast
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.feature.challenge.navigation.ChallengeNavHost
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
 import com.li_routi.feature.grouproutine.navigation.GrouproutineRootNavHost
 import com.li_routi.feature.home.navigation.HomeNavHost
 import com.li_routi.feature.mypage.navigation.MyPageRoute
+
+private const val DoubleBackPressIntervalMillis = 2000L
 
 /**
  * 앱 전체 최상위 내비게이션 그래프.
@@ -34,6 +42,27 @@ fun AppNavHost(
     var selectedTab by rememberSaveable { mutableStateOf(AppBottomTab.Home) }
     var groupRoutineEntryPoint by rememberSaveable { mutableStateOf<GrouproutineEntryPoint?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
+
+    val context = LocalContext.current
+    var lastBackPressedAt by remember { mutableLongStateOf(0L) }
+
+    // 탭 전환은 NavController가 아닌 이 상태로만 이뤄지므로, 홈이 아닌 탭의 루트 화면에서는
+    // 시스템 백버튼을 여기서 가로채 홈 탭으로 되돌린다.
+    // 홈 탭에서는 2초 이내에 다시 누른 경우에만 종료하고, 그 외엔 토스트만 띄운다.
+    BackHandler {
+        if (selectedTab != AppBottomTab.Home) {
+            selectedTab = AppBottomTab.Home
+            return@BackHandler
+        }
+
+        val now = System.currentTimeMillis()
+        if (now - lastBackPressedAt < DoubleBackPressIntervalMillis) {
+            (context as? Activity)?.finish()
+        } else {
+            lastBackPressedAt = now
+            Toast.makeText(context, "한 번 더 누르면 종료됩니다", Toast.LENGTH_SHORT).show()
+        }
+    }
 
     Box(modifier = modifier) {
         when (selectedTab) {

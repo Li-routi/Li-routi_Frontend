@@ -92,16 +92,15 @@ fun FindChallengeScreen(
                 )
             }
 
+            // 검색바/필터 칩은 스크롤 영역 밖에 고정하고, 카드 리스트만 그 아래에서 스크롤되게 한다.
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .background(LiroutiTheme.colors.backgroundSecondary)
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
-                    .padding(top = 25.dp, bottom = 50.dp),
+                    .padding(top = 25.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-
                 // ---------- 검색바 ----------
                 LiroutiSearchField(
                     value = searchQuery,
@@ -122,9 +121,18 @@ fun FindChallengeScreen(
                         )
                     }
                 }
+            }
 
-                // ---------- 챌린지 카드 리스트 (백엔드 GET /api/challenges 연동) ----------
-                // (Figma node 2380:40530 / 2380:40558).
+            // ---------- 챌린지 카드 리스트 (백엔드 GET /api/challenges 연동) ----------
+            // (Figma node 2380:40530 / 2380:40558).
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(LiroutiTheme.colors.backgroundSecondary)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 50.dp),
+            ) {
                 when {
                     uiState.isLoading -> {
                         Box(
