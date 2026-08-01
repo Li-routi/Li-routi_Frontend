@@ -25,7 +25,7 @@ import com.li_routi.feature.mypage.component.SettingsListItem
 import com.li_routi.feature.mypage.component.SettingsSectionDividerColor
 import com.li_routi.feature.mypage.component.SettingsSectionLabel
 
-private const val LogoutToastMessage = "안전하게 로그아웃되었습니다."
+const val LogoutToastMessage = "안전하게 로그아웃되었습니다."
 private const val WithdrawToastMessage = "탈퇴가 완료되었습니다.\n그동안 이용해주셔서 감사합니다!"
 
 /**
@@ -34,10 +34,11 @@ private const val WithdrawToastMessage = "탈퇴가 완료되었습니다.\n그�
  * 로그인 정보(읽기 전용) + 기타(로그아웃/회원 탈퇴) 2개 섹션으로 구성된다. "회원 탈퇴"는
  * danger 색으로 강조한다.
  *
- * "로그아웃"/"회원 탈퇴" 탭 시 확인 모달(Figma node `205:18034`/`205:18032`)을 먼저 띄우고,
- * 모달에서 확정하면 [onLogoutClick]/[onWithdrawClick]를 호출함과 동시에 완료 토스트
- * (Figma node `205:18351`/`205:18350`)를 화면 하단에 띄운다. 실제 로그아웃/탈퇴 API 호출은
- * 아직 범위 밖이라 콜백만 노출한다.
+ * "로그아웃"은 [com.li_routi.feature.mypage.navigation.AccountManageRoute]가 실제
+ * `POST /api/v1/members/logout` 호출까지 연결한다 — 그래서 확인 모달(Figma node `205:18034`) 확정 시
+ * 토스트(Figma node `205:18351`) 표시 여부를 [showLogoutToast]로 바깥에서 제어한다(실제 API 성공 여부에
+ * 따라 달라지므로). "회원 탈퇴"는 API 명세가 아직 없어 [onWithdrawClick] 호출과 동시에 토스트
+ * (Figma node `205:18350`/`205:18032`)를 화면 자체적으로 보여주는 UI 전용 상태로 남겨뒀다.
  *
  * 토스트 배경은 Figma가 `backdrop-blur(8px)` + 반투명 `dimmer/default`를 쓰지만, 이 앱 minSdk(24)에서
  * 배경 블러를 구현할 방법이 마땅치 않아 기존 공용 [LiroutiToast]의 Black 스타일(불투명
@@ -48,12 +49,13 @@ fun AccountManageScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     loginInfo: String = "카카오 계정으로 로그인 중",
-    onLogoutClick: () -> Unit = {},
+    onLogoutConfirmed: () -> Unit = {},
+    showLogoutToast: Boolean = false,
+    onDismissLogoutToast: () -> Unit = {},
     onWithdrawClick: () -> Unit = {},
 ) {
     var showLogoutDialog by remember { mutableStateOf(false) }
     var showWithdrawDialog by remember { mutableStateOf(false) }
-    var showLogoutToast by remember { mutableStateOf(false) }
     var showWithdrawToast by remember { mutableStateOf(false) }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -82,7 +84,7 @@ fun AccountManageScreen(
         if (showLogoutToast) {
             LiroutiToast(
                 message = LogoutToastMessage,
-                onCloseClick = { showLogoutToast = false },
+                onCloseClick = onDismissLogoutToast,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .navigationBarsPadding()
@@ -108,8 +110,7 @@ fun AccountManageScreen(
             onCancel = { showLogoutDialog = false },
             onConfirm = {
                 showLogoutDialog = false
-                showLogoutToast = true
-                onLogoutClick()
+                onLogoutConfirmed()
             },
         )
     }
@@ -140,14 +141,7 @@ private fun AccountManageScreenPreview() {
 @Composable
 private fun AccountManageScreenLogoutToastPreview() {
     LiroutiFrontendTheme {
-        Box {
-            AccountManageScreen(onBackClick = {})
-            LiroutiToast(
-                message = LogoutToastMessage,
-                onCloseClick = {},
-                modifier = Modifier.align(Alignment.BottomCenter).padding(16.dp),
-            )
-        }
+        AccountManageScreen(onBackClick = {}, showLogoutToast = true)
     }
 }
 
