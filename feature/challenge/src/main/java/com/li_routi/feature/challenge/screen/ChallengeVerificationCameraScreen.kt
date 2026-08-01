@@ -135,16 +135,14 @@ fun ChallengeVerificationCameraScreen(
             }
         },
         bottomBar = {
-            // 가운데 촬영 버튼은 항상 정중앙에 고정해야 한다. Row + SpaceBetween을 쓰면 "플래시" ↔
-            // "플래시 켜짐"처럼 옆 라벨의 텍스트 길이가 바뀔 때마다 균등 간격 재계산으로 촬영 버튼까지
-            // 같이 밀렸었다. Box로 세 요소를 각자 독립적으로 배치해 옆 라벨 너비 변화가 촬영 버튼
-            // 위치에 영향을 주지 않게 한다.
-            Box(
+            Row(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(LiroutiTheme.colors.backgroundDefault)
                     .navigationBarsPadding()
                     .padding(horizontal = 40.dp, vertical = 24.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
             ) {
                 CameraControlAction(
                     iconResId = R.drawable.cameraswitch,
@@ -156,11 +154,9 @@ fun ChallengeVerificationCameraScreen(
                             CameraSelector.LENS_FACING_BACK
                         }
                     },
-                    modifier = Modifier.align(Alignment.CenterStart),
                 )
                 Box(
                     modifier = Modifier
-                        .align(Alignment.Center)
                         .size(64.dp)
                         .clickable(enabled = !isCapturing && hasCameraPermission) {
                             val capture = imageCapture ?: return@clickable
@@ -202,7 +198,6 @@ fun ChallengeVerificationCameraScreen(
                             ImageCapture.FLASH_MODE_OFF
                         }
                     },
-                    modifier = Modifier.align(Alignment.CenterEnd),
                 )
             }
         },
