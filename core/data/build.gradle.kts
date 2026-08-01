@@ -52,6 +52,8 @@ dependencies {
     implementation(libs.okhttp)
     implementation(libs.okhttp.logging)
 
+    implementation(libs.kotlinx.coroutines.android)
+
     // DataStore (토큰 저장용)
     implementation(libs.androidx.datastore.preferences)
 }

@@ -52,6 +52,8 @@ data class RoutineChecklistItem(
     val deadlineText: String = "",
     val category: String = "",
     val repeatLabel: String = "",
+    /** false면 이미 등록된 기본 루틴 등으로 선택 변경 불가. */
+    val selectable: Boolean = true,
 )
 
 @Composable
@@ -73,6 +75,8 @@ fun RoutineChecklistScreen(
     modifier: Modifier = Modifier,
     heading: String? = null,
     description: String? = null,
+    addCategoryEnabled: Boolean = true,
+    primaryButtonEnabled: Boolean = true,
 ) {
     Column(
         modifier = modifier
@@ -127,6 +131,7 @@ fun RoutineChecklistScreen(
             selectedCategory = selectedCategory,
             onCategorySelected = onCategorySelected,
             onAddCategoryClick = onAddCategoryClick,
+            addCategoryEnabled = addCategoryEnabled,
         )
 
         Spacer(modifier = Modifier.height(16.dp))
@@ -151,7 +156,11 @@ fun RoutineChecklistScreen(
                         category = item.category,
                         repeatLabel = item.repeatLabel,
                         checked = item.checked,
-                        onCheckedChange = { onItemCheckedChange(item.id, it) },
+                        onCheckedChange = if (item.selectable) {
+                            { onItemCheckedChange(item.id, it) }
+                        } else {
+                            null
+                        },
                     )
                 }
             }
@@ -178,6 +187,7 @@ fun RoutineChecklistScreen(
             text = primaryButtonText,
             onClick = onPrimaryButtonClick,
             modifier = Modifier.padding(bottom = 16.dp),
+            enabled = primaryButtonEnabled,
         )
     }
 }
@@ -189,6 +199,7 @@ fun RoutineCategoryChipRow(
     onCategorySelected: (String) -> Unit,
     onAddCategoryClick: () -> Unit,
     modifier: Modifier = Modifier,
+    addCategoryEnabled: Boolean = true,
 ) {
     Row(
         modifier = modifier
@@ -204,7 +215,10 @@ fun RoutineCategoryChipRow(
                 onClick = { onCategorySelected(category) },
             )
         }
-        AddCategoryChip(onClick = onAddCategoryClick)
+        AddCategoryChip(
+            onClick = onAddCategoryClick,
+            enabled = addCategoryEnabled,
+        )
     }
 }
 
@@ -249,18 +263,27 @@ fun RoutineCategoryChip(
 fun AddCategoryChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Box(
         modifier = modifier
             .size(32.dp)
             .clip(CircleShape)
-            .border(1.dp, LiroutiTheme.colors.borderStrong, CircleShape)
-            .clickable(onClick = onClick),
+            .border(
+                1.dp,
+                if (enabled) LiroutiTheme.colors.borderStrong else LiroutiTheme.colors.borderSub,
+                CircleShape,
+            )
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         LiroutiPlusIcon(
             modifier = Modifier.size(14.dp),
-            color = LiroutiTheme.colors.labelDefault,
+            color = if (enabled) {
+                LiroutiTheme.colors.labelDefault
+            } else {
+                LiroutiTheme.colors.labelInfo
+            },
         )
     }
 }

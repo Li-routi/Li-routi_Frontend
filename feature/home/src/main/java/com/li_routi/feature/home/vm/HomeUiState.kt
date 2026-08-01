@@ -9,8 +9,8 @@ import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
 /**
  * 홈 화면 UI 상태.
  *
- * [hasActiveRoutine] / [hasGroupRoom] 조합으로 Figma 3가지 상태가 결정된다.
- * 실제 API 연동 전까지는 샘플 데이터로 채운다.
+ * [hasActiveRoutine] / [hasGroupRoom] 조합으로 Figma 툴팁·탭이 결정된다.
+ * 체크리스트 영역은 [showChecklist] (= 개인 또는 그룹 루틴이 하나라도 있을 때)로 표시한다.
  */
 data class HomeUiState(
     val nickname: String = "닉네임",
@@ -19,7 +19,13 @@ data class HomeUiState(
     val myRoutineItems: List<RoutineChecklistItemUiModel> = emptyList(),
     val groupRoomFilters: List<String> = emptyList(),
     val groupRoomItems: List<RoutineChecklistItemUiModel> = emptyList(),
+    val isLoading: Boolean = false,
+    val loadError: Boolean = false,
 ) {
+    /** 개인/그룹 중 하나라도 있으면 체크리스트(또는 그룹만)를 보여 준다. */
+    val showChecklist: Boolean
+        get() = hasActiveRoutine || hasGroupRoom
+
     companion object {
         /** 처음 진입 (루틴 없음). */
         fun empty() = HomeUiState()

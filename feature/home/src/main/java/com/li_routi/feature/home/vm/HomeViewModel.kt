@@ -2,6 +2,8 @@ package com.li_routi.feature.home.vm
 
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
+import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.domain.home.GetHomeSummaryUseCase
 import com.li_routi.feature.home.navigation.HomeScreenActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -9,6 +11,7 @@ import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 /**
@@ -18,13 +21,11 @@ import kotlinx.coroutines.launch
  * - [uiEvent]: 클릭으로 발생하는 일회성 이벤트 (네비게이션 등). [HomeRoute]에서 collect한다.
  *
  * [HomeScreenActions]를 구현해 Screen의 버튼 이벤트를 여기서 처리한다.
- * 빠른 인증 화면 진입은 [HomeRoute] HorizontalPager 스와이프로 처리한다.
- * 실제 API/Repository 연동은 이후 단계에서 추가한다.
- *
- * @param initialState Preview/개발 확인용 초기 상태. 기본값은 처음 진입(empty).
+ * 진입 시 [GetHomeSummaryUseCase]로 홈 요약을 조회한다.
  */
 class HomeViewModel(
-    initialState: HomeUiState = HomeUiState.empty(),
+    private val getHomeSummaryUseCase: GetHomeSummaryUseCase,
+    initialState: HomeUiState = HomeUiState(isLoading = true),
 ) : BaseViewModel(), HomeScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -32,6 +33,24 @@ class HomeViewModel(
 
     private val _uiEvent = MutableSharedFlow<HomeUiEvent>(extraBufferCapacity = 1)
     val uiEvent: SharedFlow<HomeUiEvent> = _uiEvent.asSharedFlow()
+
+    init {
+        refresh()
+    }
+
+    /** 홈 요약을 다시 불러온다. 인증 업로드 성공 후 등에서 호출한다. */
+    fun refresh() {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isLoading = true, loadError = false) }
+            when (val result = getHomeSummaryUseCase()) {
+                is ResultState.Success -> _uiState.value = result.data.toHomeUiState()
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isLoading = false, loadError = true)
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
 
     override fun onNotificationClick() {
         emitEvent(HomeUiEvent.NavigateToNotification)
@@ -46,6 +65,11 @@ class HomeViewModel(
     }
 
     override fun onRoutineCameraClick(routineId: String) {
+        val canVerify = _uiState.value.myRoutineItems
+            .asSequence()
+            .plus(_uiState.value.groupRoomItems)
+            .any { it.id == routineId && it.canVerify }
+        if (!canVerify) return
         emitEvent(HomeUiEvent.NavigateToRoutineAuthCameraWithId(routineId))
     }
 
@@ -59,6 +83,10 @@ class HomeViewModel(
 
     override fun onJoinRoomWithInviteCodeClick() {
         emitEvent(HomeUiEvent.NavigateToJoinRoomWithInviteCode)
+    }
+
+    override fun onRetryLoadClick() {
+        refresh()
     }
 
     /**
