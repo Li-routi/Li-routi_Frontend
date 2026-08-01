@@ -75,7 +75,7 @@ private val NewCertificationDraft = CertificationUiModel(
 )
 
 // Figma node: 2380:40108(참여 전) / 2372:49856(참여 후, 버튼 문구만 다름) / 2222:22836(더보기 바텀시트)
-// "챌린지 찾아보기" 카드를 눌렀을 때 넘어오는 챌린지 상세 화면. 화면 전체가 스크롤된다(LazyColumn).
+// "챌린지 찾아보기" 카드를 눌렀을 때 넘어오는 챌린지 상세 화면. 헤더(뒤로가기/더보기)는 고정, 나머지만 스크롤된다(LazyColumn).
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun ChallengeDetailScreen(
@@ -193,65 +193,74 @@ fun ChallengeDetailScreen(
         }
     }
 
-    LazyColumn(
-        state = listState,
+    Column(
         modifier = modifier
             .fillMaxSize()
             .background(LiroutiTheme.colors.backgroundDefault),
     ) {
-        item {
-            ChallengeHeroSection(
-                onBackClick = onBackClick,
-                onMoreClick = { showMoreSheet = true },
-                showMoreButton = uiState.isJoined,
-            )
-        }
-        item {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 20.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                ChallengeInfoSection(
-                    uiState = uiState,
-                    onJoinClick = actions::onJoinClick,
-                    onVerifyClick = { showVerificationCamera = true },
+        // 뒤로가기/더보기 버튼이 있는 헤더는 다른 화면들과 동일하게 별도 고정 영역으로 분리한다
+        // (흰 배경 + statusBarsPadding으로 시스템 상태바 영역까지 채움). 히어로 이미지는 일반 콘텐츠로
+        // 취급해 아래 스크롤 영역 맨 위에 배치한다.
+        ChallengeDetailHeader(
+            onBackClick = onBackClick,
+            onMoreClick = { showMoreSheet = true },
+            showMoreButton = uiState.isJoined,
+        )
+
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+        ) {
+            item {
+                ChallengeHeroImage()
+            }
+            item {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(top = 20.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    ChallengeInfoSection(
+                        uiState = uiState,
+                        onJoinClick = actions::onJoinClick,
+                        onVerifyClick = { showVerificationCamera = true },
+                    )
+                    LiroutiRoutineStatsRow(
+                        participants = uiState.participantCount.toString(),
+                        activity = uiState.rewardCount.toString(),
+                        posts = uiState.postCount.toString(),
+                        activityLabel = "리워드",
+                    )
+                }
+            }
+            item {
+                Spacer(modifier = Modifier.height(24.dp))
+                LiroutiLineTab(
+                    tabs = listOf("인증", "내 인증 보기"),
+                    selectedIndex = if (uiState.selectedTab == CertificationTab.All) 0 else 1,
+                    onTabSelected = { index ->
+                        actions.onTabSelected(if (index == 0) CertificationTab.All else CertificationTab.Mine)
+                    },
+                    equalWidth = true,
                 )
-                LiroutiRoutineStatsRow(
-                    participants = uiState.participantCount.toString(),
-                    activity = uiState.rewardCount.toString(),
-                    posts = uiState.postCount.toString(),
-                    activityLabel = "리워드",
+                Spacer(modifier = Modifier.height(20.dp))
+            }
+            items(uiState.visibleCertifications, key = { it.id }) { certification ->
+                CertificationCard(
+                    certification = certification,
+                    onMoreClick = { moreSheetCertification = certification },
+                    // "내 인증 보기" 응답엔 liked 상태가 없어 그 탭에서는 좋아요를 누를 수 없게 한다.
+                    onLikeClick = if (certification.isMine) null else { { actions.onLikeToggleClick(certification.id) } },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 20.dp),
                 )
             }
+            item { Spacer(modifier = Modifier.height(30.dp)) }
         }
-        item {
-            Spacer(modifier = Modifier.height(24.dp))
-            LiroutiLineTab(
-                tabs = listOf("인증", "내 인증 보기"),
-                selectedIndex = if (uiState.selectedTab == CertificationTab.All) 0 else 1,
-                onTabSelected = { index ->
-                    actions.onTabSelected(if (index == 0) CertificationTab.All else CertificationTab.Mine)
-                },
-                equalWidth = true,
-            )
-            Spacer(modifier = Modifier.height(20.dp))
-        }
-        items(uiState.visibleCertifications, key = { it.id }) { certification ->
-            CertificationCard(
-                certification = certification,
-                onMoreClick = { moreSheetCertification = certification },
-                // "내 인증 보기" 응답엔 liked 상태가 없어 그 탭에서는 좋아요를 누를 수 없게 한다.
-                onLikeClick = if (certification.isMine) null else { { actions.onLikeToggleClick(certification.id) } },
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 20.dp),
-            )
-        }
-        item { Spacer(modifier = Modifier.height(30.dp)) }
     }
 
     if (showMoreSheet) {
@@ -329,8 +338,10 @@ private fun MoreSheetActionRow(
     }
 }
 
+// 뒤로가기/더보기가 있는 고정 헤더. 다른 화면들의 상단 바와 동일하게 흰 배경 +
+// statusBarsPadding으로 시스템 상태바 영역까지 채워서, 상태바가 항상 흰 배경으로 보이게 한다.
 @Composable
-private fun ChallengeHeroSection(
+private fun ChallengeDetailHeader(
     onBackClick: () -> Unit,
     onMoreClick: () -> Unit,
     showMoreButton: Boolean,
@@ -339,23 +350,16 @@ private fun ChallengeHeroSection(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(200.dp)
-            .background(HeroBg),
+            .background(LiroutiTheme.colors.backgroundDefault)
+            .statusBarsPadding(),
     ) {
-        // 챌린지 대표 이미지(비-DS 이미지 자산) — 실제 에셋은 백엔드에서 제공, 지금은 자리만
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(84.dp)
-                .background(LiroutiTheme.colors.backgroundSecondary, RoundedCornerShape(8.dp)),
-        )
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 12.dp),
+                .height(48.dp)
+                .padding(horizontal = 16.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
         ) {
             LiroutiChevronLeftIcon(
                 modifier = Modifier
@@ -374,6 +378,25 @@ private fun ChallengeHeroSection(
                 )
             }
         }
+    }
+}
+
+// 챌린지 대표 이미지(비-DS 이미지 자산) — 실제 에셋은 백엔드에서 제공, 지금은 자리만. 헤더와 달리
+// 일반 콘텐츠이므로 스크롤 영역 안에 들어간다.
+@Composable
+private fun ChallengeHeroImage(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(200.dp)
+            .background(HeroBg),
+    ) {
+        Box(
+            modifier = Modifier
+                .align(Alignment.Center)
+                .size(84.dp)
+                .background(LiroutiTheme.colors.backgroundSecondary, RoundedCornerShape(8.dp)),
+        )
     }
 }
 
