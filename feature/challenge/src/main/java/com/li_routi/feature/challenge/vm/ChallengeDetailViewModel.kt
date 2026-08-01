@@ -16,18 +16,30 @@ import com.li_routi.core.domain.challenge.ParticipateChallengeUseCase
 import com.li_routi.core.domain.challenge.ReportVerificationUseCase
 import com.li_routi.core.domain.challenge.UnlikeVerificationUseCase
 import com.li_routi.feature.challenge.navigation.ChallengeDetailScreenActions
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 
 private const val VerificationPageSize = 20
+private const val LikeRefreshIntervalMillis = 15_000L
+
+// java.time은 minSdk 24에서 데스슈가링 없이는 쓸 수 없어(ChallengeMapper.kt와 동일한 제약),
+// verifiedDate("yyyy-MM-dd")와 비교할 오늘 날짜도 SimpleDateFormat으로 만든다.
+private fun todayDateString(): String = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
 
 /**
  * 챌린지 상세 화면 ViewModel. 상세 정보, "인증"(전체), "내 인증 보기" 모두 실제 API로 조회한다.
  *
- * "내 인증 보기"는 최초로 그 탭이 선택될 때 지연 로드한다(항상 필요한 데이터가 아니라서).
+ * "내 인증 보기"는 탭 UI뿐 아니라 오늘 인증 여부([ChallengeDetailUiState.verifiedToday]) 판별에도
+ * 쓰여서, 그 탭을 선택하기 전에도 화면 진입 시 바로 조회한다(한 번도 참여한 적 없는 챌린지면 409가
+ * 나는데, 아래 에러 처리에서 빈 목록으로 안전하게 넘어간다).
  */
 class ChallengeDetailViewModel(
     private val challengeId: Long,
@@ -47,6 +59,53 @@ class ChallengeDetailViewModel(
     init {
         loadDetail()
         loadVerifications(cursor = null)
+        loadMyVerifications(cursor = null)
+        startLikeCountAutoRefresh()
+    }
+
+    // 다른 사람이 누른 좋아요도 화면에 반영되도록 화면이 떠 있는 동안 주기적으로 좋아요 수만 조용히
+    // 새로고침한다. 이 코루틴은 viewModelScope에 묶여 있어 화면을 벗어나면(ViewModel 정리) 같이 취소된다.
+    private fun startLikeCountAutoRefresh() {
+        viewModelScope.launch {
+            while (isActive) {
+                delay(LikeRefreshIntervalMillis)
+                refreshLikeCounts()
+            }
+        }
+    }
+
+    // "인증"(전체)/"내 인증 보기" 두 탭 모두 각 1페이지를 다시 조회해 id가 같은 기존 항목의 좋아요
+    // 수(전체 탭은 liked도)만 패치한다. 좋아요는 같은 verificationId를 두 탭이 같이 보여주는 값이라,
+    // 지금 보고 있지 않은 탭 것도 같이 갱신해둬야 탭을 전환했을 때 곧바로 최신 값이 보인다(안 그러면
+    // 최대 15초 뒤 주기 새로고침이 그 탭을 다시 조회할 때까지 좋아요 수가 늦게 반영된 것처럼 보인다).
+    // 목록 순서·페이지네이션·스크롤 위치는 건드리지 않고, 실패하면 조용히 다음 주기를 기다린다.
+    private suspend fun refreshLikeCounts() {
+        val allResult = getVerificationsUseCase(challengeId, cursor = null, size = VerificationPageSize)
+        if (allResult is ResultState.Success) {
+            val freshById = allResult.data.certifications.associateBy { it.id }
+            _uiState.update { state ->
+                state.copy(
+                    allCertifications = state.allCertifications.map { certification ->
+                        freshById[certification.id]?.let {
+                            certification.copy(likeCount = it.likeCount, liked = it.liked)
+                        } ?: certification
+                    },
+                )
+            }
+        }
+
+        val mineResult = getMyVerificationsUseCase(challengeId, cursor = null, size = VerificationPageSize)
+        if (mineResult is ResultState.Success) {
+            val freshById = mineResult.data.certifications.associateBy { it.id }
+            _uiState.update { state ->
+                state.copy(
+                    myCertifications = state.myCertifications.map { certification ->
+                        freshById[certification.id]?.let { certification.copy(likeCount = it.likeCount) }
+                            ?: certification
+                    },
+                )
+            }
+        }
     }
 
     private fun loadDetail() {
@@ -88,6 +147,13 @@ class ChallengeDetailViewModel(
                         myCertifications = state.myCertifications + result.data.certifications.map { it.toUiModel() },
                         myCursor = result.data.nextCursor,
                         myHasNext = result.data.hasNext,
+                        // 최신순 응답의 첫 페이지에만 오늘 인증 여부가 담겨 있다. 다음 페이지(과거 기록)를
+                        // 더 불러올 때는 이 값을 건드리지 않는다.
+                        verifiedToday = if (cursor == null) {
+                            result.data.certifications.any { it.verifiedDate == todayDateString() }
+                        } else {
+                            state.verifiedToday
+                        },
                     )
                 }
                 is ResultState.Error -> _uiState.update { it.copy(isLoadingMoreMy = false, myHasNext = false, myLoaded = true) }
@@ -109,7 +175,9 @@ class ChallengeDetailViewModel(
 
     override fun onTabSelected(tab: CertificationTab) {
         _uiState.update { it.copy(selectedTab = tab) }
-        if (tab == CertificationTab.Mine && !_uiState.value.myLoaded) {
+        // 화면 진입 시 init에서 이미 조회를 시작하므로, 아직 안 끝났으면(isLoadingMoreMy) 여기서 또 쏘지 않는다.
+        val state = _uiState.value
+        if (tab == CertificationTab.Mine && !state.myLoaded && !state.isLoadingMoreMy) {
             loadMyVerifications(cursor = null)
         }
     }
@@ -141,7 +209,14 @@ class ChallengeDetailViewModel(
                 myCertifications = state.myCertifications.withUpdatedContent(certificationId, content),
             )
         }
+        // refreshLikeCounts는 likeCount/liked만 패치하고 content는 건드리지 않아, 방금 로컬로
+        // 반영한 수정 내용을 덮어쓰지 않으면서 좋아요 수만 즉시 최신화된다.
+        viewModelScope.launch { refreshLikeCounts() }
     }
+
+    // 백엔드에 인증 삭제 API가 없어 버튼 UI만 우선 노출한다. API가 추가되면 여기서 호출하고
+    // 성공 시 allCertifications/myCertifications에서 해당 항목을 제거하도록 연동한다.
+    override fun onDeleteCertificationClick(certificationId: Long) = Unit
 
     override fun onReportCertificationClick(certificationId: Long) {
         viewModelScope.launch {
@@ -183,6 +258,9 @@ class ChallengeDetailViewModel(
                 _uiState.update { state ->
                     state.copy(allCertifications = state.allCertifications.withLikeResult(result.data))
                 }
+                // 내가 누른 항목은 위에서 이미 갱신했지만, 그 사이 다른 사람이 누른 좋아요도 같이
+                // 반영되도록 15초를 기다리지 않고 바로 한 번 더 조용히 새로고침한다.
+                refreshLikeCounts()
             }
         }
     }
@@ -213,7 +291,7 @@ private fun Certification.toUiModel(): CertificationUiModel = CertificationUiMod
     timeLabel = verifiedAt.toDisplayTimeLabel(),
     likeCount = likeCount,
     liked = liked,
-    isMine = false,
+    isMine = isMine,
 )
 
 // "내 인증 보기"는 항상 로그인한 본인의 게시글이라 별도 작성자 이름을 내려주지 않는다.

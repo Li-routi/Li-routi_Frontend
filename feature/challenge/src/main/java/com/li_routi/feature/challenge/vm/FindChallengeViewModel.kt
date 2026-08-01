@@ -8,6 +8,8 @@ import com.li_routi.core.domain.challenge.ChallengeCategory
 import com.li_routi.core.domain.challenge.GetChallengesUseCase
 import com.li_routi.feature.challenge.component.ChallengeCardUiModel
 import com.li_routi.feature.challenge.navigation.FindChallengeScreenActions
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,11 +17,13 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val PageSize = 20
+private const val SearchDebounceMillis = 300L
 
 /**
  * "챌린지 찾아보기" 화면 ViewModel. [GetChallengesUseCase]로 목록을 조회한다.
  *
- * 검색어(keyword)와 무한 스크롤(cursor)은 이번 범위에서 제외하고, 카테고리 필터만 서버에 반영한다.
+ * 카테고리 필터는 선택 즉시 반영하고, 검색어(keyword)는 타이핑마다 서버를 호출하지 않도록
+ * [SearchDebounceMillis] 동안 입력이 없을 때만 조회한다. 무한 스크롤(cursor)은 이번 범위 제외.
  */
 class FindChallengeViewModel(
     private val getChallengesUseCase: GetChallengesUseCase,
@@ -28,23 +32,41 @@ class FindChallengeViewModel(
     private val _uiState = MutableStateFlow(FindChallengeUiState())
     val uiState: StateFlow<FindChallengeUiState> = _uiState.asStateFlow()
 
+    private var searchDebounceJob: Job? = null
+
     init {
-        loadChallenges(category = null)
+        loadChallenges(category = null, keyword = null)
     }
 
     override fun onCategorySelected(category: ChallengeCategory?) {
         if (_uiState.value.selectedCategory == category) return
-        loadChallenges(category)
+        searchDebounceJob?.cancel()
+        loadChallenges(category, _uiState.value.searchQuery)
+    }
+
+    override fun onSearchQueryChanged(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        searchDebounceJob?.cancel()
+        searchDebounceJob = viewModelScope.launch {
+            delay(SearchDebounceMillis)
+            loadChallenges(_uiState.value.selectedCategory, query)
+        }
     }
 
     override fun onRetryClick() {
-        loadChallenges(_uiState.value.selectedCategory)
+        loadChallenges(_uiState.value.selectedCategory, _uiState.value.searchQuery)
     }
 
-    private fun loadChallenges(category: ChallengeCategory?) {
+    private fun loadChallenges(category: ChallengeCategory?, keyword: String?) {
         _uiState.update { it.copy(isLoading = true, selectedCategory = category, errorMessage = null) }
         viewModelScope.launch {
-            when (val result = getChallengesUseCase(category = category, size = PageSize)) {
+            when (
+                val result = getChallengesUseCase(
+                    category = category,
+                    keyword = keyword?.trim()?.takeIf { it.isNotEmpty() },
+                    size = PageSize,
+                )
+            ) {
                 is ResultState.Success -> _uiState.update { state ->
                     state.copy(
                         isLoading = false,
