@@ -14,7 +14,7 @@ class LoginActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
         setContent {
-            LiroutiFrontendTheme {
+            LiroutiFrontendTheme(darkTheme = false) {
                 LoginRoute(modifier = Modifier.fillMaxSize())
             }
         }
