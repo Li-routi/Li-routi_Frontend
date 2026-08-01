@@ -1,3 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<!-- 서버가 HTTPS(lirouti.kro.kr)로 이전되어 cleartext 예외가 더 이상 필요 없다. -->
-<network-security-config />

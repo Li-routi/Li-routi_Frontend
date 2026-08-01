@@ -17,4 +17,16 @@ interface ChallengeDetailScreenActions {
 
     /** 더보기 바텀시트의 "챌린지 나가기" 탭 */
     fun onLeaveChallengeClick()
+
+    /** 내 인증 게시글 더보기 바텀시트의 "수정하기" 완료(=수정 화면의 "완료" 버튼) */
+    fun onEditCertificationSubmit(certificationId: Long, content: String)
+
+    /** 타 사용자 인증 게시글 더보기 바텀시트의 "신고하기" 탭 */
+    fun onReportCertificationClick(certificationId: Long)
+
+    /** "인증"(전체) 탭 인증 게시글의 좋아요 아이콘 탭 (현재 liked 상태에 따라 좋아요/취소 전환) */
+    fun onLikeToggleClick(certificationId: Long)
+
+    /** 새 인증 게시글 업로드(사진+코멘트) 성공 후 호출. 상세/인증 목록을 새로고침한다. */
+    fun onVerificationSubmitted()
 }

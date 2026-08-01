@@ -29,4 +29,7 @@ interface HomeScreenActions {
 
     /** 상단 바 `+` 탭으로 열리는 바텀시트의 "초대코드로 참여" 메뉴 탭 */
     fun onJoinRoomWithInviteCodeClick()
+
+    /** 홈 요약 로드 실패 후 재시도 */
+    fun onRetryLoadClick()
 }

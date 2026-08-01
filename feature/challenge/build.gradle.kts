@@ -52,4 +52,7 @@ dependencies {
     implementation(libs.androidx.compose.material.icons.core)
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // Coil (인증 게시글 이미지)
+    implementation(libs.coil.compose)
 }

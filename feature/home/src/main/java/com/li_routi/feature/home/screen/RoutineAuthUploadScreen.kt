@@ -76,6 +76,7 @@ fun RoutineAuthUploadScreen(
     isUploadEnabled: Boolean,
     isUploading: Boolean,
     showUploadFailedToast: Boolean,
+    uploadErrorMessage: String? = null,
     photoUri: Uri? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -100,7 +101,10 @@ fun RoutineAuthUploadScreen(
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
                 if (showUploadFailedToast) {
-                    UploadFailedToast(onDismiss = actions::onDismissUploadFailedToast)
+                    UploadFailedToast(
+                        message = uploadErrorMessage ?: "업로드 실패",
+                        onDismiss = actions::onDismissUploadFailedToast,
+                    )
                 }
                 UploadActionButton(
                     enabled = isUploadEnabled,
@@ -335,11 +339,12 @@ private fun RoutineSelectRow(
 
 @Composable
 private fun UploadFailedToast(
+    message: String,
     onDismiss: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     LiroutiToast(
-        message = "업로드 실패",
+        message = message,
         modifier = modifier,
         onCloseClick = onDismiss,
     )
@@ -441,6 +446,7 @@ private fun RoutineAuthUploadScreenFailedPreview() {
             isUploadEnabled = true,
             isUploading = false,
             showUploadFailedToast = true,
+            uploadErrorMessage = "지금은 인증할 수 없습니다. 이미 완료했거나 가능한 시간이 아닙니다.",
         )
     }
 }

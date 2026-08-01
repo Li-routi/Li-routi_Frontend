@@ -5,7 +5,8 @@ data class RoutineUiModel(
     val id: Long,
     val title: String,
     val categories: List<String>,
-    val badge: String,
+    val description: String,
+    val badge: String?,
 )
 
 /** "챌린지" 메인 화면 UI 상태. */

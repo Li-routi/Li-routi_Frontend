@@ -20,8 +20,10 @@ data class ChallengeCardUiModel(
 )
 
 /**
- * "챌린지 찾아보기" 목록의 카드 한 건 (Figma node 2380:40531). 화면(FindChallengeScreen)에서
+ * "챌린지 찾아보기" 목록의 카드 한 건 (Figma node 3610:30191). 화면(FindChallengeScreen)에서
  * 카드 마크업을 분리해뒀기 때문에, 백엔드 응답 매핑이 바뀌어도 여기만 고치면 된다.
+ *
+ * 설명 앞에 카테고리를 "카테고리 | 설명" 형태로 붙여 보여준다(타이틀 옆 별도 태그 표기는 없어짐).
  */
 @Composable
 fun ChallengeCard(
@@ -31,8 +33,7 @@ fun ChallengeCard(
 ) {
     LiroutiRoutineDetailCard(
         title = challenge.title,
-        tagText = challenge.tagLabel,
-        subtitle = challenge.description,
+        subtitle = "${challenge.tagLabel} | ${challenge.description}",
         participants = challenge.participantCount.toString(),
         activity = challenge.rewardCount.toString(),
         activityLabel = "리워드",

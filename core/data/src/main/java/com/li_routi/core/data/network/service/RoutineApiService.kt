@@ -1,0 +1,51 @@
+package com.li_routi.core.data.network.service
+
+import com.li_routi.core.data.network.dto.request.CreateRoutineCategoryRequest
+import com.li_routi.core.data.network.dto.request.CreateRoutinesRequest
+import com.li_routi.core.data.network.dto.request.RoutineVerificationRequest
+import com.li_routi.core.data.network.dto.response.ApiResponse
+import com.li_routi.core.data.network.dto.response.CreateRoutinesResultResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineVerificationResponse
+import com.li_routi.core.data.network.dto.response.MemberRoutineVerificationResponse
+import com.li_routi.core.data.network.dto.response.RoutineCategoryListResponse
+import com.li_routi.core.data.network.dto.response.RoutineCategoryResponse
+import com.li_routi.core.data.network.dto.response.RoutineTemplateListResponse
+import retrofit2.http.Body
+import retrofit2.http.GET
+import retrofit2.http.POST
+import retrofit2.http.Path
+import retrofit2.http.Query
+
+interface RoutineApiService {
+
+    @GET("api/routines/categories")
+    suspend fun getCategories(): ApiResponse<RoutineCategoryListResponse>
+
+    @POST("api/routines/categories")
+    suspend fun createCategory(
+        @Body body: CreateRoutineCategoryRequest,
+    ): ApiResponse<RoutineCategoryResponse>
+
+    @GET("api/routines/templates")
+    suspend fun getTemplates(
+        @Query("categoryId") categoryId: Long?,
+    ): ApiResponse<RoutineTemplateListResponse>
+
+    @POST("api/routines")
+    suspend fun createRoutines(
+        @Body body: CreateRoutinesRequest,
+    ): ApiResponse<CreateRoutinesResultResponse>
+
+    @POST("api/routines/{routineId}/verifications")
+    suspend fun verifyMemberRoutine(
+        @Path("routineId") routineId: Long,
+        @Body body: RoutineVerificationRequest,
+    ): ApiResponse<MemberRoutineVerificationResponse>
+
+    @POST("api/groups/{groupId}/routines/{routineId}/verifications")
+    suspend fun verifyGroupRoutine(
+        @Path("groupId") groupId: Long,
+        @Path("routineId") routineId: Long,
+        @Body body: RoutineVerificationRequest,
+    ): ApiResponse<GroupRoutineVerificationResponse>
+}

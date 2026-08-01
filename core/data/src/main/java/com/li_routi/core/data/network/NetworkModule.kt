@@ -4,6 +4,9 @@ import android.content.Context
 import com.li_routi.core.data.BuildConfig
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.ChallengeApiService
+import com.li_routi.core.data.network.service.HomeApiService
+import com.li_routi.core.data.network.service.MediaApiService
+import com.li_routi.core.data.network.service.RoutineApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -28,12 +31,29 @@ object NetworkModule {
         appContext = context.applicationContext
     }
 
+    private val authTokenPreference: AuthTokenPreference by lazy { AuthTokenPreference(appContext) }
+
     private val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
             level = HttpLoggingInterceptor.Level.BODY
         }
         OkHttpClient.Builder()
-            .addInterceptor(AuthInterceptor(AuthTokenPreference(appContext)))
+            .addInterceptor(AuthInterceptor(authTokenPreference))
+            .authenticator(TokenAuthenticator(authTokenPreference) { authApiService })
+            .addInterceptor(logging)
+            .build()
+    }
+
+    /**
+     * S3 presigned PUT 전용 클라이언트.
+     * Bearer 토큰을 붙이면 서명이 깨지므로 AuthInterceptor를 넣지 않는다.
+     * 바이너리 body 로그는 남기지 않는다.
+     */
+    val s3OkHttpClient: OkHttpClient by lazy {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.HEADERS
+        }
+        OkHttpClient.Builder()
             .addInterceptor(logging)
             .build()
     }
@@ -52,5 +72,17 @@ object NetworkModule {
 
     val authApiService: AuthApiService by lazy {
         retrofit.create(AuthApiService::class.java)
+    }
+
+    val homeApiService: HomeApiService by lazy {
+        retrofit.create(HomeApiService::class.java)
+    }
+
+    val mediaApiService: MediaApiService by lazy {
+        retrofit.create(MediaApiService::class.java)
+    }
+
+    val routineApiService: RoutineApiService by lazy {
+        retrofit.create(RoutineApiService::class.java)
     }
 }

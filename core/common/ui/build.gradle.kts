@@ -41,4 +41,9 @@ dependencies {
     implementation(libs.androidx.compose.material3)
     implementation(libs.androidx.compose.ui.tooling.preview)
     debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // CameraX (LiroutiCameraPreview — 루틴/챌린지 인증 촬영 화면 공용)
+    api(libs.androidx.camera.camera2)
+    api(libs.androidx.camera.lifecycle)
+    api(libs.androidx.camera.view)
 }
