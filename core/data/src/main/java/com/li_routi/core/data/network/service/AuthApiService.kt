@@ -27,7 +27,7 @@ interface AuthApiService {
     ): ApiResponse<ReissueResponse>
 
     /** 응답 result가 항상 null이라(성공해도 페이로드 없음) Unit?으로 받는다. */
-    @POST("api/v1/members/logout")
+    @POST("api/members/logout")
     suspend fun logout(
         @Body request: LogoutRequest,
     ): ApiResponse<Unit?>
