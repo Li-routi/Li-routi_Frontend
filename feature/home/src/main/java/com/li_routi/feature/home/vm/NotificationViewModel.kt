@@ -41,12 +41,24 @@ class NotificationViewModel(
     }
 
     override fun onNotificationClick(notificationId: String) {
+        val item = _uiState.value.notifications.find { it.id == notificationId } ?: return
         _uiState.update { state ->
             state.copy(
-                notifications = state.notifications.map { item ->
-                    if (item.id == notificationId) item.copy(isUnread = false) else item
+                notifications = state.notifications.map { notification ->
+                    if (notification.id == notificationId) {
+                        notification.copy(isUnread = false)
+                    } else {
+                        notification
+                    }
                 },
             )
+        }
+        when (item.tab) {
+            NotificationTab.MyRoutine -> emitEvent(NotificationUiEvent.NavigateToMyRoutine)
+            NotificationTab.GroupRoutine -> emitEvent(NotificationUiEvent.NavigateToGroupRoutine)
+            NotificationTab.Challenge -> emitEvent(NotificationUiEvent.NavigateToChallenge)
+            // 필터 탭용. 항목에는 쓰이지 않지만 안전 분기.
+            NotificationTab.All -> Unit
         }
     }
 

@@ -2,6 +2,7 @@ package com.li_routi.feature.home.vm
 
 import android.net.Uri
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
+import com.li_routi.feature.home.component.RoutineChecklistKind
 import com.li_routi.feature.home.component.SampleGroupRoomItems
 import com.li_routi.feature.home.component.SampleMyRoutineItems
 import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
@@ -31,6 +32,9 @@ data class RoutineAuthUploadUiState(
  *
  * @param subtitle 마감 옆 보조 텍스트. null이면 마감만 표시.
  * @param badgeTone 카테고리 Badge 색 톤. DS Badge 완성 전까지 화면에서 placeholder/톤만 구분한다.
+ * @param memberRoutineId 개인 루틴 서버 id. 있으면 문자열 id 파싱보다 우선한다.
+ * @param groupId 그룹방 id (그룹 루틴만).
+ * @param groupRoutineId 그룹 루틴 서버 id (그룹 루틴만).
  */
 data class RoutineAuthSelectableUiModel(
     val id: String,
@@ -39,6 +43,9 @@ data class RoutineAuthSelectableUiModel(
     val subtitle: String? = null,
     val categoryLabel: String,
     val badgeTone: RoutineAuthBadgeTone = RoutineAuthBadgeTone.Secondary,
+    val memberRoutineId: Long? = null,
+    val groupId: Long? = null,
+    val groupRoutineId: Long? = null,
 )
 
 enum class RoutineAuthBadgeTone {
@@ -52,9 +59,12 @@ private fun RoutineChecklistItemUiModel.toAuthSelectable(
     id = id,
     title = title,
     dueLabel = dueLabel,
-    subtitle = null,
+    subtitle = roomLabel,
     categoryLabel = categoryLabel,
     badgeTone = badgeTone,
+    memberRoutineId = if (kind == RoutineChecklistKind.Member) routineId else null,
+    groupId = groupId,
+    groupRoutineId = if (kind == RoutineChecklistKind.Group) routineId else null,
 )
 
 /**

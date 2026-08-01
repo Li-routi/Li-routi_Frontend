@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -352,7 +353,10 @@ private fun CameraControlAction(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.clickable(onClick = onClick),
+        // 좌우 컨트롤 폭을 맞춰 SpaceBetween에서 셔터가 한쪽으로 밀리지 않게 한다.
+        modifier = modifier
+            .width(64.dp)
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(
@@ -367,6 +371,8 @@ private fun CameraControlAction(
             // Figma Body4 13/16
             style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
             color = LiroutiTheme.colors.labelStrong,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
         )
     }
 }

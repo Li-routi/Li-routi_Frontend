@@ -6,9 +6,6 @@ import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.domain.home.GetHomeSummaryUseCase
 import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
-import com.li_routi.feature.home.component.SampleGroupRoomFilters
-import com.li_routi.feature.home.component.SampleGroupRoomItems
-import com.li_routi.feature.home.component.SampleMyRoutineItems
 import com.li_routi.feature.home.navigation.HomeScreenActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -50,20 +47,7 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true, loadError = false) }
             when (val result = getHomeSummaryUseCase()) {
                 is ResultState.Success -> {
-                    val mapped = result.data.toHomeUiState()
-                    // TODO(임시): 서버에 루틴 데이터가 아직 없어 스와이프 인증 테스트용 목데이터를 강제 주입.
-                    // 실제 루틴/그룹방 데이터가 생기면 이 분기는 지운다.
-                    _uiState.value = if (!mapped.hasActiveRoutine && !mapped.hasGroupRoom) {
-                        mapped.copy(
-                            hasActiveRoutine = true,
-                            hasGroupRoom = true,
-                            myRoutineItems = SampleMyRoutineItems,
-                            groupRoomFilters = SampleGroupRoomFilters,
-                            groupRoomItems = SampleGroupRoomItems,
-                        )
-                    } else {
-                        mapped
-                    }
+                    _uiState.value = result.data.toHomeUiState()
                 }
                 is ResultState.Error -> _uiState.update {
                     it.copy(isLoading = false, loadError = true)
