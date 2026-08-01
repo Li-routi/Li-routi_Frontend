@@ -64,4 +64,8 @@ sealed interface HomeUiEvent {
     data object NavigateToManageMyRoutine : HomeUiEvent
     data object NavigateToCreateRoom : HomeUiEvent
     data object NavigateToJoinRoomWithInviteCode : HomeUiEvent
+    /** 그룹 필터 `+` 카테고리 생성 성공 — 시트는 이 이벤트 수신에만 닫는다. */
+    data object CategoryCreated : HomeUiEvent
+    /** 그룹 필터 `+` 카테고리 생성 실패 — 시트 유지 + 메시지 표시. */
+    data class CategoryCreateFailed(val message: String) : HomeUiEvent
 }

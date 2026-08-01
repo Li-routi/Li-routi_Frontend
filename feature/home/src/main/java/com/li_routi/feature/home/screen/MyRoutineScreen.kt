@@ -32,6 +32,7 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.li_routi.core.common.ui.routine.RoutineCategoryChipRow
 import com.li_routi.core.common.ui.routine.RoutineChecklistItem
 import com.li_routi.core.common.ui.routine.RoutineItemRow
@@ -74,7 +75,7 @@ fun MyRoutineScreen(
         ) {
             LiroutiChevronLeftIcon(
                 modifier = Modifier
-                    .size(24.dp)
+                    .size(20.dp)
                     .clickable(onClick = onBackClick),
                 color = LiroutiTheme.colors.labelDefault,
             )
@@ -86,21 +87,22 @@ fun MyRoutineScreen(
             LiroutiBottomSheetCloseButton(onClick = onCloseClick)
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         Text(
             text = "등록된 루틴",
             style = LiroutiTheme.typography.heading2SemiBold,
             color = LiroutiTheme.colors.labelDefault,
         )
-        Spacer(modifier = Modifier.height(4.dp))
+        Spacer(modifier = Modifier.height(2.dp))
         Text(
             text = "루틴을 누르면 세부 설정을 변경할 수 있어요",
-            style = LiroutiTheme.typography.body2LongRegular,
+            // Figma Body4 13/16
+            style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
             color = LiroutiTheme.colors.labelSub,
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         MyRoutineSearchField(value = query, onValueChange = onQueryChange)
 
@@ -144,12 +146,12 @@ private fun MyRoutineSearchField(
             .height(44.dp)
             .background(LiroutiTheme.colors.backgroundDefault, RoundedCornerShape(6.dp))
             .border(1.dp, LiroutiTheme.colors.borderDefault, RoundedCornerShape(6.dp))
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 16.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         MyRoutineSearchIcon(
-            modifier = Modifier.size(18.dp),
+            modifier = Modifier.size(20.dp),
             color = LiroutiTheme.colors.labelInfo,
         )
         Box(

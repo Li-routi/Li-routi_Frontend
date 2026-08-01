@@ -54,7 +54,7 @@ fun NotificationScreen(
         topBar = {
             Column(modifier = Modifier.background(LiroutiTheme.colors.backgroundDefault)) {
                 NotificationTopBar(
-                    title = "알림",
+                    title = "루틴 알림",
                     onBackClick = actions::onBackClick,
                     onSettingsClick = actions::onSettingsClick,
                 )

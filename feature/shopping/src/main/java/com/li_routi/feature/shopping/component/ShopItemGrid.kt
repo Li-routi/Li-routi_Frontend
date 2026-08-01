@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -113,7 +114,8 @@ private fun ShopItemCell(
             Spacer(modifier = Modifier.width(4.dp))
             Text(
                 text = item.price.toString(),
-                style = LiroutiTheme.typography.caption,
+                // Figma Body4/Bold 13/16
+                style = LiroutiTheme.typography.body3SemiBold.copy(lineHeight = 16.sp),
                 color = LiroutiTheme.colors.labelStrong,
             )
         }

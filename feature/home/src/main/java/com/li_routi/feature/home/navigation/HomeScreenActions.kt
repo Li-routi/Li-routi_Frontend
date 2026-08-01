@@ -1,5 +1,7 @@
 package com.li_routi.feature.home.navigation
 
+import com.li_routi.core.common.ui.routine.CategoryColor
+
 /**
  * `HomeScreen`에서 발생하는 사용자 이벤트에 대한 콜백 계약(contract).
  *
@@ -32,4 +34,10 @@ interface HomeScreenActions {
 
     /** 홈 요약 로드 실패 후 재시도 */
     fun onRetryLoadClick()
+
+    /**
+     * 그룹 루틴 필터 행의 `+` → 카테고리 추가 시트 확인.
+     * 성공 시 그룹 필터 chip에 새 카테고리명을 붙인다.
+     */
+    fun onCreateCategory(name: String, color: CategoryColor?)
 }

@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.data.di.HomeContainer
+import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.feature.home.screen.HomeScreen
 import com.li_routi.feature.home.screen.RoutineAuthCameraScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
@@ -55,7 +56,10 @@ fun HomeRoute(
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel {
-        HomeViewModel(getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase)
+        HomeViewModel(
+            getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase,
+            createRoutineCategoryUseCase = RoutineContainer.createRoutineCategoryUseCase,
+        )
     },
     cameraViewModel: RoutineAuthCameraViewModel = viewModel { RoutineAuthCameraViewModel() },
 ) {
@@ -78,9 +82,17 @@ fun HomeRoute(
                     pendingAuthRoutineId = event.routineId
                     pendingPagerPage = PageCamera
                 }
+                HomeUiEvent.CategoryCreated,
+                is HomeUiEvent.CategoryCreateFailed,
+                -> Unit
                 else -> Unit
             }
-            onEvent(event)
+            // 카테고리 생성 결과는 HomeScreen이 직접 collect한다.
+            if (event !is HomeUiEvent.CategoryCreated &&
+                event !is HomeUiEvent.CategoryCreateFailed
+            ) {
+                onEvent(event)
+            }
         }
     }
 
@@ -196,6 +208,7 @@ private fun HomeScreenContent(
         showChecklist = uiState.showChecklist,
         isLoading = uiState.isLoading,
         loadError = uiState.loadError,
+        uiEvent = viewModel.uiEvent,
         modifier = modifier,
     )
 }

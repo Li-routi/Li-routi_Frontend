@@ -23,6 +23,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiBadge
 import com.li_routi.core.designsystem.component.LiroutiBadgeColor
@@ -58,72 +59,33 @@ val SampleCurrencyProducts: List<CurrencyProductUiModel> = listOf(
         id = "currency_0",
         title = "100토파즈",
         subtitle = "Sub tit",
-        price = "10다이아",
+        price = "3개",
         chargeTitle = "100토파즈",
-        paymentAmount = "10다이아",
+        paymentAmount = "3개",
     ),
     CurrencyProductUiModel(
         id = "currency_1",
-        title = "Tit",
+        title = "200토파즈",
         subtitle = "Sub tit",
-        price = "3,300",
-        priceSuffix = "원",
-        chargeTitle = "300코인",
-        bonusLabel = "+30 보너스",
-        paymentAmount = "₩3,300",
+        price = "5개",
+        chargeTitle = "200토파즈",
+        paymentAmount = "5개",
     ),
     CurrencyProductUiModel(
         id = "currency_2",
-        title = "Tit",
+        title = "500토파즈",
         subtitle = "Sub tit",
-        price = "5,500",
-        priceSuffix = "원",
-        chargeTitle = "550코인",
-        bonusLabel = "+50 보너스",
-        paymentAmount = "₩5,500",
+        price = "10개",
+        chargeTitle = "500토파즈",
+        paymentAmount = "10개",
     ),
     CurrencyProductUiModel(
         id = "currency_3",
-        title = "Tit",
+        title = "1100토파즈",
         subtitle = "Sub tit",
-        price = "11,000",
-        priceSuffix = "원",
-        chargeTitle = "1,100코인",
-        bonusLabel = "+100 보너스",
-        paymentAmount = "₩11,000",
-    ),
-    CurrencyProductUiModel(
-        id = "currency_4",
-        title = "Tit",
-        subtitle = "Sub tit",
-        price = "33,000",
-        priceSuffix = "원",
-        isPopular = true,
-        chargeTitle = "3,300코인",
-        bonusLabel = "+300 보너스",
-        paymentAmount = "₩33,000",
-    ),
-    CurrencyProductUiModel(
-        id = "currency_5",
-        title = "Tit",
-        subtitle = "Sub tit",
-        price = "55,000",
-        priceSuffix = "원",
-        isPopular = true,
-        chargeTitle = "5,500코인",
-        bonusLabel = "+500 보너스",
-        paymentAmount = "₩55,000",
-    ),
-    CurrencyProductUiModel(
-        id = "currency_6",
-        title = "Tit",
-        subtitle = "Sub tit",
-        price = "110,000",
-        priceSuffix = "원",
-        isPopular = true,
-        chargeTitle = "11,000코인",
-        bonusLabel = "+1,000 보너스",
-        paymentAmount = "₩110,000",
+        price = "20개",
+        chargeTitle = "1100토파즈",
+        paymentAmount = "20개",
     ),
 )
 
@@ -184,16 +146,16 @@ private fun CurrencyProductRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
-            painter = painterResource(id = R.drawable.diamond_blue),
-            contentDescription = null,
-            modifier = Modifier.size(16.dp),
-        )
+                painter = painterResource(id = R.drawable.diamond_orange),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
+            )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
                         text = item.title,
-                        style = LiroutiTheme.typography.body2,
+                        style = LiroutiTheme.typography.body2LongMedium,
                         color = LiroutiTheme.colors.labelStrong,
                     )
                     if (item.isPopular) {
@@ -203,20 +165,28 @@ private fun CurrencyProductRow(
                 }
                 Text(
                     text = item.subtitle,
-                    style = LiroutiTheme.typography.caption,
+                    style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
                     color = LiroutiTheme.colors.labelInfo,
                 )
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (item.priceSuffix == null) {
+                    Image(
+                        painter = painterResource(id = R.drawable.diamond_blue),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                    )
+                    Spacer(modifier = Modifier.width(3.dp))
+                }
                 Text(
                     text = item.price,
-                    style = LiroutiTheme.typography.body2,
+                    style = LiroutiTheme.typography.body2LongSemiBold,
                     color = LiroutiTheme.colors.labelStrong,
                 )
                 if (item.priceSuffix != null) {
                     Text(
                         text = item.priceSuffix,
-                        style = LiroutiTheme.typography.caption,
+                        style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
                         color = LiroutiTheme.colors.labelStrong,
                     )
                 }
