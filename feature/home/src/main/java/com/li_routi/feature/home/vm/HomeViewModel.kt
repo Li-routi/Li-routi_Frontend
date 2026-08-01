@@ -3,7 +3,9 @@ package com.li_routi.feature.home.vm
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.domain.home.GetHomeSummaryUseCase
+import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.feature.home.component.SampleGroupRoomFilters
 import com.li_routi.feature.home.component.SampleGroupRoomItems
 import com.li_routi.feature.home.component.SampleMyRoutineItems
@@ -28,6 +30,7 @@ import kotlinx.coroutines.launch
  */
 class HomeViewModel(
     private val getHomeSummaryUseCase: GetHomeSummaryUseCase,
+    private val createRoutineCategoryUseCase: CreateRoutineCategoryUseCase? = null,
     initialState: HomeUiState = HomeUiState(isLoading = true),
 ) : BaseViewModel(), HomeScreenActions {
 
@@ -107,6 +110,42 @@ class HomeViewModel(
         refresh()
     }
 
+    override fun onCreateCategory(name: String, color: CategoryColor?) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) return
+        val createUseCase = createRoutineCategoryUseCase
+        if (createUseCase == null) {
+            appendGroupCategoryFilter(trimmed)
+            return
+        }
+        viewModelScope.launch {
+            when (
+                createUseCase(
+                    name = trimmed,
+                    color = color?.toApiColor(),
+                )
+            ) {
+                is ResultState.Success -> appendGroupCategoryFilter(trimmed)
+                is ResultState.Error -> Unit
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    /** 그룹 루틴 필터 chip에 카테고리명을 붙인다. 이미 있으면 무시. */
+    private fun appendGroupCategoryFilter(categoryName: String) {
+        _uiState.update { state ->
+            val filters = state.groupRoomFilters.toMutableList()
+            if (filters.none { it == "전체" }) {
+                filters.add(0, "전체")
+            }
+            if (filters.none { it == categoryName }) {
+                filters.add(categoryName)
+            }
+            state.copy(groupRoomFilters = filters)
+        }
+    }
+
     /**
      * 개발/Preview용 상태 전환. 실제 데이터 연동 시 Repository 결과로 [uiState]를 갱신한다.
      */
@@ -119,4 +158,14 @@ class HomeViewModel(
             _uiEvent.emit(event)
         }
     }
+}
+
+private fun CategoryColor.toApiColor(): String = when (this) {
+    CategoryColor.Red -> "RED"
+    CategoryColor.Orange -> "ORANGE"
+    CategoryColor.Yellow -> "YELLOW"
+    CategoryColor.Green -> "GREEN"
+    CategoryColor.Blue -> "BLUE"
+    CategoryColor.Magenta -> "MAGENTA"
+    CategoryColor.Black -> "BLACK"
 }

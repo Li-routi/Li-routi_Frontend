@@ -37,7 +37,7 @@ fun EmptyRoutineSection(modifier: Modifier = Modifier, message: String = "아직
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = message,
-            style = LiroutiTheme.typography.body2,
+            style = LiroutiTheme.typography.body2LongMedium,
             color = LiroutiTheme.colors.labelInfo,
         )
     }

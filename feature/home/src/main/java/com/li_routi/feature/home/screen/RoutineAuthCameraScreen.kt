@@ -45,6 +45,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.LifecycleEventObserver
@@ -229,8 +230,8 @@ fun RoutineAuthCameraScreen(
             }
             Text(
                 text = "가로로 촬영해 주세요",
-                style = LiroutiTheme.typography.body2,
-                color = LiroutiTheme.colors.labelReverse,
+                style = LiroutiTheme.typography.body2LongMedium,
+                color = LiroutiTheme.colors.labelDefault,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .padding(bottom = 16.dp),
@@ -296,7 +297,8 @@ private fun CameraControlAction(
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
-            style = LiroutiTheme.typography.caption,
+            // Figma Body4 13/16
+            style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
             color = LiroutiTheme.colors.labelStrong,
         )
     }

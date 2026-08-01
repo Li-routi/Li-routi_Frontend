@@ -97,7 +97,7 @@ private fun CurrencyBalanceChip(
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = balance.toString(),
-            style = LiroutiTheme.typography.body2,
+            style = LiroutiTheme.typography.body2LongMedium,
             color = LiroutiTheme.colors.labelSub,
         )
     }

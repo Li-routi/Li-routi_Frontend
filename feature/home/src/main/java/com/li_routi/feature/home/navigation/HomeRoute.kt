@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.data.di.HomeContainer
+import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.feature.home.screen.HomeScreen
 import com.li_routi.feature.home.screen.RoutineAuthCameraScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
@@ -55,7 +56,10 @@ fun HomeRoute(
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel {
-        HomeViewModel(getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase)
+        HomeViewModel(
+            getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase,
+            createRoutineCategoryUseCase = RoutineContainer.createRoutineCategoryUseCase,
+        )
     },
     cameraViewModel: RoutineAuthCameraViewModel = viewModel { RoutineAuthCameraViewModel() },
 ) {

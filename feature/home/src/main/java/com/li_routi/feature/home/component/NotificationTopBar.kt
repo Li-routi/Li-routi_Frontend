@@ -76,7 +76,7 @@ fun NotificationTopBar(
 private fun NotificationTopBarWithSettingsPreview() {
     LiroutiFrontendTheme {
         NotificationTopBar(
-            title = "알림",
+            title = "루틴 알림",
             onBackClick = {},
             onSettingsClick = {},
         )

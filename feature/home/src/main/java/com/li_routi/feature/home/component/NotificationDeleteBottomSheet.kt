@@ -46,7 +46,7 @@ fun NotificationDeleteBottomSheet(
         ) {
             Text(
                 text = "알림 삭제",
-                style = LiroutiTheme.typography.body1,
+                style = LiroutiTheme.typography.body2LongSemiBold,
                 color = LiroutiTheme.colors.labelDefault,
                 textAlign = TextAlign.Center,
                 modifier = Modifier.fillMaxWidth(),
