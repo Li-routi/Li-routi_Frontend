@@ -149,10 +149,4 @@ val SampleNotifications: List<NotificationItemUiModel> = listOf(
 sealed interface NotificationUiEvent {
     data object NavigateBack : NotificationUiEvent
     data object NavigateToSettings : NotificationUiEvent
-    /** 내 루틴 알림 → 내 루틴 화면 */
-    data object NavigateToMyRoutine : NotificationUiEvent
-    /** 그룹 루틴 알림 → 그룹 루틴 탭 */
-    data object NavigateToGroupRoutine : NotificationUiEvent
-    /** 챌린지 알림 → 챌린지 탭 */
-    data object NavigateToChallenge : NotificationUiEvent
 }

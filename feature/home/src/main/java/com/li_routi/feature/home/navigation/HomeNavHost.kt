@@ -82,15 +82,6 @@ fun HomeNavHost(
                         NotificationUiEvent.NavigateToSettings -> {
                             navController.navigate(RouteNotificationSettings)
                         }
-                        NotificationUiEvent.NavigateToMyRoutine -> {
-                            navController.navigate(RouteMyRoutine)
-                        }
-                        NotificationUiEvent.NavigateToGroupRoutine -> {
-                            onTabSelected(AppBottomTab.GroupRoutine)
-                        }
-                        NotificationUiEvent.NavigateToChallenge -> {
-                            onTabSelected(AppBottomTab.Challenge)
-                        }
                     }
                 },
             )
