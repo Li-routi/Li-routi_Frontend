@@ -86,6 +86,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
         title = "물 마시기",
         dueLabel = "마감 22:00",
         categoryLabel = "건강",
+        routineId = 0L,
         categoryColor = CategoryColor.Blue,
     ),
     RoutineChecklistItemUiModel(
@@ -93,6 +94,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
         title = "강아지 산책",
         dueLabel = "마감 18:00",
         categoryLabel = "운동",
+        routineId = 1L,
         categoryColor = CategoryColor.Orange,
     ),
     RoutineChecklistItemUiModel(
@@ -101,6 +103,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
         dueLabel = "마감 23:00",
         categoryLabel = "업무",
         isDone = true,
+        routineId = 2L,
         categoryColor = CategoryColor.Magenta,
     ),
     RoutineChecklistItemUiModel(
@@ -109,6 +112,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
         dueLabel = "마감 23:00",
         categoryLabel = "운동",
         isDone = true,
+        routineId = 3L,
         categoryColor = CategoryColor.Orange,
     ),
     RoutineChecklistItemUiModel(
@@ -117,6 +121,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
         dueLabel = "마감 22:00",
         categoryLabel = "건강",
         isDone = true,
+        routineId = 4L,
         categoryColor = CategoryColor.Blue,
     ),
 )
@@ -133,6 +138,7 @@ val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
         title = "물 마시기",
         dueLabel = "마감 22:00",
         categoryLabel = "건강",
+        routineId = 0L,
         categoryColor = CategoryColor.Blue,
     ),
     RoutineChecklistItemUiModel(
@@ -140,6 +146,7 @@ val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
         title = "강아지 산책",
         dueLabel = "마감 18:00",
         categoryLabel = "운동",
+        routineId = 1L,
         categoryColor = CategoryColor.Orange,
     ),
     RoutineChecklistItemUiModel(
@@ -147,6 +154,7 @@ val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
         title = "물 마시기",
         dueLabel = "마감 22:00",
         categoryLabel = "건강",
+        routineId = 2L,
         categoryColor = CategoryColor.Blue,
     ),
 )
@@ -157,31 +165,42 @@ val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
  */
 val SampleGroupRoomFilters: List<String> = listOf("전체", "건강", "운동", "공부")
 
-/** Preview/개발 확인용 "그룹 루틴" 샘플. [categoryLabel]이 필터 chip과 일치해야 한다. */
+/** Preview/개발 확인용 "그룹 루틴" 샘플. [categoryLabel]이 필터 chip과 일치해야 한다.
+ * id는 업로드 파서와 동일하게 `group_{groupId}_{routineId}` 형식을 쓴다.
+ */
 val SampleGroupRoomItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
-        id = "group_0",
+        id = "group_10_100",
         title = "물 마시기",
         dueLabel = "마감 22:00",
         categoryLabel = "건강",
         roomLabel = "바디프로필",
+        kind = RoutineChecklistKind.Group,
+        routineId = 100L,
+        groupId = 10L,
         categoryColor = CategoryColor.Blue,
     ),
     RoutineChecklistItemUiModel(
-        id = "group_1",
+        id = "group_11_101",
         title = "스트레칭하기",
         dueLabel = "마감 23:00",
         categoryLabel = "운동",
         roomLabel = "사이드 프로젝트",
+        kind = RoutineChecklistKind.Group,
+        routineId = 101L,
+        groupId = 11L,
         categoryColor = CategoryColor.Orange,
     ),
     RoutineChecklistItemUiModel(
-        id = "group_2",
+        id = "group_10_102",
         title = "스트레칭하기",
         dueLabel = "마감 23:00",
         categoryLabel = "공부",
         isDone = true,
         roomLabel = "바디프로필",
+        kind = RoutineChecklistKind.Group,
+        routineId = 102L,
+        groupId = 10L,
         categoryColor = CategoryColor.Green,
     ),
 )

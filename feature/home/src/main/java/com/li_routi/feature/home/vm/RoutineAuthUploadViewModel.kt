@@ -22,7 +22,7 @@ import kotlinx.coroutines.launch
  * - 업로드 성공 → [RoutineAuthUploadUiEvent.NavigateToHome]
  * - 업로드 실패 → 토스트 표시 ([RoutineAuthUploadUiState.showUploadFailedToast])
  *
- * @param upload 미디어 업로드 + 개인/그룹 루틴 인증.
+ * @param upload 미디어 업로드 + 개인/그룹 루틴 인증(사진·코멘트 저장).
  */
 class RoutineAuthUploadViewModel(
     initialState: RoutineAuthUploadUiState = RoutineAuthUploadUiState(),
@@ -30,6 +30,7 @@ class RoutineAuthUploadViewModel(
         photoUri: Uri,
         memo: String,
         selectedRoutineIds: Set<String>,
+        routines: List<RoutineAuthSelectableUiModel>,
     ) -> Result<Unit>,
 ) : BaseViewModel(), RoutineAuthUploadScreenActions {
 
@@ -68,7 +69,12 @@ class RoutineAuthUploadViewModel(
             _uiState.update {
                 it.copy(isUploading = true, uploadErrorMessage = null)
             }
-            val result = upload(photoUri, state.memo, state.selectedRoutineIds)
+            val result = upload(
+                photoUri,
+                state.memo,
+                state.selectedRoutineIds,
+                state.routines,
+            )
             _uiState.update { it.copy(isUploading = false) }
             if (result.isSuccess) {
                 emitEvent(RoutineAuthUploadUiEvent.NavigateToHome)

@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -75,7 +76,7 @@ fun RoutineAuthCameraScreen(
         RoutineAuthCameraLayout(
             actions = actions,
             hasCameraPermission = true,
-            flashMode = ImageCapture.FLASH_MODE_OFF,
+            isTorchOn = false,
             isCapturing = false,
             onToggleLens = {},
             onToggleFlash = {},
@@ -121,14 +122,14 @@ fun RoutineAuthCameraScreen(
     }
 
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
-    var flashMode by remember { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
+    var isTorchOn by remember { mutableStateOf(false) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var isCapturing by remember { mutableStateOf(false) }
 
     RoutineAuthCameraLayout(
         actions = actions,
         hasCameraPermission = hasCameraPermission,
-        flashMode = flashMode,
+        isTorchOn = isTorchOn,
         isCapturing = isCapturing,
         onToggleLens = {
             lensFacing = if (lensFacing == CameraSelector.LENS_FACING_BACK) {
@@ -136,13 +137,11 @@ fun RoutineAuthCameraScreen(
             } else {
                 CameraSelector.LENS_FACING_BACK
             }
+            // 전면 등 플래시 유닛 없는 렌즈로 바꿀 때 손전등 상태 초기화.
+            isTorchOn = false
         },
         onToggleFlash = {
-            flashMode = if (flashMode == ImageCapture.FLASH_MODE_OFF) {
-                ImageCapture.FLASH_MODE_ON
-            } else {
-                ImageCapture.FLASH_MODE_OFF
-            }
+            isTorchOn = !isTorchOn
         },
         onShutterClick = {
             val capture = imageCapture
@@ -168,8 +167,9 @@ fun RoutineAuthCameraScreen(
         cameraContent = {
             LiroutiCameraPreview(
                 lensFacing = lensFacing,
-                flashMode = flashMode,
+                flashMode = ImageCapture.FLASH_MODE_OFF,
                 isActive = isCameraActive,
+                torchEnabled = isTorchOn,
                 onImageCaptureReady = { capture: ImageCapture? ->
                     imageCapture = capture
                 },
@@ -184,7 +184,7 @@ fun RoutineAuthCameraScreen(
 private fun RoutineAuthCameraLayout(
     actions: RoutineAuthCameraScreenActions,
     hasCameraPermission: Boolean,
-    flashMode: Int,
+    isTorchOn: Boolean,
     isCapturing: Boolean,
     onToggleLens: () -> Unit,
     onToggleFlash: () -> Unit,
@@ -268,7 +268,8 @@ private fun RoutineAuthCameraLayout(
                 }
                 CameraControlAction(
                     iconResId = R.drawable.flash,
-                    label = if (flashMode == ImageCapture.FLASH_MODE_ON) "플래시 켜짐" else "플래시",
+                    // 폭 고정 + 짧은 라벨로 토글 시 셔터가 밀리지 않게 한다.
+                    label = if (isTorchOn) "켜짐" else "플래시",
                     onClick = onToggleFlash,
                 )
             }
@@ -352,7 +353,10 @@ private fun CameraControlAction(
     modifier: Modifier = Modifier,
 ) {
     Column(
-        modifier = modifier.clickable(onClick = onClick),
+        // 좌우 컨트롤 폭을 맞춰 SpaceBetween에서 셔터가 한쪽으로 밀리지 않게 한다.
+        modifier = modifier
+            .width(64.dp)
+            .clickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Image(
@@ -367,6 +371,8 @@ private fun CameraControlAction(
             // Figma Body4 13/16
             style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
             color = LiroutiTheme.colors.labelStrong,
+            textAlign = TextAlign.Center,
+            maxLines = 1,
         )
     }
 }

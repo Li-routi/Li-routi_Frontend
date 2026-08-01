@@ -34,12 +34,18 @@ fun RoutineAuthUploadRoute(
     modifier: Modifier = Modifier,
 ) {
     val appContext = LocalContext.current.applicationContext
-    val upload: suspend (Uri, String, Set<String>) -> Result<Unit> = remember(appContext) {
-        { uri, memo, ids ->
+    val upload: suspend (
+        Uri,
+        String,
+        Set<String>,
+        List<RoutineAuthSelectableUiModel>,
+    ) -> Result<Unit> = remember(appContext) {
+        { uri, memo, ids, routines ->
             submitRoutineAuthUpload(
                 photoUri = uri,
                 memo = memo,
                 selectedRoutineIds = ids,
+                routines = routines,
                 context = appContext,
             )
         }
