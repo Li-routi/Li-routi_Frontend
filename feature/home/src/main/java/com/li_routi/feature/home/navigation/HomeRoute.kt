@@ -82,9 +82,17 @@ fun HomeRoute(
                     pendingAuthRoutineId = event.routineId
                     pendingPagerPage = PageCamera
                 }
+                HomeUiEvent.CategoryCreated,
+                is HomeUiEvent.CategoryCreateFailed,
+                -> Unit
                 else -> Unit
             }
-            onEvent(event)
+            // 카테고리 생성 결과는 HomeScreen이 직접 collect한다.
+            if (event !is HomeUiEvent.CategoryCreated &&
+                event !is HomeUiEvent.CategoryCreateFailed
+            ) {
+                onEvent(event)
+            }
         }
     }
 
@@ -200,6 +208,7 @@ private fun HomeScreenContent(
         showChecklist = uiState.showChecklist,
         isLoading = uiState.isLoading,
         loadError = uiState.loadError,
+        uiEvent = viewModel.uiEvent,
         modifier = modifier,
     )
 }

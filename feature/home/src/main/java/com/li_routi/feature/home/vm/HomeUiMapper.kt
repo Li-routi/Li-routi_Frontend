@@ -39,14 +39,14 @@ private fun MyRoutine.toChecklistItem(): RoutineChecklistItemUiModel = RoutineCh
     id = "my_$routineId",
     title = name,
     dueLabel = endTime.toDueLabel(),
-    categoryLabel = categoryName,
+    categoryLabel = categoryName.trim(),
     isDone = completedToday,
     roomLabel = null,
     kind = RoutineChecklistKind.Member,
     routineId = routineId,
     groupId = null,
     canVerify = !completedToday,
-    // API에 카테고리 색 필드가 없어 categoryId로 팔레트(CategoryColor)를 안정 매핑한다.
+    // TODO: 홈 API에 categoryColor가 생기면 서버 색으로 교체. 현재는 id 기반 안정 매핑.
     categoryColor = categoryColorFromId(categoryId),
 )
 
@@ -54,18 +54,19 @@ private fun GroupRoutine.toChecklistItem(): RoutineChecklistItemUiModel = Routin
     id = "group_${groupId}_$routineId",
     title = title,
     dueLabel = scheduledEndTime.toDueLabel(),
-    categoryLabel = categoryName,
+    categoryLabel = categoryName.trim(),
     isDone = status.isDone,
     roomLabel = groupName,
     kind = RoutineChecklistKind.Group,
     routineId = routineId,
     groupId = groupId,
     canVerify = status.canVerify,
+    // TODO: 홈 API에 categoryColor가 생기면 서버 색으로 교체. 현재는 id 기반 안정 매핑.
     categoryColor = categoryColorFromId(categoryId),
 )
 
 /**
- * 홈 `+` 카테고리 추가 시트의 [CategoryColor] 7색 팔레트에 categoryId를 안정적으로 매핑.
+ * 홈 API에 카테고리 색 필드가 없어 categoryId로 [CategoryColor] 팔레트를 안정 매핑한다.
  * 서버가 색을 내려주면 그 값으로 교체한다.
  */
 private fun categoryColorFromId(categoryId: Long): CategoryColor {

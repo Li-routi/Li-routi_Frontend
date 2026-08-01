@@ -20,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -33,6 +34,7 @@ import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.component.AddMenuBottomSheet
@@ -45,6 +47,9 @@ import com.li_routi.feature.home.component.SampleMyRoutineItems
 import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
 import com.li_routi.feature.home.component.ShopEntryCard
 import com.li_routi.feature.home.navigation.HomeScreenActions
+import com.li_routi.feature.home.vm.HomeUiEvent
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /** Figma `Bottom Sheet` 상단의 드래그 힌트 바 (`h-[4px] w-[44px]`, 회색 pill). */
 private val SheetDragHandleColor = androidx.compose.ui.graphics.Color(0xFFDEDEDE)
@@ -91,14 +96,34 @@ fun HomeScreen(
     showChecklist: Boolean = hasActiveRoutine || hasGroupRoom,
     isLoading: Boolean = false,
     loadError: Boolean = false,
+    /** 카테고리 생성 성공/실패 등 홈 일회성 UI 이벤트. */
+    uiEvent: Flow<HomeUiEvent> = emptyFlow(),
     modifier: Modifier = Modifier,
 ) {
     var showAddMenuSheet by remember { mutableStateOf(false) }
     var showCategorySheet by remember { mutableStateOf(false) }
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
+    var categoryCreateError by remember { mutableStateOf<String?>(null) }
     val tooltipMessage = homeTooltipMessage(hasActiveRoutine, hasGroupRoom)
     val sheetScaffoldState = rememberBottomSheetScaffoldState()
+
+    LaunchedEffect(uiEvent) {
+        uiEvent.collect { event ->
+            when (event) {
+                HomeUiEvent.CategoryCreated -> {
+                    showCategorySheet = false
+                    categoryName = ""
+                    categoryColor = null
+                    categoryCreateError = null
+                }
+                is HomeUiEvent.CategoryCreateFailed -> {
+                    categoryCreateError = event.message
+                }
+                else -> Unit
+            }
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         BottomSheetScaffold(
@@ -206,6 +231,17 @@ fun HomeScreen(
             onTabSelected = onTabSelected,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+
+        categoryCreateError?.let { message ->
+            LiroutiToast(
+                message = message,
+                onCloseClick = { categoryCreateError = null },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 100.dp),
+            )
+        }
     }
 
     if (showAddMenuSheet) {
@@ -220,15 +256,21 @@ fun HomeScreen(
     if (showCategorySheet) {
         CategoryAddBottomSheet(
             name = categoryName,
-            onNameChange = { categoryName = it.take(10) },
+            onNameChange = {
+                categoryName = it.take(10)
+                categoryCreateError = null
+            },
             selectedColor = categoryColor,
             onColorSelected = { categoryColor = it },
             placeholder = "최대 10자",
             onConfirm = {
+                // 시트는 CategoryCreated 수신 시에만 닫는다.
                 actions.onCreateCategory(categoryName, categoryColor)
-                showCategorySheet = false
             },
-            onDismissRequest = { showCategorySheet = false },
+            onDismissRequest = {
+                showCategorySheet = false
+                categoryCreateError = null
+            },
         )
     }
 }

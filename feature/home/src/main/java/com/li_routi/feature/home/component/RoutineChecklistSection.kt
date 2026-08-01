@@ -18,8 +18,10 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -184,14 +186,14 @@ val SampleGroupRoomItems: List<RoutineChecklistItemUiModel> = listOf(
     ),
 )
 
+private const val AllCategoryFilterLabel = "전체"
+
 /** 카테고리 필터 chip 선택에 맞게 그룹 루틴 목록을 걸러낸다. "전체"면 원본 그대로. */
 internal fun List<RoutineChecklistItemUiModel>.filteredByCategory(
-    filters: List<String>,
-    selectedFilterIndex: Int,
+    selectedCategoryName: String,
 ): List<RoutineChecklistItemUiModel> {
-    val selected = filters.getOrNull(selectedFilterIndex) ?: return this
-    if (selected == "전체") return this
-    return filter { it.categoryLabel == selected }
+    if (selectedCategoryName == AllCategoryFilterLabel) return this
+    return filter { it.categoryLabel == selectedCategoryName }
 }
 
 /**
@@ -230,7 +232,14 @@ fun RoutineChecklistSection(
     onAddCategoryClick: () -> Unit = {},
 ) {
     var selectedMainTab by remember { mutableIntStateOf(0) }
-    var selectedFilterIndex by remember { mutableIntStateOf(0) }
+    // 인덱스가 아니라 카테고리명으로 보관 — refresh로 필터 목록이 바뀌어도 선택이 어긋나지 않는다.
+    var selectedCategoryName by remember { mutableStateOf(AllCategoryFilterLabel) }
+
+    LaunchedEffect(groupRoomFilters) {
+        if (groupRoomFilters.isNotEmpty() && selectedCategoryName !in groupRoomFilters) {
+            selectedCategoryName = AllCategoryFilterLabel
+        }
+    }
 
     // Design Page [1.1]: 탭은 항상 노출. 그룹방 없어도 「그룹 루틴」 선택 시 empty 문구.
     val isGroupTab = selectedMainTab == 1
@@ -240,12 +249,11 @@ fun RoutineChecklistSection(
         hasGroupRoom,
         myRoutineItems,
         groupRoomItems,
-        groupRoomFilters,
-        selectedFilterIndex,
+        selectedCategoryName,
     ) {
         when {
             !isGroupTab -> myRoutineItems
-            hasGroupRoom -> groupRoomItems.filteredByCategory(groupRoomFilters, selectedFilterIndex)
+            hasGroupRoom -> groupRoomItems.filteredByCategory(selectedCategoryName)
             else -> emptyList()
         }
     }
@@ -277,11 +285,11 @@ fun RoutineChecklistSection(
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                itemsIndexed(groupRoomFilters) { index, label ->
+                itemsIndexed(groupRoomFilters) { _, label ->
                     LiroutiLabel(
                         text = label,
-                        selected = index == selectedFilterIndex,
-                        onClick = { selectedFilterIndex = index },
+                        selected = label == selectedCategoryName,
+                        onClick = { selectedCategoryName = label },
                     )
                 }
                 item {

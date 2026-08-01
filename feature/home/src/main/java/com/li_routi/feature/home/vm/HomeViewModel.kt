@@ -112,28 +112,42 @@ class HomeViewModel(
 
     override fun onCreateCategory(name: String, color: CategoryColor?) {
         val trimmed = name.trim()
-        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) return
+        if (trimmed == "전체") {
+            emitEvent(HomeUiEvent.CategoryCreateFailed("「전체」는 사용할 수 없는 이름이에요."))
+            return
+        }
+        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) {
+            emitEvent(HomeUiEvent.CategoryCreateFailed("이름은 1~10자로 입력해 주세요."))
+            return
+        }
         val createUseCase = createRoutineCategoryUseCase
         if (createUseCase == null) {
             appendGroupCategoryFilter(trimmed)
+            emitEvent(HomeUiEvent.CategoryCreated)
             return
         }
         viewModelScope.launch {
             when (
-                createUseCase(
+                val result = createUseCase(
                     name = trimmed,
                     color = color?.toApiColor(),
                 )
             ) {
-                is ResultState.Success -> appendGroupCategoryFilter(trimmed)
-                is ResultState.Error -> Unit
+                is ResultState.Success -> {
+                    appendGroupCategoryFilter(trimmed)
+                    emitEvent(HomeUiEvent.CategoryCreated)
+                }
+                is ResultState.Error -> emitEvent(
+                    HomeUiEvent.CategoryCreateFailed(result.message),
+                )
                 ResultState.Loading -> Unit
             }
         }
     }
 
-    /** 그룹 루틴 필터 chip에 카테고리명을 붙인다. 이미 있으면 무시. */
+    /** 그룹 루틴 필터 chip에 카테고리명을 붙인다. 이미 있으면 무시. "전체"는 예약어. */
     private fun appendGroupCategoryFilter(categoryName: String) {
+        if (categoryName == "전체") return
         _uiState.update { state ->
             val filters = state.groupRoomFilters.toMutableList()
             if (filters.none { it == "전체" }) {
