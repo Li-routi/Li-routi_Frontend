@@ -33,10 +33,12 @@ class ChallengeViewModel(
 }
 
 // "내 챌린지 목록" API(GET /api/members/me/challenges)는 routineCycle을 내려주지 않아
-// badge("매일 루틴" 등)를 채울 수 없다. 서버에 필드가 추가되기 전까지는 빈 값으로 둔다.
+// Figma처럼 "매일 루틴" 배지는 못 채운다. 대신 이 목록은 정의상 전부 참여 중인 챌린지라
+// "참여중" 배지로 대체한다.
 private fun MyChallenge.toRoutineUiModel(): RoutineUiModel = RoutineUiModel(
     id = id,
     title = name,
     categories = listOf(category.toDisplayLabel()),
-    badge = "",
+    description = description,
+    badge = "참여중",
 )

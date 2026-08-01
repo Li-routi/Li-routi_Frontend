@@ -5,6 +5,7 @@ import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.kotlin.util.safeApiCall
 import com.li_routi.core.data.mapper.toDomain
 import com.li_routi.core.data.network.apiCall
+import com.li_routi.core.data.network.dto.request.ChallengeVerificationRequest
 import com.li_routi.core.data.network.dto.request.ReportRequest
 import com.li_routi.core.data.network.service.ChallengeApiService
 import com.li_routi.core.domain.challenge.CertificationPage
@@ -12,6 +13,7 @@ import com.li_routi.core.domain.challenge.ChallengeCategory
 import com.li_routi.core.domain.challenge.ChallengeDetail
 import com.li_routi.core.domain.challenge.ChallengePage
 import com.li_routi.core.domain.challenge.ChallengeRepository
+import com.li_routi.core.domain.challenge.CreatedVerification
 import com.li_routi.core.domain.challenge.LikeResult
 import com.li_routi.core.domain.challenge.MyCertificationPage
 import com.li_routi.core.domain.challenge.MyChallenge
@@ -80,6 +82,14 @@ class ChallengeRepositoryImpl(
                 throw e
             }
         }
+    }
+
+    override suspend fun createVerification(
+        challengeId: Long,
+        mediaKey: String,
+        content: String?,
+    ): ResultState<CreatedVerification> = safeApiCall {
+        apiCall { api.createVerification(challengeId, ChallengeVerificationRequest(mediaKey, content)) }.toDomain()
     }
 
     override suspend fun reportVerification(

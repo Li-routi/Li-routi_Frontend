@@ -1,12 +1,12 @@
-package com.li_routi.feature.home.component
+package com.li_routi.core.common.ui.camera
 
 import android.content.Context
 import android.net.Uri
+import androidx.camera.core.CameraSelector
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
-import androidx.camera.core.CameraSelector
 import androidx.camera.view.PreviewView
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
@@ -24,13 +24,13 @@ import kotlin.coroutines.suspendCoroutine
 import kotlinx.coroutines.awaitCancellation
 
 /**
- * CameraX Preview + ImageCapture 바인딩.
+ * CameraX Preview + ImageCapture 바인딩. 루틴/그룹 루틴/챌린지 인증 촬영 화면에서 공용으로 쓴다.
  *
- * [isActive]가 false이면 카메라 언바인딩(페이저에서 홈으로 돌아갔을 때 자원 해제).
- * 셔터는 부모에서 보관하는 [ImageCapture]로 [takeRoutineAuthPhoto]를 호출한다.
+ * [isActive]가 false이면 카메라 언바인딩(페이저 등에서 화면을 벗어났을 때 자원 해제).
+ * 셔터는 호출부에서 보관하는 [ImageCapture]로 [captureLiroutiCameraPhoto]를 호출한다.
  */
 @Composable
-fun RoutineAuthCameraPreview(
+fun LiroutiCameraPreview(
     lensFacing: Int,
     flashMode: Int,
     isActive: Boolean,
@@ -85,17 +85,18 @@ fun RoutineAuthCameraPreview(
     }
 }
 
-/** 캐시 디렉터리에 JPEG로 저장하고 [Uri]를 반환한다. */
-fun takeRoutineAuthPhoto(
+/** 캐시 디렉터리에 JPEG로 저장하고 [Uri]를 반환한다. [filePrefix]로 호출부별 임시 파일명을 구분한다. */
+fun captureLiroutiCameraPhoto(
     context: Context,
     imageCapture: ImageCapture,
     executor: Executor,
     onSuccess: (Uri) -> Unit,
     onError: (ImageCaptureException) -> Unit,
+    filePrefix: String = "lirouti_auth",
 ) {
     val photoFile = File(
         context.cacheDir,
-        "routine_auth_${System.currentTimeMillis()}.jpg",
+        "${filePrefix}_${System.currentTimeMillis()}.jpg",
     )
     val outputOptions = ImageCapture.OutputFileOptions.Builder(photoFile).build()
     imageCapture.takePicture(

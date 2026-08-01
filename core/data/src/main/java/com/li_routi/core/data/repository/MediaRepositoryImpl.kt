@@ -33,7 +33,7 @@ class MediaRepositoryImpl(
                 contentType = contentType,
                 contentLength = contentLength,
             ),
-        ).unwrap().toDomain()
+        ).unwrap().toDomain(purpose)
     }
 
     override suspend fun uploadToPresignedUrl(

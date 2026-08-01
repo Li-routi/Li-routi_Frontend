@@ -1,4 +1,4 @@
-package com.li_routi.feature.home.screen
+package com.li_routi.feature.challenge.screen
 
 import android.Manifest
 import android.content.Context
@@ -16,6 +16,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -23,7 +24,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -36,12 +36,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -54,18 +54,16 @@ import com.li_routi.core.common.ui.camera.captureLiroutiCameraPhoto
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
-import com.li_routi.feature.home.navigation.RoutineAuthCameraScreenActions
 
 /**
- * "루틴 인증하기" 카메라 화면 (Figma node `2156:32485`).
- *
- * CameraX 프리뷰/촬영을 연동한다. [isCameraActive]가 false이면 카메라를 언바인딩한다.
+ * 챌린지 "인증하기" 카메라 화면. [feature.home]의 RoutineAuthCameraScreen과 같은 구조(CameraX
+ * 프리뷰/촬영)를 챌린지 인증 흐름에 맞춰 단순화한 버전 — 루틴 선택 없이 사진 한 장만 찍는다.
  */
 @Composable
-fun RoutineAuthCameraScreen(
-    actions: RoutineAuthCameraScreenActions,
+fun ChallengeVerificationCameraScreen(
+    onBackClick: () -> Unit,
+    onCaptureSuccess: (Uri) -> Unit,
     modifier: Modifier = Modifier,
-    isCameraActive: Boolean = true,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -78,7 +76,6 @@ fun RoutineAuthCameraScreen(
         hasCameraPermission = granted
     }
 
-    // 설정에서 권한을 바꾼 뒤 복귀해도 상태가 갱신되도록 ON_RESUME마다 다시 확인한다.
     DisposableEffect(lifecycleOwner, context) {
         val observer = LifecycleEventObserver { _, event ->
             if (event == Lifecycle.Event.ON_RESUME) {
@@ -89,8 +86,8 @@ fun RoutineAuthCameraScreen(
         onDispose { lifecycleOwner.lifecycle.removeObserver(observer) }
     }
 
-    LaunchedEffect(isCameraActive) {
-        if (isCameraActive && !hasCameraPermission) {
+    LaunchedEffect(Unit) {
+        if (!hasCameraPermission) {
             permissionLauncher.launch(Manifest.permission.CAMERA)
         }
     }
@@ -103,7 +100,6 @@ fun RoutineAuthCameraScreen(
     Scaffold(
         modifier = modifier.fillMaxSize(),
         containerColor = LiroutiTheme.colors.backgroundDefault,
-        // topBar/bottomBar에서 inset을 직접 처리. 기본 safeDrawing과 중복되면 타이틀이 프리뷰를 침범한다.
         contentWindowInsets = WindowInsets(0, 0, 0, 0),
         topBar = {
             Column(
@@ -119,15 +115,15 @@ fun RoutineAuthCameraScreen(
                     verticalAlignment = Alignment.CenterVertically,
                 ) {
                     Image(
-            painter = painterResource(id = R.drawable.chevron__left),
-            contentDescription = "뒤로가기",
-            modifier = Modifier
-                .size(20.dp)
-                .clickable(onClick = actions::onBackClick),
-            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
-        )
+                        painter = painterResource(id = R.drawable.chevron__left),
+                        contentDescription = "뒤로가기",
+                        modifier = Modifier
+                            .size(20.dp)
+                            .clickable(onClick = onBackClick),
+                        colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
+                    )
                     Text(
-                        text = "루틴 인증하기",
+                        text = "인증하기",
                         style = LiroutiTheme.typography.heading2,
                         color = LiroutiTheme.colors.labelStrong,
                         modifier = Modifier
@@ -171,12 +167,12 @@ fun RoutineAuthCameraScreen(
                                 executor = ContextCompat.getMainExecutor(context),
                                 onSuccess = { uri ->
                                     isCapturing = false
-                                    actions.onCaptureSuccess(uri)
+                                    onCaptureSuccess(uri)
                                 },
                                 onError = {
                                     isCapturing = false
                                 },
-                                filePrefix = "routine_auth",
+                                filePrefix = "challenge_verification",
                             )
                         },
                     contentAlignment = Alignment.Center,
@@ -215,7 +211,7 @@ fun RoutineAuthCameraScreen(
                 LiroutiCameraPreview(
                     lensFacing = lensFacing,
                     flashMode = flashMode,
-                    isActive = isCameraActive,
+                    isActive = true,
                     onImageCaptureReady = { imageCapture = it },
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -227,14 +223,6 @@ fun RoutineAuthCameraScreen(
                     modifier = Modifier.fillMaxSize(),
                 )
             }
-            Text(
-                text = "가로로 촬영해 주세요",
-                style = LiroutiTheme.typography.body2,
-                color = LiroutiTheme.colors.labelReverse,
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(bottom = 16.dp),
-            )
         }
     }
 }
@@ -306,18 +294,13 @@ private fun Context.isCameraPermissionGranted(): Boolean =
     ContextCompat.checkSelfPermission(this, Manifest.permission.CAMERA) ==
         PackageManager.PERMISSION_GRANTED
 
-private object PreviewRoutineAuthCameraScreenActions : RoutineAuthCameraScreenActions {
-    override fun onBackClick() = Unit
-    override fun onCaptureSuccess(photoUri: Uri) = Unit
-}
-
 @Preview(showBackground = true)
 @Composable
-private fun RoutineAuthCameraScreenPreview() {
+private fun ChallengeVerificationCameraScreenPreview() {
     LiroutiFrontendTheme {
-        RoutineAuthCameraScreen(
-            actions = PreviewRoutineAuthCameraScreenActions,
-            isCameraActive = false,
+        ChallengeVerificationCameraScreen(
+            onBackClick = {},
+            onCaptureSuccess = {},
         )
     }
 }

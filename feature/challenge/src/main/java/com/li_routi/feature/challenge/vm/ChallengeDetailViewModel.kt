@@ -149,6 +149,27 @@ class ChallengeDetailViewModel(
         }
     }
 
+    // 새 인증 업로드는 사진 촬영이 필요해 화면(Route)에서 직접 처리하고, 성공 후 여기로 알려온다.
+    // 상세(참여자/게시글 수)와 "인증"/"내 인증 보기" 두 탭 모두 처음부터 다시 불러온다.
+    override fun onVerificationSubmitted() {
+        loadDetail()
+        _uiState.update {
+            it.copy(
+                allCertifications = emptyList(),
+                allCursor = null,
+                allHasNext = true,
+                myCertifications = emptyList(),
+                myCursor = null,
+                myHasNext = true,
+                myLoaded = false,
+            )
+        }
+        loadVerifications(cursor = null)
+        if (_uiState.value.selectedTab == CertificationTab.Mine) {
+            loadMyVerifications(cursor = null)
+        }
+    }
+
     // 좋아요 취소/좋아요는 "인증"(전체) 탭 항목에서만 호출된다("내 인증 보기" 응답엔 liked 상태가 없음).
     override fun onLikeToggleClick(certificationId: Long) {
         val target = _uiState.value.allCertifications.find { it.id == certificationId } ?: return

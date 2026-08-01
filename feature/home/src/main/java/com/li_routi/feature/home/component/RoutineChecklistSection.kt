@@ -3,6 +3,7 @@ package com.li_routi.feature.home.component
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -167,67 +168,63 @@ fun RoutineChecklistSection(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .padding(horizontal = 16.dp)
-            .padding(top = 28.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(14.dp),
+            .padding(top = 4.dp),
+        verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
-        if (hasGroupRoom) {
-            LiroutiTabButton(
-                tabs = HomeMainTabLabels,
-                selectedIndex = selectedMainTab,
-                onTabSelected = { selectedMainTab = it },
-            )
-        }
+        LiroutiTabButton(
+            tabs = HomeMainTabLabels,
+            selectedIndex = selectedMainTab,
+            onTabSelected = { selectedMainTab = it },
+            modifier = Modifier.padding(horizontal = 16.dp),
+        )
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
-                .clip(RoundedCornerShape(6.dp))
-                .background(LiroutiTheme.colors.backgroundDefault)
-                .padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            if (!hasGroupRoom) {
-                Text(
-                    text = "오늘의 루틴",
-                    style = LiroutiTheme.typography.body1,
-                    color = LiroutiTheme.colors.labelStrong,
-                )
-            }
-
-            if (showGroupRoomTab) {
-                LazyRow(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    itemsIndexed(groupRoomFilters) { index, label ->
-                        LiroutiLabel(
-                            text = label,
-                            selected = index == selectedFilterIndex,
-                            onClick = { selectedFilterIndex = index },
-                        )
-                    }
+        if (showGroupRoomTab) {
+            LazyRow(
+                modifier = Modifier.padding(horizontal = 16.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                itemsIndexed(groupRoomFilters) { index, label ->
+                    LiroutiLabel(
+                        text = label,
+                        selected = index == selectedFilterIndex,
+                        onClick = { selectedFilterIndex = index },
+                    )
                 }
             }
+        }
 
-            Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+        if (displayedItems.isEmpty()) {
+            EmptyRoutineSection(
+                message = if (showGroupRoomTab) "아직 참여한 그룹방이 없어요!" else "아직 루틴이 없어요!",
+                modifier = Modifier.padding(bottom = 20.dp),
+            )
+        } else {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
                 sortedItems.forEach { item ->
                     RoutineChecklistItemRow(
                         item = item,
                         onCameraClick = { onRoutineCameraClick(item.id) },
                     )
                 }
-            }
 
-            Column(
-                modifier = Modifier.fillMaxWidth(),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
-                horizontalAlignment = Alignment.End,
-            ) {
-                LiroutiDivider(color = LiroutiTheme.colors.borderSub)
-                Text(
-                    text = "$doneCount/${displayedItems.size} 완료",
-                    style = LiroutiTheme.typography.caption,
-                    color = LiroutiTheme.colors.labelSub,
-                    textAlign = TextAlign.End,
-                )
+                Column(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalArrangement = Arrangement.spacedBy(14.dp),
+                    horizontalAlignment = Alignment.End,
+                ) {
+                    Text(
+                        text = "$doneCount/${displayedItems.size} 완료",
+                        style = LiroutiTheme.typography.caption,
+                        color = LiroutiTheme.colors.labelSub,
+                        textAlign = TextAlign.End,
+                    )
+                }
             }
         }
     }
@@ -242,7 +239,10 @@ private fun RoutineChecklistItemRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .padding(vertical = if (item.isDone) 14.dp else 10.dp),
+            .clip(RoundedCornerShape(6.dp))
+            .background(LiroutiTheme.colors.backgroundDefault)
+            .border(1.dp, LiroutiTheme.colors.borderAlternative, RoundedCornerShape(6.dp))
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {

@@ -41,3 +41,12 @@ data class LikeResult(
     val likeCount: Long,
     val liked: Boolean,
 )
+
+/** 인증 게시글 작성 결과 (POST .../verifications). */
+data class CreatedVerification(
+    val verificationId: Long,
+    val imageUrl: String?,
+    val content: String,
+    val currentStreak: Int,
+    val reverified: Boolean,
+)

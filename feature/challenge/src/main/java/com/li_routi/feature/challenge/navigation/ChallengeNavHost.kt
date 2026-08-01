@@ -55,6 +55,9 @@ fun ChallengeNavHost(
                 onFindNewChallengeClick = {
                     navController.navigate(RouteFindChallenge)
                 },
+                onChallengeClick = { challengeId ->
+                    navController.navigate("challenge_detail/$challengeId")
+                },
                 onTabSelected = onTabSelected,
             )
         }

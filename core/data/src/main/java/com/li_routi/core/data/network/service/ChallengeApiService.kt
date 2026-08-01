@@ -1,9 +1,11 @@
 package com.li_routi.core.data.network.service
 
+import com.li_routi.core.data.network.dto.request.ChallengeVerificationRequest
 import com.li_routi.core.data.network.dto.request.ReportRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.ChallengeDetailResponse
 import com.li_routi.core.data.network.dto.response.ChallengeListingResponse
+import com.li_routi.core.data.network.dto.response.CreateVerificationResponse
 import com.li_routi.core.data.network.dto.response.LikeResponse
 import com.li_routi.core.data.network.dto.response.MyChallengeListingResponse
 import com.li_routi.core.data.network.dto.response.MyVerificationFeedResponse
@@ -45,6 +47,13 @@ interface ChallengeApiService {
         @Query("cursor") cursor: Long?,
         @Query("size") size: Int?,
     ): ApiResponse<MyVerificationFeedResponse>
+
+    /** 사진(presigned 업로드로 받은 mediaKey)과 코멘트로 인증 게시글을 작성한다. */
+    @POST("api/challenges/{challengeId}/verifications")
+    suspend fun createVerification(
+        @Path("challengeId") challengeId: Long,
+        @Body request: ChallengeVerificationRequest,
+    ): ApiResponse<CreateVerificationResponse>
 
     @POST("api/challenges/{challengeId}/verifications/{verificationId}/reports")
     suspend fun reportVerification(

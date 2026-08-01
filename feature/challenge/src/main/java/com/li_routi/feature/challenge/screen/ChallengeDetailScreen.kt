@@ -1,5 +1,6 @@
 package com.li_routi.feature.challenge.screen
 
+import android.net.Uri
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -27,11 +28,13 @@ import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -52,9 +55,24 @@ import com.li_routi.feature.challenge.navigation.ChallengeDetailScreenActions
 import com.li_routi.feature.challenge.vm.CertificationTab
 import com.li_routi.feature.challenge.vm.CertificationUiModel
 import com.li_routi.feature.challenge.vm.ChallengeDetailUiState
+import com.li_routi.feature.challenge.vm.submitChallengeVerification
+import kotlinx.coroutines.launch
 
 // 챌린지 대표 이미지 자리의 배경. Figma 목업 기준 옅은 블루 톤(디자인 시스템에 대응하는 시맨틱 컬러 없음).
 private val HeroBg = Color(0xFFF3F6FF)
+
+// "인증하기"로 새 인증 작성 화면을 열 때 CertificationEditScreen에 넘기는 빈 초안. 작성 API가 없어
+// id/이미지/좋아요 등은 의미 없고, 화면이 요구하는 최소 형태만 채운다.
+private val NewCertificationDraft = CertificationUiModel(
+    id = 0L,
+    authorName = "나",
+    content = "",
+    imageUrl = "",
+    timeLabel = "",
+    likeCount = 0,
+    liked = false,
+    isMine = true,
+)
 
 // Figma node: 2380:40108(참여 전) / 2372:49856(참여 후, 버튼 문구만 다름) / 2222:22836(더보기 바텀시트)
 // "챌린지 찾아보기" 카드를 눌렀을 때 넘어오는 챌린지 상세 화면. 화면 전체가 스크롤된다(LazyColumn).
@@ -85,7 +103,22 @@ fun ChallengeDetailScreen(
     var moreSheetCertification by remember { mutableStateOf<CertificationUiModel?>(null) }
     // "수정하기"를 누르면 이 값이 채워지고, 화면 전체가 인증 수정 화면으로 전환된다.
     var editingCertification by remember { mutableStateOf<CertificationUiModel?>(null) }
+    // 참여 후 "인증하기" 버튼을 누르면 true — 카메라 화면부터 시작한다.
+    var showVerificationCamera by remember { mutableStateOf(false) }
+    // 카메라 촬영 성공 시 채워지고, 작성(메모) 화면으로 전환된다.
+    var capturedVerificationPhotoUri by remember { mutableStateOf<Uri?>(null) }
+    var isSubmittingVerification by remember { mutableStateOf(false) }
+    var verificationSubmitError by remember { mutableStateOf<String?>(null) }
+    val context = LocalContext.current
+    val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
+
+    fun resetVerificationCreationState() {
+        showVerificationCamera = false
+        capturedVerificationPhotoUri = null
+        isSubmittingVerification = false
+        verificationSubmitError = null
+    }
 
     editingCertification?.let { certification ->
         CertificationEditScreen(
@@ -94,6 +127,52 @@ fun ChallengeDetailScreen(
             onSubmit = { content ->
                 actions.onEditCertificationSubmit(certification.id, content)
                 editingCertification = null
+            },
+            modifier = modifier,
+        )
+        return
+    }
+
+    if (showVerificationCamera) {
+        ChallengeVerificationCameraScreen(
+            onBackClick = { showVerificationCamera = false },
+            onCaptureSuccess = { uri ->
+                capturedVerificationPhotoUri = uri
+                showVerificationCamera = false
+            },
+            modifier = modifier,
+        )
+        return
+    }
+
+    capturedVerificationPhotoUri?.let { photoUri ->
+        CertificationEditScreen(
+            certification = NewCertificationDraft.copy(imageUrl = photoUri.toString()),
+            title = "인증하기",
+            isSubmitting = isSubmittingVerification,
+            errorMessage = verificationSubmitError,
+            onClose = { resetVerificationCreationState() },
+            onSubmit = { content ->
+                if (isSubmittingVerification) return@CertificationEditScreen
+                isSubmittingVerification = true
+                verificationSubmitError = null
+                coroutineScope.launch {
+                    val result = submitChallengeVerification(
+                        challengeId = uiState.challengeId,
+                        photoUri = photoUri,
+                        content = content,
+                        context = context,
+                    )
+                    if (result.isSuccess) {
+                        resetVerificationCreationState()
+                        actions.onVerificationSubmitted()
+                    } else {
+                        isSubmittingVerification = false
+                        verificationSubmitError = result.exceptionOrNull()?.message
+                            ?.takeIf { it.isNotBlank() }
+                            ?: "인증 등록에 실패했습니다."
+                    }
+                }
             },
             modifier = modifier,
         )
@@ -124,6 +203,7 @@ fun ChallengeDetailScreen(
             ChallengeHeroSection(
                 onBackClick = onBackClick,
                 onMoreClick = { showMoreSheet = true },
+                showMoreButton = uiState.isJoined,
             )
         }
         item {
@@ -134,7 +214,11 @@ fun ChallengeDetailScreen(
                     .padding(top = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                ChallengeInfoSection(uiState = uiState, onJoinClick = actions::onJoinClick)
+                ChallengeInfoSection(
+                    uiState = uiState,
+                    onJoinClick = actions::onJoinClick,
+                    onVerifyClick = { showVerificationCamera = true },
+                )
                 LiroutiRoutineStatsRow(
                     participants = uiState.participantCount.toString(),
                     activity = uiState.rewardCount.toString(),
@@ -249,6 +333,7 @@ private fun MoreSheetActionRow(
 private fun ChallengeHeroSection(
     onBackClick: () -> Unit,
     onMoreClick: () -> Unit,
+    showMoreButton: Boolean,
     modifier: Modifier = Modifier,
 ) {
     Box(
@@ -278,14 +363,16 @@ private fun ChallengeHeroSection(
                     .clickable(onClick = onBackClick),
                 color = LiroutiTheme.colors.labelDefault,
             )
-            Image(
-                painter = painterResource(id = R.drawable.overflow_menu__vertical),
-                contentDescription = "더보기",
-                modifier = Modifier
-                    .size(24.dp)
-                    .clickable(onClick = onMoreClick),
-                colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelDefault),
-            )
+            if (showMoreButton) {
+                Image(
+                    painter = painterResource(id = R.drawable.overflow_menu__vertical),
+                    contentDescription = "더보기",
+                    modifier = Modifier
+                        .size(24.dp)
+                        .clickable(onClick = onMoreClick),
+                    colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelDefault),
+                )
+            }
         }
     }
 }
@@ -294,6 +381,7 @@ private fun ChallengeHeroSection(
 private fun ChallengeInfoSection(
     uiState: ChallengeDetailUiState,
     onJoinClick: () -> Unit,
+    onVerifyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -311,12 +399,11 @@ private fun ChallengeInfoSection(
             )
         }
 
-        // "참여하기" 탭 시 참여 상태로 바뀌고 서버에 참여 신호를 보낸다(ViewModel에서 처리, 이번 범위는 로컬 상태만).
-        // 참여 후 "인증하기"는 별도 인증 업로드 플로우로 연결될 예정 — 이번 범위 제외. 버튼 색은 참여 여부와
-        // 무관하게 항상 파란색으로 유지하고(Figma 두 상태 모두 동일), 클릭만 참여 전에만 동작하도록 막는다.
+        // "참여하기" 탭 시 참여 상태로 바뀌고 서버에 참여 신호를 보낸다(ViewModel에서 처리).
+        // 참여 후 "인증하기"는 인증 작성 화면으로 이동한다(제출 API는 아직 없어 UI 연결만 됨).
         LiroutiPrimaryButton(
             text = if (uiState.isJoined) "인증하기" else "참여하기",
-            onClick = { if (!uiState.isJoined) onJoinClick() },
+            onClick = { if (uiState.isJoined) onVerifyClick() else onJoinClick() },
         )
     }
 }
@@ -329,6 +416,7 @@ private object PreviewChallengeDetailScreenActions : ChallengeDetailScreenAction
     override fun onEditCertificationSubmit(certificationId: Long, content: String) = Unit
     override fun onReportCertificationClick(certificationId: Long) = Unit
     override fun onLikeToggleClick(certificationId: Long) = Unit
+    override fun onVerificationSubmitted() = Unit
 }
 
 private val PreviewCertifications = List(4) { index ->

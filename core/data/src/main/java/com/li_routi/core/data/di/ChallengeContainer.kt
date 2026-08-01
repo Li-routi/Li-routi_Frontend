@@ -3,6 +3,7 @@ package com.li_routi.core.data.di
 import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.repository.ChallengeRepositoryImpl
 import com.li_routi.core.domain.challenge.ChallengeRepository
+import com.li_routi.core.domain.challenge.CreateVerificationUseCase
 import com.li_routi.core.domain.challenge.GetChallengeDetailUseCase
 import com.li_routi.core.domain.challenge.GetChallengesUseCase
 import com.li_routi.core.domain.challenge.GetMyChallengesUseCase
@@ -62,5 +63,9 @@ object ChallengeContainer {
 
     val unlikeVerificationUseCase: UnlikeVerificationUseCase by lazy {
         UnlikeVerificationUseCase(repository)
+    }
+
+    val createVerificationUseCase: CreateVerificationUseCase by lazy {
+        CreateVerificationUseCase(repository)
     }
 }

@@ -2535,7 +2535,7 @@ private fun MemberSeat(
                 style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                 maxLines = 1,
             )
-            Text(text = "F${member.streak}", color = DangerBase, fontSize = 10.sp)
+            Text(text = "🔥${member.streak}", color = DangerBase, fontSize = 10.sp)
         }
     }
 }

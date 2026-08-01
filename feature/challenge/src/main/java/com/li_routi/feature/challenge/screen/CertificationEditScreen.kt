@@ -34,12 +34,17 @@ import com.li_routi.feature.challenge.vm.CertificationUiModel
 
 // Figma node 3610:30282 ("인증 수정"). 인증 카드의 더보기 > "수정하기"를 누르면 뜨는 전체 화면.
 // 수정 API가 아직 없어 "완료"는 화면/로컬 상태만 갱신한다(ChallengeDetailViewModel.onEditCertificationSubmit).
+// "인증하기"(참여 후 새 인증 작성)도 같은 화면을 title만 바꿔 재사용한다 — 이때는 실제로
+// 사진 업로드 + 인증 게시글 생성 API까지 호출된다(ChallengeDetailScreen에서 처리).
 @Composable
 fun CertificationEditScreen(
     certification: CertificationUiModel,
     onClose: () -> Unit,
     onSubmit: (content: String) -> Unit,
     modifier: Modifier = Modifier,
+    title: String = "인증수정",
+    isSubmitting: Boolean = false,
+    errorMessage: String? = null,
 ) {
     var content by remember(certification.id) { mutableStateOf(certification.content) }
 
@@ -65,7 +70,7 @@ fun CertificationEditScreen(
                 color = LiroutiTheme.colors.labelDefault,
             )
             Text(
-                text = "인증수정",
+                text = title,
                 style = LiroutiTheme.typography.heading2SemiBold,
                 color = LiroutiTheme.colors.labelDefault,
             )
@@ -108,13 +113,15 @@ fun CertificationEditScreen(
                 value = content,
                 onValueChange = { content = it },
                 labelText = "메모",
-                showHelper = false,
+                showHelper = errorMessage != null,
+                helperText = errorMessage.orEmpty(),
                 modifier = Modifier.padding(top = 24.dp),
             )
         }
 
         LiroutiPrimaryButton(
-            text = "완료",
+            text = if (isSubmitting) "등록 중..." else "완료",
+            enabled = !isSubmitting,
             onClick = { onSubmit(content) },
             modifier = Modifier
                 .fillMaxWidth()

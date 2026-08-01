@@ -3,6 +3,7 @@ package com.li_routi.core.data.mapper
 import com.li_routi.core.data.network.dto.response.ChallengeDetailResponse
 import com.li_routi.core.data.network.dto.response.ChallengeListingResponse
 import com.li_routi.core.data.network.dto.response.ChallengeSummaryResponse
+import com.li_routi.core.data.network.dto.response.CreateVerificationResponse
 import com.li_routi.core.data.network.dto.response.LikeResponse
 import com.li_routi.core.data.network.dto.response.MyChallengeListingResponse
 import com.li_routi.core.data.network.dto.response.MyChallengeSummaryResponse
@@ -17,6 +18,7 @@ import com.li_routi.core.domain.challenge.Challenge
 import com.li_routi.core.domain.challenge.ChallengeCategory
 import com.li_routi.core.domain.challenge.ChallengeDetail
 import com.li_routi.core.domain.challenge.ChallengePage
+import com.li_routi.core.domain.challenge.CreatedVerification
 import com.li_routi.core.domain.challenge.LikeResult
 import com.li_routi.core.domain.challenge.MyCertification
 import com.li_routi.core.domain.challenge.MyCertificationPage
@@ -91,6 +93,14 @@ fun LikeResponse.toDomain(): LikeResult = LikeResult(
     verificationId = verificationId,
     likeCount = likeCount,
     liked = liked,
+)
+
+fun CreateVerificationResponse.toDomain(): CreatedVerification = CreatedVerification(
+    verificationId = verificationId,
+    imageUrl = imageUrl,
+    content = content,
+    currentStreak = currentStreak,
+    reverified = reverified,
 )
 
 fun ParticipationResponse.toDomain(): Participation = Participation(
