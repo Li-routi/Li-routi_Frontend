@@ -22,8 +22,7 @@ import kotlinx.coroutines.launch
  * - 업로드 성공 → [RoutineAuthUploadUiEvent.NavigateToHome]
  * - 업로드 실패 → 토스트 표시 ([RoutineAuthUploadUiState.showUploadFailedToast])
  *
- * @param upload 실제 API 연동 전까지 주입 가능한 업로드 처리. 기본은 성공.
- *  첫 인자 [photoUri]에 촬영 사진을 반드시 전달한다.
+ * @param upload 미디어 업로드 + 개인/그룹 루틴 인증.
  */
 class RoutineAuthUploadViewModel(
     initialState: RoutineAuthUploadUiState = RoutineAuthUploadUiState(),
@@ -31,7 +30,7 @@ class RoutineAuthUploadViewModel(
         photoUri: Uri,
         memo: String,
         selectedRoutineIds: Set<String>,
-    ) -> Result<Unit> = { _, _, _ -> Result.success(Unit) },
+    ) -> Result<Unit>,
 ) : BaseViewModel(), RoutineAuthUploadScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -67,20 +66,26 @@ class RoutineAuthUploadViewModel(
 
         viewModelScope.launch {
             _uiState.update {
-                it.copy(isUploading = true, showUploadFailedToast = false)
+                it.copy(isUploading = true, uploadErrorMessage = null)
             }
             val result = upload(photoUri, state.memo, state.selectedRoutineIds)
             _uiState.update { it.copy(isUploading = false) }
             if (result.isSuccess) {
                 emitEvent(RoutineAuthUploadUiEvent.NavigateToHome)
             } else {
-                _uiState.update { it.copy(showUploadFailedToast = true) }
+                _uiState.update {
+                    it.copy(
+                        uploadErrorMessage = result.exceptionOrNull()?.message
+                            ?.takeIf { msg -> msg.isNotBlank() }
+                            ?: "업로드에 실패했습니다.",
+                    )
+                }
             }
         }
     }
 
     override fun onDismissUploadFailedToast() {
-        _uiState.update { it.copy(showUploadFailedToast = false) }
+        _uiState.update { it.copy(uploadErrorMessage = null) }
     }
 
     private fun emitEvent(event: RoutineAuthUploadUiEvent) {

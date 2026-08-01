@@ -1,5 +1,7 @@
-package com.li_routi.feature.home.screen
+﻿package com.li_routi.feature.home.screen
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -8,13 +10,16 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -72,6 +77,10 @@ fun HomeScreen(
     },
     groupRoomFilters: List<String> = SampleGroupRoomFilters,
     groupRoomItems: List<RoutineChecklistItemUiModel> = SampleGroupRoomItems,
+    /** 개인 또는 그룹 루틴이 하나라도 있으면 true. 기본은 [hasActiveRoutine]과 동일. */
+    showChecklist: Boolean = hasActiveRoutine || hasGroupRoom,
+    isLoading: Boolean = false,
+    loadError: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var showAddMenuSheet by remember { mutableStateOf(false) }
@@ -89,76 +98,124 @@ fun HomeScreen(
         },
         bottomBar = { AppBottomNavBar(selectedTab = AppBottomTab.Home, onTabSelected = onTabSelected) },
     ) { innerPadding ->
-        if (hasActiveRoutine) {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState()),
-            ) {
+        when {
+            isLoading && !showChecklist && !loadError -> {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    if (showSwipeHint) {
-                        SwipeHintLabel()
-                    }
-                    MyRoutineCard(
-                        onClick = actions::onMyRoutineClick,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    ShopEntryCard(
-                        nickname = nickname,
-                        tooltipMessage = tooltipMessage,
-                        onNavigateToShop = actions::onNavigateToShop,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
+                    CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
                 }
-                LiroutiDivider(
-                    thickness = LiroutiDividerThickness.ExtraBold,
-                    color = LiroutiTheme.colors.backgroundAlternative,
-                )
-                RoutineChecklistSection(
-                    hasGroupRoom = hasGroupRoom,
-                    myRoutineItems = myRoutineItems,
-                    groupRoomFilters = groupRoomFilters,
-                    groupRoomItems = groupRoomItems,
-                    onRoutineCameraClick = actions::onRoutineCameraClick,
-                )
             }
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-            ) {
+            loadError && !showChecklist -> {
                 Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                    verticalArrangement = Arrangement.Center,
                 ) {
-                    if (showSwipeHint) {
-                        SwipeHintLabel()
-                    }
-                    MyRoutineCard(
-                        onClick = actions::onMyRoutineClick,
-                        modifier = Modifier.fillMaxWidth(),
+                    Text(
+                        text = "홈 정보를 불러오지 못했습니다.",
+                        style = LiroutiTheme.typography.body2,
+                        color = LiroutiTheme.colors.labelDefault,
                     )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    ShopEntryCard(
-                        nickname = nickname,
-                        tooltipMessage = tooltipMessage,
-                        onNavigateToShop = actions::onNavigateToShop,
-                        modifier = Modifier.fillMaxWidth(),
+                    Text(
+                        text = "다시 시도",
+                        style = LiroutiTheme.typography.body2,
+                        color = LiroutiTheme.colors.primaryNormal,
+                        modifier = Modifier
+                            .padding(top = 8.dp)
+                            .clickable(onClick = actions::onRetryLoadClick),
                     )
                 }
-                LiroutiDivider(
-                    thickness = LiroutiDividerThickness.ExtraBold,
-                    color = LiroutiTheme.colors.backgroundAlternative,
-                )
-                EmptyRoutineSection(modifier = Modifier.weight(1f))
+            }
+            showChecklist -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    if (loadError) {
+                        Text(
+                            text = "최신 정보를 불러오지 못했습니다. 다시 시도",
+                            style = LiroutiTheme.typography.caption,
+                            color = LiroutiTheme.colors.primaryNormal,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable(onClick = actions::onRetryLoadClick)
+                                .padding(horizontal = 16.dp, vertical = 8.dp),
+                        )
+                    }
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        if (showSwipeHint) {
+                            SwipeHintLabel()
+                        }
+                        MyRoutineCard(
+                            onClick = actions::onMyRoutineClick,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        ShopEntryCard(
+                            nickname = nickname,
+                            tooltipMessage = tooltipMessage,
+                            onNavigateToShop = actions::onNavigateToShop,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    LiroutiDivider(
+                        thickness = LiroutiDividerThickness.ExtraBold,
+                        color = LiroutiTheme.colors.backgroundAlternative,
+                    )
+                    RoutineChecklistSection(
+                        hasGroupRoom = hasGroupRoom,
+                        myRoutineItems = myRoutineItems,
+                        groupRoomFilters = groupRoomFilters,
+                        groupRoomItems = groupRoomItems,
+                        onRoutineCameraClick = actions::onRoutineCameraClick,
+                    )
+                }
+            }
+            else -> {
+                Column(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                ) {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                    ) {
+                        if (showSwipeHint) {
+                            SwipeHintLabel()
+                        }
+                        MyRoutineCard(
+                            onClick = actions::onMyRoutineClick,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Spacer(modifier = Modifier.height(20.dp))
+                        ShopEntryCard(
+                            nickname = nickname,
+                            tooltipMessage = tooltipMessage,
+                            onNavigateToShop = actions::onNavigateToShop,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
+                    LiroutiDivider(
+                        thickness = LiroutiDividerThickness.ExtraBold,
+                        color = LiroutiTheme.colors.backgroundAlternative,
+                    )
+                    EmptyRoutineSection(modifier = Modifier.weight(1f))
+                }
             }
         }
     }
@@ -181,6 +238,7 @@ private object PreviewHomeScreenActions : HomeScreenActions {
     override fun onManageMyRoutineClick() = Unit
     override fun onCreateRoomClick() = Unit
     override fun onJoinRoomWithInviteCodeClick() = Unit
+    override fun onRetryLoadClick() = Unit
 }
 
 @Preview(showBackground = true, heightDp = 800, name = "1. 처음 진입")

@@ -17,10 +17,13 @@ data class RoutineAuthUploadUiState(
     val routines: List<RoutineAuthSelectableUiModel> = SampleRoutineAuthSelectables,
     val selectedRoutineIds: Set<String> = emptySet(),
     val isUploading: Boolean = false,
-    val showUploadFailedToast: Boolean = false,
+    val uploadErrorMessage: String? = null,
 ) {
     val isUploadEnabled: Boolean
         get() = photoUri != null && selectedRoutineIds.isNotEmpty() && !isUploading
+
+    val showUploadFailedToast: Boolean
+        get() = uploadErrorMessage != null
 }
 
 /**

@@ -55,6 +55,13 @@ data class CertificationPostUiModel(
     val isMine: Boolean,
 )
 
+data class NewCertificationUiModel(
+    val id: Long,
+    val memberName: String,
+    val routineName: String,
+    val message: String,
+)
+
 data class CreateRoutineOptionUiModel(
     val id: Long,
     val title: String,
@@ -90,6 +97,9 @@ data class GroupRoutineUiState(
     val isDeleteRoutineDialogVisible: Boolean = false,
     val isCategorySheetVisible: Boolean = false,
     val categoryInput: String = "",
+    val isMessageEditSheetVisible: Boolean = false,
+    val messageDraft: String = "",
+    val newCertifications: List<NewCertificationUiModel> = SampleNewCertifications,
     val routines: List<GroupRoutineUiModel> = SampleGroupRoutines,
     val members: List<GroupMemberUiModel> = SampleGroupMembers,
     val todos: List<GroupTodoUiModel> = SampleGroupTodos,
@@ -204,6 +214,14 @@ private val SampleCertificationPosts = listOf(
         timeAgo = "11시간 전",
         isMine = false,
     ),
+)
+
+private val SampleNewCertifications = listOf(
+    NewCertificationUiModel(1L, "민지", "물 마시기", "오늘도 1L 완료!"),
+    NewCertificationUiModel(2L, "서현", "스트레칭하기", "몸이 개운해요!"),
+    NewCertificationUiModel(3L, "수연", "영양제 먹기", "챙겨 먹었어요!"),
+    NewCertificationUiModel(4L, "준호", "명상 하기", "마음이 편안해졌어요!"),
+    NewCertificationUiModel(5L, "건호", "산책하기", "상쾌한 하루!"),
 )
 
 private val SampleCreateRoutineOptions = listOf(
