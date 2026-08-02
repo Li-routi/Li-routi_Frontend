@@ -93,6 +93,7 @@ fun ChallengeNavHost(
                     reportVerificationUseCase = ChallengeContainer.reportVerificationUseCase,
                     likeVerificationUseCase = ChallengeContainer.likeVerificationUseCase,
                     unlikeVerificationUseCase = ChallengeContainer.unlikeVerificationUseCase,
+                    editVerificationUseCase = ChallengeContainer.editVerificationUseCase,
                 )
             }
             val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()

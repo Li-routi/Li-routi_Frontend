@@ -53,3 +53,9 @@ data class CreatedVerification(
     val currentStreak: Int,
     val reverified: Boolean,
 )
+
+/** 인증 메모 수정 결과 (PATCH .../verifications/{verificationId}). */
+data class EditedVerification(
+    val verificationId: Long,
+    val content: String,
+)

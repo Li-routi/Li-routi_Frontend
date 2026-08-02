@@ -125,13 +125,26 @@ fun ChallengeDetailScreen(
     }
 
     editingCertification?.let { certification ->
+        // 수정 요청을 보낸 뒤(hasSubmittedEdit) 서버 응답이 성공(에러 없음)으로 끝나면 화면을 닫는다.
+        // 실패하면 isSubmittingEdit만 꺼지고 화면은 열린 채 에러 메시지를 보여준다.
+        var hasSubmittedEdit by remember(certification.id) { mutableStateOf(false) }
+        LaunchedEffect(uiState.isSubmittingEdit, uiState.editCertificationError) {
+            if (hasSubmittedEdit && !uiState.isSubmittingEdit && uiState.editCertificationError == null) {
+                editingCertification = null
+            }
+        }
         CertificationEditScreen(
             certification = certification,
-            onClose = { editingCertification = null },
-            onSubmit = { content ->
-                actions.onEditCertificationSubmit(certification.id, content)
+            onClose = {
                 editingCertification = null
+                actions.onEditCertificationDismiss()
             },
+            onSubmit = { content ->
+                hasSubmittedEdit = true
+                actions.onEditCertificationSubmit(certification.id, content)
+            },
+            isSubmitting = uiState.isSubmittingEdit,
+            errorMessage = uiState.editCertificationError,
             modifier = modifier,
         )
         return
@@ -458,13 +471,15 @@ private fun ChallengeInfoSection(
         }
 
         // "참여하기" 탭 시 참여 상태로 바뀌고 서버에 참여 신호를 보낸다(ViewModel에서 처리).
-        // 참여 후에는 오늘 이미 인증했는지(verifiedToday)에 따라 "인증하기"/"다시 인증하기"로 갈린다.
+        // 참여 후 현재 인증 주기에 이미 인증했다면(verifiedInCurrentPeriod) "인증 완료"로 바뀌며
+        // 더 이상 누를 수 없다(재인증 불가) — 이 값은 챌린지 상세 API가 내려주므로 나갔다 들어와도 유지된다.
         LiroutiPrimaryButton(
             text = when {
                 !uiState.isJoined -> "참여하기"
-                uiState.verifiedToday -> "다시 인증하기"
+                uiState.verifiedInCurrentPeriod -> "인증 완료"
                 else -> "인증하기"
             },
+            enabled = !uiState.isJoined || !uiState.verifiedInCurrentPeriod,
             onClick = { if (uiState.isJoined) onVerifyClick() else onJoinClick() },
         )
     }
@@ -476,6 +491,7 @@ private object PreviewChallengeDetailScreenActions : ChallengeDetailScreenAction
     override fun onLoadMore() = Unit
     override fun onLeaveChallengeClick() = Unit
     override fun onEditCertificationSubmit(certificationId: Long, content: String) = Unit
+    override fun onEditCertificationDismiss() = Unit
     override fun onDeleteCertificationClick(certificationId: Long) = Unit
     override fun onReportCertificationClick(certificationId: Long) = Unit
     override fun onLikeToggleClick(certificationId: Long) = Unit

@@ -14,4 +14,6 @@ data class ChallengeDetail(
     val participantCount: Long,
     val verificationPostCount: Long,
     val todayCompletionCount: Long,
+    /** 조회자(로그인 사용자)가 현재 인증 주기에 이미 인증했는지 여부. */
+    val verifiedInCurrentPeriod: Boolean,
 )

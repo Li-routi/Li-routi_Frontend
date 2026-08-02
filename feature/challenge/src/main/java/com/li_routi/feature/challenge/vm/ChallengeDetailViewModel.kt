@@ -5,6 +5,7 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.domain.challenge.Certification
 import com.li_routi.core.domain.challenge.ChallengeDetail
+import com.li_routi.core.domain.challenge.EditVerificationUseCase
 import com.li_routi.core.domain.challenge.GetChallengeDetailUseCase
 import com.li_routi.core.domain.challenge.GetMyVerificationsUseCase
 import com.li_routi.core.domain.challenge.GetVerificationsUseCase
@@ -23,23 +24,16 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
-import java.text.SimpleDateFormat
-import java.util.Date
-import java.util.Locale
 
 private const val VerificationPageSize = 20
 private const val LikeRefreshIntervalMillis = 15_000L
 
-// java.time은 minSdk 24에서 데스슈가링 없이는 쓸 수 없어(ChallengeMapper.kt와 동일한 제약),
-// verifiedDate("yyyy-MM-dd")와 비교할 오늘 날짜도 SimpleDateFormat으로 만든다.
-private fun todayDateString(): String = SimpleDateFormat("yyyy-MM-dd", Locale.getDefault()).format(Date())
-
 /**
  * 챌린지 상세 화면 ViewModel. 상세 정보, "인증"(전체), "내 인증 보기" 모두 실제 API로 조회한다.
  *
- * "내 인증 보기"는 탭 UI뿐 아니라 오늘 인증 여부([ChallengeDetailUiState.verifiedToday]) 판별에도
- * 쓰여서, 그 탭을 선택하기 전에도 화면 진입 시 바로 조회한다(한 번도 참여한 적 없는 챌린지면 409가
- * 나는데, 아래 에러 처리에서 빈 목록으로 안전하게 넘어간다).
+ * 현재 인증 주기에 이미 인증했는지 여부([ChallengeDetailUiState.verifiedInCurrentPeriod])는 챌린지
+ * 상세 조회(GET /api/challenges/{id}) 응답을 그대로 반영하므로, 챌린지를 나갔다 다시 들어와도
+ * (ViewModel이 새로 생성되며 loadDetail()이 다시 호출되므로) 서버 값 그대로 유지된다.
  */
 class ChallengeDetailViewModel(
     private val challengeId: Long,
@@ -51,6 +45,7 @@ class ChallengeDetailViewModel(
     private val reportVerificationUseCase: ReportVerificationUseCase,
     private val likeVerificationUseCase: LikeVerificationUseCase,
     private val unlikeVerificationUseCase: UnlikeVerificationUseCase,
+    private val editVerificationUseCase: EditVerificationUseCase,
 ) : BaseViewModel(), ChallengeDetailScreenActions {
 
     private val _uiState = MutableStateFlow(ChallengeDetailUiState(challengeId = challengeId))
@@ -147,13 +142,6 @@ class ChallengeDetailViewModel(
                         myCertifications = state.myCertifications + result.data.certifications.map { it.toUiModel() },
                         myCursor = result.data.nextCursor,
                         myHasNext = result.data.hasNext,
-                        // 최신순 응답의 첫 페이지에만 오늘 인증 여부가 담겨 있다. 다음 페이지(과거 기록)를
-                        // 더 불러올 때는 이 값을 건드리지 않는다.
-                        verifiedToday = if (cursor == null) {
-                            result.data.certifications.any { it.verifiedDate == todayDateString() }
-                        } else {
-                            state.verifiedToday
-                        },
                     )
                 }
                 is ResultState.Error -> _uiState.update { it.copy(isLoadingMoreMy = false, myHasNext = false, myLoaded = true) }
@@ -201,17 +189,34 @@ class ChallengeDetailViewModel(
         }
     }
 
-    // 인증 수정 API가 아직 없어(백엔드에 PATCH 엔드포인트 없음) 화면에서 바로 보이도록 로컬 상태만 갱신한다.
     override fun onEditCertificationSubmit(certificationId: Long, content: String) {
-        _uiState.update { state ->
-            state.copy(
-                allCertifications = state.allCertifications.withUpdatedContent(certificationId, content),
-                myCertifications = state.myCertifications.withUpdatedContent(certificationId, content),
-            )
+        if (_uiState.value.isSubmittingEdit) return
+        _uiState.update { it.copy(isSubmittingEdit = true, editCertificationError = null) }
+        viewModelScope.launch {
+            when (val result = editVerificationUseCase(challengeId, certificationId, content)) {
+                is ResultState.Success -> {
+                    val updatedContent = result.data.content
+                    _uiState.update { state ->
+                        state.copy(
+                            isSubmittingEdit = false,
+                            allCertifications = state.allCertifications.withUpdatedContent(certificationId, updatedContent),
+                            myCertifications = state.myCertifications.withUpdatedContent(certificationId, updatedContent),
+                        )
+                    }
+                    // refreshLikeCounts는 likeCount/liked만 패치하고 content는 건드리지 않아, 방금
+                    // 반영한 수정 내용을 덮어쓰지 않으면서 좋아요 수만 즉시 최신화된다.
+                    refreshLikeCounts()
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isSubmittingEdit = false, editCertificationError = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
         }
-        // refreshLikeCounts는 likeCount/liked만 패치하고 content는 건드리지 않아, 방금 로컬로
-        // 반영한 수정 내용을 덮어쓰지 않으면서 좋아요 수만 즉시 최신화된다.
-        viewModelScope.launch { refreshLikeCounts() }
+    }
+
+    override fun onEditCertificationDismiss() {
+        _uiState.update { it.copy(isSubmittingEdit = false, editCertificationError = null) }
     }
 
     // 백엔드에 인증 삭제 API가 없어 버튼 UI만 우선 노출한다. API가 추가되면 여기서 호출하고
@@ -237,9 +242,9 @@ class ChallengeDetailViewModel(
                 myCursor = null,
                 myHasNext = true,
                 myLoaded = false,
-                // 방금 오늘 인증을 등록했으니, 아래에서 "내 인증 보기"를 다시 안 불러오는 탭(All)에
-                // 있어도 버튼 문구가 즉시 "다시 인증하기"로 바뀌도록 여기서 바로 반영한다.
-                verifiedToday = true,
+                // 방금 인증을 등록했으니, 아래 loadDetail()의 서버 응답이 오기 전에도 버튼이 즉시
+                // "인증 완료"로 바뀌도록 우선 반영한다. loadDetail()이 곧 서버 값으로 덮어쓴다.
+                verifiedInCurrentPeriod = true,
             )
         }
         loadVerifications(cursor = null)
@@ -284,6 +289,7 @@ private fun ChallengeDetailUiState.applyDetail(detail: ChallengeDetail): Challen
     rewardCount = detail.reward,
     postCount = detail.verificationPostCount.toIntClamped(),
     isJoined = detail.participating,
+    verifiedInCurrentPeriod = detail.verifiedInCurrentPeriod,
 )
 
 private fun Certification.toUiModel(): CertificationUiModel = CertificationUiModel(
