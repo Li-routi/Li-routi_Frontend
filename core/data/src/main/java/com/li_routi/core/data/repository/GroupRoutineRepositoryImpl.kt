@@ -4,21 +4,57 @@ import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.kotlin.util.safeApiCall
 import com.li_routi.core.data.mapper.toDomain
+import com.li_routi.core.data.network.dto.request.CreateGroupCategoryRequest
+import com.li_routi.core.data.network.dto.request.CreateGroupRequest
+import com.li_routi.core.data.network.dto.request.CreateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.request.GroupRoutineScheduleRequest
 import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.service.GroupRoutineApiService
+import com.li_routi.core.domain.grouproutine.CreatedGroup
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.GroupRoutineUpdateResult
+import com.li_routi.core.domain.grouproutine.NewGroupCategory
+import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
 
 class GroupRoutineRepositoryImpl(
     private val api: GroupRoutineApiService,
 ) : GroupRoutineRepository {
 
-    // 실서버 확인 결과 생성/수정 요청 모양이 동일하다(스웨거 문서와 다름).
+    override suspend fun createGroup(
+        name: String,
+        customCategories: List<NewGroupCategory>,
+        routines: List<NewGroupRoutine>,
+    ): ResultState<CreatedGroup> = safeApiCall {
+        api.createGroup(
+            CreateGroupRequest(
+                name = name,
+                customCategories = customCategories.map {
+                    CreateGroupCategoryRequest(clientKey = it.clientKey, name = it.name, color = it.color)
+                },
+                routines = routines.map { routine ->
+                    CreateGroupRoutineRequest(
+                        categoryId = routine.categoryId,
+                        categoryKey = routine.categoryKey,
+                        title = routine.title,
+                        description = routine.description,
+                        schedules = routine.schedules.map {
+                            GroupRoutineScheduleRequest(
+                                repeatDay = it.repeatDay.name,
+                                startTime = it.startTime,
+                                endTime = it.endTime,
+                            )
+                        },
+                    )
+                },
+            ),
+        ).unwrap().toDomain()
+    }
+
+    // 실서버로 확인해보니 생성/수정 요청 모양이 똑같음(스웨거 문서랑 다름)
     override suspend fun createGroupRoutine(
         groupId: Long,
         categoryId: Long,

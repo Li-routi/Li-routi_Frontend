@@ -3,6 +3,7 @@ package com.li_routi.core.data.di
 import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.repository.GroupRoutineRepositoryImpl
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
+import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GetTodayGroupRoutinesUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
@@ -17,6 +18,10 @@ object GroupRoutineContainer {
 
     private val repository: GroupRoutineRepository by lazy {
         GroupRoutineRepositoryImpl(NetworkModule.groupRoutineApiService)
+    }
+
+    val createGroupUseCase: CreateGroupUseCase by lazy {
+        CreateGroupUseCase(repository)
     }
 
     val createGroupRoutineUseCase: CreateGroupRoutineUseCase by lazy {

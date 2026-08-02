@@ -4,6 +4,13 @@ import com.li_routi.core.common.kotlin.util.ResultState
 
 interface GroupRoutineRepository {
 
+    /** 모임방과 초기 그룹 루틴을 함께 생성한다. */
+    suspend fun createGroup(
+        name: String,
+        customCategories: List<NewGroupCategory>,
+        routines: List<NewGroupRoutine>,
+    ): ResultState<CreatedGroup>
+
     /** 그룹에 루틴을 등록한다. 요청/응답 모양이 [updateGroupRoutine]과 동일하다(실서버 확인, 스웨거 문서와 다름). */
     suspend fun createGroupRoutine(
         groupId: Long,
