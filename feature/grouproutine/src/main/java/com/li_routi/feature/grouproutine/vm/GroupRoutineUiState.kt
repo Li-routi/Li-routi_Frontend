@@ -87,6 +87,7 @@ data class GroupRoutineUiState(
     val searchInput: String = "",
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",
+    val groupInviteCode: String? = null,
     val selectedCategory: String = "전체",
     val categories: List<String> = listOf("전체", "건강", "운동", "공부"),
     val routineOptions: List<CreateRoutineOptionUiModel> = SampleCreateRoutineOptions,

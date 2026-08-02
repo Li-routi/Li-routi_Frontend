@@ -1,15 +1,28 @@
 package com.li_routi.feature.grouproutine.vm
 
+import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
+import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.data.di.GroupRoutineContainer
+import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
+import com.li_routi.core.domain.grouproutine.IssueGroupInviteCodeUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
 
-class GroupRoutineViewModel : BaseViewModel() {
+class GroupRoutineViewModel(
+    private val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase = GroupRoutineContainer.getGroupInviteCodeUseCase,
+    private val issueGroupInviteCodeUseCase: IssueGroupInviteCodeUseCase = GroupRoutineContainer.issueGroupInviteCodeUseCase,
+) : BaseViewModel() {
 
     private val _uiState = MutableStateFlow(GroupRoutineUiState())
     val uiState: StateFlow<GroupRoutineUiState> = _uiState.asStateFlow()
+
+    // ponytail: 그룹 생성(POST /api/groups) 연동 전까지 임시 고정 groupId. 그룹 생성 연동되면
+    // uiState.selectedRoutine?.id(실제 groupId)로 교체.
+    private val currentGroupId = 1L
 
     fun onRoutineClick(routineId: Long) {
         _uiState.update {
@@ -140,6 +153,27 @@ class GroupRoutineViewModel : BaseViewModel() {
                 selectedMemberId = null,
                 actionMessage = null,
             )
+        }
+        loadInviteCode()
+    }
+
+    private fun loadInviteCode() {
+        viewModelScope.launch {
+            when (val result = getGroupInviteCodeUseCase(currentGroupId)) {
+                is ResultState.Success -> _uiState.update { it.copy(groupInviteCode = result.data.inviteCode) }
+                is ResultState.Error -> issueInviteCode()
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun issueInviteCode() {
+        viewModelScope.launch {
+            when (val result = issueGroupInviteCodeUseCase(currentGroupId)) {
+                is ResultState.Success -> _uiState.update { it.copy(groupInviteCode = result.data.inviteCode) }
+                is ResultState.Error -> Unit
+                ResultState.Loading -> Unit
+            }
         }
     }
 
