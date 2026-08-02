@@ -125,13 +125,24 @@ fun ChallengeDetailScreen(
     }
 
     editingCertification?.let { certification ->
+        // uiState.editedCertificationId는 수정 성공 시에만 채워지는 명시적 신호라("제출 중 아님 &&
+        // 에러 없음"이라는 이중 부정으로 성공을 추론하지 않음), 이 값이 지금 열려 있는 게시글과 같아지면
+        // 곧바로 닫고 dismiss로 신호를 지운다.
+        LaunchedEffect(uiState.editedCertificationId) {
+            if (uiState.editedCertificationId == certification.id) {
+                editingCertification = null
+                actions.onEditCertificationDismiss()
+            }
+        }
         CertificationEditScreen(
             certification = certification,
-            onClose = { editingCertification = null },
-            onSubmit = { content ->
-                actions.onEditCertificationSubmit(certification.id, content)
+            onClose = {
                 editingCertification = null
+                actions.onEditCertificationDismiss()
             },
+            onSubmit = { content -> actions.onEditCertificationSubmit(certification.id, content) },
+            isSubmitting = uiState.isSubmittingEdit,
+            errorMessage = uiState.editCertificationError,
             modifier = modifier,
         )
         return
@@ -458,13 +469,15 @@ private fun ChallengeInfoSection(
         }
 
         // "참여하기" 탭 시 참여 상태로 바뀌고 서버에 참여 신호를 보낸다(ViewModel에서 처리).
-        // 참여 후에는 오늘 이미 인증했는지(verifiedToday)에 따라 "인증하기"/"다시 인증하기"로 갈린다.
+        // 참여 후 현재 인증 주기에 이미 인증했다면(verifiedInCurrentPeriod) "인증 완료"로 바뀌며
+        // 더 이상 누를 수 없다(재인증 불가) — 이 값은 챌린지 상세 API가 내려주므로 나갔다 들어와도 유지된다.
         LiroutiPrimaryButton(
             text = when {
                 !uiState.isJoined -> "참여하기"
-                uiState.verifiedToday -> "다시 인증하기"
+                uiState.verifiedInCurrentPeriod -> "인증 완료"
                 else -> "인증하기"
             },
+            enabled = !uiState.isJoined || !uiState.verifiedInCurrentPeriod,
             onClick = { if (uiState.isJoined) onVerifyClick() else onJoinClick() },
         )
     }
@@ -476,6 +489,7 @@ private object PreviewChallengeDetailScreenActions : ChallengeDetailScreenAction
     override fun onLoadMore() = Unit
     override fun onLeaveChallengeClick() = Unit
     override fun onEditCertificationSubmit(certificationId: Long, content: String) = Unit
+    override fun onEditCertificationDismiss() = Unit
     override fun onDeleteCertificationClick(certificationId: Long) = Unit
     override fun onReportCertificationClick(certificationId: Long) = Unit
     override fun onLikeToggleClick(certificationId: Long) = Unit

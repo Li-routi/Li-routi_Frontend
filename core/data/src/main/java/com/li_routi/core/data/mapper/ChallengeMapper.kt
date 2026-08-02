@@ -10,6 +10,7 @@ import com.li_routi.core.data.network.dto.response.MyChallengeSummaryResponse
 import com.li_routi.core.data.network.dto.response.MyVerificationFeedResponse
 import com.li_routi.core.data.network.dto.response.MyVerificationResponse
 import com.li_routi.core.data.network.dto.response.ParticipationResponse
+import com.li_routi.core.data.network.dto.response.UpdateVerificationMemoResponse
 import com.li_routi.core.data.network.dto.response.VerificationFeedResponse
 import com.li_routi.core.data.network.dto.response.VerificationResponse
 import com.li_routi.core.domain.challenge.Certification
@@ -19,6 +20,7 @@ import com.li_routi.core.domain.challenge.ChallengeCategory
 import com.li_routi.core.domain.challenge.ChallengeDetail
 import com.li_routi.core.domain.challenge.ChallengePage
 import com.li_routi.core.domain.challenge.CreatedVerification
+import com.li_routi.core.domain.challenge.EditedVerification
 import com.li_routi.core.domain.challenge.LikeResult
 import com.li_routi.core.domain.challenge.MyCertification
 import com.li_routi.core.domain.challenge.MyCertificationPage
@@ -56,6 +58,7 @@ fun ChallengeDetailResponse.toDomain(): ChallengeDetail = ChallengeDetail(
     participantCount = participantCount,
     verificationPostCount = verificationPostCount,
     todayCompletionCount = todayCompletionCount,
+    verifiedInCurrentPeriod = verifiedInCurrentPeriod,
 )
 
 fun VerificationResponse.toDomain(): Certification = Certification(
@@ -103,6 +106,11 @@ fun CreateVerificationResponse.toDomain(): CreatedVerification = CreatedVerifica
     content = content,
     currentStreak = currentStreak,
     reverified = reverified,
+)
+
+fun UpdateVerificationMemoResponse.toDomain(): EditedVerification = EditedVerification(
+    verificationId = verificationId,
+    content = content,
 )
 
 fun ParticipationResponse.toDomain(): Participation = Participation(
