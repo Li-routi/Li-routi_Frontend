@@ -8,18 +8,14 @@ class CreateGroupRoutineUseCase(
     suspend operator fun invoke(
         groupId: Long,
         categoryId: Long,
-        templateId: Long?,
-        name: String,
-        endTime: String?,
-        repeatDays: List<RepeatDay>?,
-        alarmTime: String?,
-    ): ResultState<GroupRoutineCreateResult> = repository.createGroupRoutine(
+        title: String,
+        description: String,
+        schedules: List<GroupRoutineSchedule>,
+    ): ResultState<GroupRoutineUpdateResult> = repository.createGroupRoutine(
         groupId = groupId,
         categoryId = categoryId,
-        templateId = templateId,
-        name = name,
-        endTime = endTime,
-        repeatDays = repeatDays,
-        alarmTime = alarmTime,
+        title = title,
+        description = description,
+        schedules = schedules,
     )
 }

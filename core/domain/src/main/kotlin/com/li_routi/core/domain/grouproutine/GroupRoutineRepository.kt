@@ -4,16 +4,14 @@ import com.li_routi.core.common.kotlin.util.ResultState
 
 interface GroupRoutineRepository {
 
-    /** 그룹에 루틴을 등록한다. */
+    /** 그룹에 루틴을 등록한다. 요청/응답 모양이 [updateGroupRoutine]과 동일하다(실서버 확인, 스웨거 문서와 다름). */
     suspend fun createGroupRoutine(
         groupId: Long,
         categoryId: Long,
-        templateId: Long?,
-        name: String,
-        endTime: String?,
-        repeatDays: List<RepeatDay>?,
-        alarmTime: String?,
-    ): ResultState<GroupRoutineCreateResult>
+        title: String,
+        description: String,
+        schedules: List<GroupRoutineSchedule>,
+    ): ResultState<GroupRoutineUpdateResult>
 
     /** 그룹 루틴을 수정한다. */
     suspend fun updateGroupRoutine(

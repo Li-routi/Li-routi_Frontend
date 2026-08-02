@@ -1,10 +1,8 @@
 package com.li_routi.core.data.network.service
 
-import com.li_routi.core.data.network.dto.request.CreateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.GroupInviteCodeResponse
-import com.li_routi.core.data.network.dto.response.GroupRoutineCreateResultResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineListResponse
 import retrofit2.http.Body
@@ -15,11 +13,13 @@ import retrofit2.http.Path
 
 interface GroupRoutineApiService {
 
+    // 실제 요청/응답 스키마가 스웨거 문서(CreateRoutine)와 다름 — 실서버 호출로 확인: PUT과 동일하게
+    // title/description/schedules를 받고 단일 루틴 객체를 반환한다.
     @POST("api/groups/{groupId}/routines")
     suspend fun createRoutine(
         @Path("groupId") groupId: Long,
-        @Body request: CreateGroupRoutineRequest,
-    ): ApiResponse<GroupRoutineCreateResultResponse>
+        @Body request: UpdateGroupRoutineRequest,
+    ): ApiResponse<GroupRoutineUpdateResultResponse>
 
     @PUT("api/groups/{groupId}/routines/{routineId}")
     suspend fun updateRoutine(
