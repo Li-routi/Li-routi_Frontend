@@ -125,12 +125,13 @@ fun ChallengeDetailScreen(
     }
 
     editingCertification?.let { certification ->
-        // 수정 요청을 보낸 뒤(hasSubmittedEdit) 서버 응답이 성공(에러 없음)으로 끝나면 화면을 닫는다.
-        // 실패하면 isSubmittingEdit만 꺼지고 화면은 열린 채 에러 메시지를 보여준다.
-        var hasSubmittedEdit by remember(certification.id) { mutableStateOf(false) }
-        LaunchedEffect(uiState.isSubmittingEdit, uiState.editCertificationError) {
-            if (hasSubmittedEdit && !uiState.isSubmittingEdit && uiState.editCertificationError == null) {
+        // uiState.editedCertificationId는 수정 성공 시에만 채워지는 명시적 신호라("제출 중 아님 &&
+        // 에러 없음"이라는 이중 부정으로 성공을 추론하지 않음), 이 값이 지금 열려 있는 게시글과 같아지면
+        // 곧바로 닫고 dismiss로 신호를 지운다.
+        LaunchedEffect(uiState.editedCertificationId) {
+            if (uiState.editedCertificationId == certification.id) {
                 editingCertification = null
+                actions.onEditCertificationDismiss()
             }
         }
         CertificationEditScreen(
@@ -139,10 +140,7 @@ fun ChallengeDetailScreen(
                 editingCertification = null
                 actions.onEditCertificationDismiss()
             },
-            onSubmit = { content ->
-                hasSubmittedEdit = true
-                actions.onEditCertificationSubmit(certification.id, content)
-            },
+            onSubmit = { content -> actions.onEditCertificationSubmit(certification.id, content) },
             isSubmitting = uiState.isSubmittingEdit,
             errorMessage = uiState.editCertificationError,
             modifier = modifier,

@@ -57,10 +57,16 @@ data class ChallengeDetailUiState(
     val myHasNext: Boolean = true,
     val isLoadingMoreMy: Boolean = false,
     val myLoaded: Boolean = false,
-    /** 인증 수정("수정하기" > "완료") API 요청 진행 여부. */
+    /** 인증 수정("수정하기" > "완료") API 요청 진행 여부. 요청 결과 핸들러만 갱신한다(dismiss는 건드리지 않음). */
     val isSubmittingEdit: Boolean = false,
-    /** 인증 수정 실패 메시지. 성공하거나 수정 화면을 닫으면 지워진다. */
+    /** 인증 수정 실패 메시지. 재시도를 시작하거나 수정 화면을 닫으면 지워진다. */
     val editCertificationError: String? = null,
+    /**
+     * 방금 수정에 성공한 인증 게시글 id. 화면은 이 값이 자신이 열고 있는 게시글 id와 같아지면 닫고
+     * 곧바로 지운다("제출 중 아님 && 에러 없음"이라는 이중 부정으로 성공을 추론하지 않고, 성공
+     * 이벤트 자체를 명시적으로 신호한다).
+     */
+    val editedCertificationId: Long? = null,
 ) {
     val visibleCertifications: List<CertificationUiModel>
         get() = when (selectedTab) {

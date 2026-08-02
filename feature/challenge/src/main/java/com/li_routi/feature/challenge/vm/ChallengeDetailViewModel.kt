@@ -190,8 +190,10 @@ class ChallengeDetailViewModel(
     }
 
     override fun onEditCertificationSubmit(certificationId: Long, content: String) {
+        // isSubmittingEdit은 아래 요청의 성공/실패 분기에서만 내린다(onEditCertificationDismiss는
+        // 건드리지 않음) — 그래야 화면을 닫고 바로 재제출해도 이 가드가 진행 중인 요청을 확실히 막는다.
         if (_uiState.value.isSubmittingEdit) return
-        _uiState.update { it.copy(isSubmittingEdit = true, editCertificationError = null) }
+        _uiState.update { it.copy(isSubmittingEdit = true, editCertificationError = null, editedCertificationId = null) }
         viewModelScope.launch {
             when (val result = editVerificationUseCase(challengeId, certificationId, content)) {
                 is ResultState.Success -> {
@@ -199,6 +201,7 @@ class ChallengeDetailViewModel(
                     _uiState.update { state ->
                         state.copy(
                             isSubmittingEdit = false,
+                            editedCertificationId = certificationId,
                             allCertifications = state.allCertifications.withUpdatedContent(certificationId, updatedContent),
                             myCertifications = state.myCertifications.withUpdatedContent(certificationId, updatedContent),
                         )
@@ -215,8 +218,11 @@ class ChallengeDetailViewModel(
         }
     }
 
+    // 화면 닫기(뒤로가기/성공 후 소비)는 에러/성공 신호만 지운다. isSubmittingEdit은 절대 여기서 안 건드린다
+    // — 그렇지 않으면 요청이 아직 끝나지 않았는데 닫고 바로 재제출할 수 있게 되어, 두 요청이 순서
+    // 뒤바뀌어 끝나면서 더 오래된 내용이 서버에 남는 레이스가 생긴다.
     override fun onEditCertificationDismiss() {
-        _uiState.update { it.copy(isSubmittingEdit = false, editCertificationError = null) }
+        _uiState.update { it.copy(editCertificationError = null, editedCertificationId = null) }
     }
 
     // 백엔드에 인증 삭제 API가 없어 버튼 UI만 우선 노출한다. API가 추가되면 여기서 호출하고
@@ -289,7 +295,8 @@ private fun ChallengeDetailUiState.applyDetail(detail: ChallengeDetail): Challen
     rewardCount = detail.reward,
     postCount = detail.verificationPostCount.toIntClamped(),
     isJoined = detail.participating,
-    verifiedInCurrentPeriod = detail.verifiedInCurrentPeriod,
+    // 서버가 필드를 안 내려주면(null) "인증 안 함"으로 단정하지 않고 기존에 알던 값을 그대로 둔다.
+    verifiedInCurrentPeriod = detail.verifiedInCurrentPeriod ?: verifiedInCurrentPeriod,
 )
 
 private fun Certification.toUiModel(): CertificationUiModel = CertificationUiModel(
