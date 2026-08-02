@@ -1,33 +1,44 @@
 package com.li_routi.feature.home.screen
 
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.BottomSheetScaffold
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.Scaffold
+import androidx.compose.material3.Text
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
-import com.li_routi.core.designsystem.component.LiroutiDivider
-import com.li_routi.core.designsystem.component.LiroutiDividerThickness
+import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
+import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.component.AddMenuBottomSheet
-import com.li_routi.feature.home.component.EmptyRoutineSection
 import com.li_routi.feature.home.component.HomeTopBar
-import com.li_routi.feature.home.component.MyRoutineCard
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
 import com.li_routi.feature.home.component.RoutineChecklistSection
 import com.li_routi.feature.home.component.SampleGroupRoomFilters
@@ -35,8 +46,14 @@ import com.li_routi.feature.home.component.SampleGroupRoomItems
 import com.li_routi.feature.home.component.SampleMyRoutineItems
 import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
 import com.li_routi.feature.home.component.ShopEntryCard
-import com.li_routi.feature.home.component.SwipeHintLabel
 import com.li_routi.feature.home.navigation.HomeScreenActions
+import com.li_routi.feature.home.vm.HomeUiEvent
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
+
+/** Figma `Bottom Sheet` 상단의 드래그 힌트 바 (`h-[4px] w-[44px]`, 회색 pill). */
+private val SheetDragHandleColor = androidx.compose.ui.graphics.Color(0xFFDEDEDE)
+private val SheetPeekHeight = 370.dp
 
 /**
  * 홈 화면 상태별 캐릭터 툴팁 문구 (Figma 스크린샷 기준).
@@ -51,11 +68,14 @@ internal fun homeTooltipMessage(hasActiveRoutine: Boolean, hasGroupRoom: Boolean
 }
 
 /**
- * 홈 화면. Figma 기준 3가지 상태:
+ * 홈 화면.
  *
- * 1. **처음 진입** (`hasActiveRoutine=false`, `hasGroupRoom=false`): 스와이프 인증 비활성
- * 2. **내 루틴만** / **내 루틴 + 그룹방**: "밀어서 빠른 인증" 힌트 표시.
- *    실제 카메라 진입은 [com.li_routi.feature.home.navigation.HomeRoute] HorizontalPager로 처리.
+ * 하단은 Figma대로 "오늘의 루틴"/"그룹 루틴" 탭이 항상 보이는, 위로 끌어올릴 수 있는 바텀시트로
+ * 구성한다([BottomSheetScaffold]). 각 탭의 실제 목록은 [RoutineChecklistSection]이 맡고, 데이터가
+ * 없으면 그 안에서 탭별 empty 상태를 보여준다.
+ *
+ * Design Page [1.1]: 메인 Home에는 "밀어서 빠른 인증" 라벨을 두지 않는다.
+ * 실제 카메라 진입은 [com.li_routi.feature.home.navigation.HomeRoute] HorizontalPager로 처리.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -72,94 +92,155 @@ fun HomeScreen(
     },
     groupRoomFilters: List<String> = SampleGroupRoomFilters,
     groupRoomItems: List<RoutineChecklistItemUiModel> = SampleGroupRoomItems,
+    /** 개인 또는 그룹 루틴이 하나라도 있으면 true. 기본은 [hasActiveRoutine]과 동일. */
+    showChecklist: Boolean = hasActiveRoutine || hasGroupRoom,
+    isLoading: Boolean = false,
+    loadError: Boolean = false,
+    /** 카테고리 생성 성공/실패 등 홈 일회성 UI 이벤트. */
+    uiEvent: Flow<HomeUiEvent> = emptyFlow(),
     modifier: Modifier = Modifier,
 ) {
     var showAddMenuSheet by remember { mutableStateOf(false) }
+    var showCategorySheet by remember { mutableStateOf(false) }
+    var categoryName by remember { mutableStateOf("") }
+    var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
+    var categoryCreateError by remember { mutableStateOf<String?>(null) }
     val tooltipMessage = homeTooltipMessage(hasActiveRoutine, hasGroupRoom)
-    val showSwipeHint = hasActiveRoutine || hasGroupRoom
+    val sheetScaffoldState = rememberBottomSheetScaffoldState()
 
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = LiroutiTheme.colors.backgroundSecondary,
-        topBar = {
-            HomeTopBar(
-                onAddRoutineClick = { showAddMenuSheet = true },
-                onNotificationClick = actions::onNotificationClick,
-            )
-        },
-        bottomBar = { AppBottomNavBar(selectedTab = AppBottomTab.Home, onTabSelected = onTabSelected) },
-    ) { innerPadding ->
-        if (hasActiveRoutine) {
+    LaunchedEffect(uiEvent) {
+        uiEvent.collect { event ->
+            when (event) {
+                HomeUiEvent.CategoryCreated -> {
+                    showCategorySheet = false
+                    categoryName = ""
+                    categoryColor = null
+                    categoryCreateError = null
+                }
+                is HomeUiEvent.CategoryCreateFailed -> {
+                    categoryCreateError = event.message
+                }
+                else -> Unit
+            }
+        }
+    }
+
+    Box(modifier = modifier.fillMaxSize()) {
+        BottomSheetScaffold(
+            modifier = Modifier.fillMaxSize(),
+            scaffoldState = sheetScaffoldState,
+            topBar = {
+                HomeTopBar(
+                    onAddRoutineClick = { showAddMenuSheet = true },
+                    onNotificationClick = actions::onNotificationClick,
+                )
+            },
+            sheetPeekHeight = SheetPeekHeight,
+            sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            sheetContainerColor = LiroutiTheme.colors.backgroundDefault,
+            sheetDragHandle = { HomeSheetDragHandle() },
+            containerColor = LiroutiTheme.colors.backgroundSecondary,
+            sheetContent = {
+                when {
+                    isLoading && !showChecklist && !loadError -> {
+                        Box(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 300.dp),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
+                        }
+                    }
+                    loadError && !showChecklist -> {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(min = 300.dp)
+                                .padding(16.dp),
+                            horizontalAlignment = Alignment.CenterHorizontally,
+                            verticalArrangement = Arrangement.Center,
+                        ) {
+                            Text(
+                                text = "홈 정보를 불러오지 못했습니다.",
+                                style = LiroutiTheme.typography.body2,
+                                color = LiroutiTheme.colors.labelDefault,
+                            )
+                            Text(
+                                text = "다시 시도",
+                                style = LiroutiTheme.typography.body2,
+                                color = LiroutiTheme.colors.primaryNormal,
+                                modifier = Modifier
+                                    .padding(top = 8.dp)
+                                    .clickable(onClick = actions::onRetryLoadClick),
+                            )
+                        }
+                    }
+                    else -> {
+                        Column {
+                            if (loadError) {
+                                Text(
+                                    text = "최신 정보를 불러오지 못했습니다. 다시 시도",
+                                    style = LiroutiTheme.typography.caption,
+                                    color = LiroutiTheme.colors.primaryNormal,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .clickable(onClick = actions::onRetryLoadClick)
+                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                                )
+                            }
+                            RoutineChecklistSection(
+                                hasGroupRoom = hasGroupRoom,
+                                myRoutineItems = myRoutineItems,
+                                groupRoomFilters = groupRoomFilters,
+                                groupRoomItems = groupRoomItems,
+                                onRoutineCameraClick = actions::onRoutineCameraClick,
+                                onAddCategoryClick = {
+                                    categoryName = ""
+                                    categoryColor = null
+                                    showCategorySheet = true
+                                },
+                            )
+                            // 하단 네비게이션 바(오버레이)에 가려지지 않도록 여백을 둔다.
+                            Box(modifier = Modifier.height(80.dp))
+                        }
+                    }
+                }
+            },
+        ) { innerPadding ->
             Column(
                 modifier = Modifier
                     .fillMaxSize()
                     .padding(innerPadding)
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    if (showSwipeHint) {
-                        SwipeHintLabel()
-                    }
-                    MyRoutineCard(
-                        onClick = actions::onMyRoutineClick,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    ShopEntryCard(
-                        nickname = nickname,
-                        tooltipMessage = tooltipMessage,
-                        onNavigateToShop = actions::onNavigateToShop,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                LiroutiDivider(
-                    thickness = LiroutiDividerThickness.ExtraBold,
-                    color = LiroutiTheme.colors.backgroundAlternative,
-                )
-                RoutineChecklistSection(
-                    hasGroupRoom = hasGroupRoom,
-                    myRoutineItems = myRoutineItems,
-                    groupRoomFilters = groupRoomFilters,
-                    groupRoomItems = groupRoomItems,
-                    onRoutineCameraClick = actions::onRoutineCameraClick,
+                // Design Page [1.1]: 내 루틴 카드 없이 닉네임/캐릭터/상점가기 영역이 메인
+                ShopEntryCard(
+                    nickname = nickname,
+                    tooltipMessage = tooltipMessage,
+                    onNavigateToShop = actions::onNavigateToShop,
+                    showRepresentativeBadge = hasActiveRoutine,
+                    modifier = Modifier.fillMaxWidth(),
                 )
             }
-        } else {
-            Column(
+        }
+
+        AppBottomNavBar(
+            selectedTab = AppBottomTab.Home,
+            onTabSelected = onTabSelected,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
+
+        categoryCreateError?.let { message ->
+            LiroutiToast(
+                message = message,
+                onCloseClick = { categoryCreateError = null },
                 modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-            ) {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 8.dp),
-                ) {
-                    if (showSwipeHint) {
-                        SwipeHintLabel()
-                    }
-                    MyRoutineCard(
-                        onClick = actions::onMyRoutineClick,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                    Spacer(modifier = Modifier.height(20.dp))
-                    ShopEntryCard(
-                        nickname = nickname,
-                        tooltipMessage = tooltipMessage,
-                        onNavigateToShop = actions::onNavigateToShop,
-                        modifier = Modifier.fillMaxWidth(),
-                    )
-                }
-                LiroutiDivider(
-                    thickness = LiroutiDividerThickness.ExtraBold,
-                    color = LiroutiTheme.colors.backgroundAlternative,
-                )
-                EmptyRoutineSection(modifier = Modifier.weight(1f))
-            }
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 100.dp),
+            )
         }
     }
 
@@ -169,6 +250,44 @@ fun HomeScreen(
             onManageMyRoutineClick = actions::onManageMyRoutineClick,
             onCreateRoomClick = actions::onCreateRoomClick,
             onJoinRoomWithInviteCodeClick = actions::onJoinRoomWithInviteCodeClick,
+        )
+    }
+
+    if (showCategorySheet) {
+        CategoryAddBottomSheet(
+            name = categoryName,
+            onNameChange = {
+                categoryName = it.take(10)
+                categoryCreateError = null
+            },
+            selectedColor = categoryColor,
+            onColorSelected = { categoryColor = it },
+            placeholder = "최대 10자",
+            onConfirm = {
+                // 시트는 CategoryCreated 수신 시에만 닫는다.
+                actions.onCreateCategory(categoryName, categoryColor)
+            },
+            onDismissRequest = {
+                showCategorySheet = false
+                categoryCreateError = null
+            },
+        )
+    }
+}
+
+@Composable
+private fun HomeSheetDragHandle(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(vertical = 8.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .size(width = 44.dp, height = 4.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(SheetDragHandleColor),
         )
     }
 }
@@ -181,6 +300,8 @@ private object PreviewHomeScreenActions : HomeScreenActions {
     override fun onManageMyRoutineClick() = Unit
     override fun onCreateRoomClick() = Unit
     override fun onJoinRoomWithInviteCodeClick() = Unit
+    override fun onRetryLoadClick() = Unit
+    override fun onCreateCategory(name: String, color: CategoryColor?) = Unit
 }
 
 @Preview(showBackground = true, heightDp = 800, name = "1. 처음 진입")

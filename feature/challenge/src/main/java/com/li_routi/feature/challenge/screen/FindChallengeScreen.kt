@@ -18,10 +18,6 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -62,9 +58,6 @@ fun FindChallengeScreen(
     onTabSelected: (AppBottomTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    // 검색어 입력 자체는 화면 로컬 UI 상태. 검색 실행(백엔드 keyword 연동)은 이번 범위 제외.
-    var searchQuery by remember { mutableStateOf("") }
-
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.weight(1f)) {
 
@@ -92,20 +85,19 @@ fun FindChallengeScreen(
                 )
             }
 
+            // 검색바/필터 칩은 스크롤 영역 밖에 고정하고, 카드 리스트만 그 아래에서 스크롤되게 한다.
             Column(
                 modifier = Modifier
-                    .fillMaxSize()
+                    .fillMaxWidth()
                     .background(LiroutiTheme.colors.backgroundSecondary)
-                    .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp)
-                    .padding(top = 25.dp, bottom = 50.dp),
+                    .padding(top = 25.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-
-                // ---------- 검색바 ----------
+                // ---------- 검색바 (입력마다 디바운스되어 서버 keyword로 반영됨) ----------
                 LiroutiSearchField(
-                    value = searchQuery,
-                    onValueChange = { searchQuery = it },
+                    value = uiState.searchQuery,
+                    onValueChange = actions::onSearchQueryChanged,
                 )
 
                 // ---------- 필터 칩 ----------
@@ -122,9 +114,18 @@ fun FindChallengeScreen(
                         )
                     }
                 }
+            }
 
-                // ---------- 챌린지 카드 리스트 (백엔드 GET /api/challenges 연동) ----------
-                // (Figma node 2380:40530 / 2380:40558).
+            // ---------- 챌린지 카드 리스트 (백엔드 GET /api/challenges 연동) ----------
+            // (Figma node 2380:40530 / 2380:40558).
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .background(LiroutiTheme.colors.backgroundSecondary)
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 16.dp, bottom = 50.dp),
+            ) {
                 when {
                     uiState.isLoading -> {
                         Box(
@@ -182,6 +183,7 @@ fun FindChallengeScreen(
 
 private object PreviewFindChallengeScreenActions : FindChallengeScreenActions {
     override fun onCategorySelected(category: ChallengeCategory?) = Unit
+    override fun onSearchQueryChanged(query: String) = Unit
     override fun onRetryClick() = Unit
 }
 

@@ -2,6 +2,7 @@ package com.li_routi.feature.challenge.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -47,6 +48,7 @@ private val filterOptions = listOf("전체", "건강", "운동", "공부", "생�
 fun ChallengeScreen(
     uiState: ChallengeUiState,
     onFindNewChallengeClick: () -> Unit,
+    onChallengeClick: (challengeId: Long) -> Unit,
     onTabSelected: (AppBottomTab) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxSize()) {
@@ -72,7 +74,8 @@ fun ChallengeScreen(
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
                         .padding(end = 16.dp)
-                        .size(20.dp),
+                        .size(20.dp)
+                        .clickable(onClick = onFindNewChallengeClick),
                 )
             }
 
@@ -86,7 +89,7 @@ fun ChallengeScreen(
                     EmptyChallengeContent(onFindNewChallengeClick = onFindNewChallengeClick)
                 }
                 else -> {
-                    ChallengeListContent(routines = uiState.routines)
+                    ChallengeListContent(routines = uiState.routines, onChallengeClick = onChallengeClick)
                 }
             }
         }
@@ -143,7 +146,7 @@ private fun EmptyChallengeContent(onFindNewChallengeClick: () -> Unit) {
 // 1번 디자인 (Figma node: 2380:37243) - 참여 중인 챌린지가 있을 때 (검색 + 필터 + 리스트)
 // ============================================================
 @Composable
-private fun ChallengeListContent(routines: List<RoutineUiModel>) {
+private fun ChallengeListContent(routines: List<RoutineUiModel>, onChallengeClick: (challengeId: Long) -> Unit) {
     var searchQuery by remember { mutableStateOf("") }
     var activeFilter by remember { mutableStateOf("전체") }
 
@@ -180,12 +183,16 @@ private fun ChallengeListContent(routines: List<RoutineUiModel>) {
         // ---------- 루틴 리스트 ----------
         // (Figma: List > Property1=routine_simple, node 2398:11076)
         // 카테고리가 여러 개인 경우 콤마로 이어붙임 (예: "건강, 취미")
+        val filteredRoutines = remember(routines, activeFilter) {
+            if (activeFilter == "전체") routines else routines.filter { activeFilter in it.categories }
+        }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            routines.forEach { routine ->
+            filteredRoutines.forEach { routine ->
                 LiroutiRoutineSimpleCard(
                     title = routine.title,
-                    subtitle = routine.categories.joinToString(", "),
+                    subtitle = "${routine.categories.joinToString(", ")} | ${routine.description}",
                     badgeText = routine.badge,
+                    onClick = { onChallengeClick(routine.id) },
                 )
             }
         }

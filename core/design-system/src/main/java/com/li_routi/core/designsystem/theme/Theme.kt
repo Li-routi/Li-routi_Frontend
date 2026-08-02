@@ -1,6 +1,5 @@
 package com.li_routi.core.designsystem.theme
 
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
@@ -11,7 +10,7 @@ import com.li_routi.core.designsystem.foundation.typography.Typography
 
 @Composable
 fun LiroutiFrontendTheme(
-    darkTheme: Boolean = isSystemInDarkTheme(),
+    darkTheme: Boolean = false,
     content: @Composable () -> Unit,
 ) {
     val colorScheme = if (darkTheme) LiroutiDarkColorScheme else LiroutiLightColorScheme

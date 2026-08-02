@@ -8,5 +8,6 @@ data class FindChallengeUiState(
     val isLoading: Boolean = true,
     val challenges: List<ChallengeCardUiModel> = emptyList(),
     val selectedCategory: ChallengeCategory? = null,
+    val searchQuery: String = "",
     val errorMessage: String? = null,
 )

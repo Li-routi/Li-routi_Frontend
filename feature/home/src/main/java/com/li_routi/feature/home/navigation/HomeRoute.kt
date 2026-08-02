@@ -15,6 +15,8 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.data.di.HomeContainer
+import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.feature.home.screen.HomeScreen
 import com.li_routi.feature.home.screen.RoutineAuthCameraScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
@@ -23,6 +25,7 @@ import com.li_routi.feature.home.vm.HomeViewModel
 import com.li_routi.feature.home.vm.RoutineAuthCameraUiEvent
 import com.li_routi.feature.home.vm.RoutineAuthCameraViewModel
 import com.li_routi.feature.home.vm.RoutineAuthUploadUiEvent
+import com.li_routi.feature.home.vm.toAuthSelectables
 
 /** Pager: 카메라(왼쪽) ← 스와이프 → 홈(오른쪽, 초기 페이지) */
 private const val PageCamera = 0
@@ -53,7 +56,10 @@ fun HomeRoute(
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel {
-        HomeViewModel(initialState = HomeUiState.empty())
+        HomeViewModel(
+            getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase,
+            createRoutineCategoryUseCase = RoutineContainer.createRoutineCategoryUseCase,
+        )
     },
     cameraViewModel: RoutineAuthCameraViewModel = viewModel { RoutineAuthCameraViewModel() },
 ) {
@@ -76,30 +82,45 @@ fun HomeRoute(
                     pendingAuthRoutineId = event.routineId
                     pendingPagerPage = PageCamera
                 }
+                HomeUiEvent.CategoryCreated,
+                is HomeUiEvent.CategoryCreateFailed,
+                -> Unit
                 else -> Unit
             }
-            onEvent(event)
+            // 카테고리 생성 결과는 HomeScreen이 직접 collect한다.
+            if (event !is HomeUiEvent.CategoryCreated &&
+                event !is HomeUiEvent.CategoryCreateFailed
+            ) {
+                onEvent(event)
+            }
         }
     }
 
     val photoUri = capturedPhotoUri
     if (photoUri != null) {
         val preselected = pendingAuthRoutineId?.let { setOf(it) }.orEmpty()
+        // 미완료 개인·그룹 루틴을 업로드 선택 목록으로 넘긴다.
+        val authRoutines = (uiState.myRoutineItems + uiState.groupRoomItems).toAuthSelectables()
         RoutineAuthUploadRoute(
             photoUri = photoUri,
             initialSelectedRoutineIds = preselected,
+            routines = authRoutines,
             onEvent = { event ->
                 when (event) {
                     RoutineAuthUploadUiEvent.NavigateBack -> {
                         capturedPhotoUri = null
                         pendingPagerPage = PageCamera
                     }
-                    RoutineAuthUploadUiEvent.NavigateClose,
-                    RoutineAuthUploadUiEvent.NavigateToHome,
-                    -> {
+                    RoutineAuthUploadUiEvent.NavigateClose -> {
                         capturedPhotoUri = null
                         pendingAuthRoutineId = null
                         pendingPagerPage = PageHome
+                    }
+                    RoutineAuthUploadUiEvent.NavigateToHome -> {
+                        capturedPhotoUri = null
+                        pendingAuthRoutineId = null
+                        pendingPagerPage = PageHome
+                        viewModel.refresh()
                     }
                 }
             },
@@ -184,6 +205,10 @@ private fun HomeScreenContent(
         myRoutineItems = uiState.myRoutineItems,
         groupRoomFilters = uiState.groupRoomFilters,
         groupRoomItems = uiState.groupRoomItems,
+        showChecklist = uiState.showChecklist,
+        isLoading = uiState.isLoading,
+        loadError = uiState.loadError,
+        uiEvent = viewModel.uiEvent,
         modifier = modifier,
     )
 }

@@ -22,7 +22,7 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
  * 등록된 루틴이 하나도 없을 때 표시하는 empty 상태 영역 (Figma `comp/empty`, node `2187:25270`).
  */
 @Composable
-fun EmptyRoutineSection(modifier: Modifier = Modifier) {
+fun EmptyRoutineSection(modifier: Modifier = Modifier, message: String = "아직 루틴이 없어요!") {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -36,8 +36,8 @@ fun EmptyRoutineSection(modifier: Modifier = Modifier) {
         )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
-            text = "아직 루틴이 없어요!",
-            style = LiroutiTheme.typography.body2,
+            text = message,
+            style = LiroutiTheme.typography.body2LongMedium,
             color = LiroutiTheme.colors.labelInfo,
         )
     }
