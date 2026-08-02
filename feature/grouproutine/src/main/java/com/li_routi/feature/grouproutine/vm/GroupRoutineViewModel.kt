@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.GroupRoutineContainer
+import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
@@ -11,6 +12,7 @@ import com.li_routi.core.domain.grouproutine.IssueGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.RepeatDay
+import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -19,6 +21,8 @@ import kotlinx.coroutines.launch
 
 class GroupRoutineViewModel(
     private val createGroupUseCase: CreateGroupUseCase = GroupRoutineContainer.createGroupUseCase,
+    private val createGroupRoutineUseCase: CreateGroupRoutineUseCase = GroupRoutineContainer.createGroupRoutineUseCase,
+    private val updateGroupRoutineUseCase: UpdateGroupRoutineUseCase = GroupRoutineContainer.updateGroupRoutineUseCase,
     private val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase = GroupRoutineContainer.getGroupInviteCodeUseCase,
     private val issueGroupInviteCodeUseCase: IssueGroupInviteCodeUseCase = GroupRoutineContainer.issueGroupInviteCodeUseCase,
 ) : BaseViewModel() {
@@ -462,46 +466,118 @@ class GroupRoutineViewModel(
     }
 
     fun onRoutineSettingConfirmClick() {
-        _uiState.update { state ->
-            val title = state.routineDraftName.trim()
-            if (title.isBlank()) {
-                state.copy(actionMessage = "루틴 이름을 입력해주세요.")
+        val state = _uiState.value
+        val title = state.routineDraftName.trim()
+        if (title.isBlank()) {
+            _uiState.update { it.copy(actionMessage = "루틴 이름을 입력해주세요.") }
+            return
+        }
+
+        // 그룹 루틴 관리 화면(이미 만들어진 그룹)에서는 실제 API로 만들고, 방 만들기 전(루틴 선택
+        // 단계)에는 방 만들기 누를 때 한 번에 보내니까 로컬 상태만 바꿈
+        if (state.screenMode == GroupRoutineScreenMode.GroupRoutineManage) {
+            submitGroupRoutine(state, title)
+        } else {
+            applyLocalRoutineDraft(state, title)
+        }
+    }
+
+    private fun submitGroupRoutine(state: GroupRoutineUiState, title: String) {
+        val categoryName = state.selectedCategory.takeUnless { it == "전체" } ?: "건강"
+        val schedules = state.routineDraftRepeatDays.toGroupRoutineSchedules(endTime = "23:00")
+        val editingId = state.editingRoutineId
+        val groupId = currentGroupId()
+        val categoryId = DefaultCategoryIds[categoryName]
+
+        viewModelScope.launch {
+            val result = if (editingId == null) {
+                createGroupRoutineUseCase(
+                    groupId = groupId,
+                    categoryId = categoryId ?: 1L,
+                    title = title,
+                    description = title,
+                    schedules = schedules,
+                )
             } else {
-                val repeatLabel = repeatDaysLabel(state.routineDraftRepeatDays)
-                val editingId = state.editingRoutineId
-                val nextOptions = if (editingId == null) {
-                    val newId = (state.routineOptions.maxOfOrNull { it.id } ?: 0L) + 1L
-                    state.routineOptions + CreateRoutineOptionUiModel(
-                        id = newId,
-                        title = title,
+                updateGroupRoutineUseCase(
+                    groupId = groupId,
+                    routineId = editingId,
+                    categoryId = categoryId ?: 1L,
+                    title = title,
+                    description = title,
+                    schedules = schedules,
+                )
+            }
+            when (result) {
+                is ResultState.Success -> {
+                    val routine = result.data
+                    val repeatLabel = repeatDaysLabel(state.routineDraftRepeatDays)
+                    val savedOption = CreateRoutineOptionUiModel(
+                        id = routine.routineId,
+                        title = routine.title,
                         deadline = "23:00",
-                        category = state.selectedCategory.takeUnless { it == "전체" } ?: "건강",
+                        category = categoryName,
+                        repeatLabel = repeatLabel,
+                        repeatDays = state.routineDraftRepeatDays,
+                    )
+                    _uiState.update {
+                        val nextOptions = if (editingId == null) {
+                            it.routineOptions + savedOption
+                        } else {
+                            it.routineOptions.map { option -> if (option.id == editingId) savedOption else option }
+                        }
+                        it.copy(
+                            routineOptions = nextOptions,
+                            isRoutineSettingSheetVisible = false,
+                            editingRoutineId = null,
+                            routineDraftName = "",
+                            routineDraftRepeatDays = emptySet(),
+                            actionMessage = null,
+                        )
+                    }
+                }
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun applyLocalRoutineDraft(state: GroupRoutineUiState, title: String) {
+        val repeatLabel = repeatDaysLabel(state.routineDraftRepeatDays)
+        val editingId = state.editingRoutineId
+        val nextOptions = if (editingId == null) {
+            val newId = (state.routineOptions.maxOfOrNull { it.id } ?: 0L) + 1L
+            state.routineOptions + CreateRoutineOptionUiModel(
+                id = newId,
+                title = title,
+                deadline = "23:00",
+                category = state.selectedCategory.takeUnless { it == "전체" } ?: "건강",
+                repeatLabel = repeatLabel,
+                repeatDays = state.routineDraftRepeatDays,
+            )
+        } else {
+            state.routineOptions.map { option ->
+                if (option.id == editingId) {
+                    option.copy(
+                        title = title,
                         repeatLabel = repeatLabel,
                         repeatDays = state.routineDraftRepeatDays,
                     )
                 } else {
-                    state.routineOptions.map { option ->
-                        if (option.id == editingId) {
-                            option.copy(
-                                title = title,
-                                repeatLabel = repeatLabel,
-                                repeatDays = state.routineDraftRepeatDays,
-                            )
-                        } else {
-                            option
-                        }
-                    }
+                    option
                 }
-
-                state.copy(
-                    routineOptions = nextOptions,
-                    isRoutineSettingSheetVisible = false,
-                    editingRoutineId = null,
-                    routineDraftName = "",
-                    routineDraftRepeatDays = emptySet(),
-                    actionMessage = null,
-                )
             }
+        }
+
+        _uiState.update {
+            it.copy(
+                routineOptions = nextOptions,
+                isRoutineSettingSheetVisible = false,
+                editingRoutineId = null,
+                routineDraftName = "",
+                routineDraftRepeatDays = emptySet(),
+                actionMessage = null,
+            )
         }
     }
 
