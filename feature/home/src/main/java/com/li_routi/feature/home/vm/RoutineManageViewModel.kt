@@ -237,6 +237,9 @@ class RoutineManageViewModel(
     fun onSubmit() {
         val state = _uiState.value
         if (state.isSubmitting) return
+        // 빈 payload NavigateBack 포함, 연타로 pop이 여러 번 나가지 않도록 동기 가드.
+        _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+
         val payload = buildCreatePayload(state)
         if (payload.isEmpty()) {
             // 새로 추가할 선택이 없으면 저장 없이 완료(뒤로가기).
@@ -244,7 +247,6 @@ class RoutineManageViewModel(
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
             when (val result = createMemberRoutinesUseCase(payload)) {
                 is ResultState.Success -> {
                     _uiState.update { it.copy(isSubmitting = false) }
