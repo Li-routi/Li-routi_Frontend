@@ -1,6 +1,7 @@
 package com.li_routi.core.designsystem.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -10,7 +11,9 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -23,9 +26,11 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.foundation.color.Neutral97
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -96,6 +101,8 @@ fun LiroutiLineTab(
     modifier: Modifier = Modifier,
     equalWidth: Boolean = false,
 ) {
+    var textHeight by remember { mutableStateOf(22.dp) }
+
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -107,6 +114,8 @@ fun LiroutiLineTab(
                     selected = index == selectedIndex,
                     onClick = { onTabSelected(index) },
                     fullWidthIndicator = equalWidth,
+                    textHeight = textHeight,
+                    onTextHeightMeasured = { textHeight = it },
                     modifier = if (equalWidth) Modifier.weight(1f) else Modifier,
                 )
             }
@@ -115,11 +124,16 @@ fun LiroutiLineTab(
     }
 }
 
+private val CategoryDotWidth = 10.dp
+private val CategoryDotHeight = 9.dp
+
 @Composable
 private fun LiroutiLineTabItem(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
+    textHeight: Dp,
+    onTextHeightMeasured: (Dp) -> Unit,
     modifier: Modifier = Modifier,
     fullWidthIndicator: Boolean = false,
 ) {
@@ -133,20 +147,28 @@ private fun LiroutiLineTabItem(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = text,
-            softWrap = false,
-            onTextLayout = { textWidth = with(density) { it.size.width.toDp() } },
-            style = LiroutiTheme.typography.body2Long.copy(
-                fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
-            ),
-            color = if (selected) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.labelInfo,
-        )
         if (selected) {
+            Text(
+                text = text,
+                softWrap = false,
+                onTextLayout = {
+                    textWidth = with(density) { it.size.width.toDp() }
+                    onTextHeightMeasured(with(density) { it.size.height.toDp() })
+                },
+                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
+                color = LiroutiTheme.colors.labelDefault,
+            )
             LiroutiDivider(
                 modifier = if (fullWidthIndicator) Modifier.fillMaxWidth() else Modifier.width(textWidth),
                 thickness = LiroutiDividerThickness.Regular,
                 color = LiroutiTheme.colors.labelDefault,
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .padding(top = ((textHeight - CategoryDotHeight) / 2).coerceAtLeast(0.dp))
+                    .size(width = CategoryDotWidth, height = CategoryDotHeight)
+                    .border(width = 1.dp, color = Color(0xFF878A93), shape = CircleShape),
             )
         }
     }
