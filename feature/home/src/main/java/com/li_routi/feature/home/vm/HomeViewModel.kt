@@ -3,10 +3,9 @@ package com.li_routi.feature.home.vm
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.domain.home.GetHomeSummaryUseCase
-import com.li_routi.feature.home.component.SampleGroupRoomFilters
-import com.li_routi.feature.home.component.SampleGroupRoomItems
-import com.li_routi.feature.home.component.SampleMyRoutineItems
+import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.feature.home.navigation.HomeScreenActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +27,7 @@ import kotlinx.coroutines.launch
  */
 class HomeViewModel(
     private val getHomeSummaryUseCase: GetHomeSummaryUseCase,
+    private val createRoutineCategoryUseCase: CreateRoutineCategoryUseCase? = null,
     initialState: HomeUiState = HomeUiState(isLoading = true),
 ) : BaseViewModel(), HomeScreenActions {
 
@@ -47,20 +47,7 @@ class HomeViewModel(
             _uiState.update { it.copy(isLoading = true, loadError = false) }
             when (val result = getHomeSummaryUseCase()) {
                 is ResultState.Success -> {
-                    val mapped = result.data.toHomeUiState()
-                    // TODO(임시): 서버에 루틴 데이터가 아직 없어 스와이프 인증 테스트용 목데이터를 강제 주입.
-                    // 실제 루틴/그룹방 데이터가 생기면 이 분기는 지운다.
-                    _uiState.value = if (!mapped.hasActiveRoutine && !mapped.hasGroupRoom) {
-                        mapped.copy(
-                            hasActiveRoutine = true,
-                            hasGroupRoom = true,
-                            myRoutineItems = SampleMyRoutineItems,
-                            groupRoomFilters = SampleGroupRoomFilters,
-                            groupRoomItems = SampleGroupRoomItems,
-                        )
-                    } else {
-                        mapped
-                    }
+                    _uiState.value = result.data.toHomeUiState()
                 }
                 is ResultState.Error -> _uiState.update {
                     it.copy(isLoading = false, loadError = true)
@@ -107,6 +94,56 @@ class HomeViewModel(
         refresh()
     }
 
+    override fun onCreateCategory(name: String, color: CategoryColor?) {
+        val trimmed = name.trim()
+        if (trimmed == "전체") {
+            emitEvent(HomeUiEvent.CategoryCreateFailed("「전체」는 사용할 수 없는 이름이에요."))
+            return
+        }
+        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) {
+            emitEvent(HomeUiEvent.CategoryCreateFailed("이름은 1~10자로 입력해 주세요."))
+            return
+        }
+        val createUseCase = createRoutineCategoryUseCase
+        if (createUseCase == null) {
+            appendGroupCategoryFilter(trimmed)
+            emitEvent(HomeUiEvent.CategoryCreated)
+            return
+        }
+        viewModelScope.launch {
+            when (
+                val result = createUseCase(
+                    name = trimmed,
+                    color = color?.toApiColor(),
+                )
+            ) {
+                is ResultState.Success -> {
+                    appendGroupCategoryFilter(trimmed)
+                    emitEvent(HomeUiEvent.CategoryCreated)
+                }
+                is ResultState.Error -> emitEvent(
+                    HomeUiEvent.CategoryCreateFailed(result.message),
+                )
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    /** 그룹 루틴 필터 chip에 카테고리명을 붙인다. 이미 있으면 무시. "전체"는 예약어. */
+    private fun appendGroupCategoryFilter(categoryName: String) {
+        if (categoryName == "전체") return
+        _uiState.update { state ->
+            val filters = state.groupRoomFilters.toMutableList()
+            if (filters.none { it == "전체" }) {
+                filters.add(0, "전체")
+            }
+            if (filters.none { it == categoryName }) {
+                filters.add(categoryName)
+            }
+            state.copy(groupRoomFilters = filters)
+        }
+    }
+
     /**
      * 개발/Preview용 상태 전환. 실제 데이터 연동 시 Repository 결과로 [uiState]를 갱신한다.
      */
@@ -119,4 +156,14 @@ class HomeViewModel(
             _uiEvent.emit(event)
         }
     }
+}
+
+private fun CategoryColor.toApiColor(): String = when (this) {
+    CategoryColor.Red -> "RED"
+    CategoryColor.Orange -> "ORANGE"
+    CategoryColor.Yellow -> "YELLOW"
+    CategoryColor.Green -> "GREEN"
+    CategoryColor.Blue -> "BLUE"
+    CategoryColor.Magenta -> "MAGENTA"
+    CategoryColor.Black -> "BLACK"
 }

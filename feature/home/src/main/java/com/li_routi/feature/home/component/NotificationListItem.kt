@@ -21,6 +21,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -45,6 +46,8 @@ fun NotificationListItem(
     } else {
         LiroutiTheme.colors.backgroundDefault
     }
+    // Figma Body4 13/16
+    val metaStyle = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp)
 
     Row(
         modifier = modifier
@@ -71,10 +74,7 @@ fun NotificationListItem(
             }
         }
 
-        Column(
-            modifier = Modifier.weight(1f),
-            verticalArrangement = Arrangement.spacedBy(6.dp),
-        ) {
+        Column(modifier = Modifier.weight(1f)) {
             Row(
                 modifier = Modifier.fillMaxWidth(),
                 horizontalArrangement = Arrangement.SpaceBetween,
@@ -82,18 +82,19 @@ fun NotificationListItem(
             ) {
                 Text(
                     text = item.categoryLabel,
-                    style = LiroutiTheme.typography.caption,
+                    style = metaStyle,
                     color = LiroutiTheme.colors.labelInfo,
                 )
                 Text(
                     text = item.timeLabel,
-                    style = LiroutiTheme.typography.caption,
+                    style = metaStyle,
                     color = LiroutiTheme.colors.labelInfo,
                 )
             }
             Text(
                 text = item.title,
-                style = LiroutiTheme.typography.body2,
+                // Figma Body3/Bold 14/22
+                style = LiroutiTheme.typography.body2LongSemiBold,
                 color = LiroutiTheme.colors.labelDefault,
             )
         }

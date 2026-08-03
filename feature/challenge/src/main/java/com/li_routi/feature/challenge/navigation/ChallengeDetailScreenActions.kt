@@ -21,6 +21,15 @@ interface ChallengeDetailScreenActions {
     /** 내 인증 게시글 더보기 바텀시트의 "수정하기" 완료(=수정 화면의 "완료" 버튼) */
     fun onEditCertificationSubmit(certificationId: Long, content: String)
 
+    /** 인증 수정 화면을 닫을 때(뒤로가기/닫기 또는 수정 성공 후). 이전 실패 시 남은 에러 메시지를 지운다. */
+    fun onEditCertificationDismiss()
+
+    /**
+     * 내 인증 게시글 더보기 바텀시트의 "삭제하기" 탭.
+     * 백엔드에 인증 삭제 API가 아직 없어 현재는 버튼 UI만 존재하고 동작은 없다(API 추가는 별도 진행 예정).
+     */
+    fun onDeleteCertificationClick(certificationId: Long)
+
     /** 타 사용자 인증 게시글 더보기 바텀시트의 "신고하기" 탭 */
     fun onReportCertificationClick(certificationId: Long)
 

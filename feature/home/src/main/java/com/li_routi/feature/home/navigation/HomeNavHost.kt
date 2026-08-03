@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -22,17 +23,22 @@ import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.feature.home.screen.MyRoutineScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
 import com.li_routi.feature.home.vm.NotificationUiEvent
+import com.li_routi.feature.shopping.navigation.ShoppingRoute
 
 private const val RouteHomeMain = "home_main"
 private const val RouteMyRoutine = "myRoutine"
 private const val RouteRoutineManage = "routineManage"
 private const val RouteNotification = "notification"
 private const val RouteNotificationSettings = "notification_settings"
+private const val RouteShop = "shop"
+
+/** 루틴 관리 완료 후 홈 요약 재조회 요청 플래그 (SavedStateHandle). */
+private const val KeyRefreshHome = "refresh_home"
 
 /**
  * 홈 피처 내비게이션 그래프.
  *
- * 홈 화면 → "내 루틴" 카드 탭(내 루틴 화면) / `+` 메뉴의 "내 루틴 관리"(루틴 관리 화면)까지는
+ * 홈 화면 → "내 루틴" / 알림 / 상점가기 / `+` 메뉴의 "내 루틴 관리"까지는
  * 이 NavHost 안에서 자체 처리하고, 방 만들기·초대코드 참여(다른 feature)는
  * [onCreateRoomClick]/[onJoinRoomWithInviteCodeClick]로 호출부(앱 전체 내비게이션)에 위임한다.
  */
@@ -50,7 +56,11 @@ fun HomeNavHost(
         startDestination = RouteHomeMain,
         modifier = modifier,
     ) {
-        composable(RouteHomeMain) {
+        composable(RouteHomeMain) { entry ->
+            val refreshHome by entry.savedStateHandle
+                .getStateFlow(KeyRefreshHome, false)
+                .collectAsStateWithLifecycle()
+
             HomeRoute(
                 onEvent = { event ->
                     when (event) {
@@ -59,14 +69,20 @@ fun HomeNavHost(
                         HomeUiEvent.NavigateToCreateRoom -> onCreateRoomClick()
                         HomeUiEvent.NavigateToJoinRoomWithInviteCode -> onJoinRoomWithInviteCodeClick()
                         HomeUiEvent.NavigateToNotification -> navController.navigate(RouteNotification)
-                        // TODO: 상점/체크리스트 카메라 진입 연결은 이번 범위 밖.
-                        HomeUiEvent.NavigateToShop,
+                        HomeUiEvent.NavigateToShop -> navController.navigate(RouteShop)
+                        // TODO: 체크리스트 카메라 진입은 HomeRoute HorizontalPager에서 처리.
                         HomeUiEvent.NavigateToRoutineAuthCamera,
                         is HomeUiEvent.NavigateToRoutineAuthCameraWithId,
+                        HomeUiEvent.CategoryCreated,
+                        is HomeUiEvent.CategoryCreateFailed,
                         -> Unit
                     }
                 },
                 onTabSelected = onTabSelected,
+                requestRefresh = refreshHome,
+                onRefreshHandled = {
+                    entry.savedStateHandle[KeyRefreshHome] = false
+                },
             )
         }
 
@@ -159,6 +175,17 @@ fun HomeNavHost(
 
         composable(RouteRoutineManage) {
             RoutineManageRoute(
+                onNavigateBack = { navController.popBackStack() },
+                onSubmitSuccess = {
+                    navController.getBackStackEntry(RouteHomeMain)
+                        .savedStateHandle[KeyRefreshHome] = true
+                    navController.popBackStack()
+                },
+            )
+        }
+
+        composable(RouteShop) {
+            ShoppingRoute(
                 onNavigateBack = { navController.popBackStack() },
             )
         }

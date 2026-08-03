@@ -93,7 +93,7 @@ fun ChallengeVerificationCameraScreen(
     }
 
     var lensFacing by remember { mutableIntStateOf(CameraSelector.LENS_FACING_BACK) }
-    var flashMode by remember { mutableIntStateOf(ImageCapture.FLASH_MODE_OFF) }
+    var isTorchOn by remember { mutableStateOf(false) }
     var imageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     var isCapturing by remember { mutableStateOf(false) }
 
@@ -153,6 +153,7 @@ fun ChallengeVerificationCameraScreen(
                         } else {
                             CameraSelector.LENS_FACING_BACK
                         }
+                        isTorchOn = false
                     },
                 )
                 Box(
@@ -190,14 +191,8 @@ fun ChallengeVerificationCameraScreen(
                 }
                 CameraControlAction(
                     iconResId = R.drawable.flash,
-                    label = if (flashMode == ImageCapture.FLASH_MODE_ON) "플래시 켜짐" else "플래시",
-                    onClick = {
-                        flashMode = if (flashMode == ImageCapture.FLASH_MODE_OFF) {
-                            ImageCapture.FLASH_MODE_ON
-                        } else {
-                            ImageCapture.FLASH_MODE_OFF
-                        }
-                    },
+                    label = if (isTorchOn) "켜짐" else "플래시",
+                    onClick = { isTorchOn = !isTorchOn },
                 )
             }
         },
@@ -210,8 +205,9 @@ fun ChallengeVerificationCameraScreen(
             if (hasCameraPermission) {
                 LiroutiCameraPreview(
                     lensFacing = lensFacing,
-                    flashMode = flashMode,
+                    flashMode = ImageCapture.FLASH_MODE_OFF,
                     isActive = true,
+                    torchEnabled = isTorchOn,
                     onImageCaptureReady = { imageCapture = it },
                     modifier = Modifier.fillMaxSize(),
                 )

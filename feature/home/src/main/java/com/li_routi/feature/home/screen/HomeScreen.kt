@@ -20,6 +20,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -31,6 +32,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
+import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.component.AddMenuBottomSheet
@@ -42,8 +46,10 @@ import com.li_routi.feature.home.component.SampleGroupRoomItems
 import com.li_routi.feature.home.component.SampleMyRoutineItems
 import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
 import com.li_routi.feature.home.component.ShopEntryCard
-import com.li_routi.feature.home.component.SwipeHintLabel
 import com.li_routi.feature.home.navigation.HomeScreenActions
+import com.li_routi.feature.home.vm.HomeUiEvent
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.emptyFlow
 
 /** Figma `Bottom Sheet` 상단의 드래그 힌트 바 (`h-[4px] w-[44px]`, 회색 pill). */
 private val SheetDragHandleColor = androidx.compose.ui.graphics.Color(0xFFDEDEDE)
@@ -68,7 +74,7 @@ internal fun homeTooltipMessage(hasActiveRoutine: Boolean, hasGroupRoom: Boolean
  * 구성한다([BottomSheetScaffold]). 각 탭의 실제 목록은 [RoutineChecklistSection]이 맡고, 데이터가
  * 없으면 그 안에서 탭별 empty 상태를 보여준다.
  *
- * 개인/그룹 루틴이 하나라도 있으면(스와이프 인증 대상이 있으면) "밀어서 빠른 인증" 힌트를 표시한다.
+ * Design Page [1.1]: 메인 Home에는 "밀어서 빠른 인증" 라벨을 두지 않는다.
  * 실제 카메라 진입은 [com.li_routi.feature.home.navigation.HomeRoute] HorizontalPager로 처리.
  */
 @OptIn(ExperimentalMaterial3Api::class)
@@ -90,12 +96,34 @@ fun HomeScreen(
     showChecklist: Boolean = hasActiveRoutine || hasGroupRoom,
     isLoading: Boolean = false,
     loadError: Boolean = false,
+    /** 카테고리 생성 성공/실패 등 홈 일회성 UI 이벤트. */
+    uiEvent: Flow<HomeUiEvent> = emptyFlow(),
     modifier: Modifier = Modifier,
 ) {
     var showAddMenuSheet by remember { mutableStateOf(false) }
+    var showCategorySheet by remember { mutableStateOf(false) }
+    var categoryName by remember { mutableStateOf("") }
+    var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
+    var categoryCreateError by remember { mutableStateOf<String?>(null) }
     val tooltipMessage = homeTooltipMessage(hasActiveRoutine, hasGroupRoom)
-    val showSwipeHint = hasActiveRoutine || hasGroupRoom
     val sheetScaffoldState = rememberBottomSheetScaffoldState()
+
+    LaunchedEffect(uiEvent) {
+        uiEvent.collect { event ->
+            when (event) {
+                HomeUiEvent.CategoryCreated -> {
+                    showCategorySheet = false
+                    categoryName = ""
+                    categoryColor = null
+                    categoryCreateError = null
+                }
+                is HomeUiEvent.CategoryCreateFailed -> {
+                    categoryCreateError = event.message
+                }
+                else -> Unit
+            }
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         BottomSheetScaffold(
@@ -167,6 +195,11 @@ fun HomeScreen(
                                 groupRoomFilters = groupRoomFilters,
                                 groupRoomItems = groupRoomItems,
                                 onRoutineCameraClick = actions::onRoutineCameraClick,
+                                onAddCategoryClick = {
+                                    categoryName = ""
+                                    categoryColor = null
+                                    showCategorySheet = true
+                                },
                             )
                             // 하단 네비게이션 바(오버레이)에 가려지지 않도록 여백을 둔다.
                             Box(modifier = Modifier.height(80.dp))
@@ -182,13 +215,12 @@ fun HomeScreen(
                     .verticalScroll(rememberScrollState())
                     .padding(horizontal = 16.dp, vertical = 8.dp),
             ) {
-                if (showSwipeHint) {
-                    SwipeHintLabel()
-                }
+                // Design Page [1.1]: 내 루틴 카드 없이 닉네임/캐릭터/상점가기 영역이 메인
                 ShopEntryCard(
                     nickname = nickname,
                     tooltipMessage = tooltipMessage,
                     onNavigateToShop = actions::onNavigateToShop,
+                    showRepresentativeBadge = hasActiveRoutine,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }
@@ -199,6 +231,17 @@ fun HomeScreen(
             onTabSelected = onTabSelected,
             modifier = Modifier.align(Alignment.BottomCenter),
         )
+
+        categoryCreateError?.let { message ->
+            LiroutiToast(
+                message = message,
+                onCloseClick = { categoryCreateError = null },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .padding(horizontal = 16.dp)
+                    .padding(bottom = 100.dp),
+            )
+        }
     }
 
     if (showAddMenuSheet) {
@@ -207,6 +250,27 @@ fun HomeScreen(
             onManageMyRoutineClick = actions::onManageMyRoutineClick,
             onCreateRoomClick = actions::onCreateRoomClick,
             onJoinRoomWithInviteCodeClick = actions::onJoinRoomWithInviteCodeClick,
+        )
+    }
+
+    if (showCategorySheet) {
+        CategoryAddBottomSheet(
+            name = categoryName,
+            onNameChange = {
+                categoryName = it.take(10)
+                categoryCreateError = null
+            },
+            selectedColor = categoryColor,
+            onColorSelected = { categoryColor = it },
+            placeholder = "최대 10자",
+            onConfirm = {
+                // 시트는 CategoryCreated 수신 시에만 닫는다.
+                actions.onCreateCategory(categoryName, categoryColor)
+            },
+            onDismissRequest = {
+                showCategorySheet = false
+                categoryCreateError = null
+            },
         )
     }
 }
@@ -237,6 +301,7 @@ private object PreviewHomeScreenActions : HomeScreenActions {
     override fun onCreateRoomClick() = Unit
     override fun onJoinRoomWithInviteCodeClick() = Unit
     override fun onRetryLoadClick() = Unit
+    override fun onCreateCategory(name: String, color: CategoryColor?) = Unit
 }
 
 @Preview(showBackground = true, heightDp = 800, name = "1. 처음 진입")

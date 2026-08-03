@@ -31,7 +31,7 @@ data class RoutineManageUiState(
     val addableCount: Int = 0,
     val selectedCategoryName: String = AllCategoryLabel,
     val templates: List<RoutineTemplate> = emptyList(),
-    /** templateId / custom id → 선택 여부 (alreadyAdded는 항상 true로 취급) */
+    /** templateId / custom id → 선택 여부 */
     val selectedIds: Set<String> = emptySet(),
     val customItems: List<CreateRoutineItem> = emptyList(),
     val errorMessage: String? = null,
@@ -46,6 +46,17 @@ data class RoutineManageUiState(
     val selectedCategoryId: Long?
         get() = categories.firstOrNull { it.name == selectedCategoryName }?.categoryId
 
+    /** 아직 내 루틴에 없는(새로 추가 가능한) 항목 id. */
+    val addableIds: Set<String>
+        get() {
+            val templateIds = templates
+                .asSequence()
+                .filter { !it.alreadyAdded }
+                .map { it.templateId.toString() }
+            val customIds = customItems.indices.asSequence().map { "$CustomIdPrefix$it" }
+            return (templateIds + customIds).toSet()
+        }
+
     val checklistItems: List<RoutineChecklistItem>
         get() {
             val templateItems = templates.map { template ->
@@ -53,9 +64,10 @@ data class RoutineManageUiState(
                 RoutineChecklistItem(
                     id = id,
                     name = template.name,
-                    checked = template.alreadyAdded || id in selectedIds,
+                    // 선택 여부는 selectedIds만 본다. alreadyAdded도 탭으로 해제 가능해야 한다.
+                    checked = id in selectedIds,
                     category = template.categoryName,
-                    selectable = !template.alreadyAdded,
+                    selectable = true,
                 )
             }
             val customs = customItems.mapIndexed { index, item ->
@@ -74,15 +86,16 @@ data class RoutineManageUiState(
 
     val allSelectableSelected: Boolean
         get() {
-            val selectable = checklistItems.filter { it.selectable }
-            return selectable.isNotEmpty() && selectable.all { it.checked }
+            val addable = addableIds
+            return addable.isNotEmpty() && addable.all { it in selectedIds }
         }
 
     val selectedCount: Int
         get() = checklistItems.count { it.checked }
 
+    /** 등록 중이 아니면 완료 버튼 활성 (선택 없어도 탭 가능). */
     val canSubmit: Boolean
-        get() = !isSubmitting && checklistItems.any { it.checked && it.selectable }
+        get() = !isSubmitting
 }
 
 sealed interface RoutineManageUiEvent {
@@ -138,8 +151,6 @@ class RoutineManageViewModel(
 
     fun onItemCheckedChange(id: String, checked: Boolean) {
         _uiState.update { state ->
-            val template = state.templates.firstOrNull { it.templateId.toString() == id }
-            if (template?.alreadyAdded == true) return@update state
             val next = state.selectedIds.toMutableSet()
             if (checked) next.add(id) else next.remove(id)
             state.copy(selectedIds = next)
@@ -148,12 +159,9 @@ class RoutineManageViewModel(
 
     fun onSelectAllChange(checked: Boolean) {
         _uiState.update { state ->
-            val selectableIds = state.checklistItems
-                .filter { it.selectable }
-                .map { it.id }
-                .toSet()
+            val addableIds = state.addableIds
             val next = state.selectedIds.toMutableSet()
-            if (checked) next.addAll(selectableIds) else next.removeAll(selectableIds)
+            if (checked) next.addAll(addableIds) else next.removeAll(addableIds)
             state.copy(selectedIds = next)
         }
     }
@@ -228,14 +236,17 @@ class RoutineManageViewModel(
 
     fun onSubmit() {
         val state = _uiState.value
-        if (!state.canSubmit) return
+        if (state.isSubmitting) return
+        // 빈 payload NavigateBack 포함, 연타로 pop이 여러 번 나가지 않도록 동기 가드.
+        _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
+
         val payload = buildCreatePayload(state)
         if (payload.isEmpty()) {
-            _uiState.update { it.copy(errorMessage = "추가할 루틴을 선택해 주세요.") }
+            // 새로 추가할 선택이 없으면 저장 없이 완료(뒤로가기).
+            viewModelScope.launch { _uiEvent.emit(RoutineManageUiEvent.NavigateBack) }
             return
         }
         viewModelScope.launch {
-            _uiState.update { it.copy(isSubmitting = true, errorMessage = null) }
             when (val result = createMemberRoutinesUseCase(payload)) {
                 is ResultState.Success -> {
                     _uiState.update { it.copy(isSubmitting = false) }

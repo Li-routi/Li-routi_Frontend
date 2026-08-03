@@ -16,6 +16,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.data.di.HomeContainer
+import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.feature.home.screen.HomeScreen
 import com.li_routi.feature.home.screen.RoutineAuthCameraScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
@@ -53,9 +54,15 @@ fun HomeRoute(
     onEvent: (HomeUiEvent) -> Unit = {},
     onCameraEvent: (RoutineAuthCameraUiEvent) -> Unit = {},
     onTabSelected: (AppBottomTab) -> Unit = {},
+    /** 루틴 관리 완료 등 외부에서 홈 요약을 다시 불러오라는 신호. */
+    requestRefresh: Boolean = false,
+    onRefreshHandled: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel {
-        HomeViewModel(getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase)
+        HomeViewModel(
+            getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase,
+            createRoutineCategoryUseCase = RoutineContainer.createRoutineCategoryUseCase,
+        )
     },
     cameraViewModel: RoutineAuthCameraViewModel = viewModel { RoutineAuthCameraViewModel() },
 ) {
@@ -68,6 +75,13 @@ fun HomeRoute(
     /** 체크리스트 카메라 아이콘으로 진입 시, 업로드 화면에서 미리 선택할 루틴 id. */
     var pendingAuthRoutineId by rememberSaveable { mutableStateOf<String?>(null) }
 
+    LaunchedEffect(requestRefresh) {
+        if (requestRefresh) {
+            viewModel.refresh()
+            onRefreshHandled()
+        }
+    }
+
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
             when (event) {
@@ -78,9 +92,17 @@ fun HomeRoute(
                     pendingAuthRoutineId = event.routineId
                     pendingPagerPage = PageCamera
                 }
+                HomeUiEvent.CategoryCreated,
+                is HomeUiEvent.CategoryCreateFailed,
+                -> Unit
                 else -> Unit
             }
-            onEvent(event)
+            // 카테고리 생성 결과는 HomeScreen이 직접 collect한다.
+            if (event !is HomeUiEvent.CategoryCreated &&
+                event !is HomeUiEvent.CategoryCreateFailed
+            ) {
+                onEvent(event)
+            }
         }
     }
 
@@ -196,6 +218,7 @@ private fun HomeScreenContent(
         showChecklist = uiState.showChecklist,
         isLoading = uiState.isLoading,
         loadError = uiState.loadError,
+        uiEvent = viewModel.uiEvent,
         modifier = modifier,
     )
 }

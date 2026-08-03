@@ -60,6 +60,9 @@ interface ChallengeRepository {
     /** 사진(mediaKey)과 코멘트로 인증 게시글을 작성한다. mediaKey는 미디어 presigned 업로드로 먼저 발급받는다. */
     suspend fun createVerification(challengeId: Long, mediaKey: String, content: String?): ResultState<CreatedVerification>
 
+    /** 인증 게시글의 메모(코멘트)만 수정한다 (사진은 그대로 유지). */
+    suspend fun updateVerificationMemo(challengeId: Long, verificationId: Long, content: String): ResultState<EditedVerification>
+
     /** 인증 게시글을 신고한다. */
     suspend fun reportVerification(challengeId: Long, verificationId: Long, reason: String?): ResultState<Unit>
 
