@@ -8,6 +8,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
@@ -31,6 +32,9 @@ private const val RouteNotification = "notification"
 private const val RouteNotificationSettings = "notification_settings"
 private const val RouteShop = "shop"
 
+/** 루틴 관리 완료 후 홈 요약 재조회 요청 플래그 (SavedStateHandle). */
+private const val KeyRefreshHome = "refresh_home"
+
 /**
  * 홈 피처 내비게이션 그래프.
  *
@@ -52,7 +56,11 @@ fun HomeNavHost(
         startDestination = RouteHomeMain,
         modifier = modifier,
     ) {
-        composable(RouteHomeMain) {
+        composable(RouteHomeMain) { entry ->
+            val refreshHome by entry.savedStateHandle
+                .getStateFlow(KeyRefreshHome, false)
+                .collectAsStateWithLifecycle()
+
             HomeRoute(
                 onEvent = { event ->
                     when (event) {
@@ -71,6 +79,10 @@ fun HomeNavHost(
                     }
                 },
                 onTabSelected = onTabSelected,
+                requestRefresh = refreshHome,
+                onRefreshHandled = {
+                    entry.savedStateHandle[KeyRefreshHome] = false
+                },
             )
         }
 
@@ -164,6 +176,11 @@ fun HomeNavHost(
         composable(RouteRoutineManage) {
             RoutineManageRoute(
                 onNavigateBack = { navController.popBackStack() },
+                onSubmitSuccess = {
+                    navController.getBackStackEntry(RouteHomeMain)
+                        .savedStateHandle[KeyRefreshHome] = true
+                    navController.popBackStack()
+                },
             )
         }
 

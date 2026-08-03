@@ -32,6 +32,8 @@ import com.li_routi.feature.home.vm.RoutineManageViewModel
 @Composable
 fun RoutineManageRoute(
     onNavigateBack: () -> Unit,
+    /** 완료(등록 성공) 후 호출. 기본은 [onNavigateBack]과 동일. */
+    onSubmitSuccess: () -> Unit = onNavigateBack,
     modifier: Modifier = Modifier,
     viewModel: RoutineManageViewModel = viewModel {
         RoutineManageViewModel(
@@ -53,9 +55,8 @@ fun RoutineManageRoute(
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
             when (event) {
-                RoutineManageUiEvent.NavigateBack,
-                RoutineManageUiEvent.SubmitSuccess,
-                -> onNavigateBack()
+                RoutineManageUiEvent.NavigateBack -> onNavigateBack()
+                RoutineManageUiEvent.SubmitSuccess -> onSubmitSuccess()
             }
         }
     }
