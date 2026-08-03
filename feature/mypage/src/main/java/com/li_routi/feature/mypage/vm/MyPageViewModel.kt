@@ -38,7 +38,9 @@ class MyPageViewModel(
     override fun onEditProfileClick() {
         viewModelScope.launch { _uiEvent.emit(MyPageUiEvent.NavigateToEditProfile) }
     }
-    override fun onMyVerificationClick() = Unit
+    override fun onMyVerificationClick() {
+        viewModelScope.launch { _uiEvent.emit(MyPageUiEvent.NavigateToMyVerification) }
+    }
     override fun onAchievementClick() {
         viewModelScope.launch { _uiEvent.emit(MyPageUiEvent.NavigateToAchievement) }
     }

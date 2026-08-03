@@ -3,6 +3,7 @@ package com.li_routi.feature.mypage.component
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxScope
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -22,13 +23,14 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 /**
  * "프로필 수정" 화면 상단 바. Figma node `205:18110`("nav") 기준.
  *
- * 왼쪽 뒤로가기 chevron + 화면 중앙 정렬 타이틀.
+ * 왼쪽 뒤로가기 chevron + 화면 중앙 정렬 타이틀 + (선택) 오른쪽 [trailingContent].
  */
 @Composable
 fun EditProfileTopBar(
     title: String,
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
+    trailingContent: (@Composable BoxScope.() -> Unit)? = null,
 ) {
     Box(
         modifier = modifier
@@ -47,10 +49,15 @@ fun EditProfileTopBar(
         )
         Text(
             text = title,
-            style = LiroutiTheme.typography.heading2SemiBold,
+            style = LiroutiTheme.typography.heading2Bold,
             color = LiroutiTheme.colors.labelDefault,
             modifier = Modifier.align(Alignment.Center),
         )
+        if (trailingContent != null) {
+            Box(modifier = Modifier.align(Alignment.CenterEnd)) {
+                trailingContent()
+            }
+        }
     }
 }
 
