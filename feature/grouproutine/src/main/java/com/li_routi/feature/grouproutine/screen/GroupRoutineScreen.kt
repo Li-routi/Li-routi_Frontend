@@ -1867,8 +1867,12 @@ private fun GroupSettingsScreen(
                 InviteCodeRow(
                     code = uiState.groupInviteCode.orEmpty(),
                     onClick = {
-                        uiState.groupInviteCode?.let { clipboardManager.setText(AnnotatedString(it)) }
-                        onInviteCodeCopyClick()
+                        val code = uiState.groupInviteCode
+                        //코드가 실제로 존재할때만 클립보드에 복사
+                        if(!code.isNullOrBlank()) {
+                            clipboardManager.setText(AnnotatedString(code))
+                            onInviteCodeCopyClick()
+                        }
                     },
                 )
             }

@@ -30,10 +30,12 @@ class GroupRoutineViewModel(
     private val _uiState = MutableStateFlow(GroupRoutineUiState())
     val uiState: StateFlow<GroupRoutineUiState> = _uiState.asStateFlow()
 
-    // 그룹 목록 조회 API가 없어서 List 화면은 로컬 mock(id 1,2,3...) 계속 씀.
-    // 실제로 만든 그룹의 groupId가 selectedRoutineId로 들어오면 그거 쓰고, 아직 하나도 안 만들었으면
-    // 이전에 테스트로 만들어둔 groupId=1 그룹으로 폴백함
-    private fun currentGroupId(): Long = _uiState.value.selectedRoutineId ?: 1L
+    // PR 반영: Mock ID와 실제 서버 ID 분리
+    // createGroupUseCase 성공 시나 초대코드로 조인했을 때 발급되는 실제 서버 그룹 ID를 저장합니다.
+    private var backendGroupId: Long? = null
+
+    // API 호출 시 사용할 currentGroupId()는 이제 실제 backendGroupId를 참조합니다.
+    private fun currentGroupId(): Long? = backendGroupId
 
     fun onRoutineClick(routineId: Long) {
         _uiState.update {
@@ -169,20 +171,34 @@ class GroupRoutineViewModel(
     }
 
     private fun loadInviteCode() {
+        val groupId = currentGroupId()
+        if (groupId == null) {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+        
         viewModelScope.launch {
-            when (val result = getGroupInviteCodeUseCase(currentGroupId())) {
+            when (val result = getGroupInviteCodeUseCase(groupId)) {
                 is ResultState.Success -> _uiState.update { it.copy(groupInviteCode = result.data.inviteCode) }
-                is ResultState.Error -> issueInviteCode()
+                // PR 반영: ResultState.Error 시 바로 새로 발급(issue)하지 않고 에러 메시지 띄우기 (기존 초대코드 무효화 방지)
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
         }
     }
 
     private fun issueInviteCode() {
+        val groupId = currentGroupId()
+        if (groupId == null) {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
         viewModelScope.launch {
-            when (val result = issueGroupInviteCodeUseCase(currentGroupId())) {
+            when (val result = issueGroupInviteCodeUseCase(groupId)) {
                 is ResultState.Success -> _uiState.update { it.copy(groupInviteCode = result.data.inviteCode) }
-                is ResultState.Error -> Unit
+                // PR 반영: 발급 실패 시 무시(Unit)하지 않고 메시지 노출
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
         }
@@ -317,9 +333,11 @@ class GroupRoutineViewModel(
             if (state.inviteCodeInput.isBlank()) {
                 state.copy(actionMessage = "초대코드를 입력해주세요.")
             } else {
+                // PR 반영: 조인 완료 후 임시로 첫 번째 루틴 ID를 서버 ID로 둡니다 (향후 API 연동 시 응답 ID로 교체)
+                backendGroupId = state.routines.firstOrNull()?.id
                 state.copy(
                     screenMode = GroupRoutineScreenMode.Detail,
-                    selectedRoutineId = state.routines.firstOrNull()?.id,
+                    selectedRoutineId = backendGroupId,
                     inviteCodeInput = "",
                     actionMessage = "그룹방에 참여했어요.",
                 )
@@ -468,13 +486,18 @@ class GroupRoutineViewModel(
     fun onRoutineSettingConfirmClick() {
         val state = _uiState.value
         val title = state.routineDraftName.trim()
+        
         if (title.isBlank()) {
             _uiState.update { it.copy(actionMessage = "루틴 이름을 입력해주세요.") }
             return
         }
 
-        // 그룹 루틴 관리 화면(이미 만들어진 그룹)에서는 실제 API로 만들고, 방 만들기 전(루틴 선택
-        // 단계)에는 방 만들기 누를 때 한 번에 보내니까 로컬 상태만 바꿈
+        // PR 반영: "전체" 카테고리는 조회(필터) 전용이므로 생성/수정 시 선택을 강제
+        if (state.selectedCategory == "전체") {
+            _uiState.update { it.copy(actionMessage = "카테고리를 선택해주세요.") }
+            return
+        }
+
         if (state.screenMode == GroupRoutineScreenMode.GroupRoutineManage) {
             submitGroupRoutine(state, title)
         } else {
@@ -483,67 +506,83 @@ class GroupRoutineViewModel(
     }
 
     private fun submitGroupRoutine(state: GroupRoutineUiState, title: String) {
-        val categoryName = state.selectedCategory.takeUnless { it == "전체" } ?: "건강"
+        val groupId = currentGroupId()
+        if (groupId == null) {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        // PR 반영: 따닥(중복 클릭)으로 인한 API 다중 호출 방지 가드
+        if (state.isSubmitting) return
+        _uiState.update { it.copy(isSubmitting = true) }
+
+        val categoryName = state.selectedCategory
         val schedules = state.routineDraftRepeatDays.toGroupRoutineSchedules(endTime = "23:00")
         val editingId = state.editingRoutineId
-        val groupId = currentGroupId()
-        // 루틴 단독 생성/수정 API는 categoryId만 받고 새 커스텀 카테고리를 못 만듦(그룹 생성 때만 가능).
-        // 그래서 기본 카테고리가 아니면 그냥 실패 처리 — 1L(운동)로 조용히 잘못 붙이는 것보다 나음
         val categoryId = DefaultCategoryIds[categoryName]
+        
         if (categoryId == null) {
-            _uiState.update { it.copy(actionMessage = "\"$categoryName\"은 아직 지원하지 않는 카테고리예요. 기본 카테고리를 선택해주세요.") }
+            _uiState.update { it.copy(isSubmitting = false, actionMessage = "\"$categoryName\"은 아직 지원하지 않는 카테고리예요. 기본 카테고리를 선택해주세요.") }
             return
         }
 
         viewModelScope.launch {
-            val result = if (editingId == null) {
-                createGroupRoutineUseCase(
-                    groupId = groupId,
-                    categoryId = categoryId,
-                    title = title,
-                    description = title,
-                    schedules = schedules,
-                )
-            } else {
-                updateGroupRoutineUseCase(
-                    groupId = groupId,
-                    routineId = editingId,
-                    categoryId = categoryId,
-                    title = title,
-                    description = title,
-                    schedules = schedules,
-                )
-            }
-            when (result) {
-                is ResultState.Success -> {
-                    val routine = result.data
-                    val repeatLabel = repeatDaysLabel(state.routineDraftRepeatDays)
-                    val savedOption = CreateRoutineOptionUiModel(
-                        id = routine.routineId,
-                        title = routine.title,
-                        deadline = "23:00",
-                        category = categoryName,
-                        repeatLabel = repeatLabel,
-                        repeatDays = state.routineDraftRepeatDays,
+            try {
+                val result = if (editingId == null) {
+                    createGroupRoutineUseCase(
+                        groupId = groupId,
+                        categoryId = categoryId,
+                        title = title,
+                        description = title,
+                        schedules = schedules,
                     )
-                    _uiState.update {
-                        val nextOptions = if (editingId == null) {
-                            it.routineOptions + savedOption
-                        } else {
-                            it.routineOptions.map { option -> if (option.id == editingId) savedOption else option }
-                        }
-                        it.copy(
-                            routineOptions = nextOptions,
-                            isRoutineSettingSheetVisible = false,
-                            editingRoutineId = null,
-                            routineDraftName = "",
-                            routineDraftRepeatDays = emptySet(),
-                            actionMessage = null,
-                        )
-                    }
+                } else {
+                    updateGroupRoutineUseCase(
+                        groupId = groupId,
+                        routineId = editingId,
+                        categoryId = categoryId,
+                        title = title,
+                        description = title,
+                        schedules = schedules,
+                    )
                 }
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
-                ResultState.Loading -> Unit
+                when (result) {
+                    is ResultState.Success -> {
+                        val routine = result.data
+                        val repeatLabel = repeatDaysLabel(state.routineDraftRepeatDays)
+                        val savedOption = CreateRoutineOptionUiModel(
+                            id = routine.routineId,
+                            title = routine.title,
+                            deadline = "23:00",
+                            category = categoryName,
+                            repeatLabel = repeatLabel,
+                            repeatDays = state.routineDraftRepeatDays,
+                        )
+                        _uiState.update {
+                            val nextOptions = if (editingId == null) {
+                                it.routineOptions + savedOption
+                            } else {
+                                it.routineOptions.map { option ->
+                                    // PR 반영: 수정 시 기존의 isSelected 상태 유지
+                                    if (option.id == editingId) savedOption.copy(isSelected = option.isSelected) else option
+                                }
+                            }
+                            it.copy(
+                                routineOptions = nextOptions,
+                                isRoutineSettingSheetVisible = false,
+                                editingRoutineId = null,
+                                routineDraftName = "",
+                                routineDraftRepeatDays = emptySet(),
+                                actionMessage = null,
+                            )
+                        }
+                    }
+                    is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                // 성공/실패 무관하게 중복 호출 방지 플래그 초기화
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -551,13 +590,15 @@ class GroupRoutineViewModel(
     private fun applyLocalRoutineDraft(state: GroupRoutineUiState, title: String) {
         val repeatLabel = repeatDaysLabel(state.routineDraftRepeatDays)
         val editingId = state.editingRoutineId
+        val categoryName = state.selectedCategory
+        
         val nextOptions = if (editingId == null) {
             val newId = (state.routineOptions.maxOfOrNull { it.id } ?: 0L) + 1L
             state.routineOptions + CreateRoutineOptionUiModel(
                 id = newId,
                 title = title,
                 deadline = "23:00",
-                category = state.selectedCategory.takeUnless { it == "전체" } ?: "건강",
+                category = categoryName,
                 repeatLabel = repeatLabel,
                 repeatDays = state.routineDraftRepeatDays,
             )
@@ -625,8 +666,11 @@ class GroupRoutineViewModel(
             _uiState.update { it.copy(actionMessage = "방 이름을 입력해주세요.") }
             return
         }
+        
+        // PR 반영: 따닥(중복 클릭)으로 인한 그룹 2개 생성 방지
+        if (state.isSubmitting) return
+        _uiState.update { it.copy(isSubmitting = true) }
 
-        // 기본 카테고리랑 이름 겹치면 커스텀으로 또 만들려다 409 나서, 기본 카테고리는 categoryId로 보냄
         val categoryNames = selectedOptions.map { it.category }.distinct()
         val customCategories = categoryNames
             .filter { it !in DefaultCategoryIds }
@@ -637,53 +681,60 @@ class GroupRoutineViewModel(
                 categoryKey = if (option.category in DefaultCategoryIds) null else option.category,
                 title = option.title,
                 description = option.title,
-                // 화면에 마감시간 하나만 있어서 시작 시각은 00:00으로 고정해둠. 시작 시각 입력 생기면 옮겨야 함
                 schedules = option.repeatDays.toGroupRoutineSchedules(endTime = option.deadline),
             )
         }
 
         viewModelScope.launch {
-            when (val result = createGroupUseCase(roomName, customCategories, routines)) {
-                is ResultState.Success -> {
-                    val groupId = result.data.groupId
-                    val newRoutine = GroupRoutineUiModel(
-                        id = groupId,
-                        title = roomName,
-                        lastActiveLabel = "방금 전 활동",
-                        memberCount = 1,
-                        routineCount = selectedOptions.size,
-                        statusLabel = "진행중",
-                        isCompleted = false,
-                        todayCompletedCount = 0,
-                        todayTotalCount = selectedOptions.size,
-                        streakDays = 0,
-                        monthlyAchievementRate = 0,
-                        todayCertificationCount = 0,
-                    )
-                    val selectedTodos = selectedOptions.map { option ->
-                        GroupTodoUiModel(
-                            id = option.id,
-                            title = option.title,
-                            deadline = option.deadline,
-                            category = option.category,
-                            isDone = false,
+            try {
+                when (val result = createGroupUseCase(roomName, customCategories, routines)) {
+                    is ResultState.Success -> {
+                        val groupId = result.data.groupId
+                        // PR 반영: 생성 성공한 실제 서버 그룹 ID를 저장
+                        backendGroupId = groupId
+                        
+                        val newRoutine = GroupRoutineUiModel(
+                            id = groupId,
+                            title = roomName,
+                            lastActiveLabel = "방금 전 활동",
+                            memberCount = 1,
+                            routineCount = selectedOptions.size,
+                            statusLabel = "진행중",
+                            isCompleted = false,
+                            todayCompletedCount = 0,
+                            todayTotalCount = selectedOptions.size,
+                            streakDays = 0,
+                            monthlyAchievementRate = 0,
+                            todayCertificationCount = 0,
                         )
+                        val selectedTodos = selectedOptions.map { option ->
+                            GroupTodoUiModel(
+                                id = option.id,
+                                title = option.title,
+                                deadline = option.deadline,
+                                category = option.category,
+                                isDone = false,
+                            )
+                        }
+                        _uiState.update {
+                            it.copy(
+                                screenMode = GroupRoutineScreenMode.Detail,
+                                selectedRoutineId = groupId,
+                                roomNameInput = "",
+                                routineOptions = DefaultCreateRoutineOptions,
+                                selectedCategory = "전체",
+                                routines = listOf(newRoutine) + it.routines,
+                                todos = selectedTodos,
+                                actionMessage = "방이 만들어졌어요.",
+                            )
+                        }
                     }
-                    _uiState.update {
-                        it.copy(
-                            screenMode = GroupRoutineScreenMode.Detail,
-                            selectedRoutineId = groupId,
-                            roomNameInput = "",
-                            routineOptions = DefaultCreateRoutineOptions,
-                            selectedCategory = "전체",
-                            routines = listOf(newRoutine) + it.routines,
-                            todos = selectedTodos,
-                            actionMessage = "방이 만들어졌어요.",
-                        )
-                    }
+                    is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                    ResultState.Loading -> Unit
                 }
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
-                ResultState.Loading -> Unit
+            } finally {
+                // 완료 후 제출 상태 해제
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -734,8 +785,6 @@ private val DefaultCategoryIds = mapOf(
     "취미" to 6L,
 )
 
-// 백엔드가 schedules 최소 1개를 요구하는데 화면에서는 "없음"(반복 요일 미선택)도 허용해서, 없으면 매일로 보냄.
-// 화면에 시작 시각 입력이 없어서 startTime은 일단 00:00 고정
 private fun Set<String>.toGroupRoutineSchedules(endTime: String): List<GroupRoutineSchedule> {
     val days = ifEmpty { KoreanDayToRepeatDay.keys }
     return days.mapNotNull { KoreanDayToRepeatDay[it] }.map { day ->

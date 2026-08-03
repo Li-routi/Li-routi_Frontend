@@ -1,5 +1,6 @@
 package com.li_routi.core.data.mapper
 
+import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.data.network.dto.response.GroupCreateResultResponse
 import com.li_routi.core.data.network.dto.response.GroupInviteCodeResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineScheduleResponse
@@ -21,7 +22,9 @@ fun GroupCreateResultResponse.toDomain(): CreatedGroup = CreatedGroup(
 )
 
 fun GroupRoutineScheduleResponse.toDomain(): GroupRoutineSchedule = GroupRoutineSchedule(
-    repeatDay = RepeatDay.valueOf(repeatDay),
+    // PR 반영: Enum 변환 실패 시 안전하게 캐치하여 명확한 ApiException 발생
+    repeatDay = runCatching { RepeatDay.valueOf(repeatDay) }
+        .getOrElse { throw ApiException("지원하지 않는 repeatDay: $repeatDay") },
     startTime = startTime,
     endTime = endTime,
 )
@@ -49,7 +52,9 @@ fun TodayGroupRoutineResponse.toDomain(): TodayGroupRoutine = TodayGroupRoutine(
     assignedDate = assignedDate,
     scheduledStartTime = scheduledStartTime,
     scheduledEndTime = scheduledEndTime,
-    status = GroupRoutineStatus.valueOf(status),
+    // PR 반영: Enum 변환 실패 시 안전하게 캐치하여 명확한 ApiException 발생
+    status = runCatching { GroupRoutineStatus.valueOf(status) }
+        .getOrElse { throw ApiException("지원하지 않는 status: $status") },
 )
 
 fun TodayGroupRoutineListResponse.toDomain(): List<TodayGroupRoutine> = routines.map { it.toDomain() }
