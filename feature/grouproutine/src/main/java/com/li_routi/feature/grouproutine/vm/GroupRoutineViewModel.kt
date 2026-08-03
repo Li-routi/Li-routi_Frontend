@@ -4,8 +4,11 @@ import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.GroupRoutineContainer
+import com.li_routi.core.domain.grouproutine.CreateGroupRoutineCategoryUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
+import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
+import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.IssueGroupInviteCodeUseCase
@@ -25,6 +28,9 @@ class GroupRoutineViewModel(
     private val updateGroupRoutineUseCase: UpdateGroupRoutineUseCase = GroupRoutineContainer.updateGroupRoutineUseCase,
     private val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase = GroupRoutineContainer.getGroupInviteCodeUseCase,
     private val issueGroupInviteCodeUseCase: IssueGroupInviteCodeUseCase = GroupRoutineContainer.issueGroupInviteCodeUseCase,
+    private val getGroupRoutineCategoriesUseCase: GetGroupRoutineCategoriesUseCase = GroupRoutineContainer.getGroupRoutineCategoriesUseCase,
+    private val createGroupRoutineCategoryUseCase: CreateGroupRoutineCategoryUseCase = GroupRoutineContainer.createGroupRoutineCategoryUseCase,
+    private val getGroupRoutineVerificationsUseCase: GetGroupRoutineVerificationsUseCase = GroupRoutineContainer.getGroupRoutineVerificationsUseCase,
 ) : BaseViewModel() {
 
     private val _uiState = MutableStateFlow(GroupRoutineUiState())
@@ -36,6 +42,8 @@ class GroupRoutineViewModel(
 
     // API 호출 시 사용할 currentGroupId()는 이제 실제 backendGroupId를 참조합니다.
     private fun currentGroupId(): Long? = backendGroupId
+
+    private fun currentRoutineId(): Long = _uiState.value.todos.firstOrNull()?.id ?: 1L
 
     fun onRoutineClick(routineId: Long) {
         _uiState.update {
@@ -124,6 +132,7 @@ class GroupRoutineViewModel(
                 actionMessage = null,
             )
         }
+        loadRoutineVerifications()
     }
 
     fun onChatClick() {
@@ -187,6 +196,67 @@ class GroupRoutineViewModel(
         }
     }
 
+    private fun loadGroupRoutineCategories() {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        viewModelScope.launch {
+            when (val result = getGroupRoutineCategoriesUseCase(groupId)) {
+                is ResultState.Success -> {
+                    val categoryNames = result.data.categories.map { it.name }
+                    _uiState.update { state ->
+                        val allLabel = state.categories.firstOrNull().orEmpty()
+                        state.copy(categories = listOf(allLabel) + categoryNames)
+                    }
+                }
+
+                is ResultState.Error -> Unit
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun loadRoutineVerifications() {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        viewModelScope.launch {
+            when (
+                val result = getGroupRoutineVerificationsUseCase(
+                    groupId = groupId,
+                    routineId = currentRoutineId(),
+                    cursor = null,
+                    size = 20,
+                )
+            ) {
+                is ResultState.Success -> {
+                    val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
+                    _uiState.update {
+                        it.copy(
+                            posts = result.data.verifications.map { item ->
+                                CertificationPostUiModel(
+                                    id = item.verificationId,
+                                    userName = item.nickname,
+                                    body = item.content.orEmpty(),
+                                    likeCount = 0,
+                                    timeAgo = item.verifiedAt.orEmpty(),
+                                    isMine = item.memberId == myMemberId,
+                                )
+                            },
+                        )
+                    }
+                }
+
+                is ResultState.Error -> Unit
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
     fun onMemberClick(memberId: Long) {
         _uiState.update { it.copy(selectedMemberId = memberId, actionMessage = null) }
     }
@@ -201,6 +271,7 @@ class GroupRoutineViewModel(
 
     fun onGroupRoutineManageClick() {
         _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.GroupRoutineManage, actionMessage = null) }
+        loadGroupRoutineCategories()
     }
 
     fun onRoomNameEditClick() {
@@ -291,6 +362,9 @@ class GroupRoutineViewModel(
             it.copy(
                 screenMode = GroupRoutineScreenMode.CreateRoomName,
                 isActionSheetVisible = false,
+                roomNameInput = "",
+                routineOptions = DefaultCreateRoutineOptions,
+                selectedCategory = "전체",
                 actionMessage = null,
             )
         }
@@ -394,20 +468,49 @@ class GroupRoutineViewModel(
     }
 
     fun onCategoryConfirmClick() {
-        _uiState.update { state ->
-            val name = state.categoryInput.trim()
-            if (name.isBlank()) {
-                state.copy(actionMessage = "카테고리를 입력해주세요.")
-            } else if (name in state.categories) {
-                state.copy(actionMessage = "이미 있는 카테고리예요.")
-            } else {
-                state.copy(
-                    categories = state.categories + name,
+        val state = _uiState.value
+        val name = state.categoryInput.trim()
+        if (name.isBlank()) {
+            _uiState.update { it.copy(actionMessage = "카테고리를 입력해주세요.") }
+            return
+        }
+        if (name in state.categories) {
+            _uiState.update { it.copy(actionMessage = "이미 있는 카테고리예요.") }
+            return
+        }
+
+        if (state.screenMode == GroupRoutineScreenMode.CreateRoutineSelect) {
+            _uiState.update {
+                it.copy(
+                    categories = it.categories + name,
                     selectedCategory = name,
                     categoryInput = "",
                     isCategorySheetVisible = false,
                     actionMessage = null,
                 )
+            }
+            return
+        }
+
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        viewModelScope.launch {
+            when (val result = createGroupRoutineCategoryUseCase(groupId, name, color = null)) {
+                is ResultState.Success -> _uiState.update {
+                    it.copy(
+                        categories = it.categories + result.data.name,
+                        selectedCategory = result.data.name,
+                        categoryInput = "",
+                        isCategorySheetVisible = false,
+                        actionMessage = null,
+                    )
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
             }
         }
     }
@@ -675,9 +778,8 @@ class GroupRoutineViewModel(
                 when (val result = createGroupUseCase(roomName, customCategories, routines)) {
                     is ResultState.Success -> {
                         val groupId = result.data.groupId
-                        // PR 반영: 생성 성공한 실제 서버 그룹 ID를 저장
                         backendGroupId = groupId
-                        
+
                         val newRoutine = GroupRoutineUiModel(
                             id = groupId,
                             title = roomName,
@@ -692,7 +794,15 @@ class GroupRoutineViewModel(
                             monthlyAchievementRate = 0,
                             todayCertificationCount = 0,
                         )
-                        val selectedTodos = selectedOptions.map { option ->
+                        val createdOptions = selectedOptions.mapIndexed { index, option ->
+                            val createdRoutine = result.data.routines.getOrNull(index)
+                            option.copy(
+                                id = createdRoutine?.routineId ?: option.id,
+                                title = createdRoutine?.title ?: option.title,
+                                category = createdRoutine?.categoryName ?: option.category,
+                            )
+                        }
+                        val selectedTodos = createdOptions.map { option ->
                             GroupTodoUiModel(
                                 id = option.id,
                                 title = option.title,
@@ -706,7 +816,7 @@ class GroupRoutineViewModel(
                                 screenMode = GroupRoutineScreenMode.Detail,
                                 selectedRoutineId = groupId,
                                 roomNameInput = "",
-                                routineOptions = DefaultCreateRoutineOptions,
+                                routineOptions = createdOptions,
                                 selectedCategory = "전체",
                                 routines = listOf(newRoutine) + it.routines,
                                 todos = selectedTodos,

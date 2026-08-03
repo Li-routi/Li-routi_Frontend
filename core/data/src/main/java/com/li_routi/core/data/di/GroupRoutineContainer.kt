@@ -2,9 +2,12 @@ package com.li_routi.core.data.di
 
 import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.repository.GroupRoutineRepositoryImpl
+import com.li_routi.core.domain.grouproutine.CreateGroupRoutineCategoryUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
+import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
+import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetTodayGroupRoutinesUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
 import com.li_routi.core.domain.grouproutine.IssueGroupInviteCodeUseCase
@@ -42,5 +45,17 @@ object GroupRoutineContainer {
 
     val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase by lazy {
         GetGroupInviteCodeUseCase(repository)
+    }
+
+    val getGroupRoutineCategoriesUseCase: GetGroupRoutineCategoriesUseCase by lazy {
+        GetGroupRoutineCategoriesUseCase(repository)
+    }
+
+    val createGroupRoutineCategoryUseCase: CreateGroupRoutineCategoryUseCase by lazy {
+        CreateGroupRoutineCategoryUseCase(repository)
+    }
+
+    val getGroupRoutineVerificationsUseCase: GetGroupRoutineVerificationsUseCase by lazy {
+        GetGroupRoutineVerificationsUseCase(repository)
     }
 }

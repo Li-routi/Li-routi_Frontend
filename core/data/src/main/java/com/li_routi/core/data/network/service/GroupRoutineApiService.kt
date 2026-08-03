@@ -1,10 +1,14 @@
 package com.li_routi.core.data.network.service
 
 import com.li_routi.core.data.network.dto.request.CreateGroupRequest
+import com.li_routi.core.data.network.dto.request.CreateGroupRoutineCategoryRequest
 import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.GroupCreateResultResponse
 import com.li_routi.core.data.network.dto.response.GroupInviteCodeResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryListResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineListResponse
 import retrofit2.http.Body
@@ -12,6 +16,7 @@ import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
 import retrofit2.http.Path
+import retrofit2.http.Query
 
 interface GroupRoutineApiService {
 
@@ -47,4 +52,23 @@ interface GroupRoutineApiService {
     suspend fun getInviteCode(
         @Path("groupId") groupId: Long,
     ): ApiResponse<GroupInviteCodeResponse>
+
+    @GET("api/groups/{groupId}/categories")
+    suspend fun getCategories(
+        @Path("groupId") groupId: Long,
+    ): ApiResponse<GroupRoutineCategoryListResponse>
+
+    @POST("api/groups/{groupId}/categories")
+    suspend fun createCategory(
+        @Path("groupId") groupId: Long,
+        @Body request: CreateGroupRoutineCategoryRequest,
+    ): ApiResponse<GroupRoutineCategoryResponse>
+
+    @GET("api/groups/{groupId}/routines/{routineId}/verifications")
+    suspend fun getRoutineVerifications(
+        @Path("groupId") groupId: Long,
+        @Path("routineId") routineId: Long,
+        @Query("cursor") cursor: Long?,
+        @Query("size") size: Int?,
+    ): ApiResponse<GroupRoutineFeedResponse>
 }
