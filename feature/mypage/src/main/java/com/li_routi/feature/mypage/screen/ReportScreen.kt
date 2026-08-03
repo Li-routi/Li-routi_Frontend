@@ -71,7 +71,7 @@ fun ReportScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(25.dp),
         ) {
-            ReportPeriodTabs(
+                ReportPeriodTabs(
                 tabs = listOf("주간", "월간"),
                 selectedIndex = selectedTab,
                 onTabSelected = { selectedTab = it },
@@ -98,7 +98,7 @@ fun ReportScreen(
                 modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                Text(text = "활동 통계", style = LiroutiTheme.typography.body1SemiBold, color = LiroutiTheme.colors.labelStrong)
+                Text(text = "활동 통계", style = LiroutiTheme.typography.body1Bold, color = LiroutiTheme.colors.labelStrong)
                 ActivityStatsGrid(stats = activityStats)
             }
         }
