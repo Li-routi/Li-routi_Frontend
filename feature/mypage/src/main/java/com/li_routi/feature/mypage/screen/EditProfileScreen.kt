@@ -2,6 +2,7 @@ package com.li_routi.feature.mypage.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -21,6 +22,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.component.LiroutiTextField
@@ -42,11 +46,19 @@ fun EditProfileScreen(
     modifier: Modifier = Modifier,
 ) {
     var nickname by remember(initialNickname) { mutableStateOf(initialNickname) }
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundDefault),
+            .background(LiroutiTheme.colors.backgroundDefault)
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
+                })
+            },
     ) {
         EditProfileTopBar(title = "프로필 수정", onBackClick = onBackClick)
         Column(
