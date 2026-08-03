@@ -487,13 +487,19 @@ class GroupRoutineViewModel(
         val schedules = state.routineDraftRepeatDays.toGroupRoutineSchedules(endTime = "23:00")
         val editingId = state.editingRoutineId
         val groupId = currentGroupId()
+        // 루틴 단독 생성/수정 API는 categoryId만 받고 새 커스텀 카테고리를 못 만듦(그룹 생성 때만 가능).
+        // 그래서 기본 카테고리가 아니면 그냥 실패 처리 — 1L(운동)로 조용히 잘못 붙이는 것보다 나음
         val categoryId = DefaultCategoryIds[categoryName]
+        if (categoryId == null) {
+            _uiState.update { it.copy(actionMessage = "\"$categoryName\"은 아직 지원하지 않는 카테고리예요. 기본 카테고리를 선택해주세요.") }
+            return
+        }
 
         viewModelScope.launch {
             val result = if (editingId == null) {
                 createGroupRoutineUseCase(
                     groupId = groupId,
-                    categoryId = categoryId ?: 1L,
+                    categoryId = categoryId,
                     title = title,
                     description = title,
                     schedules = schedules,
@@ -502,7 +508,7 @@ class GroupRoutineViewModel(
                 updateGroupRoutineUseCase(
                     groupId = groupId,
                     routineId = editingId,
-                    categoryId = categoryId ?: 1L,
+                    categoryId = categoryId,
                     title = title,
                     description = title,
                     schedules = schedules,
