@@ -90,7 +90,16 @@ fun RoutineAuthUploadScreen(
     val keyboardController = LocalSoftwareKeyboardController.current
 
     Scaffold(
-        modifier = modifier.fillMaxSize(),
+        modifier = modifier
+            .fillMaxSize()
+            // 콘텐츠 Column에만 있으면 topBar/bottomBar 영역은 아예 범위 밖이라 탭해도
+            // 키보드가 안 닫혔다. Scaffold 전체로 옮겨 그 영역의 빈 공간도 커버한다.
+            .pointerInput(Unit) {
+                detectTapGestures(onTap = {
+                    keyboardController?.hide()
+                    focusManager.clearFocus()
+                })
+            },
         containerColor = LiroutiTheme.colors.backgroundDefault,
         topBar = {
             RoutineAuthUploadTopBar(
@@ -125,12 +134,6 @@ fun RoutineAuthUploadScreen(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding)
-                .pointerInput(Unit) {
-                    detectTapGestures(onTap = {
-                        keyboardController?.hide()
-                        focusManager.clearFocus()
-                    })
-                }
                 .verticalScroll(rememberScrollState())
                 .padding(top = 25.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(24.dp),

@@ -11,6 +11,7 @@ import androidx.camera.core.Preview
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.core.tween
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
 import androidx.compose.foundation.border
@@ -46,9 +47,7 @@ import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.roundToInt
 import kotlinx.coroutines.awaitCancellation
-import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.delay
-import kotlinx.coroutines.launch
 
 /**
  * CameraX Preview + ImageCapture 바인딩. 루틴/그룹 루틴/챌린지 인증 촬영 화면에서 공용으로 쓴다.
@@ -82,37 +81,36 @@ fun LiroutiCameraPreview(
             factory = { previewView },
             modifier = Modifier
                 .fillMaxSize()
+                // 탭-투-포커스: 탭 지점을 PreviewView 좌표계의 MeteringPoint로 변환해
+                // startFocusAndMetering으로 넘긴다. 3초 뒤 자동으로 연속 포커스로 되돌아간다.
+                // 핀치 확대/축소와 별개의 pointerInput으로 분리해 각자 독립된 코루틴에서 이벤트를
+                // 받게 한다(같은 스코프에서 두 제스처를 같이 launch하면 한쪽의 이벤트 소비가
+                // 다른 쪽 인식에 영향을 줄 수 있다).
                 .pointerInput(boundCamera) {
-                    coroutineScope {
-                        // 탭-투-포커스: 탭 지점을 PreviewView 좌표계의 MeteringPoint로 변환해
-                        // startFocusAndMetering으로 넘긴다. 3초 뒤 자동으로 연속 포커스로 되돌아간다.
-                        launch {
-                            detectTapGestures { tapOffset ->
-                                val camera = boundCamera ?: return@detectTapGestures
-                                val point = previewView.meteringPointFactory
-                                    .createPoint(tapOffset.x, tapOffset.y)
-                                val action = FocusMeteringAction.Builder(point)
-                                    .setAutoCancelDuration(3, TimeUnit.SECONDS)
-                                    .build()
-                                runCatching { camera.cameraControl.startFocusAndMetering(action) }
-                                focusPoint = tapOffset
-                                focusRequestId++
-                            }
-                        }
-                        // 핀치 제스처로 확대/축소. 비율은 CameraX의 실시간 zoomState를 그대로 곱해서
-                        // 반영하므로 별도 상태 없이도 카메라 재바인딩(렌즈 전환 등) 시 자동으로 1배로
-                        // 초기화된다. 축소 한계(minZoomRatio)는 기기가 초광각 등 다중 카메라를 지원하면
-                        // 1 미만으로 내려가 줌아웃도 된다.
-                        launch {
-                            detectTransformGestures { _, _, gestureZoom, _ ->
-                                val camera = boundCamera ?: return@detectTransformGestures
-                                val zoomState = camera.cameraInfo.zoomState.value
-                                    ?: return@detectTransformGestures
-                                val newRatio = (zoomState.zoomRatio * gestureZoom)
-                                    .coerceIn(zoomState.minZoomRatio, zoomState.maxZoomRatio)
-                                camera.cameraControl.setZoomRatio(newRatio)
-                            }
-                        }
+                    detectTapGestures { tapOffset ->
+                        val camera = boundCamera ?: return@detectTapGestures
+                        val point = previewView.meteringPointFactory
+                            .createPoint(tapOffset.x, tapOffset.y)
+                        val action = FocusMeteringAction.Builder(point)
+                            .setAutoCancelDuration(3, TimeUnit.SECONDS)
+                            .build()
+                        runCatching { camera.cameraControl.startFocusAndMetering(action) }
+                        focusPoint = tapOffset
+                        focusRequestId++
+                    }
+                }
+                // 핀치 제스처로 확대/축소. 비율은 CameraX의 실시간 zoomState를 그대로 곱해서
+                // 반영하므로 별도 상태 없이도 카메라 재바인딩(렌즈 전환 등) 시 자동으로 1배로
+                // 초기화된다. 축소 한계(minZoomRatio)는 기기가 초광각 등 다중 카메라를 지원하면
+                // 1 미만으로 내려가 줌아웃도 된다.
+                .pointerInput(boundCamera) {
+                    detectTransformGestures { _, _, gestureZoom, _ ->
+                        val camera = boundCamera ?: return@detectTransformGestures
+                        val zoomState = camera.cameraInfo.zoomState.value
+                            ?: return@detectTransformGestures
+                        val newRatio = (zoomState.zoomRatio * gestureZoom)
+                            .coerceIn(zoomState.minZoomRatio, zoomState.maxZoomRatio)
+                        camera.cameraControl.setZoomRatio(newRatio)
                     }
                 },
         )
@@ -211,7 +209,7 @@ private fun FocusIndicator(
     AnimatedVisibility(
         visible = visible,
         enter = fadeIn(),
-        exit = fadeOut(),
+        exit = fadeOut(animationSpec = tween(durationMillis = FocusIndicatorFadeOutMs.toInt())),
         modifier = modifier.offset {
             IntOffset(offset.x.roundToInt() - halfSizePx, offset.y.roundToInt() - halfSizePx)
         },

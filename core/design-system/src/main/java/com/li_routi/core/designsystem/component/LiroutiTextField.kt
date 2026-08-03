@@ -68,6 +68,7 @@ fun LiroutiTextField(
                 value = value,
                 onValueChange = onValueChange,
                 textStyle = LiroutiTheme.typography.body2LongRegular.copy(color = LiroutiTheme.colors.labelDefault),
+                singleLine = true,
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Done),
                 keyboardActions = KeyboardActions(
                     onDone = {
