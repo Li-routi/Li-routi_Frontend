@@ -87,8 +87,10 @@ data class GroupRoutineUiState(
     val searchInput: String = "",
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",
+    val groupInviteCode: String? = null,
     val selectedCategory: String = "전체",
-    val categories: List<String> = listOf("전체", "건강", "운동", "공부"),
+    // PR 반영: 백엔드 카테고리와 일치시킴 ("공부" 제거 및 항목 추가)
+    val categories: List<String> = listOf("전체", "운동", "건강", "자기계발", "생활정리", "마음관리", "취미"),
     val routineOptions: List<CreateRoutineOptionUiModel> = SampleCreateRoutineOptions,
     val isRoutineSettingSheetVisible: Boolean = false,
     val editingRoutineId: Long? = null,
@@ -104,6 +106,8 @@ data class GroupRoutineUiState(
     val members: List<GroupMemberUiModel> = SampleGroupMembers,
     val todos: List<GroupTodoUiModel> = SampleGroupTodos,
     val posts: List<CertificationPostUiModel> = SampleCertificationPosts,
+    // PR 반영: 중복 API 제출 방지용 상태 추가
+    val isSubmitting: Boolean = false,
 ) {
     val visibleRoutines: List<GroupRoutineUiModel>
         get() = if (isEmptyState) {
@@ -139,7 +143,8 @@ data class GroupRoutineUiState(
 
 private val SampleGroupRoutines = listOf(
     GroupRoutineUiModel(
-        id = 1L,
+        // PR 반영: 서버 ID(양수)와의 충돌을 막기 위해 Mock 데이터 ID를 음수로 변경
+        id = -1L,
         title = "코딩",
         lastActiveLabel = "1시간 전 활동",
         memberCount = 3,
@@ -153,7 +158,7 @@ private val SampleGroupRoutines = listOf(
         todayCertificationCount = 3,
     ),
     GroupRoutineUiModel(
-        id = 2L,
+        id = -2L,
         title = "코딩",
         lastActiveLabel = "1시간 전 활동",
         memberCount = 3,
@@ -167,7 +172,7 @@ private val SampleGroupRoutines = listOf(
         todayCertificationCount = 3,
     ),
     GroupRoutineUiModel(
-        id = 3L,
+        id = -3L,
         title = "코딩",
         lastActiveLabel = "1시간 전 활동",
         memberCount = 3,
@@ -228,10 +233,11 @@ private val SampleCreateRoutineOptions = listOf(
     CreateRoutineOptionUiModel(1L, "물 마시기", "22:00", "건강"),
     CreateRoutineOptionUiModel(2L, "스트레칭하기", "23:00", "운동"),
     CreateRoutineOptionUiModel(3L, "영양제 먹기", "09:00", "건강"),
-    CreateRoutineOptionUiModel(4L, "명상 하기", "23:30", "공부"),
+    // PR 반영: 지원하지 않는 "공부" 카테고리를 "자기계발"로 변경
+    CreateRoutineOptionUiModel(4L, "명상 하기", "23:30", "자기계발"),
     CreateRoutineOptionUiModel(5L, "산책하기", "21:00", "운동"),
-    CreateRoutineOptionUiModel(6L, "책 읽기", "22:30", "공부"),
-    CreateRoutineOptionUiModel(7L, "일기 쓰기", "23:30", "공부"),
+    CreateRoutineOptionUiModel(6L, "책 읽기", "22:30", "자기계발"),
+    CreateRoutineOptionUiModel(7L, "일기 쓰기", "23:30", "자기계발"),
 )
 
 val DefaultCreateRoutineOptions = SampleCreateRoutineOptions
