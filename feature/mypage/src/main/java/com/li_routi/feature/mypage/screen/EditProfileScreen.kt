@@ -1,17 +1,22 @@
 package com.li_routi.feature.mypage.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -21,12 +26,17 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.component.LiroutiAvatar
 import com.li_routi.core.designsystem.component.LiroutiTextField
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -43,6 +53,7 @@ fun EditProfileScreen(
     onBackClick: () -> Unit,
     onCancelClick: () -> Unit,
     onSaveClick: (String) -> Unit,
+    onEditPhotoClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     var nickname by remember(initialNickname) { mutableStateOf(initialNickname) }
@@ -67,6 +78,11 @@ fun EditProfileScreen(
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp, vertical = 24.dp),
         ) {
+            EditProfileAvatar(
+                onEditPhotoClick = onEditPhotoClick,
+                modifier = Modifier.align(Alignment.CenterHorizontally),
+            )
+            Spacer(modifier = Modifier.height(24.dp))
             LiroutiTextField(
                 value = nickname,
                 onValueChange = { nickname = it },
@@ -94,6 +110,36 @@ fun EditProfileScreen(
                 backgroundColor = LiroutiTheme.colors.primaryNormal,
                 textColor = LiroutiTheme.colors.backgroundAlternative,
                 modifier = Modifier.weight(1f),
+            )
+        }
+    }
+}
+
+private val EditProfileAvatarSize = 80.dp
+private val EditProfilePhotoBadgeSize = 24.dp
+
+@Composable
+private fun EditProfileAvatar(
+    onEditPhotoClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier.size(EditProfileAvatarSize)) {
+        LiroutiAvatar(size = EditProfileAvatarSize)
+        Box(
+            modifier = Modifier
+                .align(Alignment.BottomEnd)
+                .size(EditProfilePhotoBadgeSize)
+                .clip(CircleShape)
+                .background(LiroutiTheme.colors.backgroundDefault)
+                .border(1.dp, LiroutiTheme.colors.borderDefault, CircleShape)
+                .clickable(onClick = onEditPhotoClick),
+            contentAlignment = Alignment.Center,
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.camera),
+                contentDescription = "프로필 사진 변경",
+                modifier = Modifier.size(16.dp),
+                colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelDefault),
             )
         }
     }
