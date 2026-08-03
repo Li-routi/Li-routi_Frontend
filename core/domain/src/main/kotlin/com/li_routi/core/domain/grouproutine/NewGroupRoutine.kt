@@ -7,4 +7,10 @@ data class NewGroupRoutine(
     val title: String,
     val description: String,
     val schedules: List<GroupRoutineSchedule>,
-)
+) {
+    init {
+        require((categoryId == null) != (categoryKey == null)) {
+            "categoryId와 categoryKey 중 정확히 하나만 값이 있어야 합니다."
+        }
+    }
+}

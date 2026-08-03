@@ -187,23 +187,6 @@ class GroupRoutineViewModel(
         }
     }
 
-    private fun issueInviteCode() {
-        val groupId = currentGroupId()
-        if (groupId == null) {
-            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
-            return
-        }
-
-        viewModelScope.launch {
-            when (val result = issueGroupInviteCodeUseCase(groupId)) {
-                is ResultState.Success -> _uiState.update { it.copy(groupInviteCode = result.data.inviteCode) }
-                // PR 반영: 발급 실패 시 무시(Unit)하지 않고 메시지 노출
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
-                ResultState.Loading -> Unit
-            }
-        }
-    }
-
     fun onMemberClick(memberId: Long) {
         _uiState.update { it.copy(selectedMemberId = memberId, actionMessage = null) }
     }
@@ -333,11 +316,9 @@ class GroupRoutineViewModel(
             if (state.inviteCodeInput.isBlank()) {
                 state.copy(actionMessage = "초대코드를 입력해주세요.")
             } else {
-                // PR 반영: 조인 완료 후 임시로 첫 번째 루틴 ID를 서버 ID로 둡니다 (향후 API 연동 시 응답 ID로 교체)
-                backendGroupId = state.routines.firstOrNull()?.id
                 state.copy(
                     screenMode = GroupRoutineScreenMode.Detail,
-                    selectedRoutineId = backendGroupId,
+                    selectedRoutineId = state.routines.firstOrNull()?.id,
                     inviteCodeInput = "",
                     actionMessage = "그룹방에 참여했어요.",
                 )
@@ -524,6 +505,13 @@ class GroupRoutineViewModel(
         if (categoryId == null) {
             _uiState.update { it.copy(isSubmitting = false, actionMessage = "\"$categoryName\"은 아직 지원하지 않는 카테고리예요. 기본 카테고리를 선택해주세요.") }
             return
+        }
+        if (editingId != null) {
+        val isSampleRoutine = DefaultCreateRoutineOptions.any { it.id == editingId }
+        if (isSampleRoutine) {
+            _uiState.update { it.copy(isSubmitting = false, actionMessage = "기본 샘플 루틴은 서버에 수정할 수 없습니다.") }
+            return
+            }
         }
 
         viewModelScope.launch {
