@@ -45,7 +45,7 @@ fun MyPageProfileHeader(
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = nickname,
-                    style = LiroutiTheme.typography.body1SemiBold,
+                    style = LiroutiTheme.typography.body1Bold,
                     color = LiroutiTheme.colors.labelDefault,
                 )
                 Text(

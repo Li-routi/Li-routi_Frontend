@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -32,7 +33,7 @@ val SettingsSectionDividerColor = Color(0xFFEFF0F0)
 fun SettingsSectionLabel(title: String, modifier: Modifier = Modifier) {
     Text(
         text = title,
-        style = LiroutiTheme.typography.body3Regular,
+        style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
         color = LiroutiTheme.colors.labelInfo,
         modifier = modifier.height(24.dp),
     )

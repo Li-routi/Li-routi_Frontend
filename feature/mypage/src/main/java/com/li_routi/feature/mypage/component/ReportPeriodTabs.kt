@@ -65,7 +65,7 @@ fun ReportPeriodTabs(
             ) {
                 Text(
                     text = title,
-                    style = if (selected) LiroutiTheme.typography.body3SemiBold else LiroutiTheme.typography.body3Medium,
+                    style = if (selected) LiroutiTheme.typography.body3Bold else LiroutiTheme.typography.body3Medium,
                     color = if (selected) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.labelInfo,
                 )
             }

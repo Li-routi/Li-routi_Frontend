@@ -5,7 +5,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -36,14 +35,13 @@ fun MyPageTopBar(
         modifier = modifier
             .fillMaxWidth()
             .statusBarsPadding()
-            .height(48.dp)
             .padding(horizontal = 16.dp, vertical = 14.dp),
         horizontalArrangement = Arrangement.SpaceBetween,
         verticalAlignment = Alignment.CenterVertically,
     ) {
         Text(
             text = "마이페이지",
-            style = LiroutiTheme.typography.heading2SemiBold,
+            style = LiroutiTheme.typography.heading2Bold,
             color = LiroutiTheme.colors.labelDefault,
         )
         Row(horizontalArrangement = Arrangement.spacedBy(14.dp), verticalAlignment = Alignment.CenterVertically) {
