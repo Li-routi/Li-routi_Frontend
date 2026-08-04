@@ -141,10 +141,12 @@ fun HomeScreen(
             sheetContent = {
                 when {
                     isLoading && !showChecklist && !loadError -> {
+                        // CodeRabbit 반영: fillMaxHeight()를 쓰면 시트가 접힌 peek 영역(SheetPeekHeight)
+                        // 밖으로 내용이 밀려나 로딩 인디케이터가 초기 화면에 안 보일 수 있어 높이를 peek에 맞춤
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight(),
+                                .height(SheetPeekHeight),
                             contentAlignment = Alignment.Center,
                         ) {
                             CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
@@ -154,7 +156,7 @@ fun HomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .fillMaxHeight()
+                                .height(SheetPeekHeight)
                                 .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,

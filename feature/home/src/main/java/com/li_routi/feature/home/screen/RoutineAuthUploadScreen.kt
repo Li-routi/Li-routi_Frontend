@@ -32,7 +32,11 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -64,6 +68,8 @@ import com.li_routi.feature.home.navigation.RoutineAuthUploadScreenActions.Compa
 import com.li_routi.feature.home.vm.RoutineAuthBadgeTone
 import com.li_routi.feature.home.vm.RoutineAuthSelectableUiModel
 import com.li_routi.feature.home.vm.SampleRoutineAuthSelectables
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 /**
  * 미리보기 최대 높이.
@@ -72,7 +78,10 @@ import com.li_routi.feature.home.vm.SampleRoutineAuthSelectables
 private val PhotoPreviewMaxHeight = 240.dp
 private val PhotoPreviewPlaceholderHeight = 160.dp
 
-/** EXIF Orientation을 반영해 세로/가로가 올바른 방향으로 보이게 디코딩한다. */
+/** 미리보기용으로 디코딩할 비트맵의 (긴 변 기준) 최대 픽셀 크기. 전체 해상도 디코딩으로 인한 OOM/버벅임을 막는다. */
+private const val PhotoPreviewTargetSizePx = 1024
+
+/** EXIF Orientation을 반영해 세로/가로가 올바른 방향으로 보이게, 미리보기 크기로 샘플링해 디코딩한다. */
 private fun decodeBitmapWithExif(context: Context, uri: Uri): Bitmap? {
     val resolver = context.contentResolver
     val orientation = runCatching {
@@ -84,8 +93,26 @@ private fun decodeBitmapWithExif(context: Context, uri: Uri): Bitmap? {
         }
     }.getOrNull() ?: ExifInterface.ORIENTATION_NORMAL
 
-    val bitmap = resolver.openInputStream(uri)?.use(BitmapFactory::decodeStream) ?: return null
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    resolver.openInputStream(uri)?.use { stream -> BitmapFactory.decodeStream(stream, null, bounds) }
+        ?: return null
+
+    val options = BitmapFactory.Options().apply {
+        inSampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, PhotoPreviewTargetSizePx)
+    }
+    val bitmap = resolver.openInputStream(uri)?.use { stream -> BitmapFactory.decodeStream(stream, null, options) }
+        ?: return null
     return bitmap.applyExifOrientation(orientation)
+}
+
+/** [width]/[height] 중 긴 변이 [reqSize] 이하가 되는 가장 작은 2의 거듭제곱 다운샘플링 비율을 계산한다. */
+private fun calculateInSampleSize(width: Int, height: Int, reqSize: Int): Int {
+    var inSampleSize = 1
+    if (width <= 0 || height <= 0) return inSampleSize
+    while (maxOf(width, height) / inSampleSize > reqSize) {
+        inSampleSize *= 2
+    }
+    return inSampleSize
 }
 
 private fun Bitmap.applyExifOrientation(orientation: Int): Bitmap {
@@ -218,9 +245,16 @@ private fun CapturedPhotoPreview(
     modifier: Modifier = Modifier,
 ) {
     val context = LocalContext.current
-    val bitmap = remember(photoUri) {
-        photoUri?.let { uri ->
-            runCatching { decodeBitmapWithExif(context, uri) }.getOrNull()
+    var bitmap by remember { mutableStateOf<Bitmap?>(null) }
+
+    LaunchedEffect(photoUri) {
+        bitmap = null
+        bitmap = photoUri?.let { uri ->
+            // CodeRabbit 반영: 컴포지션 스레드에서 원본 해상도를 디코딩하면 카메라 캡처 크기에 따라
+            // 화면이 멈추거나 OOM이 날 수 있어, IO 디스패처에서 샘플링된 비트맵만 디코딩한다.
+            withContext(Dispatchers.IO) {
+                runCatching { decodeBitmapWithExif(context, uri) }.getOrNull()
+            }
         }
     }
 
@@ -231,7 +265,8 @@ private fun CapturedPhotoPreview(
         modifier = modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center,
     ) {
-        if (bitmap == null) {
+        val currentBitmap = bitmap
+        if (currentBitmap == null) {
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -250,9 +285,9 @@ private fun CapturedPhotoPreview(
         }
 
         val photoAspectRatio =
-            bitmap.width.toFloat() / bitmap.height.toFloat().coerceAtLeast(1f)
+            currentBitmap.width.toFloat() / currentBitmap.height.toFloat().coerceAtLeast(1f)
         Image(
-            bitmap = bitmap.asImageBitmap(),
+            bitmap = currentBitmap.asImageBitmap(),
             contentDescription = "촬영 사진",
             modifier = Modifier
                 .heightIn(max = PhotoPreviewMaxHeight)

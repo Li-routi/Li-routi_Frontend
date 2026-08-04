@@ -43,7 +43,11 @@ class GroupRoutineViewModel(
     // API 호출 시 사용할 currentGroupId()는 이제 실제 backendGroupId를 참조합니다.
     private fun currentGroupId(): Long? = backendGroupId
 
-    private fun currentRoutineId(): Long = _uiState.value.todos.firstOrNull()?.id ?: 1L
+    // CodeRabbit 반영: 루틴이 없을 때 임의의 1L을 서버에 실제 ID처럼 보내지 않도록 nullable로 변경
+    private fun currentRoutineId(): Long? = _uiState.value.todos.firstOrNull()?.id
+
+    // CodeRabbit 반영: 새로 생성된(서버) 카테고리의 이름 -> categoryId. DefaultCategoryIds에 없는 카테고리 제출 시 사용
+    private var serverCategoryIds: Map<String, Long> = emptyMap()
 
     fun onRoutineClick(routineId: Long) {
         _uiState.update {
@@ -212,7 +216,7 @@ class GroupRoutineViewModel(
                     }
                 }
 
-                is ResultState.Error -> Unit
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
         }
@@ -223,12 +227,16 @@ class GroupRoutineViewModel(
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
             return
         }
+        val routineId = currentRoutineId() ?: run {
+            _uiState.update { it.copy(actionMessage = "루틴을 찾을 수 없습니다.") }
+            return
+        }
 
         viewModelScope.launch {
             when (
                 val result = getGroupRoutineVerificationsUseCase(
                     groupId = groupId,
-                    routineId = currentRoutineId(),
+                    routineId = routineId,
                     cursor = null,
                     size = 20,
                 )
@@ -251,7 +259,7 @@ class GroupRoutineViewModel(
                     }
                 }
 
-                is ResultState.Error -> Unit
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
         }
@@ -499,14 +507,18 @@ class GroupRoutineViewModel(
 
         viewModelScope.launch {
             when (val result = createGroupRoutineCategoryUseCase(groupId, name, color = null)) {
-                is ResultState.Success -> _uiState.update {
-                    it.copy(
-                        categories = it.categories + result.data.name,
-                        selectedCategory = result.data.name,
-                        categoryInput = "",
-                        isCategorySheetVisible = false,
-                        actionMessage = null,
-                    )
+                is ResultState.Success -> {
+                    // CodeRabbit 반영: 이름뿐 아니라 서버 categoryId도 저장해야 루틴 제출 시 사용 가능
+                    serverCategoryIds = serverCategoryIds + (result.data.name to result.data.categoryId)
+                    _uiState.update {
+                        it.copy(
+                            categories = it.categories + result.data.name,
+                            selectedCategory = result.data.name,
+                            categoryInput = "",
+                            isCategorySheetVisible = false,
+                            actionMessage = null,
+                        )
+                    }
                 }
 
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -603,8 +615,9 @@ class GroupRoutineViewModel(
         val categoryName = state.selectedCategory
         val schedules = state.routineDraftRepeatDays.toGroupRoutineSchedules(endTime = "23:00")
         val editingId = state.editingRoutineId
-        val categoryId = DefaultCategoryIds[categoryName]
-        
+        // CodeRabbit 반영: 기본 카테고리에 없으면 새로 생성한 서버 카테고리 ID를 사용
+        val categoryId = DefaultCategoryIds[categoryName] ?: serverCategoryIds[categoryName]
+
         if (categoryId == null) {
             _uiState.update { it.copy(isSubmitting = false, actionMessage = "\"$categoryName\"은 아직 지원하지 않는 카테고리예요. 기본 카테고리를 선택해주세요.") }
             return
@@ -777,6 +790,18 @@ class GroupRoutineViewModel(
             try {
                 when (val result = createGroupUseCase(roomName, customCategories, routines)) {
                     is ResultState.Success -> {
+                        // CodeRabbit 반영: 서버 응답의 루틴 개수/순서가 요청과 다르면 임시 클라이언트 ID를
+                        // 서버 ID인 것처럼 사용하지 않도록 개수와 제목 일치 여부를 먼저 검증
+                        val createdRoutines = result.data.routines
+                        val responseIsValid = createdRoutines.size == selectedOptions.size &&
+                            createdRoutines.indices.all { index -> createdRoutines[index].title == selectedOptions[index].title }
+                        if (!responseIsValid) {
+                            _uiState.update {
+                                it.copy(actionMessage = "그룹은 만들어졌지만 루틴 정보를 받아오지 못했어요. 다시 시도해주세요.")
+                            }
+                            return@launch
+                        }
+
                         val groupId = result.data.groupId
                         backendGroupId = groupId
 
@@ -795,11 +820,11 @@ class GroupRoutineViewModel(
                             todayCertificationCount = 0,
                         )
                         val createdOptions = selectedOptions.mapIndexed { index, option ->
-                            val createdRoutine = result.data.routines.getOrNull(index)
+                            val createdRoutine = createdRoutines[index]
                             option.copy(
-                                id = createdRoutine?.routineId ?: option.id,
-                                title = createdRoutine?.title ?: option.title,
-                                category = createdRoutine?.categoryName ?: option.category,
+                                id = createdRoutine.routineId,
+                                title = createdRoutine.title,
+                                category = createdRoutine.categoryName ?: option.category,
                             )
                         }
                         val selectedTodos = createdOptions.map { option ->
