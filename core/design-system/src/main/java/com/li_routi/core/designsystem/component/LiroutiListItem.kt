@@ -34,6 +34,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.Painter
 import androidx.compose.ui.res.painterResource
 import com.li_routi.core.designsystem.R
 
@@ -362,12 +363,19 @@ private val RoutineListItemSubtitleTextStyle = TextStyle(
     lineHeight = 14.sp,
 )
 
+/** [LiroutiListItemRoutineSummary], [LiroutiListItemRoutineProgress]의 통계 항목 하나. */
+data class LiroutiRoutineStat(
+    val value: String,
+    val label: String,
+)
+
 @Composable
 fun LiroutiListItemRoutine(
+    icon: Painter,
+    title: String,
+    subtitle: String,
+    badgeText: String,
     modifier: Modifier = Modifier,
-    title: String = "매일 우유 한잔",
-    subtitle: String = "매일 우유를 마시며 건강 관리를 해요",
-    badgeText: String = "참여중",
 ) {
     Row(
         modifier = modifier.size(width = RoutineListItemWidth, height = RoutineListItemHeight),
@@ -380,7 +388,7 @@ fun LiroutiListItemRoutine(
             contentAlignment = Alignment.Center,
         ) {
             Image(
-                painter = painterResource(id = R.drawable.milk),
+                painter = icon,
                 contentDescription = null,
             )
         }
@@ -401,7 +409,13 @@ fun LiroutiListItemRoutine(
 @Composable
 private fun LiroutiListItemRoutinePreview() {
     LiroutiFrontendTheme {
-        LiroutiListItemRoutine(modifier = Modifier.padding(16.dp))
+        LiroutiListItemRoutine(
+            icon = painterResource(id = R.drawable.milk),
+            title = "매일 우유 한잔",
+            subtitle = "매일 우유를 마시며 건강 관리를 해요",
+            badgeText = "참여중",
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }
 
@@ -418,10 +432,11 @@ private val RoutineStatGap = 29.dp
 
 @Composable
 private fun RoutineSummaryHeaderItem(
+    icon: Painter,
+    title: String,
+    subtitle: String,
+    badgeText: String,
     modifier: Modifier = Modifier,
-    title: String = "매일 우유 한잔",
-    subtitle: String = "매일 우유를 마시며 건강 관리를 해요",
-    badgeText: String = "매일 루틴",
 ) {
     Row(
         modifier = modifier.size(width = RoutineHeaderItemWidth, height = RoutineListItemHeight),
@@ -434,7 +449,7 @@ private fun RoutineSummaryHeaderItem(
             contentAlignment = Alignment.Center,
         ) {
             Image(
-                painter = painterResource(id = R.drawable.milk),
+                painter = icon,
                 contentDescription = null,
             )
         }
@@ -460,7 +475,7 @@ private fun RoutineStat(value: String, label: String, modifier: Modifier = Modif
 }
 
 @Composable
-private fun RoutineStatsBox(modifier: Modifier = Modifier) {
+private fun RoutineStatsBox(stats: List<LiroutiRoutineStat>, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier
             .size(width = RoutineStatsBoxWidth, height = RoutineStatsBoxHeight)
@@ -469,37 +484,41 @@ private fun RoutineStatsBox(modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(RoutineStatGap),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RoutineStat(value = "300", label = "참여자")
-        LiroutiDivider(
-            orientation = LiroutiDividerOrientation.Vertical,
-            color = RoutineStatDividerColor,
-            modifier = Modifier.height(RoutineStatDividerHeight),
-        )
-        RoutineStat(value = "140000", label = "활동")
-        LiroutiDivider(
-            orientation = LiroutiDividerOrientation.Vertical,
-            color = RoutineStatDividerColor,
-            modifier = Modifier.height(RoutineStatDividerHeight),
-        )
-        RoutineStat(value = "80", label = "인증 게시글")
+        stats.forEachIndexed { index, stat ->
+            RoutineStat(value = stat.value, label = stat.label)
+            if (index != stats.lastIndex) {
+                LiroutiDivider(
+                    orientation = LiroutiDividerOrientation.Vertical,
+                    color = RoutineStatDividerColor,
+                    modifier = Modifier.height(RoutineStatDividerHeight),
+                )
+            }
+        }
     }
 }
 
 @Composable
-fun LiroutiListItemRoutineSummary(modifier: Modifier = Modifier) {
+fun LiroutiListItemRoutineSummary(
+    icon: Painter,
+    title: String,
+    subtitle: String,
+    badgeText: String,
+    stats: List<LiroutiRoutineStat>,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.size(width = RoutineSummaryBoxWidth, height = RoutineSummaryBoxHeight),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(modifier = Modifier.height(16.dp))
-        RoutineSummaryHeaderItem()
+        RoutineSummaryHeaderItem(icon = icon, title = title, subtitle = subtitle, badgeText = badgeText)
         Spacer(modifier = Modifier.height(20.dp))
         LiroutiDivider(
             color = RoutineStatDividerColor,
             modifier = Modifier.width(RoutineDividerLineWidth),
         )
         Spacer(modifier = Modifier.height(20.dp))
-        RoutineStatsBox()
+        RoutineStatsBox(stats = stats)
     }
 }
 
@@ -507,7 +526,18 @@ fun LiroutiListItemRoutineSummary(modifier: Modifier = Modifier) {
 @Composable
 private fun LiroutiListItemRoutineSummaryPreview() {
     LiroutiFrontendTheme {
-        LiroutiListItemRoutineSummary(modifier = Modifier.padding(16.dp))
+        LiroutiListItemRoutineSummary(
+            icon = painterResource(id = R.drawable.milk),
+            title = "매일 우유 한잔",
+            subtitle = "매일 우유를 마시며 건강 관리를 해요",
+            badgeText = "매일 루틴",
+            stats = listOf(
+                LiroutiRoutineStat(value = "300", label = "참여자"),
+                LiroutiRoutineStat(value = "140000", label = "활동"),
+                LiroutiRoutineStat(value = "80", label = "인증 게시글"),
+            ),
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }
 
@@ -522,12 +552,13 @@ private val RoutineProgressTextColor = Color(0xFF878A93)
 
 @Composable
 private fun RoutineActivityHeaderItem(
+    icon: Painter,
+    title: String,
+    activityText: String,
+    memberLabel: String,
+    routineLabel: String,
+    badgeText: String,
     modifier: Modifier = Modifier,
-    title: String = "코딩",
-    activityText: String = "1시간 전 활동",
-    memberLabel: String = "멤버 3명",
-    routineLabel: String = "루틴 6개",
-    badgeText: String = "진행중",
 ) {
     Row(
         modifier = modifier.size(width = RoutineHeaderItemWidth, height = RoutineListItemHeight),
@@ -540,7 +571,7 @@ private fun RoutineActivityHeaderItem(
             contentAlignment = Alignment.Center,
         ) {
             Image(
-                painter = painterResource(id = R.drawable.milk),
+                painter = icon,
                 contentDescription = null,
             )
         }
@@ -569,60 +600,51 @@ private fun RoutineActivityHeaderItem(
 }
 
 @Composable
-private fun RoutineProgressFooterRow(modifier: Modifier = Modifier) {
+private fun RoutineProgressFooterRow(progressText: String, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.size(width = RoutineHeaderItemWidth, height = RoutineListItemHeight),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         LiroutiAvatar(size = 24.dp)
         Spacer(modifier = Modifier.weight(1f))
-        Text(text = "오늘 3/6 완료", style = RoutineListItemSubtitleTextStyle, color = RoutineProgressTextColor)
+        Text(text = progressText, style = RoutineListItemSubtitleTextStyle, color = RoutineProgressTextColor)
     }
 }
 
 @Composable
-private fun RoutineActivityStatsBox(modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier
-            .size(width = RoutineStatsBoxWidth, height = RoutineStatsBoxHeight)
-            .background(RoutineStatsBoxColor)
-            .padding(start = 16.dp),
-        horizontalArrangement = Arrangement.spacedBy(RoutineStatGap),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        RoutineStat(value = "5일", label = "연속 달성")
-        LiroutiDivider(
-            orientation = LiroutiDividerOrientation.Vertical,
-            color = RoutineStatDividerColor,
-            modifier = Modifier.height(RoutineStatDividerHeight),
-        )
-        RoutineStat(value = "60%", label = "이번 달성률")
-        LiroutiDivider(
-            orientation = LiroutiDividerOrientation.Vertical,
-            color = RoutineStatDividerColor,
-            modifier = Modifier.height(RoutineStatDividerHeight),
-        )
-        RoutineStat(value = "3건", label = "오늘 인증")
-    }
-}
-
-@Composable
-fun LiroutiListItemRoutineProgress(modifier: Modifier = Modifier) {
+fun LiroutiListItemRoutineProgress(
+    icon: Painter,
+    title: String,
+    activityText: String,
+    memberLabel: String,
+    routineLabel: String,
+    badgeText: String,
+    progressText: String,
+    stats: List<LiroutiRoutineStat>,
+    modifier: Modifier = Modifier,
+) {
     Column(
         modifier = modifier.width(RoutineSummaryBoxWidth),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(modifier = Modifier.height(16.dp))
-        RoutineActivityHeaderItem()
+        RoutineActivityHeaderItem(
+            icon = icon,
+            title = title,
+            activityText = activityText,
+            memberLabel = memberLabel,
+            routineLabel = routineLabel,
+            badgeText = badgeText,
+        )
         Spacer(modifier = Modifier.height(20.dp))
         LiroutiDivider(
             color = RoutineStatDividerColor,
             modifier = Modifier.width(RoutineDividerLineWidth),
         )
         Spacer(modifier = Modifier.height(16.dp))
-        RoutineProgressFooterRow()
+        RoutineProgressFooterRow(progressText = progressText)
         Spacer(modifier = Modifier.height(12.dp))
-        RoutineActivityStatsBox()
+        RoutineStatsBox(stats = stats)
     }
 }
 
@@ -630,6 +652,20 @@ fun LiroutiListItemRoutineProgress(modifier: Modifier = Modifier) {
 @Composable
 private fun LiroutiListItemRoutineProgressPreview() {
     LiroutiFrontendTheme {
-        LiroutiListItemRoutineProgress(modifier = Modifier.padding(16.dp))
+        LiroutiListItemRoutineProgress(
+            icon = painterResource(id = R.drawable.milk),
+            title = "코딩",
+            activityText = "1시간 전 활동",
+            memberLabel = "멤버 3명",
+            routineLabel = "루틴 6개",
+            badgeText = "진행중",
+            progressText = "오늘 3/6 완료",
+            stats = listOf(
+                LiroutiRoutineStat(value = "5일", label = "연속 달성"),
+                LiroutiRoutineStat(value = "60%", label = "이번 달성률"),
+                LiroutiRoutineStat(value = "3건", label = "오늘 인증"),
+            ),
+            modifier = Modifier.padding(16.dp),
+        )
     }
 }

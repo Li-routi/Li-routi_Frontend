@@ -65,6 +65,7 @@ fun LiroutiLabel(
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
     editable: Boolean = false,
+    focusRequester: FocusRequester? = null,
     onValueChange: (String) -> Unit = {},
     onImeDone: () -> Unit = {},
 ) {
@@ -131,7 +132,9 @@ fun LiroutiLabel(
             BasicTextField(
                 value = text,
                 onValueChange = onValueChange,
-                modifier = Modifier.defaultMinSize(minWidth = LabelInputMinWidth),
+                modifier = Modifier
+                    .defaultMinSize(minWidth = LabelInputMinWidth)
+                    .then(if (focusRequester != null) Modifier.focusRequester(focusRequester) else Modifier),
                 singleLine = true,
                 textStyle = LabelTextStyle.copy(color = textColor),
                 cursorBrush = SolidColor(textColor),
@@ -154,7 +157,7 @@ fun LiroutiLabel(
 
 /** 색상이 정해진 정적 라벨(예: 챌린지 카드의 비활성 태그)이 필요할 때 쓰는 [LiroutiLabel]의 단순 버전. */
 @Composable
-private fun LiroutiLabelOutlined(
+fun LiroutiLabelOutlined(
     text: String,
     modifier: Modifier = Modifier,
 ) {
@@ -189,12 +192,18 @@ private fun LiroutiLabelPreview() {
 
 /**
  * "전체" + 카테고리 목록 + "+" 추가 버튼으로 구성된 카테고리 필터 행.
+ * 카테고리를 누르면 해당 카테고리가 선택 상태로 표시되고 [onCategorySelected]가 호출된다.
+ * "전체"를 누르면 선택이 해제되고 [onCategorySelected]에 `null`이 전달된다.
  * "+"를 누르면 그 자리의 [LiroutiLabel]이 `editable = true`로 바뀌어 새 카테고리 제목을
  * 직접 입력할 수 있고, 입력 완료(Done)하면 목록에 일반 [LiroutiLabel]로 추가된다.
  */
 @Composable
-fun LiroutiCategoryLabelRow(modifier: Modifier = Modifier) {
+fun LiroutiCategoryLabelRow(
+    modifier: Modifier = Modifier,
+    onCategorySelected: (String?) -> Unit = {},
+) {
     var categories by remember { mutableStateOf(listOf("건강", "운동", "공부")) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
     var isAdding by remember { mutableStateOf(false) }
     var newCategoryText by remember { mutableStateOf("") }
     val focusRequester = remember { FocusRequester() }
@@ -204,17 +213,31 @@ fun LiroutiCategoryLabelRow(modifier: Modifier = Modifier) {
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        LiroutiLabel(text = "전체", selected = true, onClick = {})
+        LiroutiLabel(
+            text = "전체",
+            selected = selectedCategory == null,
+            onClick = {
+                selectedCategory = null
+                onCategorySelected(null)
+            },
+        )
         categories.forEach { category ->
-            LiroutiLabel(text = category, selected = false, onClick = {})
+            LiroutiLabel(
+                text = category,
+                selected = selectedCategory == category,
+                onClick = {
+                    selectedCategory = category
+                    onCategorySelected(category)
+                },
+            )
         }
         if (isAdding) {
             LiroutiLabel(
                 text = newCategoryText,
                 selected = false,
                 onClick = {},
-                modifier = Modifier.focusRequester(focusRequester),
                 editable = true,
+                focusRequester = focusRequester,
                 onValueChange = { newCategoryText = it },
                 onImeDone = {
                     val title = newCategoryText.trim()

@@ -7,12 +7,15 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
@@ -28,6 +31,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -106,7 +112,9 @@ fun LiroutiLineTab(
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
-            modifier = Modifier.padding(start = 20.dp, top = 14.dp, end = 20.dp),
+            modifier = Modifier
+                .padding(start = 20.dp, top = 14.dp, end = 20.dp)
+                .selectableGroup(),
         ) {
             tabs.forEachIndexed { index, title ->
                 LiroutiLineTabItem(
@@ -124,8 +132,7 @@ fun LiroutiLineTab(
     }
 }
 
-private val CategoryDotWidth = 10.dp
-private val CategoryDotHeight = 9.dp
+private val CategoryDotSize = 9.dp
 
 @Composable
 private fun LiroutiLineTabItem(
@@ -142,7 +149,12 @@ private fun LiroutiLineTabItem(
 
     Column(
         modifier = modifier
-            .clickable(onClick = onClick)
+            .selectable(
+                selected = selected,
+                onClick = onClick,
+                role = Role.Tab,
+            )
+            .then(if (!selected) Modifier.semantics { contentDescription = text } else Modifier)
             .padding(bottom = if (selected) 0.dp else 14.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -166,10 +178,16 @@ private fun LiroutiLineTabItem(
         } else {
             Box(
                 modifier = Modifier
-                    .padding(top = ((textHeight - CategoryDotHeight) / 2).coerceAtLeast(0.dp))
-                    .size(width = CategoryDotWidth, height = CategoryDotHeight)
-                    .border(width = 1.dp, color = Color(0xFF878A93), shape = CircleShape),
-            )
+                    .padding(top = ((textHeight - CategoryDotSize) / 2).coerceAtLeast(0.dp))
+                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                Box(
+                    modifier = Modifier
+                        .size(CategoryDotSize)
+                        .border(width = 1.dp, color = Color(0xFF878A93), shape = CircleShape),
+                )
+            }
         }
     }
 }
