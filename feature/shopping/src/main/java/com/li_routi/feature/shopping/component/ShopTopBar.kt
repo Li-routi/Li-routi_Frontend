@@ -1,6 +1,5 @@
 package com.li_routi.feature.shopping.component
 
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.border
@@ -16,8 +15,9 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.R
@@ -26,6 +26,8 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 
 /**
  * 상점/재화구매 화면 공용 상단 바 (Figma `Nav` variant `store`, node `2372:55357`).
+ *
+ * 주황/파란 잔액 chip은 각각 해당 재화 탭(또는 재화 상점 진입)으로 연결한다.
  */
 @Composable
 fun ShopTopBar(
@@ -33,7 +35,8 @@ fun ShopTopBar(
     coinBalance: Int,
     gemBalance: Int,
     onBackClick: () -> Unit,
-    onCurrencyChipClick: () -> Unit = {},
+    onOrangeGemClick: () -> Unit = {},
+    onBlueGemClick: () -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
     Row(
@@ -61,13 +64,13 @@ fun ShopTopBar(
         CurrencyBalanceChip(
             iconResId = R.drawable.diamond_orange,
             balance = coinBalance,
-            onClick = onCurrencyChipClick,
+            onClick = onOrangeGemClick,
         )
         Spacer(modifier = Modifier.width(8.dp))
         CurrencyBalanceChip(
             iconResId = R.drawable.diamond_blue,
             balance = gemBalance,
-            onClick = onCurrencyChipClick,
+            onClick = onBlueGemClick,
         )
     }
 }

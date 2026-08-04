@@ -27,8 +27,11 @@ data class ShopUiState(
  */
 sealed interface ShopUiEvent {
     data object NavigateBack : ShopUiEvent
-    /** 코인/보석 잔액 chip 탭 → 재화 구매 화면으로 이동 */
-    data object NavigateToCurrencyShop : ShopUiEvent
+    /**
+     * 잔액 chip 탭 → 재화 구매 화면.
+     * @param tabIndex 0 = 주황보석, 1 = 파란보석
+     */
+    data class NavigateToCurrencyShop(val tabIndex: Int = 0) : ShopUiEvent
     /** 하단 저장 버튼 탭. API 연동 전: ShoppingRoute에서 no-op. */
     data object SaveSelectedItems : ShopUiEvent
 }

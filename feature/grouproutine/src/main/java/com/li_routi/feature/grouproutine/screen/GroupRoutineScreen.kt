@@ -827,8 +827,12 @@ private fun RoutineScrollIndicator(
             return@BoxWithConstraints
         }
 
+        // CodeRabbit 반영: minThumbHeightPx가 trackHeightPx보다 크면 coerceIn이 예외를 던지므로 먼저 가드
+        val minThumbHeightPx = with(density) { 42.dp.toPx() }
+        if (trackHeightPx < minThumbHeightPx) return@BoxWithConstraints
+
         val thumbHeightPx = (trackHeightPx * trackHeightPx / (trackHeightPx + maxScrollPx))
-            .coerceIn(with(density) { 42.dp.toPx() }, trackHeightPx)
+            .coerceIn(minThumbHeightPx, trackHeightPx)
         val scrollableTrackPx = trackHeightPx - thumbHeightPx
         if (!scrollableTrackPx.isFinite() || scrollableTrackPx <= 0f) return@BoxWithConstraints
 

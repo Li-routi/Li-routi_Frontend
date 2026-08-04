@@ -5,10 +5,10 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
@@ -56,15 +56,13 @@ private val SheetDragHandleColor = androidx.compose.ui.graphics.Color(0xFFDEDEDE
 private val SheetPeekHeight = 370.dp
 
 /**
- * 홈 화면 상태별 캐릭터 툴팁 문구 (Figma 스크린샷 기준).
- * - 처음 진입: 루틴 생성 유도
+ * 홈 화면 상태별 캐릭터 툴팁 문구 (Figma Design Page [1.1] `처음 진입 시` 기준).
+ * - 처음 진입 / 내 루틴+그룹방: 인사
  * - 내 루틴 O / 그룹방 X: 방 만들기 유도
- * - 내 루틴 O / 그룹방 O: 인사
  */
 internal fun homeTooltipMessage(hasActiveRoutine: Boolean, hasGroupRoom: Boolean): String = when {
-    !hasActiveRoutine -> "상단 + 버튼을 눌러 나의 루틴을 생성해보세요!"
-    !hasGroupRoom -> "상단 + 버튼을 눌러 친구와 방을 만들어봐요."
-    else -> "반가워요!"
+    !hasActiveRoutine || hasGroupRoom -> "반가워요!"
+    else -> "상단 + 버튼을 눌러 친구와 방을 만들어봐요."
 }
 
 /**
@@ -85,10 +83,10 @@ fun HomeScreen(
     hasActiveRoutine: Boolean = false,
     hasGroupRoom: Boolean = false,
     nickname: String = "닉네임",
-    myRoutineItems: List<RoutineChecklistItemUiModel> = if (hasGroupRoom) {
-        SampleMyRoutineItems
-    } else {
-        SampleMyRoutineItemsOnly
+    myRoutineItems: List<RoutineChecklistItemUiModel> = when {
+        !hasActiveRoutine -> emptyList()
+        hasGroupRoom -> SampleMyRoutineItems
+        else -> SampleMyRoutineItemsOnly
     },
     groupRoomFilters: List<String> = SampleGroupRoomFilters,
     groupRoomItems: List<RoutineChecklistItemUiModel> = SampleGroupRoomItems,
@@ -143,10 +141,12 @@ fun HomeScreen(
             sheetContent = {
                 when {
                     isLoading && !showChecklist && !loadError -> {
+                        // CodeRabbit 반영: fillMaxHeight()를 쓰면 시트가 접힌 peek 영역(SheetPeekHeight)
+                        // 밖으로 내용이 밀려나 로딩 인디케이터가 초기 화면에 안 보일 수 있어 높이를 peek에 맞춤
                         Box(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 300.dp),
+                                .height(SheetPeekHeight),
                             contentAlignment = Alignment.Center,
                         ) {
                             CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
@@ -156,7 +156,7 @@ fun HomeScreen(
                         Column(
                             modifier = Modifier
                                 .fillMaxWidth()
-                                .heightIn(min = 300.dp)
+                                .height(SheetPeekHeight)
                                 .padding(16.dp),
                             horizontalAlignment = Alignment.CenterHorizontally,
                             verticalArrangement = Arrangement.Center,
@@ -177,7 +177,13 @@ fun HomeScreen(
                         }
                     }
                     else -> {
-                        Column {
+                        Column(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                // 그룹 탭처럼 content가 짧아도 Expanded로 올라갈 수 있게
+                                // 시트 높이를 가능한 최대까지 확보한다.
+                                .fillMaxHeight(),
+                        ) {
                             if (loadError) {
                                 Text(
                                     text = "최신 정보를 불러오지 못했습니다. 다시 시도",
@@ -200,6 +206,7 @@ fun HomeScreen(
                                     categoryColor = null
                                     showCategorySheet = true
                                 },
+                                modifier = Modifier.weight(1f, fill = true),
                             )
                             // 하단 네비게이션 바(오버레이)에 가려지지 않도록 여백을 둔다.
                             Box(modifier = Modifier.height(80.dp))
@@ -220,7 +227,8 @@ fun HomeScreen(
                     nickname = nickname,
                     tooltipMessage = tooltipMessage,
                     onNavigateToShop = actions::onNavigateToShop,
-                    showRepresentativeBadge = hasActiveRoutine,
+                    // Figma `처음 진입 시` 포함 홈 메인에서 대표 배지 노출
+                    showRepresentativeBadge = true,
                     modifier = Modifier.fillMaxWidth(),
                 )
             }

@@ -18,9 +18,10 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -36,6 +37,7 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
  * @param chargeTitle 충전 팝업에 표시할 상품명. 예: "550코인"
  * @param bonusLabel 충전 팝업 보너스 뱃지. 예: "+50 보너스". null이면 뱃지 숨김.
  * @param paymentAmount 충전 팝업 결제 금액. 예: "₩5,500"
+ * @param priceSuffix 있으면 원화 결제(파란보석 탭). 예: "원". null이면 재화 결제(주황보석 탭).
  */
 data class CurrencyProductUiModel(
     val id: String,
@@ -48,15 +50,15 @@ data class CurrencyProductUiModel(
     val chargeTitle: String = title,
     val bonusLabel: String? = null,
     val paymentAmount: String = "",
-)
+) {
+    /** 원화 결제(파란보석) 여부. */
+    val isWonPayment: Boolean get() = priceSuffix != null
+}
 
-/**
- * Preview/개발 확인용 샘플 데이터.
- * 실제 카피/금액은 백엔드/기획 확정 후 반영 필요.
- */
-val SampleCurrencyProducts: List<CurrencyProductUiModel> = listOf(
+/** Preview/개발용 — 주황보석 탭 (재화로 결제). */
+val SampleOrangeGemProducts: List<CurrencyProductUiModel> = listOf(
     CurrencyProductUiModel(
-        id = "currency_0",
+        id = "orange_0",
         title = "100토파즈",
         subtitle = "Sub tit",
         price = "3개",
@@ -64,7 +66,7 @@ val SampleCurrencyProducts: List<CurrencyProductUiModel> = listOf(
         paymentAmount = "3개",
     ),
     CurrencyProductUiModel(
-        id = "currency_1",
+        id = "orange_1",
         title = "200토파즈",
         subtitle = "Sub tit",
         price = "5개",
@@ -72,7 +74,7 @@ val SampleCurrencyProducts: List<CurrencyProductUiModel> = listOf(
         paymentAmount = "5개",
     ),
     CurrencyProductUiModel(
-        id = "currency_2",
+        id = "orange_2",
         title = "500토파즈",
         subtitle = "Sub tit",
         price = "10개",
@@ -80,7 +82,7 @@ val SampleCurrencyProducts: List<CurrencyProductUiModel> = listOf(
         paymentAmount = "10개",
     ),
     CurrencyProductUiModel(
-        id = "currency_3",
+        id = "orange_3",
         title = "1100토파즈",
         subtitle = "Sub tit",
         price = "20개",
@@ -90,7 +92,87 @@ val SampleCurrencyProducts: List<CurrencyProductUiModel> = listOf(
 )
 
 /**
- * 재화 구매 리스트 (Figma node `2305:13152`).
+ * Preview/개발용 — 파란보석 탭 (Figma `파란보석 탭` / 원화 결제).
+ * 케이스: 기본 / 선택 / 인기 / 긴 제목 truncate.
+ */
+val SampleBlueGemProducts: List<CurrencyProductUiModel> = listOf(
+    CurrencyProductUiModel(
+        id = "blue_0",
+        title = "Tit",
+        subtitle = "Sub tit",
+        price = "1,100",
+        priceSuffix = "원",
+        chargeTitle = "Tit",
+        paymentAmount = "₩1,100",
+    ),
+    CurrencyProductUiModel(
+        id = "blue_1",
+        title = "Tit",
+        subtitle = "Sub tit",
+        price = "3,300",
+        priceSuffix = "원",
+        chargeTitle = "Tit",
+        paymentAmount = "₩3,300",
+    ),
+    CurrencyProductUiModel(
+        id = "blue_2",
+        title = "Tit",
+        subtitle = "Sub tit",
+        price = "5,500",
+        priceSuffix = "원",
+        chargeTitle = "Tit",
+        paymentAmount = "₩5,500",
+    ),
+    CurrencyProductUiModel(
+        id = "blue_3",
+        title = "Tit",
+        subtitle = "Sub tit",
+        price = "11,000",
+        priceSuffix = "원",
+        chargeTitle = "Tit",
+        paymentAmount = "₩11,000",
+    ),
+    CurrencyProductUiModel(
+        id = "blue_4",
+        title = "Tit",
+        subtitle = "Sub tit",
+        price = "33,000",
+        priceSuffix = "원",
+        isPopular = true,
+        chargeTitle = "Tit",
+        paymentAmount = "₩33,000",
+    ),
+    CurrencyProductUiModel(
+        id = "blue_5",
+        title = "Tit",
+        subtitle = "Sub tit",
+        price = "55,000",
+        priceSuffix = "원",
+        isPopular = true,
+        chargeTitle = "Tit",
+        paymentAmount = "₩55,000",
+    ),
+    CurrencyProductUiModel(
+        id = "blue_6",
+        title = "일이삼사오육칠팔구십일이삼사오육칠팔구십",
+        subtitle = "Sub tit",
+        price = "110,000",
+        priceSuffix = "원",
+        isPopular = true,
+        chargeTitle = "파란보석 패키지",
+        paymentAmount = "₩110,000",
+    ),
+)
+
+/** @deprecated [SampleOrangeGemProducts] 사용. 기존 호출부 호환용. */
+@Deprecated(
+    message = "Use SampleOrangeGemProducts or SampleBlueGemProducts",
+    replaceWith = ReplaceWith("SampleOrangeGemProducts"),
+)
+val SampleCurrencyProducts: List<CurrencyProductUiModel> = SampleOrangeGemProducts
+
+/**
+ * 재화 구매 리스트 (Figma node `2305:13152` / 파란보석 탭).
  *
  * 첫 탭 → [selectedProductId]에 파란 테두리(선택됨).
  * 이미 선택된 항목을 한 번 더 탭 → [onProductClick]에서 충전 팝업을 연다(ViewModel 처리).
@@ -127,6 +209,11 @@ private fun CurrencyProductRow(
         LiroutiTheme.colors.borderAlternative
     }
     val borderWidth = if (selected) 1.5.dp else 1.dp
+    val leadingIcon = if (item.isWonPayment) {
+        R.drawable.diamond_blue
+    } else {
+        R.drawable.diamond_orange
+    }
 
     Box(
         modifier = modifier
@@ -146,17 +233,24 @@ private fun CurrencyProductRow(
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Image(
-                painter = painterResource(id = R.drawable.diamond_orange),
+                painter = painterResource(id = leadingIcon),
                 contentDescription = null,
                 modifier = Modifier.size(16.dp),
             )
             Spacer(modifier = Modifier.width(12.dp))
             Column(modifier = Modifier.weight(1f)) {
-                Row(verticalAlignment = Alignment.CenterVertically) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
                     Text(
                         text = item.title,
                         style = LiroutiTheme.typography.body2LongMedium,
                         color = LiroutiTheme.colors.labelStrong,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                        // fill=false: 짧은 제목은 뱃지 바로 앞, 긴 제목은 줄어들며 ellipsis
+                        modifier = Modifier.weight(1f, fill = false),
                     )
                     if (item.isPopular) {
                         Spacer(modifier = Modifier.width(6.dp))
@@ -167,10 +261,13 @@ private fun CurrencyProductRow(
                     text = item.subtitle,
                     style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
                     color = LiroutiTheme.colors.labelInfo,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
             }
+            Spacer(modifier = Modifier.width(8.dp))
             Row(verticalAlignment = Alignment.CenterVertically) {
-                if (item.priceSuffix == null) {
+                if (!item.isWonPayment) {
                     Image(
                         painter = painterResource(id = R.drawable.diamond_blue),
                         contentDescription = null,
@@ -195,14 +292,28 @@ private fun CurrencyProductRow(
     }
 }
 
-@Preview(showBackground = true, heightDp = 480)
+@Preview(showBackground = true, heightDp = 560, name = "파란보석")
 @Composable
-private fun CurrencyProductListPreview() {
+private fun CurrencyProductListBluePreview() {
     LiroutiFrontendTheme {
         CurrencyProductList(
-            items = SampleCurrencyProducts,
-            selectedProductId = "currency_2",
+            items = SampleBlueGemProducts,
+            selectedProductId = "blue_2",
             onProductClick = {},
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 480, name = "주황보석")
+@Composable
+private fun CurrencyProductListOrangePreview() {
+    LiroutiFrontendTheme {
+        CurrencyProductList(
+            items = SampleOrangeGemProducts,
+            selectedProductId = "orange_2",
+            onProductClick = {},
+            modifier = Modifier.padding(16.dp),
         )
     }
 }

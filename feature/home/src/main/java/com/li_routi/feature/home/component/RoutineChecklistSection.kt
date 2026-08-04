@@ -318,10 +318,15 @@ fun RoutineChecklistSection(
         }
 
         if (displayedItems.isEmpty()) {
-            EmptyRoutineSection(
-                message = emptyMessage,
-                modifier = Modifier.padding(bottom = 20.dp),
-            )
+            // Figma `처음 진입 시`: 시트 peek 영역 안에서 empty가 가운데 오도록 최소 높이 확보
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(220.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                EmptyRoutineSection(message = emptyMessage)
+            }
         } else {
             Column(
                 modifier = Modifier
