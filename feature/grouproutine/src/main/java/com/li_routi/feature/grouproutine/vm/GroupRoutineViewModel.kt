@@ -506,12 +506,9 @@ class GroupRoutineViewModel(
             _uiState.update { it.copy(isSubmitting = false, actionMessage = "\"$categoryName\"은 아직 지원하지 않는 카테고리예요. 기본 카테고리를 선택해주세요.") }
             return
         }
-        if (editingId != null) {
-        val isSampleRoutine = DefaultCreateRoutineOptions.any { it.id == editingId }
-        if (isSampleRoutine) {
+        if (editingId != null && DefaultCreateRoutineOptions.any { it.id == editingId }) {
             _uiState.update { it.copy(isSubmitting = false, actionMessage = "기본 샘플 루틴은 서버에 수정할 수 없습니다.") }
             return
-            }
         }
 
         viewModelScope.launch {
