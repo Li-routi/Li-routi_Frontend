@@ -4,6 +4,7 @@ import android.content.Context
 import com.li_routi.core.data.BuildConfig
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.ChallengeApiService
+import com.li_routi.core.data.network.service.GroupRoutineApiService
 import com.li_routi.core.data.network.service.HomeApiService
 import com.li_routi.core.data.network.service.MediaApiService
 import com.li_routi.core.data.network.service.RoutineApiService
@@ -35,7 +36,12 @@ object NetworkModule {
 
     private val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            // PR 반영: 릴리즈 빌드에서는 로그를 끄고, 디버그 모드에서도 Body 노출(초대코드 등) 방지를 위해 BASIC 사용
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BASIC
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
         OkHttpClient.Builder()
             .addInterceptor(AuthInterceptor(authTokenPreference))
@@ -43,7 +49,6 @@ object NetworkModule {
             .addInterceptor(logging)
             .build()
     }
-
     /**
      * S3 presigned PUT 전용 클라이언트.
      * Bearer 토큰을 붙이면 서명이 깨지므로 AuthInterceptor를 넣지 않는다.
@@ -72,6 +77,10 @@ object NetworkModule {
 
     val authApiService: AuthApiService by lazy {
         retrofit.create(AuthApiService::class.java)
+    }
+
+    val groupRoutineApiService: GroupRoutineApiService by lazy {
+        retrofit.create(GroupRoutineApiService::class.java)
     }
 
     val homeApiService: HomeApiService by lazy {

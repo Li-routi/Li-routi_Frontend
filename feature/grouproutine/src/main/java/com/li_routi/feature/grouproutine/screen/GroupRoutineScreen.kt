@@ -57,8 +57,10 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -113,7 +115,7 @@ private val DangerBase = Color(0xFFFF6363)
 fun GroupRoutineRoute(
     initialEntryPoint: GrouproutineEntryPoint? = null,
     onInitialEntryPointConsumed: () -> Unit = {},
-    viewModel: GroupRoutineViewModel = viewModel(),
+    viewModel: GroupRoutineViewModel = viewModel { GroupRoutineViewModel() },
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -820,10 +822,19 @@ private fun RoutineScrollIndicator(
             .fillMaxHeight(),
     ) {
         val trackHeightPx = with(density) { maxHeight.toPx() }
-        val thumbHeightPx = (trackHeightPx * trackHeightPx / (trackHeightPx + scrollState.maxValue))
+        val maxScrollPx = scrollState.maxValue.toFloat()
+        if (!trackHeightPx.isFinite() || trackHeightPx <= 0f || maxScrollPx <= 0f) {
+            return@BoxWithConstraints
+        }
+
+        val thumbHeightPx = (trackHeightPx * trackHeightPx / (trackHeightPx + maxScrollPx))
             .coerceIn(with(density) { 42.dp.toPx() }, trackHeightPx)
-        val thumbOffsetPx = (scrollState.value.toFloat() / scrollState.maxValue) *
-            (trackHeightPx - thumbHeightPx)
+        val scrollableTrackPx = trackHeightPx - thumbHeightPx
+        if (!scrollableTrackPx.isFinite() || scrollableTrackPx <= 0f) return@BoxWithConstraints
+
+        val thumbOffsetPx = (scrollState.value.toFloat() / maxScrollPx) *
+            scrollableTrackPx
+        if (!thumbOffsetPx.isFinite()) return@BoxWithConstraints
 
         Box(
             modifier = Modifier
@@ -1799,6 +1810,7 @@ private fun GroupSettingsScreen(
     modifier: Modifier = Modifier,
 ) {
     val isLeader = uiState.isCurrentUserLeader
+    val clipboardManager = LocalClipboardManager.current
 
     Column(
         modifier = modifier
@@ -1861,7 +1873,17 @@ private fun GroupSettingsScreen(
                         onClick = onRoomLockClick,
                     )
                 }
-                InviteCodeRow(onClick = onInviteCodeCopyClick)
+                InviteCodeRow(
+                    code = uiState.groupInviteCode.orEmpty(),
+                    onClick = {
+                        val code = uiState.groupInviteCode
+                        //코드가 실제로 존재할때만 클립보드에 복사
+                        if(!code.isNullOrBlank()) {
+                            clipboardManager.setText(AnnotatedString(code))
+                            onInviteCodeCopyClick()
+                        }
+                    },
+                )
             }
         }
 
@@ -2226,6 +2248,7 @@ private fun InviteLockRow(
 
 @Composable
 private fun InviteCodeRow(
+    code: String,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -2251,7 +2274,7 @@ private fun InviteCodeRow(
             modifier = Modifier.weight(1f),
         )
         Text(
-            text = "a1b2c3",
+            text = code.ifBlank { "발급 중..." },
             color = LabelSub,
             style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
         )

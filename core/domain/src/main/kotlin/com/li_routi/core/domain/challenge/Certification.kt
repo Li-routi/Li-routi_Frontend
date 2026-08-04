@@ -9,6 +9,8 @@ data class Certification(
     val verifiedAt: String,
     val likeCount: Long,
     val liked: Boolean,
+    /** 서버가 토큰의 회원과 작성자를 대조해 내려주는, 본인 게시글 여부. */
+    val isMine: Boolean,
 )
 
 /** 인증 피드 커서 기반 페이지네이션 결과. */
@@ -23,6 +25,7 @@ data class MyCertification(
     val id: Long,
     val content: String,
     val imageUrl: String,
+    val verifiedDate: String,
     val verifiedAt: String,
     val likeCount: Long,
 )
@@ -49,4 +52,10 @@ data class CreatedVerification(
     val content: String,
     val currentStreak: Int,
     val reverified: Boolean,
+)
+
+/** 인증 메모 수정 결과 (PATCH .../verifications/{verificationId}). */
+data class EditedVerification(
+    val verificationId: Long,
+    val content: String,
 )

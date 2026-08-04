@@ -12,6 +12,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -48,6 +49,7 @@ import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
 import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.component.LiroutiRoutineStatsRow
+import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.challenge.component.CertificationCard
@@ -109,6 +111,8 @@ fun ChallengeDetailScreen(
     var capturedVerificationPhotoUri by remember { mutableStateOf<Uri?>(null) }
     var isSubmittingVerification by remember { mutableStateOf(false) }
     var verificationSubmitError by remember { mutableStateOf<String?>(null) }
+    // "삭제하기"는 아직 백엔드 API가 없는 UI 스텁이라, 눌렀을 때 안내 토스트만 보여준다.
+    var showDeletePreparingToast by remember { mutableStateOf(false) }
     val context = LocalContext.current
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -121,13 +125,24 @@ fun ChallengeDetailScreen(
     }
 
     editingCertification?.let { certification ->
+        // uiState.editedCertificationId는 수정 성공 시에만 채워지는 명시적 신호라("제출 중 아님 &&
+        // 에러 없음"이라는 이중 부정으로 성공을 추론하지 않음), 이 값이 지금 열려 있는 게시글과 같아지면
+        // 곧바로 닫고 dismiss로 신호를 지운다.
+        LaunchedEffect(uiState.editedCertificationId) {
+            if (uiState.editedCertificationId == certification.id) {
+                editingCertification = null
+                actions.onEditCertificationDismiss()
+            }
+        }
         CertificationEditScreen(
             certification = certification,
-            onClose = { editingCertification = null },
-            onSubmit = { content ->
-                actions.onEditCertificationSubmit(certification.id, content)
+            onClose = {
                 editingCertification = null
+                actions.onEditCertificationDismiss()
             },
+            onSubmit = { content -> actions.onEditCertificationSubmit(certification.id, content) },
+            isSubmitting = uiState.isSubmittingEdit,
+            errorMessage = uiState.editCertificationError,
             modifier = modifier,
         )
         return
@@ -193,73 +208,94 @@ fun ChallengeDetailScreen(
         }
     }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundDefault),
-    ) {
-        // 뒤로가기/더보기 버튼이 있는 헤더는 다른 화면들과 동일하게 별도 고정 영역으로 분리한다
-        // (흰 배경 + statusBarsPadding으로 시스템 상태바 영역까지 채움). 히어로 이미지는 일반 콘텐츠로
-        // 취급해 아래 스크롤 영역 맨 위에 배치한다.
-        ChallengeDetailHeader(
-            onBackClick = onBackClick,
-            onMoreClick = { showMoreSheet = true },
-            showMoreButton = uiState.isJoined,
-        )
-
-        LazyColumn(
-            state = listState,
-            modifier = Modifier.fillMaxSize(),
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(LiroutiTheme.colors.backgroundDefault),
         ) {
-            item {
-                ChallengeHeroImage()
-            }
-            item {
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(top = 20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                ) {
-                    ChallengeInfoSection(
-                        uiState = uiState,
-                        onJoinClick = actions::onJoinClick,
-                        onVerifyClick = { showVerificationCamera = true },
+            // 뒤로가기/더보기 버튼이 있는 헤더는 다른 화면들과 동일하게 별도 고정 영역으로 분리한다
+            // (흰 배경 + statusBarsPadding으로 시스템 상태바 영역까지 채움). 히어로 이미지는 일반 콘텐츠로
+            // 취급해 아래 스크롤 영역 맨 위에 배치한다.
+            ChallengeDetailHeader(
+                onBackClick = onBackClick,
+                onMoreClick = { showMoreSheet = true },
+                showMoreButton = uiState.isJoined,
+            )
+
+            LazyColumn(
+                state = listState,
+                modifier = Modifier.fillMaxSize(),
+            ) {
+                item {
+                    ChallengeHeroImage()
+                }
+                item {
+                    Column(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(top = 20.dp),
+                        verticalArrangement = Arrangement.spacedBy(20.dp),
+                    ) {
+                        ChallengeInfoSection(
+                            uiState = uiState,
+                            onJoinClick = actions::onJoinClick,
+                            onVerifyClick = { showVerificationCamera = true },
+                        )
+                        LiroutiRoutineStatsRow(
+                            participants = uiState.participantCount.toString(),
+                            activity = uiState.rewardCount.toString(),
+                            posts = uiState.postCount.toString(),
+                            activityLabel = "리워드",
+                        )
+                    }
+                }
+                item {
+                    Spacer(modifier = Modifier.height(24.dp))
+                    LiroutiLineTab(
+                        tabs = listOf("인증", "내 인증 보기"),
+                        selectedIndex = if (uiState.selectedTab == CertificationTab.All) 0 else 1,
+                        onTabSelected = { index ->
+                            actions.onTabSelected(if (index == 0) CertificationTab.All else CertificationTab.Mine)
+                        },
+                        equalWidth = true,
                     )
-                    LiroutiRoutineStatsRow(
-                        participants = uiState.participantCount.toString(),
-                        activity = uiState.rewardCount.toString(),
-                        posts = uiState.postCount.toString(),
-                        activityLabel = "리워드",
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+                items(uiState.visibleCertifications, key = { it.id }) { certification ->
+                    CertificationCard(
+                        certification = certification,
+                        // "인증"(전체) 탭에서 본인 글은 신고할 수 없어야 하므로 더보기 버튼 자체를 숨긴다.
+                        // "내 인증 보기" 탭은 항상 본인 글이라 수정하기/삭제하기를 위해 그대로 노출한다.
+                        onMoreClick = if (uiState.selectedTab == CertificationTab.All && certification.isMine) {
+                            null
+                        } else {
+                            { moreSheetCertification = certification }
+                        },
+                        // "내 인증 보기" 응답엔 liked 상태가 없어 그 탭에서는 좋아요를 누를 수 없게 한다
+                        // ("인증"(전체) 탭은 본인 글이어도 liked가 내려오고, 자기 글에도 좋아요를 누를 수 있다).
+                        onLikeClick = if (uiState.selectedTab == CertificationTab.Mine) null else { { actions.onLikeToggleClick(certification.id) } },
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(horizontal = 16.dp)
+                            .padding(bottom = 20.dp),
                     )
                 }
+                item { Spacer(modifier = Modifier.height(30.dp)) }
             }
-            item {
-                Spacer(modifier = Modifier.height(24.dp))
-                LiroutiLineTab(
-                    tabs = listOf("인증", "내 인증 보기"),
-                    selectedIndex = if (uiState.selectedTab == CertificationTab.All) 0 else 1,
-                    onTabSelected = { index ->
-                        actions.onTabSelected(if (index == 0) CertificationTab.All else CertificationTab.Mine)
-                    },
-                    equalWidth = true,
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-            items(uiState.visibleCertifications, key = { it.id }) { certification ->
-                CertificationCard(
-                    certification = certification,
-                    onMoreClick = { moreSheetCertification = certification },
-                    // "내 인증 보기" 응답엔 liked 상태가 없어 그 탭에서는 좋아요를 누를 수 없게 한다.
-                    onLikeClick = if (certification.isMine) null else { { actions.onLikeToggleClick(certification.id) } },
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp)
-                        .padding(bottom = 20.dp),
-                )
-            }
-            item { Spacer(modifier = Modifier.height(30.dp)) }
+        }
+
+        if (showDeletePreparingToast) {
+            LiroutiToast(
+                message = "준비중입니다",
+                onCloseClick = { showDeletePreparingToast = false },
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(16.dp),
+            )
         }
     }
 
@@ -281,7 +317,7 @@ fun ChallengeDetailScreen(
         }
     }
 
-    // 인증 게시글 더보기 바텀시트. 내 글이면 수정하기(Figma 3610:30078),
+    // 인증 게시글 더보기 바텀시트. 내 글이면 수정하기/삭제하기(Figma 3610:30078),
     // 타인 글이면 신고하기(Figma 3610:30075)를 보여준다. 둘 다 챌린지 나가기와 달리 화살표가 없다.
     moreSheetCertification?.let { certification ->
         LiroutiBottomSheet(
@@ -294,6 +330,16 @@ fun ChallengeDetailScreen(
                     onClick = {
                         editingCertification = certification
                         moreSheetCertification = null
+                    },
+                )
+                // 삭제 API가 아직 없어 버튼만 우선 노출한다(ChallengeDetailScreenActions.onDeleteCertificationClick 참고).
+                // 실제 삭제 대신 "준비중입니다" 토스트만 보여준다.
+                MoreSheetActionRow(
+                    text = "삭제하기",
+                    onClick = {
+                        actions.onDeleteCertificationClick(certification.id)
+                        moreSheetCertification = null
+                        showDeletePreparingToast = true
                     },
                 )
             } else {
@@ -423,9 +469,15 @@ private fun ChallengeInfoSection(
         }
 
         // "참여하기" 탭 시 참여 상태로 바뀌고 서버에 참여 신호를 보낸다(ViewModel에서 처리).
-        // 참여 후 "인증하기"는 인증 작성 화면으로 이동한다(제출 API는 아직 없어 UI 연결만 됨).
+        // 참여 후 현재 인증 주기에 이미 인증했다면(verifiedInCurrentPeriod) "인증 완료"로 바뀌며
+        // 더 이상 누를 수 없다(재인증 불가) — 이 값은 챌린지 상세 API가 내려주므로 나갔다 들어와도 유지된다.
         LiroutiPrimaryButton(
-            text = if (uiState.isJoined) "인증하기" else "참여하기",
+            text = when {
+                !uiState.isJoined -> "참여하기"
+                uiState.verifiedInCurrentPeriod -> "인증 완료"
+                else -> "인증하기"
+            },
+            enabled = !uiState.isJoined || !uiState.verifiedInCurrentPeriod,
             onClick = { if (uiState.isJoined) onVerifyClick() else onJoinClick() },
         )
     }
@@ -437,6 +489,8 @@ private object PreviewChallengeDetailScreenActions : ChallengeDetailScreenAction
     override fun onLoadMore() = Unit
     override fun onLeaveChallengeClick() = Unit
     override fun onEditCertificationSubmit(certificationId: Long, content: String) = Unit
+    override fun onEditCertificationDismiss() = Unit
+    override fun onDeleteCertificationClick(certificationId: Long) = Unit
     override fun onReportCertificationClick(certificationId: Long) = Unit
     override fun onLikeToggleClick(certificationId: Long) = Unit
     override fun onVerificationSubmitted() = Unit

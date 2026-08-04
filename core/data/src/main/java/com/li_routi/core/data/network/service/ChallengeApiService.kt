@@ -2,6 +2,7 @@ package com.li_routi.core.data.network.service
 
 import com.li_routi.core.data.network.dto.request.ChallengeVerificationRequest
 import com.li_routi.core.data.network.dto.request.ReportRequest
+import com.li_routi.core.data.network.dto.request.UpdateVerificationMemoRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.ChallengeDetailResponse
 import com.li_routi.core.data.network.dto.response.ChallengeListingResponse
@@ -11,10 +12,12 @@ import com.li_routi.core.data.network.dto.response.MyChallengeListingResponse
 import com.li_routi.core.data.network.dto.response.MyVerificationFeedResponse
 import com.li_routi.core.data.network.dto.response.ParticipationResponse
 import com.li_routi.core.data.network.dto.response.ReportResponse
+import com.li_routi.core.data.network.dto.response.UpdateVerificationMemoResponse
 import com.li_routi.core.data.network.dto.response.VerificationFeedResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
+import retrofit2.http.PATCH
 import retrofit2.http.POST
 import retrofit2.http.Path
 import retrofit2.http.Query
@@ -54,6 +57,14 @@ interface ChallengeApiService {
         @Path("challengeId") challengeId: Long,
         @Body request: ChallengeVerificationRequest,
     ): ApiResponse<CreateVerificationResponse>
+
+    /** 인증 게시글의 메모(코멘트)만 수정한다 (사진은 그대로 유지). */
+    @PATCH("api/challenges/{challengeId}/verifications/{verificationId}")
+    suspend fun updateVerificationMemo(
+        @Path("challengeId") challengeId: Long,
+        @Path("verificationId") verificationId: Long,
+        @Body request: UpdateVerificationMemoRequest,
+    ): ApiResponse<UpdateVerificationMemoResponse>
 
     @POST("api/challenges/{challengeId}/verifications/{verificationId}/reports")
     suspend fun reportVerification(
