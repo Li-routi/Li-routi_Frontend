@@ -1,5 +1,6 @@
 package com.li_routi.feature.mypage.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -45,6 +46,12 @@ fun MyPageRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var destination by rememberSaveable { mutableStateOf(MyPageDestination.MyPage) }
+
+    // Nav 백스택이 아니라 로컬 전환이므로, 시스템 Back이 마이페이지 하위 화면을 건너뛰고
+    // 곧바로 홈 탭으로 넘어가지 않게 가로챈다.
+    BackHandler(enabled = destination != MyPageDestination.MyPage) {
+        destination = MyPageDestination.MyPage
+    }
 
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
