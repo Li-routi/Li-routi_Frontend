@@ -5,12 +5,16 @@ import android.widget.Toast
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.feature.login.auth.findActivity
 import com.li_routi.feature.login.screen.LoginScreen
+import com.li_routi.feature.login.screen.ProfileScreen
 import com.li_routi.feature.login.vm.LoginUiEvent
 import com.li_routi.feature.login.vm.LoginViewModel
 
@@ -20,9 +24,10 @@ private const val MainActivityClassName = "com.cmc.li_routi_frontend.MainActivit
 /**
  * 로그인 화면 진입점. [LoginViewModel]과 [LoginScreen]을 연결한다.
  *
- * 로그인 성공 시 앱의 실제 진입점인 MainActivity로 되돌아간다. 온보딩 여부
- * ([com.li_routi.core.domain.auth.AuthToken.onboardingCompleted])에 따른 분기는 `feature:onboarding`이
- * 아직 실제 화면을 갖추기 전까지는 범위 밖 — 일단 둘 다 메인으로 보낸다.
+ * 로그인 성공 시 `AuthToken.onboardingCompleted`로 첫 로그인 여부를 분기한다.
+ * - 첫 로그인(회원가입, `onboardingCompleted == false`): 이 화면 안에서 [ProfileScreen]으로 전환하고,
+ *   저장을 눌러야 비로소 MainActivity로 넘어간다.
+ * - 재로그인(`onboardingCompleted == true`): 기존과 동일하게 바로 MainActivity로 되돌아간다.
  */
 @Composable
 fun LoginRoute(
@@ -32,13 +37,23 @@ fun LoginRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
+    var showProfileScreen by remember { mutableStateOf(false) }
+
+    fun goToMainActivity() {
+        context.startActivity(Intent().setClassName(context.packageName, MainActivityClassName))
+        context.findActivity()?.finish()
+    }
+
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
             when (event) {
                 is LoginUiEvent.LoginSucceeded -> {
                     Toast.makeText(context, "로그인 성공", Toast.LENGTH_SHORT).show()
-                    context.startActivity(Intent().setClassName(context.packageName, MainActivityClassName))
-                    context.findActivity()?.finish()
+                    if (event.token.onboardingCompleted) {
+                        goToMainActivity()
+                    } else {
+                        showProfileScreen = true
+                    }
                 }
                 is LoginUiEvent.ShowError ->
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
@@ -46,12 +61,22 @@ fun LoginRoute(
         }
     }
 
-    LoginScreen(
-        isLoading = uiState.isLoading,
-        onKakaoClick = { viewModel.onKakaoLoginClick(context) },
-        onGoogleClick = {
-            context.findActivity()?.let(viewModel::onGoogleLoginClick)
-        },
-        modifier = modifier,
-    )
+    if (showProfileScreen) {
+        ProfileScreen(
+            modifier = modifier,
+            onSaveClick = {
+                // 저장버튼기능없음: 프로필 저장 로직은 아직 없고, 홈 화면으로 이동만 수행한다.
+                goToMainActivity()
+            },
+        )
+    } else {
+        LoginScreen(
+            isLoading = uiState.isLoading,
+            onKakaoClick = { viewModel.onKakaoLoginClick(context) },
+            onGoogleClick = {
+                context.findActivity()?.let(viewModel::onGoogleLoginClick)
+            },
+            modifier = modifier,
+        )
+    }
 }
