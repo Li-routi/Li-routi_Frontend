@@ -150,7 +150,7 @@ private fun CurrencyChargeDialogContentPreview() {
             contentAlignment = Alignment.Center,
         ) {
             CurrencyChargeDialogContent(
-                product = SampleCurrencyProducts[2],
+                product = SampleOrangeGemProducts[2],
                 onDismiss = {},
                 onConfirmCharge = {},
             )

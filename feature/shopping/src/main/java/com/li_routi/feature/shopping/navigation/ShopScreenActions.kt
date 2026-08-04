@@ -10,8 +10,11 @@ interface ShopScreenActions {
     /** 상단 뒤로가기 아이콘 탭 */
     fun onBackClick()
 
-    /** 상단 코인/보석 잔액 chip 탭 */
-    fun onCurrencyChipClick()
+    /** 상단 주황보석 잔액 chip 탭 → 재화 상점 주황 탭 */
+    fun onOrangeGemClick()
+
+    /** 상단 파란보석 잔액 chip 탭 → 재화 상점 파란 탭 */
+    fun onBlueGemClick()
 
     /** 아이템 그리드 셀 탭 (선택/해제) */
     fun onItemClick(itemId: String)

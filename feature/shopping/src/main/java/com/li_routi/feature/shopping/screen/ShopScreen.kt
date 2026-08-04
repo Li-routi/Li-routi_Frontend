@@ -87,7 +87,8 @@ fun ShopScreen(
                 coinBalance = coinBalance,
                 gemBalance = gemBalance,
                 onBackClick = actions::onBackClick,
-                onCurrencyChipClick = actions::onCurrencyChipClick,
+                onOrangeGemClick = actions::onOrangeGemClick,
+                onBlueGemClick = actions::onBlueGemClick,
             )
         },
         bottomBar = {
@@ -233,7 +234,8 @@ private fun ShopCharacterTooltip(
 
 private object PreviewShopScreenActions : ShopScreenActions {
     override fun onBackClick() = Unit
-    override fun onCurrencyChipClick() = Unit
+    override fun onOrangeGemClick() = Unit
+    override fun onBlueGemClick() = Unit
     override fun onItemClick(itemId: String) = Unit
     override fun onSaveClick() = Unit
 }
