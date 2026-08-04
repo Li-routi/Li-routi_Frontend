@@ -16,6 +16,9 @@ sealed interface MyPageUiEvent {
     /** "프로필 수정" 탭 → 닉네임 변경 화면 진입 */
     data object NavigateToEditProfile : MyPageUiEvent
 
+    /** "내 인증" 탭 → 내 인증 화면 진입 */
+    data object NavigateToMyVerification : MyPageUiEvent
+
     /** "업적" 탭 → 업적 화면 진입 */
     data object NavigateToAchievement : MyPageUiEvent
 

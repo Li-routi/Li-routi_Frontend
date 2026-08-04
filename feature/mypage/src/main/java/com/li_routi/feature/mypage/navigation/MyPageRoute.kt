@@ -14,6 +14,7 @@ import com.li_routi.feature.mypage.screen.AchievementScreen
 import com.li_routi.feature.mypage.screen.AppInfoScreen
 import com.li_routi.feature.mypage.screen.EditProfileScreen
 import com.li_routi.feature.mypage.screen.MyPageScreen
+import com.li_routi.feature.mypage.screen.MyVerificationScreen
 import com.li_routi.feature.mypage.screen.ReportScreen
 import com.li_routi.feature.mypage.vm.MyPageUiEvent
 import com.li_routi.feature.mypage.vm.MyPageViewModel
@@ -22,6 +23,7 @@ import com.li_routi.feature.mypage.vm.MyPageViewModel
 private enum class MyPageDestination {
     MyPage,
     EditProfile,
+    MyVerification,
     Achievement,
     Report,
     AppInfo,
@@ -48,6 +50,7 @@ fun MyPageRoute(
         viewModel.uiEvent.collect { event ->
             destination = when (event) {
                 MyPageUiEvent.NavigateToEditProfile -> MyPageDestination.EditProfile
+                MyPageUiEvent.NavigateToMyVerification -> MyPageDestination.MyVerification
                 MyPageUiEvent.NavigateToAchievement -> MyPageDestination.Achievement
                 MyPageUiEvent.NavigateToReport -> MyPageDestination.Report
                 MyPageUiEvent.NavigateToAppInfo -> MyPageDestination.AppInfo
@@ -73,6 +76,11 @@ fun MyPageRoute(
                 viewModel.onNicknameSaved(newNickname)
                 destination = MyPageDestination.MyPage
             },
+            modifier = modifier,
+        )
+
+        MyPageDestination.MyVerification -> MyVerificationScreen(
+            onBackClick = { destination = MyPageDestination.MyPage },
             modifier = modifier,
         )
 

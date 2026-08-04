@@ -103,12 +103,10 @@ fun AchievementScreen(
                         .fillMaxWidth()
                         .shadow(elevation = 2.dp, shape = RoundedCornerShape(6.dp))
                         .background(LiroutiTheme.colors.backgroundDefault, RoundedCornerShape(6.dp))
-                        .padding(horizontal = 20.dp),
+                        .padding(20.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
                 ) {
-                    achievements.forEachIndexed { index, item ->
-                        if (index != 0) {
-                            LiroutiDivider(color = LiroutiTheme.colors.borderSub)
-                        }
+                    achievements.forEach { item ->
                         AchievementListItem(item = item)
                     }
                 }
