@@ -1,6 +1,10 @@
 package com.li_routi.core.designsystem.component
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -10,7 +14,9 @@ import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.StrokeJoin
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 
 internal fun DrawScope.drawCloseIcon(color: Color) {
     val inset = size.width / 4f
@@ -139,5 +145,23 @@ internal fun LiroutiDotMarkIcon(
             radius = size.minDimension * 0.09375f,
             center = Offset(size.width / 2f, size.height / 2f),
         )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun LiroutiBottomSheetIconsPreview() {
+    LiroutiFrontendTheme {
+        Row(
+            horizontalArrangement = Arrangement.spacedBy(16.dp),
+            modifier = Modifier.padding(16.dp),
+        ) {
+            Canvas(modifier = Modifier.size(24.dp)) { drawCloseIcon(Color.Black) }
+            LiroutiCheckmarkIcon(modifier = Modifier.size(24.dp))
+            LiroutiChevronRightIcon(modifier = Modifier.size(24.dp))
+            LiroutiChevronLeftIcon(modifier = Modifier.size(24.dp))
+            LiroutiPlusIcon(modifier = Modifier.size(24.dp))
+            LiroutiDotMarkIcon(modifier = Modifier.size(24.dp))
+        }
     }
 }

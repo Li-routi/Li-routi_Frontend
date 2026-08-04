@@ -290,6 +290,7 @@ private fun LiroutiBottomSheetRoutineVariantPreview() {
                             showHelper = false,
                         )
                         Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                            LiroutiBottomSheetField(label = "시작시간", value = "오전 9:00")
                             LiroutiBottomSheetField(label = "마감시간", value = "오후 11:00")
                             LiroutiBottomSheetRepeatField(
                                 value = "없음",
@@ -300,16 +301,6 @@ private fun LiroutiBottomSheetRoutineVariantPreview() {
                                     } else {
                                         selectedDays + index
                                     }
-                                },
-                            )
-                            LiroutiBottomSheetField(
-                                label = "알람 시간",
-                                value = "없음",
-                                trailing = {
-                                    LiroutiChevronRightIcon(
-                                        modifier = Modifier.size(20.dp),
-                                        color = LiroutiTheme.colors.labelSub,
-                                    )
                                 },
                             )
                         }
