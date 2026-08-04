@@ -3,12 +3,20 @@ package com.li_routi.core.data.mapper
 import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.data.network.dto.response.GroupCreateResultResponse
 import com.li_routi.core.data.network.dto.response.GroupInviteCodeResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryListResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineVerificationItemResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineScheduleResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineListResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineResponse
 import com.li_routi.core.domain.grouproutine.CreatedGroup
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
+import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
+import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
+import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationFeed
+import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationItem
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.GroupRoutineStatus
 import com.li_routi.core.domain.grouproutine.GroupRoutineUpdateResult
@@ -18,6 +26,7 @@ import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
 fun GroupCreateResultResponse.toDomain(): CreatedGroup = CreatedGroup(
     groupId = groupId,
     name = name,
+    routines = routines.map { it.toDomain() },
     assignmentCount = assignmentCount,
 )
 
@@ -62,4 +71,32 @@ fun TodayGroupRoutineListResponse.toDomain(): List<TodayGroupRoutine> = routines
 fun GroupInviteCodeResponse.toDomain(): GroupInviteCode = GroupInviteCode(
     inviteCode = inviteCode,
     expiresAt = expiresAt,
+)
+
+fun GroupRoutineCategoryListResponse.toDomain(): GroupRoutineCategoryList = GroupRoutineCategoryList(
+    categories = categories.map { it.toDomain() },
+    addableCount = addableCount,
+)
+
+fun GroupRoutineCategoryResponse.toDomain(): GroupRoutineCategory = GroupRoutineCategory(
+    categoryId = categoryId,
+    name = name,
+    color = color,
+    fixed = fixed,
+)
+
+fun GroupRoutineFeedResponse.toDomain(): GroupRoutineVerificationFeed = GroupRoutineVerificationFeed(
+    verifications = verifications.map { it.toDomain() },
+    nextCursor = nextCursor,
+    hasNext = hasNext,
+)
+
+fun GroupRoutineVerificationItemResponse.toDomain(): GroupRoutineVerificationItem = GroupRoutineVerificationItem(
+    verificationId = verificationId,
+    assignmentId = assignmentId,
+    memberId = memberId,
+    nickname = nickname,
+    imageUrl = imageUrl,
+    content = content,
+    verifiedAt = verifiedAt,
 )

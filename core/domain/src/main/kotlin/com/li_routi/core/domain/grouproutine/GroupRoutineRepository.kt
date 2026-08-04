@@ -38,4 +38,19 @@ interface GroupRoutineRepository {
 
     /** 그룹의 현재 초대코드를 조회함 */
     suspend fun getInviteCode(groupId: Long): ResultState<GroupInviteCode>
+
+    suspend fun getGroupRoutineCategories(groupId: Long): ResultState<GroupRoutineCategoryList>
+
+    suspend fun createGroupRoutineCategory(
+        groupId: Long,
+        name: String,
+        color: String?,
+    ): ResultState<GroupRoutineCategory>
+
+    suspend fun getGroupRoutineVerifications(
+        groupId: Long,
+        routineId: Long,
+        cursor: Long?,
+        size: Int?,
+    ): ResultState<GroupRoutineVerificationFeed>
 }

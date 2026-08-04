@@ -822,10 +822,19 @@ private fun RoutineScrollIndicator(
             .fillMaxHeight(),
     ) {
         val trackHeightPx = with(density) { maxHeight.toPx() }
-        val thumbHeightPx = (trackHeightPx * trackHeightPx / (trackHeightPx + scrollState.maxValue))
+        val maxScrollPx = scrollState.maxValue.toFloat()
+        if (!trackHeightPx.isFinite() || trackHeightPx <= 0f || maxScrollPx <= 0f) {
+            return@BoxWithConstraints
+        }
+
+        val thumbHeightPx = (trackHeightPx * trackHeightPx / (trackHeightPx + maxScrollPx))
             .coerceIn(with(density) { 42.dp.toPx() }, trackHeightPx)
-        val thumbOffsetPx = (scrollState.value.toFloat() / scrollState.maxValue) *
-            (trackHeightPx - thumbHeightPx)
+        val scrollableTrackPx = trackHeightPx - thumbHeightPx
+        if (!scrollableTrackPx.isFinite() || scrollableTrackPx <= 0f) return@BoxWithConstraints
+
+        val thumbOffsetPx = (scrollState.value.toFloat() / maxScrollPx) *
+            scrollableTrackPx
+        if (!thumbOffsetPx.isFinite()) return@BoxWithConstraints
 
         Box(
             modifier = Modifier

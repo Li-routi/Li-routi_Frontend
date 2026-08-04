@@ -6,6 +6,7 @@ import com.li_routi.core.common.kotlin.util.safeApiCall
 import com.li_routi.core.data.mapper.toDomain
 import com.li_routi.core.data.network.dto.request.CreateGroupCategoryRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRequest
+import com.li_routi.core.data.network.dto.request.CreateGroupRoutineCategoryRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.request.GroupRoutineScheduleRequest
 import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
@@ -13,9 +14,12 @@ import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.service.GroupRoutineApiService
 import com.li_routi.core.domain.grouproutine.CreatedGroup
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
+import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
+import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.GroupRoutineUpdateResult
+import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationFeed
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
@@ -111,6 +115,38 @@ class GroupRoutineRepositoryImpl(
 
     override suspend fun getInviteCode(groupId: Long): ResultState<GroupInviteCode> = safeApiCall {
         api.getInviteCode(groupId).unwrap().toDomain()
+    }
+
+    override suspend fun getGroupRoutineCategories(groupId: Long): ResultState<GroupRoutineCategoryList> = safeApiCall {
+        api.getCategories(groupId).unwrap().toDomain()
+    }
+
+    override suspend fun createGroupRoutineCategory(
+        groupId: Long,
+        name: String,
+        color: String?,
+    ): ResultState<GroupRoutineCategory> = safeApiCall {
+        api.createCategory(
+            groupId = groupId,
+            request = CreateGroupRoutineCategoryRequest(
+                name = name,
+                color = color,
+            ),
+        ).unwrap().toDomain()
+    }
+
+    override suspend fun getGroupRoutineVerifications(
+        groupId: Long,
+        routineId: Long,
+        cursor: Long?,
+        size: Int?,
+    ): ResultState<GroupRoutineVerificationFeed> = safeApiCall {
+        api.getRoutineVerifications(
+            groupId = groupId,
+            routineId = routineId,
+            cursor = cursor,
+            size = size,
+        ).unwrap().toDomain()
     }
 }
 
