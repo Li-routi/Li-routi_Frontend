@@ -4,4 +4,5 @@ data class ReissueResponse(
     val accessToken: String,
     val refreshToken: String,
     val accessTokenExpiresIn: Long,
+    val onboardingCompleted: Boolean,
 )
