@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -43,6 +44,32 @@ fun AppNavHost(
     var groupRoutineEntryPoint by rememberSaveable { mutableStateOf<GrouproutineEntryPoint?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
+    // 탭별로 몇 번 리셋됐는지 세는 값. SaveableStateProvider의 key에 섞어 넣어서,
+    // 이미 선택돼 있는 탭을 다시 눌러도(= selectedTab 값 자체는 안 바뀌어도) key가 바뀌어
+    // 그 탭의 내용이 강제로 새로 생성되도록 한다.
+    var homeResetGen by rememberSaveable { mutableIntStateOf(0) }
+    var groupRoutineResetGen by rememberSaveable { mutableIntStateOf(0) }
+    var challengeResetGen by rememberSaveable { mutableIntStateOf(0) }
+    var myResetGen by rememberSaveable { mutableIntStateOf(0) }
+
+    fun resetGenOf(tab: AppBottomTab) = when (tab) {
+        AppBottomTab.Home -> homeResetGen
+        AppBottomTab.GroupRoutine -> groupRoutineResetGen
+        AppBottomTab.Challenge -> challengeResetGen
+        AppBottomTab.My -> myResetGen
+    }
+
+    fun bumpResetGenOf(tab: AppBottomTab) {
+        when (tab) {
+            AppBottomTab.Home -> homeResetGen++
+            AppBottomTab.GroupRoutine -> groupRoutineResetGen++
+            AppBottomTab.Challenge -> challengeResetGen++
+            AppBottomTab.My -> myResetGen++
+        }
+    }
+
+    fun tabKey(tab: AppBottomTab) = "${tab.name}_${resetGenOf(tab)}"
+
     val context = LocalContext.current
     var lastBackPressedAt by remember { mutableLongStateOf(0L) }
 
@@ -64,42 +91,51 @@ fun AppNavHost(
         }
     }
 
+    // 하단바 탭을 누르면(이미 선택돼 있던 탭을 다시 누른 경우 포함) 그 탭은 무조건
+    // 시작 화면부터 다시 보여줘야 한다. 저장된 이전 상태(내부 NavController 백스택 등)를
+    // 지우고, 리셋 카운터를 올려 key를 바꿔서 그 탭의 내용을 강제로 새로 만든다.
+    fun selectTab(tab: AppBottomTab) {
+        saveableStateHolder.removeState(tabKey(tab))
+        bumpResetGenOf(tab)
+        selectedTab = tab
+    }
+
     Box(modifier = modifier) {
         when (selectedTab) {
-            AppBottomTab.Home -> saveableStateHolder.SaveableStateProvider(AppBottomTab.Home.name) {
+            AppBottomTab.Home -> saveableStateHolder.SaveableStateProvider(tabKey(AppBottomTab.Home)) {
                 HomeNavHost(
                     onCreateRoomClick = {
                         groupRoutineEntryPoint = GrouproutineEntryPoint.CreateRoom
-                        selectedTab = AppBottomTab.GroupRoutine
+                        selectTab(AppBottomTab.GroupRoutine)
                     },
                     onJoinRoomWithInviteCodeClick = {
                         groupRoutineEntryPoint = GrouproutineEntryPoint.JoinWithInviteCode
-                        selectedTab = AppBottomTab.GroupRoutine
+                        selectTab(AppBottomTab.GroupRoutine)
                     },
-                    onTabSelected = { selectedTab = it },
+                    onTabSelected = ::selectTab,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
 
-            AppBottomTab.GroupRoutine -> saveableStateHolder.SaveableStateProvider(AppBottomTab.GroupRoutine.name) {
+            AppBottomTab.GroupRoutine -> saveableStateHolder.SaveableStateProvider(tabKey(AppBottomTab.GroupRoutine)) {
                 GrouproutineRootNavHost(
                     initialEntryPoint = groupRoutineEntryPoint,
                     onInitialEntryPointConsumed = { groupRoutineEntryPoint = null },
-                    onTabSelected = { selectedTab = it },
+                    onTabSelected = ::selectTab,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
 
-            AppBottomTab.Challenge -> saveableStateHolder.SaveableStateProvider(AppBottomTab.Challenge.name) {
+            AppBottomTab.Challenge -> saveableStateHolder.SaveableStateProvider(tabKey(AppBottomTab.Challenge)) {
                 ChallengeNavHost(
-                    onTabSelected = { selectedTab = it },
+                    onTabSelected = ::selectTab,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
 
-            AppBottomTab.My -> saveableStateHolder.SaveableStateProvider(AppBottomTab.My.name) {
+            AppBottomTab.My -> saveableStateHolder.SaveableStateProvider(tabKey(AppBottomTab.My)) {
                 MyPageRoute(
-                    onTabSelected = { selectedTab = it },
+                    onTabSelected = ::selectTab,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

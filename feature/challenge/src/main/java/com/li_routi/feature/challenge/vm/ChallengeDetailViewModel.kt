@@ -17,16 +17,13 @@ import com.li_routi.core.domain.challenge.ParticipateChallengeUseCase
 import com.li_routi.core.domain.challenge.ReportVerificationUseCase
 import com.li_routi.core.domain.challenge.UnlikeVerificationUseCase
 import com.li_routi.feature.challenge.navigation.ChallengeDetailScreenActions
-import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 private const val VerificationPageSize = 20
-private const val LikeRefreshIntervalMillis = 15_000L
 
 /**
  * 챌린지 상세 화면 ViewModel. 상세 정보, "인증"(전체), "내 인증 보기" 모두 실제 API로 조회한다.
@@ -55,25 +52,12 @@ class ChallengeDetailViewModel(
         loadDetail()
         loadVerifications(cursor = null)
         loadMyVerifications(cursor = null)
-        startLikeCountAutoRefresh()
-    }
-
-    // 다른 사람이 누른 좋아요도 화면에 반영되도록 화면이 떠 있는 동안 주기적으로 좋아요 수만 조용히
-    // 새로고침한다. 이 코루틴은 viewModelScope에 묶여 있어 화면을 벗어나면(ViewModel 정리) 같이 취소된다.
-    private fun startLikeCountAutoRefresh() {
-        viewModelScope.launch {
-            while (isActive) {
-                delay(LikeRefreshIntervalMillis)
-                refreshLikeCounts()
-            }
-        }
     }
 
     // "인증"(전체)/"내 인증 보기" 두 탭 모두 각 1페이지를 다시 조회해 id가 같은 기존 항목의 좋아요
     // 수(전체 탭은 liked도)만 패치한다. 좋아요는 같은 verificationId를 두 탭이 같이 보여주는 값이라,
-    // 지금 보고 있지 않은 탭 것도 같이 갱신해둬야 탭을 전환했을 때 곧바로 최신 값이 보인다(안 그러면
-    // 최대 15초 뒤 주기 새로고침이 그 탭을 다시 조회할 때까지 좋아요 수가 늦게 반영된 것처럼 보인다).
-    // 목록 순서·페이지네이션·스크롤 위치는 건드리지 않고, 실패하면 조용히 다음 주기를 기다린다.
+    // 지금 보고 있지 않은 탭 것도 같이 갱신해둬야 탭을 전환했을 때 곧바로 최신 값이 보인다.
+    // 목록 순서·페이지네이션·스크롤 위치는 건드리지 않는다.
     private suspend fun refreshLikeCounts() {
         val allResult = getVerificationsUseCase(challengeId, cursor = null, size = VerificationPageSize)
         if (allResult is ResultState.Success) {
