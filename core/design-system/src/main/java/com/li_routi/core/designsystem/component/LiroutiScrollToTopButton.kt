@@ -15,6 +15,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -41,7 +44,8 @@ fun LiroutiScrollToTopButton(
                 .shadow(elevation = 6.dp, shape = CircleShape)
                 .clip(CircleShape)
                 .background(LiroutiTheme.colors.backgroundDefault)
-                .clickable(onClick = onClick),
+                .clickable(role = Role.Button, onClick = onClick)
+                .semantics { contentDescription = "맨 위로" },
             contentAlignment = Alignment.Center,
         ) {
             LiroutiArrowUpIcon(modifier = Modifier.size(20.dp), color = LiroutiTheme.colors.labelDefault)

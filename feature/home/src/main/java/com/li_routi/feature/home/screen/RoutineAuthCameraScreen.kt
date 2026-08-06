@@ -226,12 +226,15 @@ private fun RoutineAuthCameraLayout(
         Image(
             painter = painterResource(id = R.drawable.close),
             contentDescription = "닫기",
+            // 터치 영역은 접근성 최소 권장 크기(48dp)로 확보하고, 안쪽 padding으로 시각적 아이콘
+            // 크기(28dp)는 그대로 유지한다.
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .statusBarsPadding()
-                .padding(horizontal = 16.dp, vertical = 10.dp)
-                .size(28.dp)
-                .clickable(onClick = actions::onBackClick),
+                .padding(horizontal = 6.dp)
+                .size(48.dp)
+                .clickable(onClick = actions::onBackClick)
+                .padding(10.dp),
             colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelReverse),
         )
 

@@ -104,9 +104,16 @@ internal suspend fun submitRoutineAuthUpload(
     }
     // Figma `촬영 후 메모/선택`(3610:26875) 328:184 비율에 맞춰 중앙 크롭한 뒤 JPEG로 재인코딩해서
     // 업로드한다 — 미리보기(CapturedPhotoPreview)와 서버로 나가는 실제 바이트가 항상 같은 크롭 결과를 갖는다.
-    val bitmap = decodeBitmapWithExif(context, photoUri, VerificationPhotoUploadTargetSizePx)
-        ?: return@withContext Result.failure(IllegalArgumentException("사진을 읽을 수 없습니다."))
-    val bytes = bitmap.centerCropToRatio(VerificationPhotoAspectRatio).toJpegBytes()
+    // decode/crop/encode는 전부 네이티브 비트맵 메모리를 다뤄 OutOfMemoryError 등을 던질 수 있어
+    // runCatching으로 감싼다 — 미리보기 쪽(RoutineAuthUploadScreen)과 동일하게 예외가 앱을 죽이지 않고
+    // 업로드 실패로 처리되게 한다.
+    val bytes = runCatching {
+        val bitmap = decodeBitmapWithExif(context, photoUri, VerificationPhotoUploadTargetSizePx)
+            ?: error("사진을 디코딩할 수 없습니다.")
+        bitmap.centerCropToRatio(VerificationPhotoAspectRatio).toJpegBytes()
+    }.getOrElse {
+        return@withContext Result.failure(IllegalArgumentException("사진을 읽을 수 없습니다.", it))
+    }
     val contentType = "image/jpeg"
     // 챌린지 인증과 동일: 빈 코멘트는 null로 보내고, 값이 있으면 content로 저장.
     val content = memo.trim().ifBlank { null }

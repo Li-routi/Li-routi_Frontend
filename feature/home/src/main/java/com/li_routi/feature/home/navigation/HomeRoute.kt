@@ -79,6 +79,7 @@ private fun HomeScreenContent(
         hasGroupRoom = uiState.hasGroupRoom,
         nickname = uiState.nickname,
         myRoutineItems = uiState.myRoutineItems,
+        myRoutineFilters = uiState.myRoutineFilters,
         groupRoomFilters = uiState.groupRoomFilters,
         groupRoomItems = uiState.groupRoomItems,
         showChecklist = uiState.showChecklist,

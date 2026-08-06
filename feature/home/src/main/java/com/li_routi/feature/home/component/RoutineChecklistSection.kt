@@ -242,7 +242,7 @@ private val HomeMainTabLabels = listOf("오늘의 루틴", "그룹 루틴")
  *
  * "오늘의 루틴"/"그룹 루틴"은 [LiroutiLineTab](밑줄 탭)으로 전환한다.
  * 그룹방 유무와 관계없이 두 탭을 노출하고, 그룹방 없이 「그룹 루틴」을 고르면 empty를 보여준다.
- * 두 탭 모두 항목이 하나라도 있을 때만 카테고리 필터 chip(전체/카테고리… +)을 표시한다.
+ * 두 탭 모두 현재 탭의 필터 목록이 비어 있지 않을 때 카테고리 필터 chip(전체/카테고리… +)을 표시한다.
  *
  * 완료된 항목은 Figma 주석대로 하단에 정렬한다.
  */
@@ -252,7 +252,7 @@ fun RoutineChecklistSection(
     myRoutineItems: List<RoutineChecklistItemUiModel>,
     onRoutineCameraClick: (String) -> Unit,
     modifier: Modifier = Modifier,
-    myRoutineFilters: List<String> = SampleMyRoutineFilters,
+    myRoutineFilters: List<String> = emptyList(),
     groupRoomFilters: List<String> = SampleGroupRoomFilters,
     groupRoomItems: List<RoutineChecklistItemUiModel> = SampleGroupRoomItems,
     onAddCategoryClick: () -> Unit = {},
@@ -467,6 +467,7 @@ private fun RoutineChecklistSectionWithGroupRoomPreview() {
         RoutineChecklistSection(
             hasGroupRoom = true,
             myRoutineItems = SampleMyRoutineItems,
+            myRoutineFilters = SampleMyRoutineFilters,
             onRoutineCameraClick = {},
         )
     }
@@ -479,6 +480,7 @@ private fun RoutineChecklistSectionWithoutGroupRoomPreview() {
         RoutineChecklistSection(
             hasGroupRoom = false,
             myRoutineItems = SampleMyRoutineItemsOnly,
+            myRoutineFilters = SampleMyRoutineFilters,
             onRoutineCameraClick = {},
         )
     }

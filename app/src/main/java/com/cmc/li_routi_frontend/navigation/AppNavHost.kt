@@ -4,9 +4,14 @@ import android.app.Activity
 import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.width
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -20,11 +25,14 @@ import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.unit.dp
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.data.di.ChallengeContainer
 import com.li_routi.core.data.di.HomeContainer
+import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.challenge.navigation.ChallengeNavHost
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
@@ -129,13 +137,17 @@ fun AppNavHost(
     }
 
     // ---- 공유 인증 플로우(카메라 → 메모/루틴 선택) ----
-    var showVerificationFlow by remember { mutableStateOf(false) }
-    var verificationPreselectedId by remember { mutableStateOf<String?>(null) }
+    // capturedVerificationPhotoUri처럼 rememberSaveable을 써야 구성 변경(회전 등) 후에도
+    // 오버레이가 닫히지 않고 유지된다.
+    var showVerificationFlow by rememberSaveable { mutableStateOf(false) }
+    var verificationPreselectedId by rememberSaveable { mutableStateOf<String?>(null) }
     var capturedVerificationPhotoUri by rememberSaveable(stateSaver = NullableUriSaver) {
         mutableStateOf(null)
     }
     var verificationRoutines by remember { mutableStateOf<List<RoutineAuthSelectableUiModel>>(emptyList()) }
     var isLoadingVerificationRoutines by remember { mutableStateOf(false) }
+    var verificationLoadError by remember { mutableStateOf(false) }
+    var verificationLoadRetryTick by remember { mutableIntStateOf(0) }
     var homeRefreshSignal by remember { mutableIntStateOf(0) }
     var challengeRefreshSignal by remember { mutableIntStateOf(0) }
 
@@ -152,20 +164,23 @@ fun AppNavHost(
     }
 
     // 개인 루틴 + 그룹 루틴(홈 요약) + 참여 중인 챌린지를 한 목록으로 합친다. 플로우가 열릴 때마다
-    // 새로 불러와서(선택 화면을 여는 시점 기준) 최신 상태를 반영한다.
-    LaunchedEffect(showVerificationFlow) {
+    // 새로 불러와서(선택 화면을 여는 시점 기준) 최신 상태를 반영한다. 둘 중 하나라도 실패하면 빈
+    // 목록으로 조용히 넘어가지 않고 에러 상태로 남겨 재시도 UI를 보여준다.
+    LaunchedEffect(showVerificationFlow, verificationLoadRetryTick) {
         if (!showVerificationFlow) return@LaunchedEffect
         isLoadingVerificationRoutines = true
+        verificationLoadError = false
         val homeResult = HomeContainer.getHomeSummaryUseCase()
-        val homeItems = (homeResult as? ResultState.Success)?.data
-            ?.toHomeUiState()
-            ?.let { it.myRoutineItems + it.groupRoomItems }
-            ?.toAuthSelectables()
-            .orEmpty()
         val challengesResult = ChallengeContainer.getMyChallengesUseCase()
-        val challengeItems = (challengesResult as? ResultState.Success)?.data
-            ?.toAuthSelectables()
-            .orEmpty()
+        if (homeResult !is ResultState.Success || challengesResult !is ResultState.Success) {
+            verificationLoadError = true
+            isLoadingVerificationRoutines = false
+            return@LaunchedEffect
+        }
+        val homeItems = homeResult.data.toHomeUiState()
+            .let { it.myRoutineItems + it.groupRoomItems }
+            .toAuthSelectables()
+        val challengeItems = challengesResult.data.toAuthSelectables()
         verificationRoutines = homeItems + challengeItems
         isLoadingVerificationRoutines = false
     }
@@ -220,6 +235,10 @@ fun AppNavHost(
         if (showVerificationFlow) {
             val photoUri = capturedVerificationPhotoUri
             if (photoUri == null) {
+                // 오버레이가 떠 있는 동안은 시스템 뒤로가기도 탭 전환이 아니라 이 플로우를 닫아야 한다.
+                // BackHandler는 나중에 컴포지션된(더 안쪽) 콜백이 우선하므로, 상단의 탭 전환용
+                // BackHandler(line 107)보다 이게 먼저 호출된다.
+                BackHandler(onBack = ::closeVerificationFlow)
                 RoutineAuthCameraRoute(
                     onEvent = { event ->
                         when (event) {
@@ -231,8 +250,38 @@ fun AppNavHost(
                     },
                     modifier = Modifier.fillMaxSize(),
                 )
+            } else if (verificationLoadError) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(LiroutiTheme.colors.backgroundDefault)
+                        .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(16.dp),
+                    ) {
+                        Text(
+                            text = "루틴 목록을 불러오지 못했어요.",
+                            style = LiroutiTheme.typography.body1Medium,
+                            color = LiroutiTheme.colors.labelStrong,
+                        )
+                        LiroutiPrimaryButton(
+                            text = "다시 시도",
+                            onClick = { verificationLoadRetryTick++ },
+                            modifier = Modifier.width(160.dp),
+                        )
+                    }
+                }
             } else if (isLoadingVerificationRoutines && verificationRoutines.isEmpty()) {
-                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .background(LiroutiTheme.colors.backgroundDefault)
+                        .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } },
+                    contentAlignment = Alignment.Center,
+                ) {
                     CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
                 }
             } else {

@@ -57,15 +57,17 @@ fun ReportReasonScreen(
     onSubmit: (reason: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var selectedIndex by remember { mutableStateOf(PresetReportReasons.size) }
+    var selectedIndex by remember { mutableStateOf<Int?>(null) }
     var otherReason by remember { mutableStateOf("") }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val reason = if (selectedIndex == PresetReportReasons.size) {
-        otherReason.trim().ifBlank { null }
-    } else {
-        PresetReportReasons.getOrNull(selectedIndex)
+    val reason = selectedIndex?.let { index ->
+        if (index == PresetReportReasons.size) {
+            otherReason.trim().ifBlank { null }
+        } else {
+            PresetReportReasons.getOrNull(index)
+        }
     }
 
     Column(
@@ -135,6 +137,7 @@ fun ReportReasonScreen(
 
         LiroutiPrimaryButton(
             text = "완료",
+            enabled = reason != null,
             onClick = { onSubmit(reason) },
             modifier = Modifier
                 .fillMaxWidth()

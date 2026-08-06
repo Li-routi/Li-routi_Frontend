@@ -43,9 +43,14 @@ internal fun decodeBitmapWithExif(context: Context, uri: Uri, maxLongEdgePx: Int
         }
         BitmapFactory.decodeFile(filePath, options)
     } else {
+        // inJustDecodeBounds = true인 동안은 decodeStream이 항상 null을 반환하는 게 정상 동작이라
+        // (디코딩 자체를 안 하고 크기만 읽음), 그 반환값으로 스트림 열기 성공 여부를 판단하면 안 된다.
         val resolver = context.contentResolver
-        resolver.openInputStream(uri)?.use { stream -> BitmapFactory.decodeStream(stream, null, bounds) }
-            ?: return null
+        val boundsRead = resolver.openInputStream(uri)?.use { stream ->
+            BitmapFactory.decodeStream(stream, null, bounds)
+            true
+        } ?: false
+        if (!boundsRead) return null
         val options = BitmapFactory.Options().apply {
             inSampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, maxLongEdgePx)
         }
@@ -88,7 +93,13 @@ private fun Bitmap.applyExifOrientation(orientation: Int): Bitmap {
     return rotated
 }
 
-/** 사진을 [targetRatio](가로/세로)에 맞춰 중앙 기준으로 잘라낸다. 미리보기·업로드가 같은 크롭 결과를 쓰도록 공유한다. */
+/**
+ * 사진을 [targetRatio](가로/세로)에 맞춰 중앙 기준으로 잘라낸다. 미리보기·업로드가 같은 크롭 결과를 쓰도록 공유한다.
+ *
+ * 주의: 크롭이 필요해 새 비트맵을 만드는 경우 수신 객체(this)를 [Bitmap.recycle]한다 — 소유권이 반환값으로
+ * 넘어가므로 호출 후 원본 비트맵을 다시 쓰면 안 된다. 크롭이 필요 없을 때(비율이 이미 같을 때)는 원본을
+ * 그대로 반환하고 recycle하지 않는다.
+ */
 internal fun Bitmap.centerCropToRatio(targetRatio: Float): Bitmap {
     val currentRatio = width.toFloat() / height.toFloat()
     val cropped = when {

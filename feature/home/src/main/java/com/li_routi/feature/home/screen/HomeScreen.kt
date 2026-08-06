@@ -96,7 +96,7 @@ fun HomeScreen(
         hasGroupRoom -> SampleMyRoutineItems
         else -> SampleMyRoutineItemsOnly
     },
-    myRoutineFilters: List<String> = SampleMyRoutineFilters,
+    myRoutineFilters: List<String> = emptyList(),
     groupRoomFilters: List<String> = SampleGroupRoomFilters,
     groupRoomItems: List<RoutineChecklistItemUiModel> = SampleGroupRoomItems,
     /** 개인 또는 그룹 루틴이 하나라도 있으면 true. 기본은 [hasActiveRoutine]과 동일. */
@@ -117,9 +117,12 @@ fun HomeScreen(
 
     // 예전엔 카메라가 HorizontalPager의 별도 페이지라 스와이프가 저절로 됐지만, 카메라가 `app` 모듈이
     // 소유한 공유 오버레이로 옮겨가면서 페이지 자체가 없어졌다. 그 스와이프 진입 방식을 유지하기 위해
-    // 화면 전체에서 왼쪽→오른쪽 드래그를 직접 감지해 [HomeScreenActions.onSwipeToVerification]을 호출한다.
+    // 왼쪽 가장자리에서 시작한 오른쪽 드래그만 감지해 [HomeScreenActions.onSwipeToVerification]을
+    // 호출한다. 가장자리로 시작 지점을 제한해야 체크리스트 스크롤/사선 드래그 중 실수로 카메라가
+    // 열리지 않는다.
     val density = LocalDensity.current
     val swipeThresholdPx = remember(density) { with(density) { 80.dp.toPx() } }
+    val swipeEdgeStartPx = remember(density) { with(density) { 24.dp.toPx() } }
 
     LaunchedEffect(uiEvent) {
         uiEvent.collect { event ->
@@ -144,18 +147,21 @@ fun HomeScreen(
             .pointerInput(actions) {
                 var cumulativeDragPx = 0f
                 var triggered = false
+                var startedAtEdge = false
                 detectHorizontalDragGestures(
-                    onDragStart = {
+                    onDragStart = { offset ->
                         cumulativeDragPx = 0f
                         triggered = false
+                        startedAtEdge = offset.x <= swipeEdgeStartPx
                     },
                     onHorizontalDrag = { change, dragAmount ->
+                        if (!startedAtEdge) return@detectHorizontalDragGestures
                         cumulativeDragPx += dragAmount
                         if (!triggered && cumulativeDragPx > swipeThresholdPx) {
                             triggered = true
                             actions.onSwipeToVerification()
+                            change.consume()
                         }
-                        change.consume()
                     },
                 )
             },
@@ -376,6 +382,7 @@ private fun HomeScreenRoutineOnlyPreview() {
             hasActiveRoutine = true,
             hasGroupRoom = false,
             myRoutineItems = SampleMyRoutineItemsOnly,
+            myRoutineFilters = SampleMyRoutineFilters,
         )
     }
 }
@@ -390,6 +397,7 @@ private fun HomeScreenRoutineAndGroupRoomPreview() {
             hasActiveRoutine = true,
             hasGroupRoom = true,
             myRoutineItems = SampleMyRoutineItems,
+            myRoutineFilters = SampleMyRoutineFilters,
         )
     }
 }

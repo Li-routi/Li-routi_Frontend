@@ -48,10 +48,16 @@ class ChallengeDetailViewModel(
     private val _uiState = MutableStateFlow(ChallengeDetailUiState(challengeId = challengeId))
     val uiState: StateFlow<ChallengeDetailUiState> = _uiState.asStateFlow()
 
+    // 새로고침/인증 등록으로 목록이 통째로 리셋될 때마다 올린다. loadVerifications/loadMyVerifications는
+    // 요청을 시작한 시점의 값을 들고 있다가, 응답이 왔을 때 이 값이 그대로면(그 사이 리셋이 없었으면)만
+    // 결과를 반영한다 — 그렇지 않으면 새로고침 도중 끝난 오래된 페이지네이션 응답이 새로 받아온
+    // 목록 뒤에 잘못 이어붙거나 커서를 엉뚱한 값으로 덮어쓸 수 있다.
+    private var certificationGeneration = 0
+
     init {
         loadDetail()
-        loadVerifications(cursor = null)
-        loadMyVerifications(cursor = null)
+        loadVerifications(cursor = null, generation = certificationGeneration)
+        loadMyVerifications(cursor = null, generation = certificationGeneration)
     }
 
     // "인증"(전체)/"내 인증 보기" 두 탭 모두 각 1페이지를 다시 조회해 id가 같은 기존 항목의 좋아요
@@ -97,38 +103,48 @@ class ChallengeDetailViewModel(
         }
     }
 
-    private fun loadVerifications(cursor: Long?) {
+    private fun loadVerifications(cursor: Long?, generation: Int) {
         _uiState.update { it.copy(isLoadingMoreAll = true) }
         viewModelScope.launch {
             when (val result = getVerificationsUseCase(challengeId, cursor, VerificationPageSize)) {
-                is ResultState.Success -> _uiState.update { state ->
-                    state.copy(
-                        isLoadingMoreAll = false,
-                        allCertifications = state.allCertifications + result.data.certifications.map { it.toUiModel() },
-                        allCursor = result.data.nextCursor,
-                        allHasNext = result.data.hasNext,
-                    )
+                is ResultState.Success -> {
+                    if (generation != certificationGeneration) return@launch
+                    _uiState.update { state ->
+                        state.copy(
+                            isLoadingMoreAll = false,
+                            allCertifications = state.allCertifications + result.data.certifications.map { it.toUiModel() },
+                            allCursor = result.data.nextCursor,
+                            allHasNext = result.data.hasNext,
+                        )
+                    }
                 }
-                is ResultState.Error -> _uiState.update { it.copy(isLoadingMoreAll = false, allHasNext = false) }
+                is ResultState.Error -> if (generation == certificationGeneration) {
+                    _uiState.update { it.copy(isLoadingMoreAll = false, allHasNext = false) }
+                }
                 ResultState.Loading -> Unit
             }
         }
     }
 
-    private fun loadMyVerifications(cursor: Long?) {
+    private fun loadMyVerifications(cursor: Long?, generation: Int) {
         _uiState.update { it.copy(isLoadingMoreMy = true) }
         viewModelScope.launch {
             when (val result = getMyVerificationsUseCase(challengeId, cursor, VerificationPageSize)) {
-                is ResultState.Success -> _uiState.update { state ->
-                    state.copy(
-                        isLoadingMoreMy = false,
-                        myLoaded = true,
-                        myCertifications = state.myCertifications + result.data.certifications.map { it.toUiModel() },
-                        myCursor = result.data.nextCursor,
-                        myHasNext = result.data.hasNext,
-                    )
+                is ResultState.Success -> {
+                    if (generation != certificationGeneration) return@launch
+                    _uiState.update { state ->
+                        state.copy(
+                            isLoadingMoreMy = false,
+                            myLoaded = true,
+                            myCertifications = state.myCertifications + result.data.certifications.map { it.toUiModel() },
+                            myCursor = result.data.nextCursor,
+                            myHasNext = result.data.hasNext,
+                        )
+                    }
                 }
-                is ResultState.Error -> _uiState.update { it.copy(isLoadingMoreMy = false, myHasNext = false, myLoaded = true) }
+                is ResultState.Error -> if (generation == certificationGeneration) {
+                    _uiState.update { it.copy(isLoadingMoreMy = false, myHasNext = false, myLoaded = true) }
+                }
                 ResultState.Loading -> Unit
             }
         }
@@ -150,16 +166,20 @@ class ChallengeDetailViewModel(
         // 화면 진입 시 init에서 이미 조회를 시작하므로, 아직 안 끝났으면(isLoadingMoreMy) 여기서 또 쏘지 않는다.
         val state = _uiState.value
         if (tab == CertificationTab.Mine && !state.myLoaded && !state.isLoadingMoreMy) {
-            loadMyVerifications(cursor = null)
+            loadMyVerifications(cursor = null, generation = certificationGeneration)
         }
     }
 
     override fun onLoadMore() {
         val state = _uiState.value
-        if (!state.hasMoreCertifications) return
+        // 새로고침 중에는 페이지네이션을 막는다 — 그렇지 않으면 새로고침이 방금 리셋한 목록 뒤에
+        // 새로고침 이전 커서 기준 응답이 잘못 이어붙을 수 있다.
+        if (!state.hasMoreCertifications || state.isRefreshing) return
         when (state.selectedTab) {
-            CertificationTab.All -> if (!state.isLoadingMoreAll) loadVerifications(cursor = state.allCursor)
-            CertificationTab.Mine -> if (!state.isLoadingMoreMy) loadMyVerifications(cursor = state.myCursor)
+            CertificationTab.All ->
+                if (!state.isLoadingMoreAll) loadVerifications(cursor = state.allCursor, generation = certificationGeneration)
+            CertificationTab.Mine ->
+                if (!state.isLoadingMoreMy) loadMyVerifications(cursor = state.myCursor, generation = certificationGeneration)
         }
     }
 
@@ -222,6 +242,9 @@ class ChallengeDetailViewModel(
     // 새 인증 업로드는 사진 촬영이 필요해 화면(Route)에서 직접 처리하고, 성공 후 여기로 알려온다.
     // 상세(참여자/게시글 수)와 "인증"/"내 인증 보기" 두 탭 모두 처음부터 다시 불러온다.
     override fun onVerificationSubmitted() {
+        // 목록을 통째로 리셋하므로, 이전 세대에서 진행 중이던 loadMore 응답이 나중에 도착해도
+        // 무시되도록 세대를 올린다.
+        certificationGeneration++
         loadDetail()
         _uiState.update {
             it.copy(
@@ -237,9 +260,9 @@ class ChallengeDetailViewModel(
                 verifiedInCurrentPeriod = true,
             )
         }
-        loadVerifications(cursor = null)
+        loadVerifications(cursor = null, generation = certificationGeneration)
         if (_uiState.value.selectedTab == CertificationTab.Mine) {
-            loadMyVerifications(cursor = null)
+            loadMyVerifications(cursor = null, generation = certificationGeneration)
         }
     }
 
@@ -247,6 +270,10 @@ class ChallengeDetailViewModel(
     // isRefreshing을 "실제로 다 끝났을 때"만 내린다(그 함수들은 fire-and-forget이라 그대로 못 씀).
     override fun onRefresh() {
         if (_uiState.value.isRefreshing) return
+        // 목록을 1페이지로 통째로 교체하므로, 새로고침 시작 전에 이미 진행 중이던 loadMore가 나중에
+        // 도착해도(위 onLoadMore의 isRefreshing 가드를 통과해 이미 시작된 경우) 결과를 버리도록
+        // 세대를 올린다.
+        certificationGeneration++
         _uiState.update { it.copy(isRefreshing = true) }
         viewModelScope.launch {
             when (val result = getChallengeDetailUseCase(challengeId)) {
