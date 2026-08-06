@@ -81,7 +81,7 @@ fun CertificationCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(144.dp)
+                        .height(280.dp)
                         .clip(RoundedCornerShape(6.dp)),
                 )
             } else {
@@ -89,7 +89,7 @@ fun CertificationCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(144.dp)
+                        .height(280.dp)
                         .background(LiroutiTheme.colors.backgroundSecondary, RoundedCornerShape(6.dp)),
                 )
             }

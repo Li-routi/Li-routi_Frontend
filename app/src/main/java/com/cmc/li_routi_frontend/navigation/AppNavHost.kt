@@ -1,29 +1,52 @@
 package com.cmc.li_routi_frontend.navigation
 
 import android.app.Activity
+import android.net.Uri
 import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.saveable.rememberSaveableStateHolder
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.data.di.ChallengeContainer
+import com.li_routi.core.data.di.HomeContainer
+import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.challenge.navigation.ChallengeNavHost
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
 import com.li_routi.feature.grouproutine.navigation.GrouproutineRootNavHost
 import com.li_routi.feature.home.navigation.HomeNavHost
+import com.li_routi.feature.home.navigation.RoutineAuthCameraRoute
+import com.li_routi.feature.home.navigation.RoutineAuthUploadRoute
+import com.li_routi.feature.home.vm.ChallengeIdPrefix
+import com.li_routi.feature.home.vm.RoutineAuthCameraUiEvent
+import com.li_routi.feature.home.vm.RoutineAuthSelectableUiModel
+import com.li_routi.feature.home.vm.RoutineAuthUploadUiEvent
+import com.li_routi.feature.home.vm.toAuthSelectables
+import com.li_routi.feature.home.vm.toHomeUiState
 import com.li_routi.feature.mypage.navigation.MyPageRoute
 
 private const val DoubleBackPressIntervalMillis = 2000L
+
+/** [Uri]는 Bundle에 바로 못 넣으므로 문자열로 저장/복원한다(구성 변경 후에도 촬영 사진 유지). */
+private val NullableUriSaver = Saver<Uri?, String>(
+    save = { uri -> uri?.toString().orEmpty() },
+    restore = { saved -> saved.takeIf { it.isNotEmpty() }?.let(Uri::parse) },
+)
 
 /**
  * 앱 전체 최상위 내비게이션 그래프.
@@ -32,6 +55,11 @@ private const val DoubleBackPressIntervalMillis = 2000L
  * 탭 전환 자체는 각 feature의 루트 화면이 공용 하단 GNB(`AppBottomNavBar`)를 통해 이리로 위임한다.
  * 홈 화면 "+" 메뉴의 "방 만들기"/"초대코드로 참여"는 그룹 루틴 탭으로 전환하면서
  * 해당 진입점으로 바로 들어가도록 [groupRoutineEntryPoint]로 넘긴다.
+ *
+ * "인증하기"(카메라 → 메모/루틴 선택)도 같은 방식으로 여기서 소유한다 — 개인 루틴(홈 체크리스트
+ * 카메라 아이콘)이든 그룹 루틴(홈 체크리스트에 같이 표시됨)이든 챌린지(챌린지 상세 "인증하기")든
+ * 전부 이 오버레이로 모인다. 오버레이가 떠 있는 동안 [selectedTab]은 건드리지 않으므로, 오버레이를
+ * 닫으면 자동으로 "시작했던 화면"이 그대로 남아 있다 — 별도의 origin 추적이 필요 없다.
  *
  * 로그인 게이트는 `MainActivity`가 담당하므로(비로그인 시 `LoginActivity`로 리다이렉트) 여기 도달했다는 건
  * 이미 로그인된 상태라는 뜻이다. 탭 간 구분과 무관하게 시작 탭은 홈으로 고정한다.
@@ -100,6 +128,48 @@ fun AppNavHost(
         selectedTab = tab
     }
 
+    // ---- 공유 인증 플로우(카메라 → 메모/루틴 선택) ----
+    var showVerificationFlow by remember { mutableStateOf(false) }
+    var verificationPreselectedId by remember { mutableStateOf<String?>(null) }
+    var capturedVerificationPhotoUri by rememberSaveable(stateSaver = NullableUriSaver) {
+        mutableStateOf(null)
+    }
+    var verificationRoutines by remember { mutableStateOf<List<RoutineAuthSelectableUiModel>>(emptyList()) }
+    var isLoadingVerificationRoutines by remember { mutableStateOf(false) }
+    var homeRefreshSignal by remember { mutableIntStateOf(0) }
+    var challengeRefreshSignal by remember { mutableIntStateOf(0) }
+
+    fun startVerificationFlow(preselectedId: String?) {
+        verificationPreselectedId = preselectedId
+        capturedVerificationPhotoUri = null
+        showVerificationFlow = true
+    }
+
+    fun closeVerificationFlow() {
+        showVerificationFlow = false
+        capturedVerificationPhotoUri = null
+        verificationPreselectedId = null
+    }
+
+    // 개인 루틴 + 그룹 루틴(홈 요약) + 참여 중인 챌린지를 한 목록으로 합친다. 플로우가 열릴 때마다
+    // 새로 불러와서(선택 화면을 여는 시점 기준) 최신 상태를 반영한다.
+    LaunchedEffect(showVerificationFlow) {
+        if (!showVerificationFlow) return@LaunchedEffect
+        isLoadingVerificationRoutines = true
+        val homeResult = HomeContainer.getHomeSummaryUseCase()
+        val homeItems = (homeResult as? ResultState.Success)?.data
+            ?.toHomeUiState()
+            ?.let { it.myRoutineItems + it.groupRoomItems }
+            ?.toAuthSelectables()
+            .orEmpty()
+        val challengesResult = ChallengeContainer.getMyChallengesUseCase()
+        val challengeItems = (challengesResult as? ResultState.Success)?.data
+            ?.toAuthSelectables()
+            .orEmpty()
+        verificationRoutines = homeItems + challengeItems
+        isLoadingVerificationRoutines = false
+    }
+
     Box(modifier = modifier) {
         when (selectedTab) {
             AppBottomTab.Home -> saveableStateHolder.SaveableStateProvider(tabKey(AppBottomTab.Home)) {
@@ -112,6 +182,8 @@ fun AppNavHost(
                         groupRoutineEntryPoint = GrouproutineEntryPoint.JoinWithInviteCode
                         selectTab(AppBottomTab.GroupRoutine)
                     },
+                    onStartVerification = { routineId -> startVerificationFlow(routineId) },
+                    verificationRefreshSignal = homeRefreshSignal,
                     onTabSelected = ::selectTab,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -128,6 +200,10 @@ fun AppNavHost(
 
             AppBottomTab.Challenge -> saveableStateHolder.SaveableStateProvider(tabKey(AppBottomTab.Challenge)) {
                 ChallengeNavHost(
+                    onStartVerification = { challengeId ->
+                        startVerificationFlow("$ChallengeIdPrefix$challengeId")
+                    },
+                    verificationRefreshSignal = challengeRefreshSignal,
                     onTabSelected = ::selectTab,
                     modifier = Modifier.fillMaxSize(),
                 )
@@ -136,6 +212,48 @@ fun AppNavHost(
             AppBottomTab.My -> saveableStateHolder.SaveableStateProvider(tabKey(AppBottomTab.My)) {
                 MyPageRoute(
                     onTabSelected = ::selectTab,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+
+        if (showVerificationFlow) {
+            val photoUri = capturedVerificationPhotoUri
+            if (photoUri == null) {
+                RoutineAuthCameraRoute(
+                    onEvent = { event ->
+                        when (event) {
+                            RoutineAuthCameraUiEvent.NavigateBack -> closeVerificationFlow()
+                            is RoutineAuthCameraUiEvent.NavigateToRoutineAuthUpload -> {
+                                capturedVerificationPhotoUri = event.photoUri
+                            }
+                        }
+                    },
+                    modifier = Modifier.fillMaxSize(),
+                )
+            } else if (isLoadingVerificationRoutines && verificationRoutines.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
+                }
+            } else {
+                val preselected = verificationPreselectedId?.let { setOf(it) }.orEmpty()
+                RoutineAuthUploadRoute(
+                    photoUri = photoUri,
+                    initialSelectedRoutineIds = preselected,
+                    routines = verificationRoutines,
+                    onEvent = { event ->
+                        when (event) {
+                            RoutineAuthUploadUiEvent.NavigateBack -> {
+                                capturedVerificationPhotoUri = null
+                            }
+                            RoutineAuthUploadUiEvent.NavigateClose -> closeVerificationFlow()
+                            RoutineAuthUploadUiEvent.NavigateToHome -> {
+                                closeVerificationFlow()
+                                homeRefreshSignal++
+                                challengeRefreshSignal++
+                            }
+                        }
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

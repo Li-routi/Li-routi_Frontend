@@ -3,7 +3,10 @@ package com.li_routi.feature.home.vm
 import android.content.Context
 import android.net.Uri
 import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.data.di.ChallengeContainer
+import com.li_routi.core.data.di.MediaContainer
 import com.li_routi.core.data.di.RoutineContainer
+import com.li_routi.core.domain.media.MediaPurpose
 import com.li_routi.core.domain.routine.GroupRoutineTarget
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
 import com.li_routi.feature.home.component.RoutineChecklistKind
@@ -15,6 +18,9 @@ internal const val MemberRoutineIdPrefix = "my_"
 
 /** 홈 체크리스트 그룹 루틴 id: `group_{groupId}_{routineId}`. */
 private val GroupRoutineIdPattern = Regex("""^group_(\d+)_(\d+)$""")
+
+/** 챌린지 id 접두사: `challenge_{challengeId}`. `app` 모듈이 프리셀렉트 id를 만들 때도 재사용한다. */
+const val ChallengeIdPrefix = "challenge_"
 
 internal fun parseMemberRoutineId(checklistId: String): Long? {
     if (!checklistId.startsWith(MemberRoutineIdPrefix)) return null
@@ -29,7 +35,13 @@ internal fun parseGroupRoutineTarget(checklistId: String): GroupRoutineTarget? {
     )
 }
 
-internal fun List<RoutineChecklistItemUiModel>.toAuthSelectables(): List<RoutineAuthSelectableUiModel> =
+internal fun parseChallengeId(checklistId: String): Long? {
+    if (!checklistId.startsWith(ChallengeIdPrefix)) return null
+    return checklistId.removePrefix(ChallengeIdPrefix).toLongOrNull()
+}
+
+/** 다른 모듈(예: app)에서도 홈 체크리스트를 인증 선택 목록으로 변환할 수 있도록 공개한다. */
+fun List<RoutineChecklistItemUiModel>.toAuthSelectables(): List<RoutineAuthSelectableUiModel> =
     filter { it.canVerify }
         .map { item ->
             RoutineAuthSelectableUiModel(
@@ -55,10 +67,12 @@ internal fun List<RoutineChecklistItemUiModel>.toAuthSelectables(): List<Routine
         }
 
 /**
- * 촬영 URI → 개인/그룹 루틴 인증.
+ * 촬영 URI → 개인/그룹 루틴 + 챌린지 인증.
  *
- * 챌린지 인증과 동일하게 사진 바이트 + 코멘트(memo)를 서버에 저장한다.
- * purpose가 달라 개인·그룹을 함께 고르면 미디어 업로드를 각각 1회씩 수행한다.
+ * purpose가 달라 종류를 섞어 고르면 미디어 업로드를 종류별로 1회씩 수행한다: 개인·그룹 루틴은
+ * [RoutineContainer.submitRoutineAuthUseCase]가 자체적으로 1회 업로드하고, 챌린지가 하나라도
+ * 섞여 있으면 별도로 1회 더 업로드해 [ChallengeContainer.createVerificationUseCase]를 챌린지별로
+ * 반복 호출한다(같은 사진 바이트, 같은 메모).
  */
 internal suspend fun submitRoutineAuthUpload(
     photoUri: Uri,
@@ -80,27 +94,68 @@ internal suspend fun submitRoutineAuthUpload(
             parseGroupRoutineTarget(item.id)
         }
     }.distinct()
-    if (memberIds.isEmpty() && groupTargets.isEmpty()) {
+    val challengeIds = selected.mapNotNull { item ->
+        item.challengeId ?: parseChallengeId(item.id)
+    }.distinct()
+    if (memberIds.isEmpty() && groupTargets.isEmpty() && challengeIds.isEmpty()) {
         return@withContext Result.failure(
-            IllegalArgumentException("인증할 루틴을 선택해 주세요."),
+            IllegalArgumentException("인증할 항목을 선택해 주세요."),
         )
     }
-    val contentType = context.contentResolver.getType(photoUri) ?: "image/jpeg"
-    val bytes = context.contentResolver.openInputStream(photoUri)?.use { it.readBytes() }
+    // Figma `촬영 후 메모/선택`(3610:26875) 328:184 비율에 맞춰 중앙 크롭한 뒤 JPEG로 재인코딩해서
+    // 업로드한다 — 미리보기(CapturedPhotoPreview)와 서버로 나가는 실제 바이트가 항상 같은 크롭 결과를 갖는다.
+    val bitmap = decodeBitmapWithExif(context, photoUri, VerificationPhotoUploadTargetSizePx)
         ?: return@withContext Result.failure(IllegalArgumentException("사진을 읽을 수 없습니다."))
+    val bytes = bitmap.centerCropToRatio(VerificationPhotoAspectRatio).toJpegBytes()
+    val contentType = "image/jpeg"
     // 챌린지 인증과 동일: 빈 코멘트는 null로 보내고, 값이 있으면 content로 저장.
     val content = memo.trim().ifBlank { null }
-    when (
-        val result = RoutineContainer.submitRoutineAuthUseCase(
-            contentType = contentType,
-            bytes = bytes,
-            content = content,
-            memberRoutineIds = memberIds,
-            groupTargets = groupTargets,
-        )
-    ) {
-        is ResultState.Success -> Result.success(Unit)
-        is ResultState.Error -> Result.failure(IllegalStateException(result.message))
-        ResultState.Loading -> Result.failure(IllegalStateException("업로드가 완료되지 않았습니다."))
+
+    if (memberIds.isNotEmpty() || groupTargets.isNotEmpty()) {
+        when (
+            val result = RoutineContainer.submitRoutineAuthUseCase(
+                contentType = contentType,
+                bytes = bytes,
+                content = content,
+                memberRoutineIds = memberIds,
+                groupTargets = groupTargets,
+            )
+        ) {
+            is ResultState.Success -> Unit
+            is ResultState.Error -> return@withContext Result.failure(IllegalStateException(result.message))
+            ResultState.Loading ->
+                return@withContext Result.failure(IllegalStateException("업로드가 완료되지 않았습니다."))
+        }
     }
+
+    if (challengeIds.isNotEmpty()) {
+        val challengeMediaKey = when (
+            val uploaded = MediaContainer.uploadMediaUseCase(
+                purpose = MediaPurpose.CHALLENGE_VERIFICATION,
+                contentType = contentType,
+                bytes = bytes,
+            )
+        ) {
+            is ResultState.Success -> uploaded.data
+            is ResultState.Error -> return@withContext Result.failure(IllegalStateException(uploaded.message))
+            ResultState.Loading ->
+                return@withContext Result.failure(IllegalStateException("업로드가 완료되지 않았습니다."))
+        }
+        for (challengeId in challengeIds) {
+            when (
+                val created = ChallengeContainer.createVerificationUseCase(
+                    challengeId = challengeId,
+                    mediaKey = challengeMediaKey,
+                    content = content,
+                )
+            ) {
+                is ResultState.Success -> Unit
+                is ResultState.Error -> return@withContext Result.failure(IllegalStateException(created.message))
+                ResultState.Loading ->
+                    return@withContext Result.failure(IllegalStateException("등록이 완료되지 않았습니다."))
+            }
+        }
+    }
+
+    Result.success(Unit)
 }

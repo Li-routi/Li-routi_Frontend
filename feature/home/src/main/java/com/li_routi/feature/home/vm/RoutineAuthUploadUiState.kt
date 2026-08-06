@@ -1,6 +1,7 @@
 package com.li_routi.feature.home.vm
 
 import android.net.Uri
+import com.li_routi.core.domain.challenge.MyChallenge
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
 import com.li_routi.feature.home.component.RoutineChecklistKind
 import com.li_routi.feature.home.component.SampleGroupRoomItems
@@ -35,6 +36,7 @@ data class RoutineAuthUploadUiState(
  * @param memberRoutineId 개인 루틴 서버 id. 있으면 문자열 id 파싱보다 우선한다.
  * @param groupId 그룹방 id (그룹 루틴만).
  * @param groupRoutineId 그룹 루틴 서버 id (그룹 루틴만).
+ * @param challengeId 챌린지 서버 id. 있으면 문자열 id 파싱보다 우선한다.
  */
 data class RoutineAuthSelectableUiModel(
     val id: String,
@@ -46,6 +48,7 @@ data class RoutineAuthSelectableUiModel(
     val memberRoutineId: Long? = null,
     val groupId: Long? = null,
     val groupRoutineId: Long? = null,
+    val challengeId: Long? = null,
 )
 
 enum class RoutineAuthBadgeTone {
@@ -83,7 +86,23 @@ val SampleRoutineAuthSelectables: List<RoutineAuthSelectableUiModel> =
             title = "물 1L 마시기 챌린지",
             categoryLabel = "챌린지",
             badgeTone = RoutineAuthBadgeTone.Challenge,
+            challengeId = 0L,
         )
+
+/**
+ * 참여 중인 챌린지 목록 → "인증할 루틴 선택" 항목.
+ * id 규칙: `challenge_{challengeId}` (인증 업로드 선택 키와 공유, [ChallengeIdPrefix] 참고).
+ * 챌린지는 개인/그룹 루틴과 달리 마감 시각 개념이 없어 [RoutineAuthSelectableUiModel.dueLabel]은 null.
+ */
+fun List<MyChallenge>.toAuthSelectables(): List<RoutineAuthSelectableUiModel> = map { challenge ->
+    RoutineAuthSelectableUiModel(
+        id = "$ChallengeIdPrefix${challenge.id}",
+        title = challenge.name,
+        categoryLabel = "챌린지",
+        badgeTone = RoutineAuthBadgeTone.Challenge,
+        challengeId = challenge.id,
+    )
+}
 
 /**
  * 촬영 후 업로드 화면의 일회성 UI 이벤트.

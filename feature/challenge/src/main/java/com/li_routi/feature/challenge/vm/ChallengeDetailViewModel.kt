@@ -213,9 +213,9 @@ class ChallengeDetailViewModel(
     // 성공 시 allCertifications/myCertifications에서 해당 항목을 제거하도록 연동한다.
     override fun onDeleteCertificationClick(certificationId: Long) = Unit
 
-    override fun onReportCertificationClick(certificationId: Long) {
+    override fun onReportCertificationClick(certificationId: Long, reason: String?) {
         viewModelScope.launch {
-            reportVerificationUseCase(challengeId, certificationId)
+            reportVerificationUseCase(challengeId, certificationId, reason)
         }
     }
 
@@ -240,6 +240,46 @@ class ChallengeDetailViewModel(
         loadVerifications(cursor = null)
         if (_uiState.value.selectedTab == CertificationTab.Mine) {
             loadMyVerifications(cursor = null)
+        }
+    }
+
+    // 당겨서 새로고침. loadDetail/loadVerifications류와 달리 각 요청을 이 코루틴 안에서 직접 await해
+    // isRefreshing을 "실제로 다 끝났을 때"만 내린다(그 함수들은 fire-and-forget이라 그대로 못 씀).
+    override fun onRefresh() {
+        if (_uiState.value.isRefreshing) return
+        _uiState.update { it.copy(isRefreshing = true) }
+        viewModelScope.launch {
+            when (val result = getChallengeDetailUseCase(challengeId)) {
+                is ResultState.Success -> _uiState.update { it.applyDetail(result.data) }
+                is ResultState.Error -> Unit
+                ResultState.Loading -> Unit
+            }
+            when (val result = getVerificationsUseCase(challengeId, cursor = null, VerificationPageSize)) {
+                is ResultState.Success -> _uiState.update { state ->
+                    state.copy(
+                        allCertifications = result.data.certifications.map { it.toUiModel() },
+                        allCursor = result.data.nextCursor,
+                        allHasNext = result.data.hasNext,
+                    )
+                }
+                is ResultState.Error -> Unit
+                ResultState.Loading -> Unit
+            }
+            if (_uiState.value.selectedTab == CertificationTab.Mine) {
+                when (val result = getMyVerificationsUseCase(challengeId, cursor = null, VerificationPageSize)) {
+                    is ResultState.Success -> _uiState.update { state ->
+                        state.copy(
+                            myCertifications = result.data.certifications.map { it.toUiModel() },
+                            myCursor = result.data.nextCursor,
+                            myHasNext = result.data.hasNext,
+                            myLoaded = true,
+                        )
+                    }
+                    is ResultState.Error -> Unit
+                    ResultState.Loading -> Unit
+                }
+            }
+            _uiState.update { it.copy(isRefreshing = false) }
         }
     }
 

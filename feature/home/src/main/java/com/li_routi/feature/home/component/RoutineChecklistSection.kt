@@ -165,6 +165,12 @@ val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
  */
 val SampleGroupRoomFilters: List<String> = listOf("전체", "건강", "운동", "공부")
 
+/**
+ * Preview/개발 확인용 "오늘의 루틴" 카테고리 필터.
+ * [SampleMyRoutineItems]의 categoryLabel과 일치해야 한다.
+ */
+val SampleMyRoutineFilters: List<String> = listOf("전체", "건강", "운동", "업무")
+
 /** Preview/개발 확인용 "그룹 루틴" 샘플. [categoryLabel]이 필터 chip과 일치해야 한다.
  * id는 업로드 파서와 동일하게 `group_{groupId}_{routineId}` 형식을 쓴다.
  */
@@ -236,7 +242,7 @@ private val HomeMainTabLabels = listOf("오늘의 루틴", "그룹 루틴")
  *
  * "오늘의 루틴"/"그룹 루틴"은 [LiroutiLineTab](밑줄 탭)으로 전환한다.
  * 그룹방 유무와 관계없이 두 탭을 노출하고, 그룹방 없이 「그룹 루틴」을 고르면 empty를 보여준다.
- * 그룹방이 있을 때만 카테고리 필터 chip(전체/건강/운동/공부 +)을 표시한다.
+ * 두 탭 모두 항목이 하나라도 있을 때만 카테고리 필터 chip(전체/카테고리… +)을 표시한다.
  *
  * 완료된 항목은 Figma 주석대로 하단에 정렬한다.
  */
@@ -246,6 +252,7 @@ fun RoutineChecklistSection(
     myRoutineItems: List<RoutineChecklistItemUiModel>,
     onRoutineCameraClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    myRoutineFilters: List<String> = SampleMyRoutineFilters,
     groupRoomFilters: List<String> = SampleGroupRoomFilters,
     groupRoomItems: List<RoutineChecklistItemUiModel> = SampleGroupRoomItems,
     onAddCategoryClick: () -> Unit = {},
@@ -254,15 +261,17 @@ fun RoutineChecklistSection(
     // 인덱스가 아니라 카테고리명으로 보관 — refresh로 필터 목록이 바뀌어도 선택이 어긋나지 않는다.
     var selectedCategoryName by remember { mutableStateOf(AllCategoryFilterLabel) }
 
-    LaunchedEffect(groupRoomFilters) {
-        if (groupRoomFilters.isNotEmpty() && selectedCategoryName !in groupRoomFilters) {
+    // Design Page [1.1]: 탭은 항상 노출. 그룹방 없어도 「그룹 루틴」 선택 시 empty 문구.
+    val isGroupTab = selectedMainTab == 1
+    val currentFilters = if (isGroupTab) groupRoomFilters else myRoutineFilters
+
+    LaunchedEffect(currentFilters) {
+        if (currentFilters.isNotEmpty() && selectedCategoryName !in currentFilters) {
             selectedCategoryName = AllCategoryFilterLabel
         }
     }
 
-    // Design Page [1.1]: 탭은 항상 노출. 그룹방 없어도 「그룹 루틴」 선택 시 empty 문구.
-    val isGroupTab = selectedMainTab == 1
-    val showGroupFilters = isGroupTab && hasGroupRoom
+    val showFilters = currentFilters.isNotEmpty()
     val displayedItems = remember(
         isGroupTab,
         hasGroupRoom,
@@ -271,7 +280,7 @@ fun RoutineChecklistSection(
         selectedCategoryName,
     ) {
         when {
-            !isGroupTab -> myRoutineItems
+            !isGroupTab -> myRoutineItems.filteredByCategory(selectedCategoryName)
             hasGroupRoom -> groupRoomItems.filteredByCategory(selectedCategoryName)
             else -> emptyList()
         }
@@ -298,13 +307,13 @@ fun RoutineChecklistSection(
             equalWidth = true,
         )
 
-        if (showGroupFilters) {
+        if (showFilters) {
             LazyRow(
                 modifier = Modifier.padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                itemsIndexed(groupRoomFilters) { _, label ->
+                itemsIndexed(currentFilters) { _, label ->
                     LiroutiLabel(
                         text = label,
                         selected = label == selectedCategoryName,

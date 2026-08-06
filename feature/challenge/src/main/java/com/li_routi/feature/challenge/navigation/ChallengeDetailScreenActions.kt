@@ -30,12 +30,15 @@ interface ChallengeDetailScreenActions {
      */
     fun onDeleteCertificationClick(certificationId: Long)
 
-    /** 타 사용자 인증 게시글 더보기 바텀시트의 "신고하기" 탭 */
-    fun onReportCertificationClick(certificationId: Long)
+    /** 신고 사유 선택 화면의 "완료" 탭. [reason]은 미리 정의된 사유 텍스트, "기타" 직접 입력 텍스트, 또는 null(미선택). */
+    fun onReportCertificationClick(certificationId: Long, reason: String?)
 
     /** "인증"(전체) 탭 인증 게시글의 좋아요 아이콘 탭 (현재 liked 상태에 따라 좋아요/취소 전환) */
     fun onLikeToggleClick(certificationId: Long)
 
     /** 새 인증 게시글 업로드(사진+코멘트) 성공 후 호출. 상세/인증 목록을 새로고침한다. */
     fun onVerificationSubmitted()
+
+    /** 목록을 당겨서 새로고침. 상세/현재 탭(들)을 처음부터 다시 불러온다. */
+    fun onRefresh()
 }

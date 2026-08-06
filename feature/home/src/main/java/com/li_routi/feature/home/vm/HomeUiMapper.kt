@@ -10,12 +10,19 @@ import com.li_routi.feature.home.component.RoutineChecklistKind
 /**
  * [HomeSummary] → 홈 체크리스트 UI 모델.
  * id 규칙: 개인 `my_{routineId}`, 그룹 `group_{groupId}_{routineId}` (인증 업로드 선택 키와 공유).
+ *
+ * `app` 모듈이 공유 인증 플로우(개인+그룹+챌린지 통합 선택 목록)를 만들 때도 이 매핑을 그대로
+ * 재사용하도록 공개돼 있다 — id 규칙이 [RoutineAuthUploadHelper]의 파싱 로직과 반드시 일치해야 한다.
  */
-internal fun HomeSummary.toHomeUiState(): HomeUiState {
+fun HomeSummary.toHomeUiState(): HomeUiState {
     val myItems = myRoutines.map { it.toChecklistItem() }
     val groupItems = groupRoutines.map { it.toChecklistItem() }
-    // Design Page [1.1] 그룹 탭 필터: 전체 + 카테고리명 (방 이름 아님)
-    val categoryNames = groupRoutines
+    // Design Page [1.1] 탭 필터: 전체 + 카테고리명 (그룹 탭은 방 이름이 아니라 카테고리명).
+    val myCategoryNames = myRoutines
+        .map { it.categoryName.trim() }
+        .filter { it.isNotEmpty() }
+        .distinct()
+    val groupCategoryNames = groupRoutines
         .map { it.categoryName.trim() }
         .filter { it.isNotEmpty() }
         .distinct()
@@ -24,10 +31,11 @@ internal fun HomeSummary.toHomeUiState(): HomeUiState {
         hasActiveRoutine = myRoutines.isNotEmpty(),
         hasGroupRoom = groupRoutines.isNotEmpty(),
         myRoutineItems = myItems,
+        myRoutineFilters = if (myRoutines.isEmpty()) emptyList() else listOf("전체") + myCategoryNames,
         groupRoomFilters = if (groupRoutines.isEmpty()) {
             emptyList()
         } else {
-            listOf("전체") + categoryNames
+            listOf("전체") + groupCategoryNames
         },
         groupRoomItems = groupItems,
         isLoading = false,

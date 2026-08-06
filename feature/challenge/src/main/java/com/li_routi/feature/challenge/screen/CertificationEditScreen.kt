@@ -31,6 +31,7 @@ import coil.compose.AsyncImage
 import androidx.compose.material3.Text
 import com.li_routi.core.designsystem.component.LiroutiBottomSheetCloseButton
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
+import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.component.LiroutiTextField
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -50,8 +51,12 @@ fun CertificationEditScreen(
     title: String = "인증수정",
     isSubmitting: Boolean = false,
     errorMessage: String? = null,
+    // null이면(신규 인증 작성) 우상단에 기존처럼 X 닫기 버튼을, 값이 있으면(기존 게시글 수정) "삭제"
+    // 텍스트 버튼을 보여준다 — 뒤로가기 화살표가 이미 닫기 역할을 하므로 X는 더 이상 필요 없다.
+    onDeleteClick: (() -> Unit)? = null,
 ) {
     var content by remember(certification.id) { mutableStateOf(certification.content) }
+    var showDeleteDialog by remember { mutableStateOf(false) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
@@ -87,13 +92,25 @@ fun CertificationEditScreen(
                 style = LiroutiTheme.typography.heading2SemiBold,
                 color = LiroutiTheme.colors.labelDefault,
             )
-            LiroutiBottomSheetCloseButton(
-                modifier = Modifier
-                    .align(Alignment.CenterEnd)
-                    .padding(end = 16.dp),
-                onClick = onClose,
-                color = LiroutiTheme.colors.labelDefault,
-            )
+            if (onDeleteClick != null) {
+                Text(
+                    text = "삭제",
+                    style = LiroutiTheme.typography.body1Medium,
+                    color = LiroutiTheme.colors.dangerText,
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp)
+                        .clickable { showDeleteDialog = true },
+                )
+            } else {
+                LiroutiBottomSheetCloseButton(
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp),
+                    onClick = onClose,
+                    color = LiroutiTheme.colors.labelDefault,
+                )
+            }
         }
 
         Column(
@@ -110,14 +127,14 @@ fun CertificationEditScreen(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
+                        .height(280.dp)
                         .clip(RoundedCornerShape(6.dp)),
                 )
             } else {
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(120.dp)
+                        .height(280.dp)
                         .background(LiroutiTheme.colors.backgroundSecondary, RoundedCornerShape(6.dp)),
                 )
             }
@@ -141,6 +158,19 @@ fun CertificationEditScreen(
                 .padding(horizontal = 16.dp)
                 .navigationBarsPadding()
                 .padding(bottom = 32.dp),
+        )
+    }
+
+    if (showDeleteDialog && onDeleteClick != null) {
+        LiroutiConfirmDialog(
+            title = "삭제하기",
+            message = "내 인증이 삭제됩니다.",
+            confirmText = "삭제",
+            onConfirm = {
+                showDeleteDialog = false
+                onDeleteClick()
+            },
+            onDismissRequest = { showDeleteDialog = false },
         )
     }
 }

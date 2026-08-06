@@ -1,0 +1,116 @@
+package com.li_routi.feature.home.vm
+
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Matrix
+import android.media.ExifInterface
+import android.net.Uri
+import java.io.ByteArrayOutputStream
+
+/** Figma `촬영 후 메모/선택`(node 3610:26875) 사진 박스 비율(328:184 ≈ 16:9). 미리보기/업로드가 항상 이 비율로 크롭한다. */
+internal const val VerificationPhotoAspectRatio = 328f / 184f
+
+/** 업로드용으로 디코딩할 비트맵의 (긴 변 기준) 최대 픽셀 크기. */
+internal const val VerificationPhotoUploadTargetSizePx = 1920
+
+/**
+ * EXIF Orientation을 반영해 세로/가로가 올바른 방향으로 보이게, [maxLongEdgePx] 이하로 샘플링해 디코딩한다.
+ *
+ * [uri]가 `file://`(카메라 캡처는 항상 이 스킴)면 `ContentResolver` 스트림을 거치지 않고 파일 경로로
+ * 직접 디코딩한다 — 일부 기기/에뮬레이터에서 `file://`를 `ContentResolver.openInputStream()`으로 열어
+ * `BitmapFactory.decodeStream()`에 넘기면 디코딩이 끝없이 멈춰버리는 경우가 있어(예외 없이 그냥
+ * 반환되지 않음), 더 안정적인 경로로 우회한다.
+ */
+internal fun decodeBitmapWithExif(context: Context, uri: Uri, maxLongEdgePx: Int): Bitmap? {
+    val filePath = uri.takeIf { it.scheme == "file" }?.path
+
+    val orientation = runCatching {
+        if (filePath != null) {
+            ExifInterface(filePath).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+        } else {
+            context.contentResolver.openInputStream(uri)?.use { stream ->
+                ExifInterface(stream).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            }
+        }
+    }.getOrNull() ?: ExifInterface.ORIENTATION_NORMAL
+
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    val bitmap = if (filePath != null) {
+        BitmapFactory.decodeFile(filePath, bounds)
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, maxLongEdgePx)
+        }
+        BitmapFactory.decodeFile(filePath, options)
+    } else {
+        val resolver = context.contentResolver
+        resolver.openInputStream(uri)?.use { stream -> BitmapFactory.decodeStream(stream, null, bounds) }
+            ?: return null
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, maxLongEdgePx)
+        }
+        resolver.openInputStream(uri)?.use { stream -> BitmapFactory.decodeStream(stream, null, options) }
+    } ?: return null
+
+    return bitmap.applyExifOrientation(orientation)
+}
+
+/** [width]/[height] 중 긴 변이 [reqSize] 이하가 되는 가장 작은 2의 거듭제곱 다운샘플링 비율을 계산한다. */
+private fun calculateInSampleSize(width: Int, height: Int, reqSize: Int): Int {
+    var inSampleSize = 1
+    if (width <= 0 || height <= 0) return inSampleSize
+    while (maxOf(width, height) / inSampleSize > reqSize) {
+        inSampleSize *= 2
+    }
+    return inSampleSize
+}
+
+private fun Bitmap.applyExifOrientation(orientation: Int): Bitmap {
+    val matrix = Matrix()
+    when (orientation) {
+        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
+        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
+        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
+        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
+        ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
+        ExifInterface.ORIENTATION_TRANSPOSE -> {
+            matrix.postRotate(90f)
+            matrix.postScale(-1f, 1f)
+        }
+        ExifInterface.ORIENTATION_TRANSVERSE -> {
+            matrix.postRotate(270f)
+            matrix.postScale(-1f, 1f)
+        }
+        else -> return this
+    }
+    val rotated = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
+    if (rotated !== this) recycle()
+    return rotated
+}
+
+/** 사진을 [targetRatio](가로/세로)에 맞춰 중앙 기준으로 잘라낸다. 미리보기·업로드가 같은 크롭 결과를 쓰도록 공유한다. */
+internal fun Bitmap.centerCropToRatio(targetRatio: Float): Bitmap {
+    val currentRatio = width.toFloat() / height.toFloat()
+    val cropped = when {
+        currentRatio > targetRatio -> {
+            val newWidth = (height * targetRatio).toInt().coerceIn(1, width)
+            val x = (width - newWidth) / 2
+            Bitmap.createBitmap(this, x, 0, newWidth, height)
+        }
+        currentRatio < targetRatio -> {
+            val newHeight = (width / targetRatio).toInt().coerceIn(1, height)
+            val y = (height - newHeight) / 2
+            Bitmap.createBitmap(this, 0, y, width, newHeight)
+        }
+        else -> this
+    }
+    if (cropped !== this) recycle()
+    return cropped
+}
+
+/** 크롭된 비트맵을 JPEG 바이트로 재인코딩한다. 업로드 직전에 호출한다. */
+internal fun Bitmap.toJpegBytes(quality: Int = 90): ByteArray =
+    ByteArrayOutputStream().use { stream ->
+        compress(Bitmap.CompressFormat.JPEG, quality, stream)
+        stream.toByteArray()
+    }

@@ -1,6 +1,7 @@
 package com.li_routi.feature.challenge.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -35,6 +36,10 @@ private const val RouteChallengeDetail = "challenge_detail/{$ArgChallengeId}"
  */
 @Composable
 fun ChallengeNavHost(
+    /** "인증하기" 탭 — `app`이 소유한 공유 인증 플로우를 이 챌린지로 시작해 달라는 요청. */
+    onStartVerification: (challengeId: Long) -> Unit = {},
+    /** 공유 인증 플로우에서 챌린지 인증이 성공할 때마다 증가한다 — 지금 열려 있는 상세 화면이 있으면 새로고침한다. */
+    verificationRefreshSignal: Int = 0,
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
@@ -98,10 +103,17 @@ fun ChallengeNavHost(
             }
             val detailUiState by detailViewModel.uiState.collectAsStateWithLifecycle()
 
+            LaunchedEffect(verificationRefreshSignal) {
+                if (verificationRefreshSignal > 0) {
+                    detailViewModel.onVerificationSubmitted()
+                }
+            }
+
             ChallengeDetailScreen(
                 uiState = detailUiState,
                 actions = detailViewModel,
                 onBackClick = { navController.popBackStack() },
+                onStartVerification = { onStartVerification(challengeId) },
             )
         }
     }
