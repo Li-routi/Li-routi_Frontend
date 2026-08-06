@@ -1,5 +1,6 @@
 package com.li_routi.feature.mypage.navigation
 
+import android.content.Context
 import android.content.Intent
 import android.widget.Toast
 import androidx.compose.runtime.Composable
@@ -19,7 +20,7 @@ import kotlinx.coroutines.delay
 /** `:app`을 컴파일 타임에 참조할 수 없어(:app -> feature:mypage 방향으로만 의존) LoginActivity로 문자열 + Intent로 넘긴다. */
 private const val LoginActivityClassName = "com.li_routi.feature.login.LoginActivity"
 
-/** 로그아웃 성공 토스트를 보여주는 최소 시간(사용자가 확인할 수 있게) 후 로그인 화면으로 이동한다. */
+/** 로그아웃/탈퇴 성공 토스트를 보여주는 최소 시간(사용자가 확인할 수 있게) 후 로그인 화면으로 이동한다. */
 private const val LogoutToastDurationMillis = 1200L
 
 /** 계정 관리 화면 진입점. [AccountManageViewModel]과 [AccountManageScreen]을 연결한다. */
@@ -31,6 +32,7 @@ fun AccountManageRoute(
 ) {
     val context = LocalContext.current
     var showLogoutToast by remember { mutableStateOf(false) }
+    var showWithdrawToast by remember { mutableStateOf(false) }
 
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
@@ -38,11 +40,12 @@ fun AccountManageRoute(
                 AccountManageUiEvent.LogoutSucceeded -> {
                     showLogoutToast = true
                     delay(LogoutToastDurationMillis)
-                    val intent = Intent().apply {
-                        setClassName(context.packageName, LoginActivityClassName)
-                        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
-                    }
-                    context.startActivity(intent)
+                    navigateToLogin(context)
+                }
+                AccountManageUiEvent.WithdrawSucceeded -> {
+                    showWithdrawToast = true
+                    delay(LogoutToastDurationMillis)
+                    navigateToLogin(context)
                 }
                 is AccountManageUiEvent.ShowError -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
@@ -56,6 +59,17 @@ fun AccountManageRoute(
         onLogoutConfirmed = viewModel::onLogoutConfirmed,
         showLogoutToast = showLogoutToast,
         onDismissLogoutToast = { showLogoutToast = false },
+        onWithdrawConfirmed = viewModel::onWithdrawConfirmed,
+        showWithdrawToast = showWithdrawToast,
+        onDismissWithdrawToast = { showWithdrawToast = false },
         modifier = modifier,
     )
+}
+
+private fun navigateToLogin(context: Context) {
+    val intent = Intent().apply {
+        setClassName(context.packageName, LoginActivityClassName)
+        flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+    }
+    context.startActivity(intent)
 }

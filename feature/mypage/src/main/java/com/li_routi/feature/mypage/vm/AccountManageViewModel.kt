@@ -5,6 +5,7 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.domain.auth.LogoutUseCase
+import com.li_routi.core.domain.auth.WithdrawUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.SharedFlow
 import kotlinx.coroutines.flow.asSharedFlow
@@ -18,6 +19,7 @@ import kotlinx.coroutines.launch
  */
 class AccountManageViewModel(
     private val logoutUseCase: LogoutUseCase = AuthContainer.logoutUseCase,
+    private val withdrawUseCase: WithdrawUseCase = AuthContainer.withdrawUseCase,
 ) : BaseViewModel() {
 
     private val _uiEvent = MutableSharedFlow<AccountManageUiEvent>(extraBufferCapacity = 1)
@@ -27,6 +29,16 @@ class AccountManageViewModel(
         viewModelScope.launch {
             when (val result = logoutUseCase()) {
                 is ResultState.Success -> _uiEvent.emit(AccountManageUiEvent.LogoutSucceeded)
+                is ResultState.Error -> _uiEvent.emit(AccountManageUiEvent.ShowError(result.message))
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onWithdrawConfirmed() {
+        viewModelScope.launch {
+            when (val result = withdrawUseCase()) {
+                is ResultState.Success -> _uiEvent.emit(AccountManageUiEvent.WithdrawSucceeded)
                 is ResultState.Error -> _uiEvent.emit(AccountManageUiEvent.ShowError(result.message))
                 ResultState.Loading -> Unit
             }

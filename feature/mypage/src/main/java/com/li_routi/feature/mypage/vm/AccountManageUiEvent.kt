@@ -5,6 +5,9 @@ sealed interface AccountManageUiEvent {
     /** 로그아웃 API가 성공했다 — 토큰은 이미 로컬에서 삭제된 상태다. */
     data object LogoutSucceeded : AccountManageUiEvent
 
-    /** 로그아웃 API 실패. */
+    /** 회원 탈퇴 API가 성공했다 — 토큰은 이미 로컬에서 삭제된 상태다. */
+    data object WithdrawSucceeded : AccountManageUiEvent
+
+    /** 로그아웃/회원 탈퇴 API 실패. */
     data class ShowError(val message: String) : AccountManageUiEvent
 }
