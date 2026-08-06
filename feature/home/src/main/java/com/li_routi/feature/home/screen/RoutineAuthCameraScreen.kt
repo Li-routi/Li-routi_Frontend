@@ -17,7 +17,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
-import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,7 +26,6 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
@@ -40,6 +38,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
@@ -180,6 +179,11 @@ fun RoutineAuthCameraScreen(
     )
 }
 
+/**
+ * Figma node `4734:42024`: 프리뷰가 화면 전체(상태바/내비게이션 바 영역까지)를 꽉 채우고, 닫기·안내
+ * 문구·하단 컨트롤은 그 위에 얹힌 오버레이다 — 흰 배경의 별도 상단/하단 바가 아니다. 오버레이가 사진
+ * 위에서도 읽히도록 위/아래에 어두운 그라데이션 스크림을 깔고, 아이콘·텍스트는 흰색(labelReverse)을 쓴다.
+ */
 @Composable
 private fun RoutineAuthCameraLayout(
     actions: RoutineAuthCameraScreenActions,
@@ -193,51 +197,80 @@ private fun RoutineAuthCameraLayout(
     modifier: Modifier = Modifier,
     onRequestPermission: () -> Unit = {},
 ) {
-    Scaffold(
-        modifier = modifier.fillMaxSize(),
-        containerColor = LiroutiTheme.colors.backgroundDefault,
-        // topBar/bottomBar에서 inset을 직접 처리. 기본 safeDrawing과 중복되면 타이틀이 프리뷰를 침범한다.
-        contentWindowInsets = WindowInsets(0, 0, 0, 0),
-        topBar = {
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .background(LiroutiTheme.colors.backgroundDefault)
-                    .statusBarsPadding(),
-            ) {
-                Row(
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .background(Color.Black),
+    ) {
+        if (hasCameraPermission) {
+            cameraContent()
+        } else {
+            CameraPermissionDenied(
+                onRequestPermission = onRequestPermission,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+
+        // 상단 스크림 + 닫기 버튼.
+        Box(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .height(112.dp)
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent),
+                    ),
+                ),
+        )
+        Image(
+            painter = painterResource(id = R.drawable.close),
+            contentDescription = "닫기",
+            // 터치 영역은 접근성 최소 권장 크기(48dp)로 확보하고, 안쪽 padding으로 시각적 아이콘
+            // 크기(28dp)는 그대로 유지한다.
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .statusBarsPadding()
+                .padding(horizontal = 6.dp)
+                .size(48.dp)
+                .clickable(onClick = actions::onBackClick)
+                .padding(10.dp),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelReverse),
+        )
+
+        // 하단 스크림 + 안내 문구 + 컨트롤(전환/셔터/플래시).
+        Column(
+            modifier = Modifier
+                .align(Alignment.BottomCenter)
+                .fillMaxWidth()
+                .background(
+                    Brush.verticalGradient(
+                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)),
+                    ),
+                )
+                .navigationBarsPadding()
+                .padding(top = 24.dp, bottom = 24.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            if (hasCameraPermission) {
+                Text(
+                    text = "가로로 촬영해 주세요",
+                    style = LiroutiTheme.typography.body2LongMedium,
+                    // 어두운 프리뷰 위에서도 읽히도록 reverse + scrim
+                    color = LiroutiTheme.colors.labelReverse,
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
-                    verticalAlignment = Alignment.CenterVertically,
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.chevron__left),
-                        contentDescription = "뒤로가기",
-                        modifier = Modifier
-                            .size(20.dp)
-                            .clickable(onClick = actions::onBackClick),
-                        colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
-                    )
-                    Text(
-                        text = "루틴 인증하기",
-                        style = LiroutiTheme.typography.heading2,
-                        color = LiroutiTheme.colors.labelStrong,
-                        modifier = Modifier
-                            .weight(1f)
-                            .padding(end = 20.dp),
-                        textAlign = TextAlign.Center,
-                    )
-                }
+                        .background(
+                            color = Color.Black.copy(alpha = 0.45f),
+                            shape = RoundedCornerShape(8.dp),
+                        )
+                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                )
+                Spacer(modifier = Modifier.height(20.dp))
             }
-        },
-        bottomBar = {
             Row(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .background(LiroutiTheme.colors.backgroundDefault)
-                    .navigationBarsPadding()
-                    .padding(horizontal = 40.dp, vertical = 24.dp),
+                    .padding(horizontal = 40.dp),
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
@@ -271,37 +304,6 @@ private fun RoutineAuthCameraLayout(
                     // 폭 고정 + 짧은 라벨로 토글 시 셔터가 밀리지 않게 한다.
                     label = if (isTorchOn) "켜짐" else "플래시",
                     onClick = onToggleFlash,
-                )
-            }
-        },
-    ) { innerPadding ->
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .padding(innerPadding),
-        ) {
-            if (hasCameraPermission) {
-                cameraContent()
-            } else {
-                CameraPermissionDenied(
-                    onRequestPermission = onRequestPermission,
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            if (hasCameraPermission) {
-                Text(
-                    text = "가로로 촬영해 주세요",
-                    style = LiroutiTheme.typography.body2LongMedium,
-                    // 어두운 프리뷰 위에서도 읽히도록 reverse + scrim
-                    color = LiroutiTheme.colors.labelReverse,
-                    modifier = Modifier
-                        .align(Alignment.BottomCenter)
-                        .padding(bottom = 16.dp)
-                        .background(
-                            color = Color.Black.copy(alpha = 0.45f),
-                            shape = RoundedCornerShape(8.dp),
-                        )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
                 )
             }
         }
@@ -363,14 +365,15 @@ private fun CameraControlAction(
             painter = painterResource(id = iconResId),
             contentDescription = label,
             modifier = Modifier.size(24.dp),
-            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
+            // 카메라 프리뷰 위에 얹히는 오버레이라 흰색(labelReverse)을 쓴다.
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelReverse),
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
             text = label,
             // Figma Body4 13/16
             style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
-            color = LiroutiTheme.colors.labelStrong,
+            color = LiroutiTheme.colors.labelReverse,
             textAlign = TextAlign.Center,
             maxLines = 1,
         )

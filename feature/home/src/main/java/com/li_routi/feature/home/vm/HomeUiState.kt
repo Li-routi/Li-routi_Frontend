@@ -17,6 +17,7 @@ data class HomeUiState(
     val hasActiveRoutine: Boolean = false,
     val hasGroupRoom: Boolean = false,
     val myRoutineItems: List<RoutineChecklistItemUiModel> = emptyList(),
+    val myRoutineFilters: List<String> = emptyList(),
     val groupRoomFilters: List<String> = emptyList(),
     val groupRoomItems: List<RoutineChecklistItemUiModel> = emptyList(),
     val isLoading: Boolean = false,

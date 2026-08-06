@@ -109,6 +109,62 @@ fun LiroutiChevronLeftIcon(
 }
 
 @Composable
+fun LiroutiArrowUpIcon(
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+) {
+    Canvas(modifier = modifier) {
+        val strokeColor = if (color == Color.Unspecified) Color.Black else color
+        val strokeWidth = 1.6.dp.toPx()
+        drawLine(
+            color = strokeColor,
+            start = Offset(size.width * 0.5f, size.height * 0.8125f),
+            end = Offset(size.width * 0.5f, size.height * 0.1875f),
+            strokeWidth = strokeWidth,
+            cap = StrokeCap.Round,
+        )
+        val headPath = Path().apply {
+            moveTo(size.width * 0.3125f, size.height * 0.4375f)
+            lineTo(size.width * 0.5f, size.height * 0.1875f)
+            lineTo(size.width * 0.6875f, size.height * 0.4375f)
+        }
+        drawPath(
+            path = headPath,
+            color = strokeColor,
+            style = Stroke(
+                width = strokeWidth,
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round,
+            ),
+        )
+    }
+}
+
+@Composable
+fun LiroutiChevronDownIcon(
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+) {
+    Canvas(modifier = modifier) {
+        val strokeColor = if (color == Color.Unspecified) Color.Black else color
+        val path = Path().apply {
+            moveTo(size.width * 0.1875f, size.height * 0.375f)
+            lineTo(size.width * 0.5f, size.height * 0.6875f)
+            lineTo(size.width * 0.8125f, size.height * 0.375f)
+        }
+        drawPath(
+            path = path,
+            color = strokeColor,
+            style = Stroke(
+                width = 1.6.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round,
+            ),
+        )
+    }
+}
+
+@Composable
 fun LiroutiPlusIcon(
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
@@ -160,6 +216,8 @@ private fun LiroutiBottomSheetIconsPreview() {
             LiroutiCheckmarkIcon(modifier = Modifier.size(24.dp))
             LiroutiChevronRightIcon(modifier = Modifier.size(24.dp))
             LiroutiChevronLeftIcon(modifier = Modifier.size(24.dp))
+            LiroutiArrowUpIcon(modifier = Modifier.size(24.dp))
+            LiroutiChevronDownIcon(modifier = Modifier.size(24.dp))
             LiroutiPlusIcon(modifier = Modifier.size(24.dp))
             LiroutiDotMarkIcon(modifier = Modifier.size(24.dp))
         }

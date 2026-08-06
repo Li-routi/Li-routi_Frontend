@@ -1,11 +1,8 @@
 package com.li_routi.feature.home.screen
 
-import android.content.Context
 import android.graphics.Bitmap
-import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import android.media.ExifInterface
 import android.net.Uri
+import android.util.Log
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
@@ -20,7 +17,6 @@ import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -57,10 +53,10 @@ import com.li_routi.core.designsystem.component.CheckBoxState
 import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.designsystem.component.LiroutiBadge
 import com.li_routi.core.designsystem.component.LiroutiBadgeColor
+import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.component.LiroutiDivider
 import com.li_routi.core.designsystem.component.LiroutiDividerOrientation
 import com.li_routi.core.designsystem.component.LiroutiTextField
-import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.navigation.RoutineAuthUploadScreenActions
@@ -68,75 +64,14 @@ import com.li_routi.feature.home.navigation.RoutineAuthUploadScreenActions.Compa
 import com.li_routi.feature.home.vm.RoutineAuthBadgeTone
 import com.li_routi.feature.home.vm.RoutineAuthSelectableUiModel
 import com.li_routi.feature.home.vm.SampleRoutineAuthSelectables
+import com.li_routi.feature.home.vm.VerificationPhotoAspectRatio
+import com.li_routi.feature.home.vm.decodeBitmapWithExif
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
-
-/**
- * 미리보기 최대 높이.
- * 박스를 사진 비율에 맞추되, 세로 사진이 메모 영역을 밀지 않도록 상한을 둔다.
- */
-private val PhotoPreviewMaxHeight = 240.dp
-private val PhotoPreviewPlaceholderHeight = 160.dp
 
 /** 미리보기용으로 디코딩할 비트맵의 (긴 변 기준) 최대 픽셀 크기. 전체 해상도 디코딩으로 인한 OOM/버벅임을 막는다. */
 private const val PhotoPreviewTargetSizePx = 1024
 
-/** EXIF Orientation을 반영해 세로/가로가 올바른 방향으로 보이게, 미리보기 크기로 샘플링해 디코딩한다. */
-private fun decodeBitmapWithExif(context: Context, uri: Uri): Bitmap? {
-    val resolver = context.contentResolver
-    val orientation = runCatching {
-        resolver.openInputStream(uri)?.use { stream ->
-            ExifInterface(stream).getAttributeInt(
-                ExifInterface.TAG_ORIENTATION,
-                ExifInterface.ORIENTATION_NORMAL,
-            )
-        }
-    }.getOrNull() ?: ExifInterface.ORIENTATION_NORMAL
-
-    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-    resolver.openInputStream(uri)?.use { stream -> BitmapFactory.decodeStream(stream, null, bounds) }
-        ?: return null
-
-    val options = BitmapFactory.Options().apply {
-        inSampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, PhotoPreviewTargetSizePx)
-    }
-    val bitmap = resolver.openInputStream(uri)?.use { stream -> BitmapFactory.decodeStream(stream, null, options) }
-        ?: return null
-    return bitmap.applyExifOrientation(orientation)
-}
-
-/** [width]/[height] 중 긴 변이 [reqSize] 이하가 되는 가장 작은 2의 거듭제곱 다운샘플링 비율을 계산한다. */
-private fun calculateInSampleSize(width: Int, height: Int, reqSize: Int): Int {
-    var inSampleSize = 1
-    if (width <= 0 || height <= 0) return inSampleSize
-    while (maxOf(width, height) / inSampleSize > reqSize) {
-        inSampleSize *= 2
-    }
-    return inSampleSize
-}
-
-private fun Bitmap.applyExifOrientation(orientation: Int): Bitmap {
-    val matrix = Matrix()
-    when (orientation) {
-        ExifInterface.ORIENTATION_ROTATE_90 -> matrix.postRotate(90f)
-        ExifInterface.ORIENTATION_ROTATE_180 -> matrix.postRotate(180f)
-        ExifInterface.ORIENTATION_ROTATE_270 -> matrix.postRotate(270f)
-        ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> matrix.postScale(-1f, 1f)
-        ExifInterface.ORIENTATION_FLIP_VERTICAL -> matrix.postScale(1f, -1f)
-        ExifInterface.ORIENTATION_TRANSPOSE -> {
-            matrix.postRotate(90f)
-            matrix.postScale(-1f, 1f)
-        }
-        ExifInterface.ORIENTATION_TRANSVERSE -> {
-            matrix.postRotate(270f)
-            matrix.postScale(-1f, 1f)
-        }
-        else -> return this
-    }
-    val rotated = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
-    if (rotated !== this) recycle()
-    return rotated
-}
 /**
  * 촬영 후 메모/루틴 선택(업로드) 화면 (Figma `촬영 후 메모/선택`, node `2176:20314` 등).
  *
@@ -190,12 +125,6 @@ fun RoutineAuthUploadScreen(
                     .padding(bottom = 32.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp),
             ) {
-                if (showUploadFailedToast) {
-                    UploadFailedToast(
-                        message = uploadErrorMessage ?: "업로드 실패",
-                        onDismiss = actions::onDismissUploadFailedToast,
-                    )
-                }
                 UploadActionButton(
                     enabled = isUploadEnabled,
                     isUploading = isUploading,
@@ -237,6 +166,19 @@ fun RoutineAuthUploadScreen(
             }
         }
     }
+
+    // Figma node 4424:52039 "서버 오류" 다이얼로그. "취소"는 에러만 지우고 화면에 남아 재시도할 수
+    // 있게 하고, "임시 저장"은 저장 없이 플로우를 완전히 닫는다(onCloseClick과 동일하게 처리).
+    if (showUploadFailedToast) {
+        LiroutiConfirmDialog(
+            title = "서버 오류",
+            message = uploadErrorMessage ?: "서버 통신 상태가 원활하지 않습니다.",
+            confirmText = "임시 저장",
+            isConfirmDestructive = false,
+            onConfirm = actions::onCloseClick,
+            onDismissRequest = actions::onDismissUploadFailedToast,
+        )
+    }
 }
 
 @Composable
@@ -253,47 +195,37 @@ private fun CapturedPhotoPreview(
             // CodeRabbit 반영: 컴포지션 스레드에서 원본 해상도를 디코딩하면 카메라 캡처 크기에 따라
             // 화면이 멈추거나 OOM이 날 수 있어, IO 디스패처에서 샘플링된 비트맵만 디코딩한다.
             withContext(Dispatchers.IO) {
-                runCatching { decodeBitmapWithExif(context, uri) }.getOrNull()
+                runCatching { decodeBitmapWithExif(context, uri, PhotoPreviewTargetSizePx) }
+                    .onFailure { Log.w("CapturedPhotoPreview", "사진 디코딩 실패: uri=$uri", it) }
+                    .getOrNull()
             }
         }
     }
 
-    // 일반 Box + heightIn + aspectRatio:
-    // - 사진 비율 유지(회색 여백 없음)
-    // - 높이 상한으로 메모 밀림 방지
+    // Figma `촬영 후 메모/선택`(3610:26875) 기준 328:184 고정 비율 박스. 원본 비율과 달라도
+    // ContentScale.Crop으로 채워 실제 업로드되는 크롭 결과와 미리보기를 일치시킨다.
     Box(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .aspectRatio(VerificationPhotoAspectRatio)
+            .clip(RoundedCornerShape(6.dp))
+            .background(LiroutiTheme.colors.backgroundStrong),
         contentAlignment = Alignment.Center,
     ) {
         val currentBitmap = bitmap
         if (currentBitmap == null) {
-            Box(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(PhotoPreviewPlaceholderHeight)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(LiroutiTheme.colors.backgroundStrong),
-                contentAlignment = Alignment.Center,
-            ) {
-                Text(
-                    text = "촬영 사진",
-                    style = LiroutiTheme.typography.caption,
-                    color = LiroutiTheme.colors.labelInfo,
-                )
-            }
+            Text(
+                text = "촬영 사진",
+                style = LiroutiTheme.typography.caption,
+                color = LiroutiTheme.colors.labelInfo,
+            )
             return@Box
         }
 
-        val photoAspectRatio =
-            currentBitmap.width.toFloat() / currentBitmap.height.toFloat().coerceAtLeast(1f)
         Image(
             bitmap = currentBitmap.asImageBitmap(),
             contentDescription = "촬영 사진",
-            modifier = Modifier
-                .heightIn(max = PhotoPreviewMaxHeight)
-                .aspectRatio(photoAspectRatio)
-                .clip(RoundedCornerShape(6.dp))
-                .background(LiroutiTheme.colors.backgroundStrong),
+            modifier = Modifier.fillMaxWidth().aspectRatio(VerificationPhotoAspectRatio),
             contentScale = ContentScale.Crop,
         )
     }
@@ -451,19 +383,6 @@ private fun RoutineSelectRow(
             },
         )
     }
-}
-
-@Composable
-private fun UploadFailedToast(
-    message: String,
-    onDismiss: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    LiroutiToast(
-        message = message,
-        modifier = modifier,
-        onCloseClick = onDismiss,
-    )
 }
 
 @Composable

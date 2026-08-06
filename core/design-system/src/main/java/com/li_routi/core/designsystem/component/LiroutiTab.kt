@@ -1,22 +1,18 @@
 package com.li_routi.core.designsystem.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
-import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -29,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.shadow
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -107,8 +102,6 @@ fun LiroutiLineTab(
     modifier: Modifier = Modifier,
     equalWidth: Boolean = false,
 ) {
-    var textHeight by remember { mutableStateOf(22.dp) }
-
     Column(modifier = modifier.fillMaxWidth()) {
         Row(
             horizontalArrangement = Arrangement.spacedBy(10.dp),
@@ -122,8 +115,6 @@ fun LiroutiLineTab(
                     selected = index == selectedIndex,
                     onClick = { onTabSelected(index) },
                     fullWidthIndicator = equalWidth,
-                    textHeight = textHeight,
-                    onTextHeightMeasured = { textHeight = it },
                     modifier = if (equalWidth) Modifier.weight(1f) else Modifier,
                 )
             }
@@ -132,15 +123,11 @@ fun LiroutiLineTab(
     }
 }
 
-private val CategoryDotSize = 9.dp
-
 @Composable
 private fun LiroutiLineTabItem(
     text: String,
     selected: Boolean,
     onClick: () -> Unit,
-    textHeight: Dp,
-    onTextHeightMeasured: (Dp) -> Unit,
     modifier: Modifier = Modifier,
     fullWidthIndicator: Boolean = false,
 ) {
@@ -165,7 +152,6 @@ private fun LiroutiLineTabItem(
                 softWrap = false,
                 onTextLayout = {
                     textWidth = with(density) { it.size.width.toDp() }
-                    onTextHeightMeasured(with(density) { it.size.height.toDp() })
                 },
                 style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
                 color = LiroutiTheme.colors.labelDefault,
@@ -176,18 +162,12 @@ private fun LiroutiLineTabItem(
                 color = LiroutiTheme.colors.labelDefault,
             )
         } else {
-            Box(
-                modifier = Modifier
-                    .padding(top = ((textHeight - CategoryDotSize) / 2).coerceAtLeast(0.dp))
-                    .defaultMinSize(minWidth = 48.dp, minHeight = 48.dp),
-                contentAlignment = Alignment.Center,
-            ) {
-                Box(
-                    modifier = Modifier
-                        .size(CategoryDotSize)
-                        .border(width = 1.dp, color = Color(0xFF878A93), shape = CircleShape),
-                )
-            }
+            Text(
+                text = text,
+                softWrap = false,
+                style = LiroutiTheme.typography.body2Long,
+                color = LiroutiTheme.colors.labelInfo,
+            )
         }
     }
 }

@@ -1,6 +1,7 @@
 package com.li_routi.feature.home.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -47,6 +48,10 @@ private const val KeyRefreshHome = "refresh_home"
 fun HomeNavHost(
     onCreateRoomClick: () -> Unit = {},
     onJoinRoomWithInviteCodeClick: () -> Unit = {},
+    /** 체크리스트 카메라 아이콘 탭 — `app`이 소유한 공유 인증 플로우를 시작해 달라는 요청. null이면 특정 루틴 미리 선택 없음. */
+    onStartVerification: (routineId: String?) -> Unit = {},
+    /** 공유 인증 플로우에서 개인/그룹 루틴 인증이 성공할 때마다 증가한다 — 홈 요약을 다시 불러온다. */
+    verificationRefreshSignal: Int = 0,
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
@@ -57,9 +62,14 @@ fun HomeNavHost(
         modifier = modifier,
     ) {
         composable(RouteHomeMain) { entry ->
-            val refreshHome by entry.savedStateHandle
+            val refreshHomeFromNav by entry.savedStateHandle
                 .getStateFlow(KeyRefreshHome, false)
                 .collectAsStateWithLifecycle()
+            var refreshHomeFromVerification by remember { mutableStateOf(false) }
+            LaunchedEffect(verificationRefreshSignal) {
+                if (verificationRefreshSignal > 0) refreshHomeFromVerification = true
+            }
+            val refreshHome = refreshHomeFromNav || refreshHomeFromVerification
 
             HomeRoute(
                 onEvent = { event ->
@@ -70,9 +80,9 @@ fun HomeNavHost(
                         HomeUiEvent.NavigateToJoinRoomWithInviteCode -> onJoinRoomWithInviteCodeClick()
                         HomeUiEvent.NavigateToNotification -> navController.navigate(RouteNotification)
                         HomeUiEvent.NavigateToShop -> navController.navigate(RouteShop)
-                        // TODO: 체크리스트 카메라 진입은 HomeRoute HorizontalPager에서 처리.
-                        HomeUiEvent.NavigateToRoutineAuthCamera,
-                        is HomeUiEvent.NavigateToRoutineAuthCameraWithId,
+                        HomeUiEvent.NavigateToRoutineAuthCamera -> onStartVerification(null)
+                        is HomeUiEvent.NavigateToRoutineAuthCameraWithId ->
+                            onStartVerification(event.routineId)
                         HomeUiEvent.CategoryCreated,
                         is HomeUiEvent.CategoryCreateFailed,
                         -> Unit
@@ -82,6 +92,7 @@ fun HomeNavHost(
                 requestRefresh = refreshHome,
                 onRefreshHandled = {
                     entry.savedStateHandle[KeyRefreshHome] = false
+                    refreshHomeFromVerification = false
                 },
             )
         }

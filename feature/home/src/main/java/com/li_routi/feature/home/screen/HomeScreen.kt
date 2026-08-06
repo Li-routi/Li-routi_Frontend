@@ -2,15 +2,20 @@ package com.li_routi.feature.home.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.fillMaxHeight
+import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
@@ -28,6 +33,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
@@ -43,6 +50,7 @@ import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
 import com.li_routi.feature.home.component.RoutineChecklistSection
 import com.li_routi.feature.home.component.SampleGroupRoomFilters
 import com.li_routi.feature.home.component.SampleGroupRoomItems
+import com.li_routi.feature.home.component.SampleMyRoutineFilters
 import com.li_routi.feature.home.component.SampleMyRoutineItems
 import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
 import com.li_routi.feature.home.component.ShopEntryCard
@@ -88,6 +96,7 @@ fun HomeScreen(
         hasGroupRoom -> SampleMyRoutineItems
         else -> SampleMyRoutineItemsOnly
     },
+    myRoutineFilters: List<String> = emptyList(),
     groupRoomFilters: List<String> = SampleGroupRoomFilters,
     groupRoomItems: List<RoutineChecklistItemUiModel> = SampleGroupRoomItems,
     /** 개인 또는 그룹 루틴이 하나라도 있으면 true. 기본은 [hasActiveRoutine]과 동일. */
@@ -106,6 +115,15 @@ fun HomeScreen(
     val tooltipMessage = homeTooltipMessage(hasActiveRoutine, hasGroupRoom)
     val sheetScaffoldState = rememberBottomSheetScaffoldState()
 
+    // 예전엔 카메라가 HorizontalPager의 별도 페이지라 스와이프가 저절로 됐지만, 카메라가 `app` 모듈이
+    // 소유한 공유 오버레이로 옮겨가면서 페이지 자체가 없어졌다. 그 스와이프 진입 방식을 유지하기 위해
+    // 왼쪽 가장자리에서 시작한 오른쪽 드래그만 감지해 [HomeScreenActions.onSwipeToVerification]을
+    // 호출한다. 가장자리로 시작 지점을 제한해야 체크리스트 스크롤/사선 드래그 중 실수로 카메라가
+    // 열리지 않는다.
+    val density = LocalDensity.current
+    val swipeThresholdPx = remember(density) { with(density) { 80.dp.toPx() } }
+    val swipeEdgeStartPx = remember(density) { with(density) { 24.dp.toPx() } }
+
     LaunchedEffect(uiEvent) {
         uiEvent.collect { event ->
             when (event) {
@@ -123,7 +141,31 @@ fun HomeScreen(
         }
     }
 
-    Box(modifier = modifier.fillMaxSize()) {
+    Box(
+        modifier = modifier
+            .fillMaxSize()
+            .pointerInput(actions) {
+                var cumulativeDragPx = 0f
+                var triggered = false
+                var startedAtEdge = false
+                detectHorizontalDragGestures(
+                    onDragStart = { offset ->
+                        cumulativeDragPx = 0f
+                        triggered = false
+                        startedAtEdge = offset.x <= swipeEdgeStartPx
+                    },
+                    onHorizontalDrag = { change, dragAmount ->
+                        if (!startedAtEdge) return@detectHorizontalDragGestures
+                        cumulativeDragPx += dragAmount
+                        if (!triggered && cumulativeDragPx > swipeThresholdPx) {
+                            triggered = true
+                            actions.onSwipeToVerification()
+                            change.consume()
+                        }
+                    },
+                )
+            },
+    ) {
         BottomSheetScaffold(
             modifier = Modifier.fillMaxSize(),
             scaffoldState = sheetScaffoldState,
@@ -177,39 +219,48 @@ fun HomeScreen(
                         }
                     }
                     else -> {
-                        Column(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                // 그룹 탭처럼 content가 짧아도 Expanded로 올라갈 수 있게
-                                // 시트 높이를 가능한 최대까지 확보한다.
-                                .fillMaxHeight(),
-                        ) {
-                            if (loadError) {
-                                Text(
-                                    text = "최신 정보를 불러오지 못했습니다. 다시 시도",
-                                    style = LiroutiTheme.typography.caption,
-                                    color = LiroutiTheme.colors.primaryNormal,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .clickable(onClick = actions::onRetryLoadClick)
-                                        .padding(horizontal = 16.dp, vertical = 8.dp),
+                        // 시트 표면/드래그 가능 영역 자체가 상태바(그리고 그 안쪽 알림창 당겨내리기
+                        // 제스처 영역)까지 올라가면 안 되므로, 콘텐츠에 여백을 주는 대신 시트 높이의
+                        // 상한 자체를 "가용 높이 - 상태바 높이"로 캡핑한다. 콘텐츠 쪽 padding은 원래대로
+                        // 그대로 둔다 — statusBarsPadding을 안쪽에 걸면 시트 표면은 그대로 상태바까지
+                        // 올라가고 콘텐츠만 밀려 내려가는 것뿐이라 근본적인 해결이 안 된다.
+                        val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                        BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                            Column(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    // 그룹 탭처럼 content가 짧아도 Expanded로 올라갈 수 있게 최대한
+                                    // 확보하되, 상태바 높이만큼은 넘지 않게 상한을 둔다.
+                                    .heightIn(max = maxHeight - statusBarHeight),
+                            ) {
+                                if (loadError) {
+                                    Text(
+                                        text = "최신 정보를 불러오지 못했습니다. 다시 시도",
+                                        style = LiroutiTheme.typography.caption,
+                                        color = LiroutiTheme.colors.primaryNormal,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .clickable(onClick = actions::onRetryLoadClick)
+                                            .padding(horizontal = 16.dp, vertical = 8.dp),
+                                    )
+                                }
+                                RoutineChecklistSection(
+                                    hasGroupRoom = hasGroupRoom,
+                                    myRoutineItems = myRoutineItems,
+                                    myRoutineFilters = myRoutineFilters,
+                                    groupRoomFilters = groupRoomFilters,
+                                    groupRoomItems = groupRoomItems,
+                                    onRoutineCameraClick = actions::onRoutineCameraClick,
+                                    onAddCategoryClick = {
+                                        categoryName = ""
+                                        categoryColor = null
+                                        showCategorySheet = true
+                                    },
+                                    modifier = Modifier.weight(1f, fill = true),
                                 )
+                                // 하단 네비게이션 바(오버레이)에 가려지지 않도록 여백을 둔다.
+                                Box(modifier = Modifier.height(80.dp))
                             }
-                            RoutineChecklistSection(
-                                hasGroupRoom = hasGroupRoom,
-                                myRoutineItems = myRoutineItems,
-                                groupRoomFilters = groupRoomFilters,
-                                groupRoomItems = groupRoomItems,
-                                onRoutineCameraClick = actions::onRoutineCameraClick,
-                                onAddCategoryClick = {
-                                    categoryName = ""
-                                    categoryColor = null
-                                    showCategorySheet = true
-                                },
-                                modifier = Modifier.weight(1f, fill = true),
-                            )
-                            // 하단 네비게이션 바(오버레이)에 가려지지 않도록 여백을 둔다.
-                            Box(modifier = Modifier.height(80.dp))
                         }
                     }
                 }
@@ -305,6 +356,7 @@ private object PreviewHomeScreenActions : HomeScreenActions {
     override fun onNavigateToShop() = Unit
     override fun onMyRoutineClick() = Unit
     override fun onRoutineCameraClick(routineId: String) = Unit
+    override fun onSwipeToVerification() = Unit
     override fun onManageMyRoutineClick() = Unit
     override fun onCreateRoomClick() = Unit
     override fun onJoinRoomWithInviteCodeClick() = Unit
@@ -330,6 +382,7 @@ private fun HomeScreenRoutineOnlyPreview() {
             hasActiveRoutine = true,
             hasGroupRoom = false,
             myRoutineItems = SampleMyRoutineItemsOnly,
+            myRoutineFilters = SampleMyRoutineFilters,
         )
     }
 }
@@ -344,6 +397,7 @@ private fun HomeScreenRoutineAndGroupRoomPreview() {
             hasActiveRoutine = true,
             hasGroupRoom = true,
             myRoutineItems = SampleMyRoutineItems,
+            myRoutineFilters = SampleMyRoutineFilters,
         )
     }
 }

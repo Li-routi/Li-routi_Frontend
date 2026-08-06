@@ -67,6 +67,8 @@ data class ChallengeDetailUiState(
      * 이벤트 자체를 명시적으로 신호한다).
      */
     val editedCertificationId: Long? = null,
+    /** 당겨서 새로고침 진행 여부. */
+    val isRefreshing: Boolean = false,
 ) {
     val visibleCertifications: List<CertificationUiModel>
         get() = when (selectedTab) {
