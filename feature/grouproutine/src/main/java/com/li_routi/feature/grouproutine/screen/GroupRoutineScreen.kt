@@ -30,6 +30,8 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.pager.HorizontalPager
 import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.foundation.lazy.grid.GridCells
@@ -52,6 +54,9 @@ import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -78,6 +83,7 @@ import com.li_routi.core.designsystem.component.CheckBoxState
 import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
+import com.li_routi.core.designsystem.component.LiroutiDaySelector
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.component.LiroutiSearchField
 import com.li_routi.core.designsystem.component.LiroutiSwitch
@@ -95,6 +101,7 @@ import com.li_routi.feature.grouproutine.vm.GroupRoutineUiState
 import com.li_routi.feature.grouproutine.vm.GroupRoutineViewModel
 import com.li_routi.feature.grouproutine.vm.GroupTodoUiModel
 import com.li_routi.feature.grouproutine.vm.NewCertificationUiModel
+import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
 private val ScreenBackground = Color(0xFFF4F7FB)
@@ -103,10 +110,12 @@ private val LabelDefault = Color(0xFF171719)
 private val LabelSub = Color(0xFF46474C)
 private val LabelInfo = Color(0xFF878A93)
 private val BorderDefault = Color(0xFFDBDCDF)
+private val BorderAlternative = Color(0xFFF4F4F5)
 private val BorderStrong = Color(0xFFAEB0B6)
 private val PrimaryNormal = Color(0xFF338AFF)
 private val PrimaryActive = Color(0xFF296ECC)
 private val SecondaryNormal = Color(0xFF00AAD2)
+private val SecondaryBackground = Color(0xFFF4F7FB)
 private val CompleteText = Color(0xFF008C51)
 private val CompleteBackground = Color(0xFFE0F8E9)
 private val DangerBase = Color(0xFFFF6363)
@@ -156,6 +165,8 @@ fun GroupRoutineRoute(
         onRoutineSettingClick = viewModel::onRoutineSettingClick,
         onDismissRoutineSettingSheet = viewModel::onDismissRoutineSettingSheet,
         onRoutineDraftNameChange = viewModel::onRoutineDraftNameChange,
+        onRoutineDraftStartTimeChange = viewModel::onRoutineDraftStartTimeChange,
+        onRoutineDraftEndTimeChange = viewModel::onRoutineDraftEndTimeChange,
         onRepeatDayClick = viewModel::onRepeatDayClick,
         onRoutineSettingConfirmClick = viewModel::onRoutineSettingConfirmClick,
         onRoutineDeleteClick = viewModel::onRoutineDeleteClick,
@@ -183,6 +194,7 @@ fun GroupRoutineRoute(
         onRoomAlarmSettingsClick = viewModel::onRoomAlarmSettingsClick,
         onRoomLockClick = viewModel::onRoomLockClick,
         onRoomNameEditConfirmClick = viewModel::onRoomNameEditConfirmClick,
+        onDismissActionMessage = viewModel::onDismissActionMessage,
         modifier = modifier,
     )
 }
@@ -213,6 +225,8 @@ private fun GroupRoutineScreen(
     onRoutineSettingClick: (Long) -> Unit,
     onDismissRoutineSettingSheet: () -> Unit,
     onRoutineDraftNameChange: (String) -> Unit,
+    onRoutineDraftStartTimeChange: (String) -> Unit,
+    onRoutineDraftEndTimeChange: (String) -> Unit,
     onRepeatDayClick: (String) -> Unit,
     onRoutineSettingConfirmClick: () -> Unit,
     onRoutineDeleteClick: () -> Unit,
@@ -240,6 +254,7 @@ private fun GroupRoutineScreen(
     onRoomAlarmSettingsClick: () -> Unit,
     onRoomLockClick: () -> Unit,
     onRoomNameEditConfirmClick: () -> Unit,
+    onDismissActionMessage: () -> Unit = {},
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -351,6 +366,10 @@ private fun GroupRoutineScreen(
         }
 
         uiState.actionMessage?.let { message ->
+            LaunchedEffect(message) {
+                delay(4_000)
+                onDismissActionMessage()
+            }
             Row(
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
@@ -370,7 +389,13 @@ private fun GroupRoutineScreen(
                     style = LiroutiTheme.typography.body3,
                     modifier = Modifier.weight(1f),
                 )
-                Text(text = "×", color = Color.White, fontSize = 24.sp, lineHeight = 24.sp)
+                Text(
+                    text = "×",
+                    color = Color.White,
+                    fontSize = 24.sp,
+                    lineHeight = 24.sp,
+                    modifier = Modifier.clickable(onClick = onDismissActionMessage),
+                )
             }
         }
     }
@@ -387,9 +412,13 @@ private fun GroupRoutineScreen(
         RoutineSettingSheet(
             isEditing = uiState.editingRoutineId != null,
             routineName = uiState.routineDraftName,
+            startTime = uiState.routineDraftStartTime,
+            endTime = uiState.routineDraftEndTime,
             repeatDays = uiState.routineDraftRepeatDays,
             onDismissRequest = onDismissRoutineSettingSheet,
             onNameChange = onRoutineDraftNameChange,
+            onStartTimeChange = onRoutineDraftStartTimeChange,
+            onEndTimeChange = onRoutineDraftEndTimeChange,
             onRepeatDayClick = onRepeatDayClick,
             onDeleteClick = onRoutineDeleteClick,
             onConfirmClick = onRoutineSettingConfirmClick,
@@ -542,7 +571,7 @@ private fun CreateRoomNameScreen(
 
         BottomFixedButton(
             text = "다음",
-            enabled = roomName.isNotBlank(),
+            enabled = true,
             onClick = onNextClick,
         )
     }
@@ -626,7 +655,7 @@ private fun CreateRoutineSelectScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(ScreenBackground),
+            .background(Color.White),
     ) {
         GroupRoutineTopBar(
             title = "루틴 추가",
@@ -666,14 +695,11 @@ private fun CreateRoutineSelectScreen(
                 item {
                     RoutineOptionsCard(
                         uiState = uiState,
-                        maxHeight = 390.dp,
+                        maxHeight = 385.dp,
                         onSelectAllClick = onSelectAllClick,
                         onOptionClick = onOptionClick,
                         onRoutineSettingClick = onRoutineSettingClick,
                     )
-                }
-                item {
-                    DashedRoutineAddButton(onClick = onRoutineAddClick)
                 }
             }
         }
@@ -686,13 +712,14 @@ private fun CreateRoutineSelectScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
+            DashedRoutineAddButton(onClick = onRoutineAddClick)
             Text(
                 text = "총 ${selectedCount}개 선택됨",
                 color = LabelSub,
                 style = LiroutiTheme.typography.body3,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
-            PrimaryButton(text = "방 만들기", enabled = selectedCount > 0, onClick = onDoneClick)
+            PrimaryButton(text = "방 만들기", enabled = true, onClick = onDoneClick)
         }
     }
 }
@@ -704,34 +731,44 @@ private fun CategoryChipRow(
     onCategoryClick: (String) -> Unit,
     onCategoryAddClick: () -> Unit,
 ) {
-    LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        items(categories) { label ->
-            val selected = label == selectedCategory
-            Text(
-                text = if (selected) "✓ $label" else label,
-                color = if (selected) Color.White else LabelSub,
-                style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
-                modifier = Modifier
-                    .clip(RoundedCornerShape(100.dp))
-                    .background(if (selected) PrimaryNormal else Color.White)
-                    .border(1.dp, if (selected) PrimaryNormal else BorderDefault, RoundedCornerShape(100.dp))
-                    .clickable { onCategoryClick(label) }
-                    .padding(horizontal = 16.dp, vertical = 10.dp),
-            )
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        LazyRow(
+            modifier = Modifier.weight(1f),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            items(categories) { label ->
+                val selected = label == selectedCategory
+                Text(
+                    text = if (selected) "✓ $label" else label,
+                    color = if (selected) Color.White else LabelSub,
+                    style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(100.dp))
+                        .background(if (selected) PrimaryNormal else Color.White)
+                        .border(1.dp, if (selected) PrimaryNormal else BorderDefault, RoundedCornerShape(100.dp))
+                        .clickable { onCategoryClick(label) }
+                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                )
+            }
         }
-        item {
+        Box(
+            modifier = Modifier
+                .size(36.dp)
+                .clip(CircleShape)
+                .background(Color.White)
+                .border(1.dp, BorderDefault, CircleShape)
+                .clickable(onClick = onCategoryAddClick),
+            contentAlignment = Alignment.Center,
+        ) {
             Text(
                 text = "+",
                 color = LabelSub,
                 style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
                 textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .size(width = 42.dp, height = 42.dp)
-                    .clip(RoundedCornerShape(10.dp))
-                    .background(Color.White)
-                    .border(1.dp, BorderDefault, RoundedCornerShape(10.dp))
-                    .clickable(onClick = onCategoryAddClick)
-                    .padding(top = 9.dp),
             )
         }
     }
@@ -746,7 +783,7 @@ private fun SelectAllRoutineRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .height(50.dp)
+            .height(44.dp)
             .clickable(onClick = onClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -771,39 +808,55 @@ private fun RoutineOptionsCard(
 ) {
     val scrollState = rememberScrollState()
 
-    Box(
+    Column(
         modifier = modifier
             .fillMaxWidth()
-            .heightIn(max = maxHeight)
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
-            .border(1.dp, BorderDefault, RoundedCornerShape(6.dp)),
+            .heightIn(max = maxHeight),
     ) {
-        Column(
+        Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .verticalScroll(scrollState)
-                .padding(horizontal = 16.dp, vertical = 6.dp),
+                .height(48.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color.White)
+                .border(1.dp, BorderAlternative, RoundedCornerShape(6.dp))
+                .padding(horizontal = 16.dp, vertical = 2.dp),
         ) {
             SelectAllRoutineRow(
                 checked = uiState.allVisibleRoutineOptionsSelected,
                 onClick = onSelectAllClick,
             )
-            HorizontalDivider(color = BorderDefault)
-            uiState.visibleRoutineOptions.forEach { option ->
-                CreateRoutineOptionRow(
-                    option = option,
-                    onCheckClick = { onOptionClick(option.id) },
-                    onSettingClick = { onRoutineSettingClick(option.id) },
-                )
-            }
         }
-        RoutineScrollIndicator(
-            scrollState = scrollState,
+        Spacer(modifier = Modifier.height(12.dp))
+        HorizontalDivider(color = BorderDefault)
+        Spacer(modifier = Modifier.height(12.dp))
+        Box(
             modifier = Modifier
-                .align(Alignment.CenterEnd)
-                .padding(top = 8.dp, end = 4.dp, bottom = 8.dp),
-        )
+                .fillMaxWidth()
+                .height(maxHeight - 73.dp),
+        ) {
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .verticalScroll(scrollState)
+                    .padding(end = 10.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                uiState.visibleRoutineOptions.forEach { option ->
+                    CreateRoutineOptionRow(
+                        option = option,
+                        onCheckClick = { onOptionClick(option.id) },
+                        onSettingClick = { onRoutineSettingClick(option.id) },
+                    )
+                }
+            }
+            RoutineScrollIndicator(
+                scrollState = scrollState,
+                modifier = Modifier
+                    .align(Alignment.CenterEnd)
+                    .padding(top = 8.dp, end = 4.dp, bottom = 8.dp),
+            )
+        }
     }
 }
 
@@ -862,23 +915,66 @@ private fun CreateRoutineOptionRow(
         modifier = modifier
             .fillMaxWidth()
             .height(56.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White)
+            .border(1.dp, BorderAlternative, RoundedCornerShape(6.dp))
             .clickable(onClick = onSettingClick),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        SmallSquareCheckbox(
-            checked = option.isSelected,
-            onClick = {
-                onCheckClick()
-                onSettingClick()
-            },
-        )
-        Text(
-            text = option.title,
-            color = LabelDefault,
-            style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
-            modifier = Modifier.weight(1f),
-        )
+        Row(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 14.dp, vertical = 10.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            SmallSquareCheckbox(
+                checked = option.isSelected,
+                onClick = {
+                    onCheckClick()
+                    onSettingClick()
+                },
+            )
+            Column(modifier = Modifier.weight(1f)) {
+                Text(
+                    text = option.title,
+                    color = LabelDefault,
+                    style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
+                    Text(
+                        text = "마감 ${option.deadline}",
+                        color = LabelInfo,
+                        style = LiroutiTheme.typography.caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                    )
+                    Box(
+                        modifier = Modifier
+                            .width(1.dp)
+                            .height(10.dp)
+                            .background(BorderStrong),
+                    )
+                    Text(
+                        text = option.category,
+                        color = LabelInfo,
+                        style = LiroutiTheme.typography.caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                    )
+                }
+            }
+            if (option.repeatLabel.isNotBlank() && option.repeatLabel != "없음") {
+                Text(
+                    text = option.repeatLabel,
+                    color = SecondaryNormal,
+                    style = LiroutiTheme.typography.caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(6.dp))
+                        .background(SecondaryBackground)
+                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                )
+            }
+        }
     }
 }
 
@@ -913,23 +1009,29 @@ private fun DashedRoutineAddButton(
 private fun RoutineSettingSheet(
     isEditing: Boolean,
     routineName: String,
+    startTime: String,
+    endTime: String,
     repeatDays: Set<String>,
     onDismissRequest: () -> Unit,
     onNameChange: (String) -> Unit,
+    onStartTimeChange: (String) -> Unit,
+    onEndTimeChange: (String) -> Unit,
     onRepeatDayClick: (String) -> Unit,
     onDeleteClick: () -> Unit,
     onConfirmClick: () -> Unit,
 ) {
+    var expandedSection by remember { mutableStateOf<RoutineSettingSection?>(null) }
+
     LiroutiBottomSheet(
         onDismissRequest = onDismissRequest,
-        contentPadding = PaddingValues(start = 20.dp, top = 24.dp, end = 20.dp, bottom = 28.dp),
+        contentPadding = PaddingValues(start = 16.dp, top = 30.dp, end = 16.dp, bottom = 32.dp),
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
                     text = "×",
                     color = LabelDefault,
-                    fontSize = 30.sp,
+                    fontSize = 28.sp,
                     modifier = Modifier.clickable(onClick = onDismissRequest),
                 )
                 Spacer(modifier = Modifier.weight(1f))
@@ -949,32 +1051,61 @@ private fun RoutineSettingSheet(
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(FillBackground),
+                    .clip(RoundedCornerShape(4.dp)),
+                verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                SettingInfoRow(label = "마감시간", value = "오후 11:00")
-                RoutineSettingDivider()
-                SettingInfoRow(label = "반복", value = repeatDaysLabel(repeatDays))
-                RoutineSettingDivider()
-                RepeatDayRow(selectedDays = repeatDays, onRepeatDayClick = onRepeatDayClick)
-                RoutineSettingDivider()
-                SettingInfoRow(label = "알람 시간", value = "없음  >")
-            }
-            Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(
-                    text = "• 다시 알림을 켜면 설정한 시작 시각부터 선택한 간격마다 완료하거나 마감될 때까지 알림이 와요.",
-                    color = LabelInfo,
-                    style = LiroutiTheme.typography.caption,
+                RoutineSettingExpandableRow(
+                    label = "시작시간",
+                    value = displayRoutineTime(startTime),
+                    expanded = expandedSection == RoutineSettingSection.StartTime,
+                    onClick = {
+                        expandedSection = if (expandedSection == RoutineSettingSection.StartTime) null else RoutineSettingSection.StartTime
+                    },
                 )
-                Text(
-                    text = "• 이 설정은 방 멤버 모두에게 동일하게 적용돼요.",
-                    color = LabelInfo,
-                    style = LiroutiTheme.typography.caption,
+                if (expandedSection == RoutineSettingSection.StartTime) {
+                    RoutineSettingDivider()
+                    RoutineTimePicker(
+                        time = startTime,
+                        onTimeChange = onStartTimeChange,
+                    )
+                }
+                RoutineSettingExpandableRow(
+                    label = "마감시간",
+                    value = displayRoutineTime(endTime),
+                    expanded = expandedSection == RoutineSettingSection.EndTime,
+                    onClick = {
+                        expandedSection = if (expandedSection == RoutineSettingSection.EndTime) null else RoutineSettingSection.EndTime
+                    },
                 )
+                if (expandedSection == RoutineSettingSection.EndTime) {
+                    RoutineSettingDivider()
+                    RoutineTimePicker(
+                        time = endTime,
+                        onTimeChange = onEndTimeChange,
+                    )
+                }
+                RoutineSettingExpandableRow(
+                    label = "반복",
+                    value = repeatDaysLabel(repeatDays),
+                    expanded = expandedSection == RoutineSettingSection.Repeat,
+                    onClick = {
+                        expandedSection = if (expandedSection == RoutineSettingSection.Repeat) null else RoutineSettingSection.Repeat
+                    },
+                )
+                if (expandedSection == RoutineSettingSection.Repeat) {
+                    RoutineSettingDivider()
+                    RepeatDayRow(selectedDays = repeatDays, onRepeatDayClick = onRepeatDayClick)
+                }
             }
             PrimaryButton(text = "확인", enabled = true, onClick = onConfirmClick)
         }
     }
+}
+
+private enum class RoutineSettingSection {
+    StartTime,
+    EndTime,
+    Repeat,
 }
 
 @Composable
@@ -984,6 +1115,7 @@ private fun BasicInputBox(
     placeholder: String,
     showClear: Boolean,
     modifier: Modifier = Modifier,
+    height: Dp = 56.dp,
 ) {
     OutlinedTextField(
         value = value,
@@ -1014,25 +1146,39 @@ private fun BasicInputBox(
         ),
         modifier = modifier
             .fillMaxWidth()
-            .height(56.dp),
+            .height(height),
     )
 }
 
 @Composable
-private fun SettingInfoRow(label: String, value: String) {
+private fun RoutineSettingExpandableRow(
+    label: String,
+    value: String,
+    expanded: Boolean,
+    onClick: () -> Unit,
+) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .height(54.dp)
-            .padding(horizontal = 14.dp),
+            .height(48.dp)
+            .clip(RoundedCornerShape(4.dp))
+            .background(FillBackground)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Text(text = label, color = LabelSub, style = LiroutiTheme.typography.body2Long)
+        Text(text = label, color = LabelSub, style = LiroutiTheme.typography.body3)
         Spacer(modifier = Modifier.weight(1f))
         Text(
             text = value,
             color = LabelSub,
-            style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
+            style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+        )
+        Text(
+            text = if (expanded) "⌃" else "⌄",
+            color = LabelSub,
+            style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+            modifier = Modifier.padding(start = 4.dp),
         )
     }
 }
@@ -1041,8 +1187,174 @@ private fun SettingInfoRow(label: String, value: String) {
 private fun RoutineSettingDivider() {
     HorizontalDivider(
         color = Color(0xFFEDEEF0),
-        modifier = Modifier.padding(horizontal = 14.dp),
+        modifier = Modifier.padding(horizontal = 12.dp),
     )
+}
+
+@Composable
+private fun RoutineTimePicker(
+    time: String,
+    onTimeChange: (String) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val hour = time.substringBefore(":").toIntOrNull()?.coerceIn(0, 23) ?: 8
+    val minute = time.substringAfter(":", "00").toIntOrNull()?.coerceIn(0, 59) ?: 0
+    val hour12 = displayHour12(hour)
+    val isAm = hour < 12
+
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .background(FillBackground)
+            .padding(horizontal = 12.dp, vertical = 8.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        WheelPickerColumn(
+            items = listOf("오전", "오후"),
+            selectedIndex = if (isAm) 0 else 1,
+            onSelected = { index ->
+                val newHour = if (index == 0) hour12.to24Hour(isAm = true) else hour12.to24Hour(isAm = false)
+                onTimeChange(formatRoutineTime(newHour, minute))
+            },
+            modifier = Modifier.weight(1f),
+        )
+        WheelPickerColumn(
+            items = (1..12).map { it.toString() },
+            selectedIndex = hour12 - 1,
+            onSelected = { index ->
+                val newHour = (index + 1).to24Hour(isAm = isAm)
+                onTimeChange(formatRoutineTime(newHour, minute))
+            },
+            modifier = Modifier.weight(1f),
+        )
+        WheelPickerColumn(
+            items = (0..59).map { it.toString().padStart(2, '0') },
+            selectedIndex = minute,
+            onSelected = { index -> onTimeChange(formatRoutineTime(hour, index)) },
+            modifier = Modifier.weight(1f),
+        )
+    }
+}
+
+@Composable
+private fun WheelPickerColumn(
+    items: List<String>,
+    selectedIndex: Int,
+    onSelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val rowHeight = 32.dp
+    val listState = rememberLazyListState(initialFirstVisibleItemIndex = selectedIndex.coerceIn(items.indices))
+    val density = LocalDensity.current
+
+    LaunchedEffect(selectedIndex, items.size) {
+        val safeIndex = selectedIndex.coerceIn(items.indices)
+        if (!listState.isScrollInProgress && listState.firstVisibleItemIndex != safeIndex) {
+            listState.scrollToItem(safeIndex)
+        }
+    }
+
+    LaunchedEffect(listState.isScrollInProgress) {
+        if (!listState.isScrollInProgress && items.isNotEmpty()) {
+            val rowHeightPx = with(density) { rowHeight.toPx() }
+            val shouldMoveNext = listState.firstVisibleItemScrollOffset > rowHeightPx / 2f
+            val targetIndex = (listState.firstVisibleItemIndex + if (shouldMoveNext) 1 else 0).coerceIn(items.indices)
+            if (targetIndex != selectedIndex) {
+                onSelected(targetIndex)
+            }
+            listState.animateScrollToItem(targetIndex)
+        }
+    }
+
+    Box(
+        modifier = modifier
+            .height(rowHeight * 3)
+            .clip(RoundedCornerShape(6.dp)),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(rowHeight)
+                .clip(RoundedCornerShape(6.dp))
+                .background(Color(0xFFF4F4F5)),
+        )
+        LazyColumn(
+            state = listState,
+            modifier = Modifier.fillMaxSize(),
+            contentPadding = PaddingValues(vertical = rowHeight),
+        ) {
+            itemsIndexed(items) { index, item ->
+                Box(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .height(rowHeight)
+                        .clickable { onSelected(index) },
+                    contentAlignment = Alignment.Center,
+                ) {
+                    Text(
+                        text = item,
+                        color = if (index == selectedIndex) LabelDefault else LabelInfo,
+                        style = LiroutiTheme.typography.body3.copy(
+                            fontWeight = if (index == selectedIndex) FontWeight.Bold else FontWeight.Medium,
+                        ),
+                        textAlign = TextAlign.Center,
+                    )
+                }
+            }
+        }
+    }
+}
+
+private fun Int.to24Hour(isAm: Boolean): Int {
+    val hour = this.coerceIn(1, 12)
+    return when {
+        isAm && hour == 12 -> 0
+        isAm -> hour
+        hour == 12 -> 12
+        else -> hour + 12
+    }
+}
+
+@Composable
+private fun TimePickerPreviewRow(
+    hour: Int,
+    minute: Int,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .height(28.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(if (selected) Color(0xFFF4F4F5) else FillBackground)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = if (hour < 12) "오전" else "오후",
+            color = if (selected) LabelDefault else LabelSub,
+            style = LiroutiTheme.typography.body3.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium),
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = displayHour12(hour).toString(),
+            color = if (selected) LabelDefault else LabelSub,
+            style = LiroutiTheme.typography.body3.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.weight(1f),
+        )
+        Text(
+            text = minute.toString().padStart(2, '0'),
+            color = if (selected) LabelDefault else LabelSub,
+            style = LiroutiTheme.typography.body3.copy(fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium),
+            textAlign = TextAlign.End,
+            modifier = Modifier.weight(1f),
+        )
+    }
 }
 
 @Composable
@@ -1050,41 +1362,52 @@ private fun RepeatDayRow(
     selectedDays: Set<String>,
     onRepeatDayClick: (String) -> Unit,
 ) {
-    Row(
+    val dayLabels = listOf("\uC77C", "\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0")
+    val selectedIndexes = dayLabels.mapIndexedNotNull { index, day ->
+        if (day in selectedDays) index else null
+    }.toSet()
+
+    LiroutiDaySelector(
+        selectedDays = selectedIndexes,
+        onDayClick = { index -> onRepeatDayClick(dayLabels[index]) },
         modifier = Modifier
             .fillMaxWidth()
-            .height(54.dp)
-            .padding(horizontal = 14.dp),
-        verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
-    ) {
-        listOf("일", "월", "화", "수", "목", "금", "토").forEach { day ->
-            val selected = day in selectedDays
-            Text(
-                text = day,
-                color = if (selected) Color.White else LabelInfo,
-                style = LiroutiTheme.typography.body2Long,
-                textAlign = TextAlign.Center,
-                modifier = Modifier
-                    .size(34.dp)
-                    .clip(CircleShape)
-                    .background(if (selected) LabelSub else Color.White)
-                    .border(1.dp, if (selected) LabelSub else BorderDefault, CircleShape)
-                    .clickable { onRepeatDayClick(day) }
-                    .padding(top = 7.dp),
-            )
-        }
-    }
+            .background(FillBackground)
+            .padding(horizontal = 24.dp, vertical = 12.dp),
+    )
 }
 
 private fun repeatDaysLabel(days: Set<String>): String {
+    if (days.isEmpty()) return "\uC5C6\uC74C"
+
+    val orderedDays = listOf("\uC77C", "\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0")
+    val weekdays = setOf("\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08")
+    val weekend = setOf("\uD1A0", "\uC77C")
+    val allDays = orderedDays.toSet()
+
     return when (days) {
-        emptySet<String>() -> "없음"
-        setOf("일", "월", "화", "수", "목", "금", "토") -> "매일"
-        setOf("월", "화", "수", "목", "금") -> "주중"
-        setOf("일", "토") -> "주말"
-        else -> days.joinToString(" ")
+        allDays -> "\uB9E4\uC77C"
+        weekdays -> "\uC8FC\uC911"
+        weekend -> "\uC8FC\uB9D0"
+        else -> {
+            val sortedDays = orderedDays.filter { it in days }
+            if (sortedDays.size == 1) "${sortedDays.first()}\uC694\uC77C\uB9C8\uB2E4" else sortedDays.joinToString(",")
+        }
     }
+}
+private fun displayRoutineTime(time: String): String {
+    val hour = time.substringBefore(":").toIntOrNull()?.coerceIn(0, 23) ?: 8
+    val minute = time.substringAfter(":", "00").toIntOrNull()?.coerceIn(0, 59) ?: 0
+    return "${if (hour < 12) "오전" else "오후"} ${displayHour12(hour)}:${minute.toString().padStart(2, '0')}"
+}
+
+private fun displayHour12(hour: Int): Int {
+    val display = hour % 12
+    return if (display == 0) 12 else display
+}
+
+private fun formatRoutineTime(hour: Int, minute: Int): String {
+    return "${hour.coerceIn(0, 23).toString().padStart(2, '0')}:${minute.coerceIn(0, 59).toString().padStart(2, '0')}"
 }
 
 @Composable
@@ -3132,6 +3455,8 @@ private fun GroupRoutineListPreview() {
             onRoutineSettingClick = {},
             onDismissRoutineSettingSheet = {},
             onRoutineDraftNameChange = {},
+            onRoutineDraftStartTimeChange = {},
+            onRoutineDraftEndTimeChange = {},
             onRepeatDayClick = {},
             onRoutineSettingConfirmClick = {},
             onRoutineDeleteClick = {},
@@ -3191,6 +3516,8 @@ private fun CreateRoomNamePreview() {
             onRoutineSettingClick = {},
             onDismissRoutineSettingSheet = {},
             onRoutineDraftNameChange = {},
+            onRoutineDraftStartTimeChange = {},
+            onRoutineDraftEndTimeChange = {},
             onRepeatDayClick = {},
             onRoutineSettingConfirmClick = {},
             onRoutineDeleteClick = {},
