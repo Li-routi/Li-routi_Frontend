@@ -2,6 +2,10 @@ package com.li_routi.feature.mypage.vm
 
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
+import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.data.di.AuthContainer
+import com.li_routi.core.domain.auth.GetMyInfoUseCase
+import com.li_routi.core.domain.auth.UpdateProfileUseCase
 import com.li_routi.feature.mypage.navigation.MyPageScreenActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -20,6 +24,8 @@ import kotlinx.coroutines.launch
  */
 class MyPageViewModel(
     initialState: MyPageUiState = MyPageUiState(),
+    private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
+    private val updateProfileUseCase: UpdateProfileUseCase = AuthContainer.updateProfileUseCase,
 ) : BaseViewModel(), MyPageScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -28,9 +34,40 @@ class MyPageViewModel(
     private val _uiEvent = MutableSharedFlow<MyPageUiEvent>(extraBufferCapacity = 1)
     val uiEvent: SharedFlow<MyPageUiEvent> = _uiEvent.asSharedFlow()
 
+    init {
+        loadMyInfo()
+    }
+
+    private fun loadMyInfo() {
+        viewModelScope.launch {
+            when (val result = getMyInfoUseCase()) {
+                is ResultState.Success -> _uiState.update {
+                    it.copy(nickname = result.data.nickname, email = result.data.email)
+                }
+                is ResultState.Error -> Unit
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
     /** 닉네임 변경 화면에서 "저장" 탭 시 호출된다. */
-    fun onNicknameSaved(newNickname: String) {
-        _uiState.update { it.copy(nickname = newNickname) }
+    fun onSaveNickname(newNickname: String) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isSavingProfile = true) }
+            when (val result = updateProfileUseCase(newNickname)) {
+                is ResultState.Success -> {
+                    _uiState.update {
+                        it.copy(nickname = result.data.nickname, email = result.data.email, isSavingProfile = false)
+                    }
+                    _uiEvent.emit(MyPageUiEvent.ProfileSaved)
+                }
+                is ResultState.Error -> {
+                    _uiState.update { it.copy(isSavingProfile = false) }
+                    _uiEvent.emit(MyPageUiEvent.ShowError(result.message))
+                }
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     override fun onNotificationClick() = Unit

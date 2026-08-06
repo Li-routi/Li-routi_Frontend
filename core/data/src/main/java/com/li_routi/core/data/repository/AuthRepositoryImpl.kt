@@ -7,10 +7,13 @@ import com.li_routi.core.data.mapper.toDomain
 import com.li_routi.core.data.network.apiCall
 import com.li_routi.core.data.network.dto.request.LogoutRequest
 import com.li_routi.core.data.network.dto.request.SocialLoginRequest
+import com.li_routi.core.data.network.dto.request.UpdateProfileRequest
+import com.li_routi.core.data.network.dto.request.WithdrawRequest
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.domain.auth.AuthRepository
 import com.li_routi.core.domain.auth.AuthToken
+import com.li_routi.core.domain.auth.MyInfo
 import com.li_routi.core.domain.auth.SocialProvider
 import kotlinx.coroutines.flow.first
 
@@ -46,5 +49,26 @@ class AuthRepositoryImpl(
         val response = api.logout(LogoutRequest(accessToken = accessToken))
         if (!response.isSuccess) throw ApiException(response.message)
         tokenPreference.clear()
+    }
+
+    override suspend fun getMyInfo(): ResultState<MyInfo> = safeApiCall {
+        apiCall { api.getMyInfo() }.toDomain()
+    }
+
+    override suspend fun updateProfile(nickname: String): ResultState<MyInfo> = safeApiCall {
+        apiCall { api.updateProfile(UpdateProfileRequest(nickname = nickname)) }.toDomain()
+    }
+
+    // 탈퇴 응답도 로그아웃과 동일하게 non-null 결과를 요구하는 apiCall()을 못 써서 isSuccess만 직접 확인한다.
+    override suspend fun withdraw(): ResultState<Unit> = safeApiCall {
+        val response = api.withdraw(WithdrawRequest(confirmation = WithdrawConfirmation))
+        if (!response.isSuccess) throw ApiException(response.message)
+        tokenPreference.clear()
+    }
+
+    private companion object {
+        // 확인 모달에 별도 입력 필드가 없어 클라이언트가 고정값을 보낸다. 백엔드(MemberReqDTO.Withdraw)가
+        // trim 후 이 문자열과 정확히 일치할 때만 통과시킨다 — 값을 바꾸려면 백엔드와 먼저 맞춰야 한다.
+        const val WithdrawConfirmation = "리루티를 탈퇴합니다"
     }
 }

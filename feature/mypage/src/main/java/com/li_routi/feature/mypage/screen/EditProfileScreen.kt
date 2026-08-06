@@ -54,6 +54,7 @@ fun EditProfileScreen(
     onCancelClick: () -> Unit,
     onSaveClick: (String) -> Unit,
     onEditPhotoClick: () -> Unit = {},
+    isSaving: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var nickname by remember(initialNickname) { mutableStateOf(initialNickname) }
@@ -102,6 +103,7 @@ fun EditProfileScreen(
                 onClick = onCancelClick,
                 backgroundColor = LiroutiTheme.colors.backgroundAlternative,
                 textColor = LiroutiTheme.colors.labelDefault,
+                enabled = !isSaving,
                 modifier = Modifier.weight(1f),
             )
             EditProfileActionButton(
@@ -109,6 +111,7 @@ fun EditProfileScreen(
                 onClick = { onSaveClick(nickname) },
                 backgroundColor = LiroutiTheme.colors.primaryNormal,
                 textColor = LiroutiTheme.colors.backgroundAlternative,
+                enabled = !isSaving,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -152,12 +155,13 @@ private fun EditProfileActionButton(
     backgroundColor: Color,
     textColor: Color,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
 ) {
     Box(
         modifier = modifier
             .height(44.dp)
             .background(backgroundColor, RoundedCornerShape(6.dp))
-            .clickable(onClick = onClick),
+            .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(text = text, style = LiroutiTheme.typography.body2LongMedium, color = textColor)

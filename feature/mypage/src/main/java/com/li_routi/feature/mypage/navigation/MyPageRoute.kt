@@ -1,5 +1,6 @@
 package com.li_routi.feature.mypage.navigation
 
+import android.widget.Toast
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -8,6 +9,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
@@ -46,6 +48,7 @@ fun MyPageRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var destination by rememberSaveable { mutableStateOf(MyPageDestination.MyPage) }
+    val context = LocalContext.current
 
     // Nav 백스택이 아니라 로컬 전환이므로, 시스템 Back이 마이페이지 하위 화면을 건너뛰고
     // 곧바로 홈 탭으로 넘어가지 않게 가로챈다.
@@ -55,13 +58,15 @@ fun MyPageRoute(
 
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
-            destination = when (event) {
-                MyPageUiEvent.NavigateToEditProfile -> MyPageDestination.EditProfile
-                MyPageUiEvent.NavigateToMyVerification -> MyPageDestination.MyVerification
-                MyPageUiEvent.NavigateToAchievement -> MyPageDestination.Achievement
-                MyPageUiEvent.NavigateToReport -> MyPageDestination.Report
-                MyPageUiEvent.NavigateToAppInfo -> MyPageDestination.AppInfo
-                MyPageUiEvent.NavigateToAccountManage -> MyPageDestination.AccountManage
+            when (event) {
+                MyPageUiEvent.NavigateToEditProfile -> destination = MyPageDestination.EditProfile
+                MyPageUiEvent.NavigateToMyVerification -> destination = MyPageDestination.MyVerification
+                MyPageUiEvent.NavigateToAchievement -> destination = MyPageDestination.Achievement
+                MyPageUiEvent.NavigateToReport -> destination = MyPageDestination.Report
+                MyPageUiEvent.NavigateToAppInfo -> destination = MyPageDestination.AppInfo
+                MyPageUiEvent.NavigateToAccountManage -> destination = MyPageDestination.AccountManage
+                MyPageUiEvent.ProfileSaved -> destination = MyPageDestination.MyPage
+                is MyPageUiEvent.ShowError -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
             }
         }
     }
@@ -77,12 +82,10 @@ fun MyPageRoute(
 
         MyPageDestination.EditProfile -> EditProfileScreen(
             initialNickname = uiState.nickname,
+            isSaving = uiState.isSavingProfile,
             onBackClick = { destination = MyPageDestination.MyPage },
             onCancelClick = { destination = MyPageDestination.MyPage },
-            onSaveClick = { newNickname ->
-                viewModel.onNicknameSaved(newNickname)
-                destination = MyPageDestination.MyPage
-            },
+            onSaveClick = viewModel::onSaveNickname,
             modifier = modifier,
         )
 
