@@ -1,3 +1,4 @@
+
 package com.li_routi.feature.login.screen
 
 import androidx.compose.foundation.Image
@@ -50,6 +51,8 @@ val BottomSheetBoxBackgroundColor = Color(0xFFF7F7F8)
 fun BottomScreen(
     modifier: Modifier = Modifier,
     onDismiss: () -> Unit = {},
+    onTakePhotoClick: () -> Unit = {},
+    onPickAlbumClick: () -> Unit = {},
     sheetHeight: Dp = BottomSheetHeight,
     sheetCornerRadius: Dp = BottomSheetCornerRadius,
     sheetBackgroundColor: Color = LiroutiTheme.colors.backgroundDefault,
@@ -109,6 +112,7 @@ fun BottomScreen(
                 height = boxHeight,
                 horizontalMargin = boxHorizontalMargin,
                 backgroundColor = boxBackgroundColor,
+                onClick = onTakePhotoClick,
             )
             Spacer(modifier = Modifier.height(boxGapAfterFirst))
             BottomSheetContentBox(
@@ -116,6 +120,7 @@ fun BottomScreen(
                 height = boxHeight,
                 horizontalMargin = boxHorizontalMargin,
                 backgroundColor = boxBackgroundColor,
+                onClick = onPickAlbumClick,
             )
             Spacer(modifier = Modifier.height(boxGapAfterSecond))
             BottomSheetContentBox(

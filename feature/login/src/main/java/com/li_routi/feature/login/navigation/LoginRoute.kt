@@ -18,17 +18,10 @@ import com.li_routi.feature.login.screen.ProfileScreen
 import com.li_routi.feature.login.vm.LoginUiEvent
 import com.li_routi.feature.login.vm.LoginViewModel
 
-/** :app의 MainActivity 정규화된 클래스명. `feature:login`은 `:app`을 컴파일 타임에 참조할 수 없어(:app -> feature:login 방향으로만 의존) [GroupRoutineActivity]와 동일하게 문자열 + [Intent.setClassName]로 넘긴다. */
+
 private const val MainActivityClassName = "com.cmc.li_routi_frontend.MainActivity"
 
-/**
- * 로그인 화면 진입점. [LoginViewModel]과 [LoginScreen]을 연결한다.
- *
- * 로그인 성공 시 `AuthToken.onboardingCompleted`로 첫 로그인 여부를 분기한다.
- * - 첫 로그인(회원가입, `onboardingCompleted == false`): 이 화면 안에서 [ProfileScreen]으로 전환하고,
- *   저장을 눌러야 비로소 MainActivity로 넘어간다.
- * - 재로그인(`onboardingCompleted == true`): 기존과 동일하게 바로 MainActivity로 되돌아간다.
- */
+
 @Composable
 fun LoginRoute(
     modifier: Modifier = Modifier,
@@ -64,8 +57,8 @@ fun LoginRoute(
     if (showProfileScreen) {
         ProfileScreen(
             modifier = modifier,
-            onSaveClick = {
-                // 저장버튼기능없음: 프로필 저장 로직은 아직 없고, 홈 화면으로 이동만 수행한다.
+            onSaveClick = { _, _ ->
+                // 저장 API 없음: 백엔드 프로필 저장 로직은 아직 없고, 홈 화면으로 이동만 수행한다.
                 goToMainActivity()
             },
         )
