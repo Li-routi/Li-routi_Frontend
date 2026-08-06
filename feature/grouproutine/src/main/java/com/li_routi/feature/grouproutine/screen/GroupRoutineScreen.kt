@@ -25,6 +25,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
@@ -60,11 +61,14 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -394,7 +398,14 @@ private fun GroupRoutineScreen(
                     color = Color.White,
                     fontSize = 24.sp,
                     lineHeight = 24.sp,
-                    modifier = Modifier.clickable(onClick = onDismissActionMessage),
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier
+                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
+                        .semantics { contentDescription = "알림 닫기" }
+                        .clickable(
+                            onClickLabel = "알림 닫기",
+                            onClick = onDismissActionMessage,
+                        ),
                 )
             }
         }
@@ -931,10 +942,7 @@ private fun CreateRoutineOptionRow(
         ) {
             SmallSquareCheckbox(
                 checked = option.isSelected,
-                onClick = {
-                    onCheckClick()
-                    onSettingClick()
-                },
+                onClick = onCheckClick,
             )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
@@ -1898,45 +1906,22 @@ private fun GroupRoutineDetailScreen(
         )
 
         Box(modifier = Modifier.weight(1f)) {
-            LazyColumn(
-                modifier = Modifier.fillMaxSize(),
-                contentPadding = PaddingValues(top = 16.dp, bottom = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(22.dp),
-            ) {
-                item {
-                    CertificationSummaryCard(
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                        streakLabel = "12일 연속 모든 루틴 달성!",
-                        onClick = onCertificationSummaryClick,
-                    )
-                }
-                item {
-                    GroupMemberCard(
-                        title = routine.title,
-                        members = uiState.members,
-                        onMessageEditClick = onMessageEditClick,
-                        onInviteCodeClick = onInviteCodeClick,
-                        onMemberClick = onMemberClick,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                }
-                item {
-                    GroupTodoCard(
-                        todos = uiState.todos,
-                        progressLabel = uiState.todoProgressLabel,
-                        onTodoCheckedChange = onTodoCheckedChange,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                }
-                item {
-                    CertificationFeedCard(
-                        posts = if (uiState.showOnlyMyCertifications) uiState.posts.filter { it.isMine } else uiState.posts,
-                        showOnlyMine = uiState.showOnlyMyCertifications,
-                        onTabClick = onCertificationTabClick,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                }
-            }
+            DetailMemberSection(
+                title = routine.title,
+                members = uiState.members,
+                onCertificationClick = onCertificationSummaryClick,
+                onMessageEditClick = onMessageEditClick,
+                onInviteCodeClick = onInviteCodeClick,
+                onMemberClick = onMemberClick,
+                modifier = Modifier.align(Alignment.TopCenter),
+            )
+            DetailRoutineTabSheet(
+                title = "${routine.title}의 루틴",
+                todos = uiState.todos,
+                progressLabel = uiState.todoProgressLabel,
+                onTodoCheckedChange = onTodoCheckedChange,
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
 
         AppBottomNavBar(selectedTab = AppBottomTab.GroupRoutine, onTabSelected = onTabSelected)
@@ -1948,6 +1933,278 @@ private fun GroupRoutineDetailScreen(
             onDismissRequest = onDismissMemberDialog,
             onPokeClick = onDismissMemberDialog,
         )
+    }
+}
+
+@Composable
+private fun DetailMemberSection(
+    title: String,
+    members: List<GroupMemberUiModel>,
+    onCertificationClick: () -> Unit,
+    onMessageEditClick: () -> Unit,
+    onInviteCodeClick: () -> Unit,
+    onMemberClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val visibleMembers = members.take(6)
+    val seatLayoutHeight = if (visibleMembers.size <= 3) 120.dp else 252.dp
+
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .heightIn(min = 360.dp)
+            .background(
+                Brush.verticalGradient(
+                    colors = listOf(Color.White, Color(0x33CFE4FF)),
+                ),
+            )
+            .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 20.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(20.dp),
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(28.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = title,
+                color = LabelDefault,
+                style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.weight(1f),
+            )
+            CertificationCollectAction(onClick = onCertificationClick)
+        }
+
+        MemberSeatLayout(
+            members = visibleMembers,
+            onMemberClick = onMemberClick,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(seatLayoutHeight),
+        )
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.Center,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            TextAction(label = "메시지 수정", onClick = onMessageEditClick)
+            Box(
+                modifier = Modifier
+                    .padding(horizontal = 16.dp)
+                    .width(1.dp)
+                    .height(12.dp)
+                    .background(BorderDefault),
+            )
+            TextAction(label = "초대코드", onClick = onInviteCodeClick)
+        }
+    }
+}
+
+@Composable
+private fun CertificationCollectAction(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .clip(RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 4.dp, vertical = 2.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.ic_group_routine_flame),
+            contentDescription = null,
+            modifier = Modifier.size(18.dp),
+        )
+        Text(
+            text = "인증 모아보기",
+            color = LabelDefault,
+            style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Bold),
+            maxLines = 1,
+        )
+    }
+}
+
+@Composable
+private fun DetailRoutineTabSheet(
+    title: String,
+    todos: List<GroupTodoUiModel>,
+    progressLabel: String,
+    onTodoCheckedChange: (Long, Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(384.dp)
+            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .background(Color.White),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(20.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            Box(
+                modifier = Modifier
+                    .width(44.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(100.dp))
+                    .background(Color(0xFFDEDEDE)),
+            )
+        }
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
+        ) {
+            Text(
+                text = title,
+                color = LabelDefault,
+                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
+                modifier = Modifier.fillMaxWidth(),
+            )
+            DetailRoutineCategoryTabs()
+            LazyColumn(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .weight(1f),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                items(todos, key = { it.id }) { todo ->
+                    DetailRoutineTodoRow(
+                        todo = todo,
+                        onCheckedChange = { checked -> onTodoCheckedChange(todo.id, checked) },
+                    )
+                }
+                item {
+                    Text(
+                        text = progressLabel,
+                        color = LabelSub,
+                        style = LiroutiTheme.typography.caption,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = 2.dp),
+                        textAlign = TextAlign.End,
+                    )
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun DetailRoutineCategoryTabs(
+    modifier: Modifier = Modifier,
+) {
+    val categories = listOf("전체", "건강", "운동", "공부", "코딩")
+
+    LazyRow(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        items(categories) { category ->
+            val selected = category == "전체"
+            Text(
+                text = if (selected) "✓ $category" else category,
+                color = if (selected) Color.White else LabelSub,
+                style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+                modifier = Modifier
+                    .height(38.dp)
+                    .clip(RoundedCornerShape(100.dp))
+                    .background(if (selected) PrimaryNormal else Color.White)
+                    .border(1.dp, if (selected) PrimaryNormal else BorderDefault, RoundedCornerShape(100.dp))
+                    .padding(horizontal = 16.dp, vertical = 9.dp),
+            )
+        }
+    }
+}
+
+@Composable
+private fun DetailRoutineTodoRow(
+    todo: GroupTodoUiModel,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(56.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .background(Color.White)
+            .border(1.dp, BorderAlternative, RoundedCornerShape(6.dp))
+            .padding(horizontal = 14.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        SmallSquareCheckbox(
+            checked = todo.isDone,
+            modifier = Modifier.size(16.dp),
+            onClick = { onCheckedChange(!todo.isDone) },
+        )
+        Column(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            Text(
+                text = todo.title,
+                color = if (todo.isDone) LabelInfo else LabelDefault,
+                style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = "마감 ${todo.deadline}",
+                    color = LabelInfo,
+                    style = LiroutiTheme.typography.caption,
+                    maxLines = 1,
+                )
+                Box(
+                    modifier = Modifier
+                        .width(1.dp)
+                        .height(10.dp)
+                        .background(BorderDefault),
+                )
+                Text(
+                    text = todo.category,
+                    color = LabelInfo,
+                    style = LiroutiTheme.typography.caption,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+        }
+        if (todo.isDone) {
+            Text(
+                text = "완료",
+                color = LabelInfo,
+                style = LiroutiTheme.typography.caption,
+                modifier = Modifier
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(Color(0xFFEAEBEC))
+                    .padding(horizontal = 7.dp, vertical = 3.dp),
+            )
+        } else {
+            Image(
+                painter = painterResource(id = DesignSystemR.drawable.camera),
+                contentDescription = null,
+                modifier = Modifier.size(18.dp),
+            )
+        }
     }
 }
 
@@ -2875,15 +3132,30 @@ private fun MemberSeat(
                 )
             }
         }
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .heightIn(min = 18.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.Center,
+        ) {
             if (member.isMe) StatusBadge(label = "나", completed = false)
             Text(
                 text = member.name,
                 color = LabelDefault,
                 style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                 maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                modifier = Modifier.padding(start = if (member.isMe) 4.dp else 0.dp),
             )
-            Text(text = "🔥${member.streak}", color = DangerBase, fontSize = 10.sp)
+            Text(
+                text = "🔥${member.streak}",
+                color = DangerBase,
+                fontSize = 10.sp,
+                maxLines = 1,
+                softWrap = false,
+                modifier = Modifier.padding(start = 4.dp),
+            )
         }
     }
 }

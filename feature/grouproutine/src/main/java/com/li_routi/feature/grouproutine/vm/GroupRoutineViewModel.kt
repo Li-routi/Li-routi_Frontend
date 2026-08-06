@@ -552,7 +552,7 @@ class GroupRoutineViewModel(
                 isRoutineSettingSheetVisible = true,
                 editingRoutineId = optionId,
                 routineDraftName = option.title,
-                routineDraftStartTime = "08:00",
+                routineDraftStartTime = option.startTime,
                 routineDraftEndTime = option.deadline,
                 routineDraftRepeatDays = option.repeatDays,
                 actionMessage = null,
@@ -677,6 +677,7 @@ class GroupRoutineViewModel(
                             title = routine.title,
                             deadline = state.routineDraftEndTime,
                             category = categoryName,
+                            startTime = state.routineDraftStartTime,
                             repeatLabel = repeatLabel,
                             repeatDays = state.routineDraftRepeatDays,
                         )
@@ -723,6 +724,7 @@ class GroupRoutineViewModel(
                 title = title,
                 deadline = state.routineDraftEndTime,
                 category = categoryName,
+                startTime = state.routineDraftStartTime,
                 repeatLabel = repeatLabel,
                 repeatDays = state.routineDraftRepeatDays,
             )
@@ -732,6 +734,7 @@ class GroupRoutineViewModel(
                     option.copy(
                         title = title,
                         deadline = state.routineDraftEndTime,
+                        startTime = state.routineDraftStartTime,
                         repeatLabel = repeatLabel,
                         repeatDays = state.routineDraftRepeatDays,
                     )
@@ -810,7 +813,7 @@ class GroupRoutineViewModel(
                 categoryKey = if (option.category in DefaultCategoryIds) null else option.category,
                 title = option.title,
                 description = option.title,
-                schedules = option.repeatDays.toGroupRoutineSchedules(startTime = "08:00", endTime = option.deadline),
+                schedules = option.repeatDays.toGroupRoutineSchedules(startTime = option.startTime, endTime = option.deadline),
             )
         }
 

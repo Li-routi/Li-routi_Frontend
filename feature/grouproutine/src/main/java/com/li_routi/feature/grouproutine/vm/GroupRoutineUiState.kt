@@ -67,6 +67,7 @@ data class CreateRoutineOptionUiModel(
     val title: String,
     val deadline: String,
     val category: String,
+    val startTime: String = "08:00",
     val repeatLabel: String = "없음",
     val repeatDays: Set<String> = emptySet(),
     val isSelected: Boolean = false,
