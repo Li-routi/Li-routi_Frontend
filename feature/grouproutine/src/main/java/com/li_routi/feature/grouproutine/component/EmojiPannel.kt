@@ -13,8 +13,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -23,29 +26,24 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 private const val EmojiGridColumns = 4
 private const val EmojiGridRows = 2
 
-/**
- * 채팅바의 이모지 버튼을 눌렀을 때 키보드 대신 뜨는 패널.
- *
- * 최상단엔 너비만 패널을 따라가는(fillMaxWidth) 투명한 24dp 높이의 헤더 바를 두고,
- * 그 중앙에 드래그 핸들 아이콘([R.drawable.header])을 놓는다.
- *
- * 그 아래엔 이모티콘을 4x2로 빈틈없이 배치한다 — 좌우 끝은 패널 양옆에서 10dp, 첫 줄은 헤더에서
- * 20dp 떨어지고, 그 안에서는 아이콘끼리 간격 없이 꽉 채운다. 아이콘 한 칸의 크기는 고정값이 아니라
- * `(패널 너비 - 20dp) / 4`로 정해져서, 패널 너비가 바뀌면 아이콘 크기도 같이 바뀐다.
- * 탭하면 어떤 칸을 눌렀는지 [onEmojiSelected]에 그 인덱스(현재는 항상 0)로 알려준다 — 지금은
- * 이모티콘이 1개뿐이지만, 나중에 칸마다 다른 이모티콘이 채워져도 시그니처를 바꿀 필요 없이
- * 인덱스만으로 어떤 이모티콘인지 구분할 수 있게 미리 (Int) -> Unit으로 잡아뒀다. 실제로
- * 채팅창에 반영하는 처리는 [ChatBar]/화면 쪽에서 담당한다.
- */
+/** [emojiId](=칸 번호)에 대응하는 이모티콘 드로어블. 아직 칸 0에만 실제 이모티콘이 있다. */
+internal fun emojiDrawableRes(emojiId: Int): Int? = when (emojiId) {
+    0 -> R.drawable.emoji
+    else -> null
+}
+
 @Composable
 fun EmojiPannel(
     modifier: Modifier = Modifier,
+    height: Dp = 250.dp,
+    onCellSizeMeasured: (Dp) -> Unit = {},
     onEmojiSelected: (emojiId: Int) -> Unit = {},
 ) {
+    val density = LocalDensity.current
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(250.dp)
+            .height(height)
             .background(LiroutiTheme.colors.backgroundFill),
     ) {
         Box(
@@ -66,16 +64,24 @@ fun EmojiPannel(
                 .padding(top = 20.dp, start = 10.dp, end = 10.dp),
         ) {
             repeat(EmojiGridRows) { rowIndex ->
+
                 Row(modifier = Modifier.fillMaxWidth()) {
                     repeat(EmojiGridColumns) { columnIndex ->
                         val cellIndex = rowIndex * EmojiGridColumns + columnIndex
-                        if (cellIndex == 0) {
+                        val emojiResId = emojiDrawableRes(cellIndex)
+                        if (emojiResId != null) {
                             Image(
-                                painter = painterResource(id = R.drawable.emoji),
+                                painter = painterResource(id = emojiResId),
                                 contentDescription = "이모티콘",
                                 modifier = Modifier
                                     .weight(1f)
                                     .aspectRatio(1f)
+                                    // 실제 렌더링된 셀 크기를 재서 알려준다 — 채팅으로 전송된 이모티콘도
+                                    // 이 크기 그대로 보이게 하기 위함(패널 너비에 따라 달라지는 값이라
+                                    // 고정 dp로 미리 정해둘 수 없다).
+                                    .onGloballyPositioned { coordinates ->
+                                        onCellSizeMeasured(with(density) { coordinates.size.width.toDp() })
+                                    }
                                     .clickable(onClick = { onEmojiSelected(cellIndex) }),
                             )
                         } else {

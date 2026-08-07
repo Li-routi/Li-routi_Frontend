@@ -41,6 +41,7 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 
 private val PlaceholderColor = Color(0xFF878A93)
 private val SendButtonBackground = Color(0xFFD6E8FF)
+private val ChatBarHorizontalMargin = 16.dp
 
 private val ChatBarTextStyle = TextStyle(
     fontWeight = FontWeight.Normal,
@@ -73,6 +74,7 @@ fun ChatBar(
 ) {
     Box(
         modifier = modifier
+            .padding(horizontal = ChatBarHorizontalMargin)
             .fillMaxWidth()
             .height(44.dp)
             .background(LiroutiTheme.colors.backgroundFill),

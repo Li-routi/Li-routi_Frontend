@@ -275,10 +275,17 @@ private fun GroupRoutineScreen(
                 onTabSelected = onTabSelected,
             )
 
-            GroupRoutineScreenMode.GroupChat -> GroupChatScreen(
-                uiState = uiState,
-                onBackClick = onBackClick,
-            )
+            GroupRoutineScreenMode.GroupChat -> uiState.selectedRoutine?.let { routine ->
+                RoomDetailScreen(
+                    room = GroupRoomUiModel(
+                        id = routine.id.toString(),
+                        name = routine.title,
+                        memberCount = routine.memberCount,
+                        routineCount = routine.routineCount,
+                    ),
+                    onBackClick = onBackClick,
+                )
+            }
 
             GroupRoutineScreenMode.GroupSettings -> GroupSettingsScreen(
                 uiState = uiState,
