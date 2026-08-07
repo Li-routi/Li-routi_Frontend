@@ -17,6 +17,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.component.LiroutiSwitch
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -41,7 +42,7 @@ fun NotificationSettingsScreen(
         containerColor = LiroutiTheme.colors.backgroundDefault,
         topBar = {
             NotificationTopBar(
-                title = "알림 설정",
+                title = "루틴 알림 설정",
                 onBackClick = actions::onBackClick,
             )
         },
@@ -90,12 +91,14 @@ private fun NotificationSettingRow(
         ) {
             Text(
                 text = title,
-                style = LiroutiTheme.typography.body2,
+                style = LiroutiTheme.typography.body2LongSemiBold,
                 color = LiroutiTheme.colors.labelDefault,
             )
             Text(
                 text = description,
-                style = LiroutiTheme.typography.caption,
+                style = LiroutiTheme.typography.captionRegular.copy(
+                    lineHeight = 14.sp,
+                ),
                 color = LiroutiTheme.colors.labelInfo,
             )
         }

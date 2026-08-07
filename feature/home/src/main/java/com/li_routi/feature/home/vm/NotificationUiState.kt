@@ -110,7 +110,7 @@ val SampleNotifications: List<NotificationItemUiModel> = listOf(
         categoryLabel = "내루틴 · 건강",
         title = "물 마시기",
         timeLabel = "오전 9:00",
-        isUnread = true,
+        isUnread = false,
     ),
     NotificationItemUiModel(
         id = "n2",
@@ -118,18 +118,10 @@ val SampleNotifications: List<NotificationItemUiModel> = listOf(
         categoryLabel = "내루틴 · 건강",
         title = "물 마시기",
         timeLabel = "오전 9:00",
-        isUnread = true,
-    ),
-    NotificationItemUiModel(
-        id = "n3",
-        tab = NotificationTab.MyRoutine,
-        categoryLabel = "내루틴 · 건강",
-        title = "물 마시기",
-        timeLabel = "오전 9:00",
         isUnread = false,
     ),
     NotificationItemUiModel(
-        id = "n4",
+        id = "n3",
         tab = NotificationTab.GroupRoutine,
         categoryLabel = "그룹 루틴 · 바디프로필",
         title = "스트레칭하기",
@@ -137,7 +129,7 @@ val SampleNotifications: List<NotificationItemUiModel> = listOf(
         isUnread = false,
     ),
     NotificationItemUiModel(
-        id = "n5",
+        id = "n4",
         tab = NotificationTab.Challenge,
         categoryLabel = "챌린지",
         title = "물 1L 마시기 챌린지",

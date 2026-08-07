@@ -30,16 +30,22 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.li_routi.core.designsystem.component.CheckBoxState
+import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.designsystem.component.LiroutiBadge
 import com.li_routi.core.designsystem.component.LiroutiBadgeColor
 import com.li_routi.core.designsystem.component.LiroutiBottomSheetCloseButton
-import com.li_routi.core.designsystem.component.LiroutiCheckmarkIcon
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
 import com.li_routi.core.designsystem.component.LiroutiDivider
+import com.li_routi.core.designsystem.component.LiroutiDividerOrientation
+import com.li_routi.core.designsystem.component.LiroutiLabel
 import com.li_routi.core.designsystem.component.LiroutiPlusIcon
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -56,6 +62,11 @@ data class RoutineChecklistItem(
     val selectable: Boolean = true,
 )
 
+/**
+ * 루틴 추가/선택 체크리스트 화면.
+ *
+ * Figma Design Page [1.1] `루틴 추가` (예: node `3704:61832`).
+ */
 @Composable
 fun RoutineChecklistScreen(
     topBarTitle: String,
@@ -83,13 +94,12 @@ fun RoutineChecklistScreen(
             .fillMaxSize()
             .background(LiroutiTheme.colors.backgroundDefault)
             .statusBarsPadding()
-            .navigationBarsPadding()
-            .padding(horizontal = 16.dp),
+            .navigationBarsPadding(),
     ) {
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(56.dp),
+                .padding(horizontal = 16.dp, vertical = 10.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
@@ -101,94 +111,113 @@ fun RoutineChecklistScreen(
             )
             Text(
                 text = topBarTitle,
-                style = LiroutiTheme.typography.heading2SemiBold,
+                // Figma Body1/Bold 18/28
+                style = LiroutiTheme.typography.heading2Bold,
                 color = LiroutiTheme.colors.labelDefault,
             )
             LiroutiBottomSheetCloseButton(onClick = onCloseClick)
         }
 
-        if (heading != null) {
-            Spacer(modifier = Modifier.height(20.dp))
-            Text(
-                text = heading,
-                style = LiroutiTheme.typography.heading2SemiBold,
-                color = LiroutiTheme.colors.labelDefault,
-            )
-            if (description != null) {
-                Spacer(modifier = Modifier.height(4.dp))
-                Text(
-                    text = description,
-                    style = LiroutiTheme.typography.body2LongRegular,
-                    color = LiroutiTheme.colors.labelSub,
+        Column(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 25.dp),
+            verticalArrangement = Arrangement.spacedBy(32.dp),
+        ) {
+            if (heading != null) {
+                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                    Text(
+                        text = heading,
+                        style = LiroutiTheme.typography.heading2Bold,
+                        color = LiroutiTheme.colors.labelDefault,
+                    )
+                    if (description != null) {
+                        Text(
+                            text = description,
+                            // Figma Body4/Regular 13/16 · label/info
+                            style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
+                            color = LiroutiTheme.colors.labelInfo,
+                        )
+                    }
+                }
+            }
+
+            Column(
+                modifier = Modifier.weight(1f, fill = false),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+            ) {
+                RoutineCategoryChipRow(
+                    categories = categories,
+                    selectedCategory = selectedCategory,
+                    onCategorySelected = onCategorySelected,
+                    onAddCategoryClick = onAddCategoryClick,
+                    addCategoryEnabled = addCategoryEnabled,
+                )
+
+                RoutineSelectAllRow(
+                    checked = allSelected,
+                    onCheckedChange = onSelectAllChange,
+                )
+
+                LiroutiDivider(color = LiroutiTheme.colors.borderDefault)
+
+                Column(
+                    modifier = Modifier
+                        .weight(1f, fill = false)
+                        .heightIn(max = 312.dp)
+                        .verticalScroll(rememberScrollState()),
+                    verticalArrangement = Arrangement.spacedBy(8.dp),
+                ) {
+                    items.forEach { item ->
+                        RoutineItemRow(
+                            name = item.name,
+                            deadlineText = item.deadlineText,
+                            category = item.category,
+                            repeatLabel = item.repeatLabel,
+                            checked = item.checked,
+                            onCheckedChange = if (item.selectable) {
+                                { onItemCheckedChange(item.id, it) }
+                            } else {
+                                null
+                            },
+                        )
+                    }
+                }
+
+                LiroutiDashedAddButton(
+                    text = "루틴 추가",
+                    onClick = onAddRoutineClick,
                 )
             }
         }
 
-        Spacer(modifier = Modifier.height(20.dp))
-
-        RoutineCategoryChipRow(
-            categories = categories,
-            selectedCategory = selectedCategory,
-            onCategorySelected = onCategorySelected,
-            onAddCategoryClick = onAddCategoryClick,
-            addCategoryEnabled = addCategoryEnabled,
-        )
-
-        Spacer(modifier = Modifier.height(16.dp))
-
-        Column(modifier = Modifier.fillMaxWidth()) {
-            RoutineItemRow(
-                name = "전체 선택",
-                checked = allSelected,
-                onCheckedChange = onSelectAllChange,
-                bold = true,
-            )
-            LiroutiDivider(color = LiroutiTheme.colors.borderSub)
-            Column(
-                modifier = Modifier
-                    .heightIn(max = 260.dp)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                items.forEach { item ->
-                    RoutineItemRow(
-                        name = item.name,
-                        deadlineText = item.deadlineText,
-                        category = item.category,
-                        repeatLabel = item.repeatLabel,
-                        checked = item.checked,
-                        onCheckedChange = if (item.selectable) {
-                            { onItemCheckedChange(item.id, it) }
-                        } else {
-                            null
-                        },
-                    )
-                }
-            }
-        }
-
-        Spacer(modifier = Modifier.weight(1f))
-
-        LiroutiDashedAddButton(
-            text = "루틴 추가",
-            onClick = onAddRoutineClick,
-        )
-
-        Text(
-            text = "총 ${items.count { it.checked }}개 선택됨",
-            style = LiroutiTheme.typography.body3Regular,
-            color = LiroutiTheme.colors.labelInfo,
+        Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(vertical = 8.dp),
-            textAlign = TextAlign.Center,
-        )
-
-        LiroutiPrimaryButton(
-            text = primaryButtonText,
-            onClick = onPrimaryButtonClick,
-            modifier = Modifier.padding(bottom = 16.dp),
-            enabled = primaryButtonEnabled,
-        )
+                .padding(bottom = 32.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            Text(
+                text = "총 ${items.count { it.checked }}개 선택됨",
+                // Figma Caption/s 11/14
+                style = LiroutiTheme.typography.captionRegular.copy(
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                ),
+                color = LiroutiTheme.colors.labelInfo,
+                textAlign = TextAlign.Center,
+                modifier = Modifier.fillMaxWidth(),
+            )
+            LiroutiPrimaryButton(
+                text = primaryButtonText,
+                onClick = onPrimaryButtonClick,
+                modifier = Modifier.padding(horizontal = 16.dp),
+                enabled = primaryButtonEnabled,
+            )
+        }
     }
 }
 
@@ -205,12 +234,12 @@ fun RoutineCategoryChipRow(
         modifier = modifier
             .fillMaxWidth()
             .horizontalScroll(rememberScrollState()),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         categories.forEach { category ->
-            RoutineCategoryChip(
-                label = category,
+            LiroutiLabel(
+                text = category,
                 selected = category == selectedCategory,
                 onClick = { onCategorySelected(category) },
             )
@@ -223,67 +252,63 @@ fun RoutineCategoryChipRow(
 }
 
 @Composable
-fun RoutineCategoryChip(
-    label: String,
-    selected: Boolean,
-    onClick: () -> Unit,
-    modifier: Modifier = Modifier,
-) {
-    Row(
-        modifier = modifier
-            .height(32.dp)
-            .clip(RoundedCornerShape(50))
-            .then(
-                if (selected) {
-                    Modifier.background(LiroutiTheme.colors.primaryNormal)
-                } else {
-                    Modifier.border(1.dp, LiroutiTheme.colors.borderStrong, RoundedCornerShape(50))
-                },
-            )
-            .clickable(onClick = onClick)
-            .padding(horizontal = 14.dp),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        if (selected) {
-            LiroutiCheckmarkIcon(
-                modifier = Modifier.size(14.dp),
-                color = LiroutiTheme.colors.labelReverse,
-            )
-        }
-        Text(
-            text = label,
-            style = LiroutiTheme.typography.body2SemiBold,
-            color = if (selected) LiroutiTheme.colors.labelReverse else LiroutiTheme.colors.labelDefault,
-        )
-    }
-}
-
-@Composable
 fun AddCategoryChip(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
 ) {
+    // Figma select +: 36×36
     Box(
         modifier = modifier
-            .size(32.dp)
+            .size(36.dp)
             .clip(CircleShape)
             .border(
                 1.dp,
-                if (enabled) LiroutiTheme.colors.borderStrong else LiroutiTheme.colors.borderSub,
+                if (enabled) LiroutiTheme.colors.borderDefault else LiroutiTheme.colors.borderSub,
                 CircleShape,
             )
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         LiroutiPlusIcon(
-            modifier = Modifier.size(14.dp),
+            modifier = Modifier.size(20.dp),
             color = if (enabled) {
                 LiroutiTheme.colors.labelDefault
             } else {
                 LiroutiTheme.colors.labelInfo
             },
+        )
+    }
+}
+
+@Composable
+private fun RoutineSelectAllRow(
+    checked: Boolean,
+    onCheckedChange: (Boolean) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(48.dp)
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.dp, LiroutiTheme.colors.borderAlternative, RoundedCornerShape(6.dp))
+            .clickable { onCheckedChange(!checked) }
+            .padding(horizontal = 14.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        CustomCheckBox(
+            state = if (checked) CheckBoxState.B else CheckBoxState.A,
+            onClick = { onCheckedChange(!checked) },
+        )
+        Text(
+            text = "전체 선택",
+            style = LiroutiTheme.typography.body2LongSemiBold.copy(fontWeight = FontWeight.Bold),
+            color = LiroutiTheme.colors.labelDefault,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier.weight(1f),
         )
     }
 }
@@ -304,9 +329,15 @@ fun RoutineItemRow(
     onCheckedChange: ((Boolean) -> Unit)? = null,
     bold: Boolean = false,
 ) {
+    val showMeta = deadlineText.isNotEmpty() || category.isNotEmpty()
+    val cardHeight = if (showMeta || checked != null) 56.dp else 48.dp
+
     Row(
         modifier = modifier
             .fillMaxWidth()
+            .heightIn(min = cardHeight)
+            .clip(RoundedCornerShape(6.dp))
+            .border(1.dp, LiroutiTheme.colors.borderAlternative, RoundedCornerShape(6.dp))
             .then(
                 if (onCheckedChange != null) {
                     Modifier.clickable { onCheckedChange(!(checked ?: false)) }
@@ -314,43 +345,63 @@ fun RoutineItemRow(
                     Modifier
                 },
             )
-            .padding(vertical = 10.dp),
+            .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         if (checked != null) {
-            Box(
-                modifier = Modifier
-                    .size(20.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(if (checked) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
-                    .border(
-                        width = 1.dp,
-                        color = if (checked) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.borderStrong,
-                        shape = RoundedCornerShape(4.dp),
-                    ),
-                contentAlignment = Alignment.Center,
-            ) {
-                if (checked) {
-                    LiroutiCheckmarkIcon(
-                        modifier = Modifier.size(12.dp),
-                        color = LiroutiTheme.colors.labelReverse,
-                    )
-                }
-            }
+            CustomCheckBox(
+                state = if (checked) CheckBoxState.B else CheckBoxState.A,
+                onClick = {
+                    onCheckedChange?.invoke(!checked)
+                },
+            )
         }
         Column(modifier = Modifier.weight(1f)) {
             Text(
                 text = name,
-                style = if (bold) LiroutiTheme.typography.body1SemiBold else LiroutiTheme.typography.body1Regular,
+                // Figma List title: Body3/Medium 14/22 (전체 선택은 Bold)
+                style = if (bold) {
+                    LiroutiTheme.typography.body2LongSemiBold.copy(fontWeight = FontWeight.Bold)
+                } else {
+                    LiroutiTheme.typography.body2LongMedium
+                },
                 color = LiroutiTheme.colors.labelDefault,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
             )
-            if (deadlineText.isNotEmpty() || category.isNotEmpty()) {
-                Text(
-                    text = listOf(deadlineText, category).filter { it.isNotEmpty() }.joinToString(" | "),
-                    style = LiroutiTheme.typography.captionRegular,
-                    color = LiroutiTheme.colors.labelInfo,
-                )
+            if (showMeta) {
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    val metaStyle = LiroutiTheme.typography.captionRegular.copy(
+                        fontSize = 11.sp,
+                        lineHeight = 14.sp,
+                    )
+                    // Figma: 마감 | 카테고리
+                    if (deadlineText.isNotEmpty()) {
+                        Text(
+                            text = deadlineText,
+                            style = metaStyle,
+                            color = LiroutiTheme.colors.labelInfo,
+                        )
+                    }
+                    if (deadlineText.isNotEmpty() && category.isNotEmpty()) {
+                        LiroutiDivider(
+                            orientation = LiroutiDividerOrientation.Vertical,
+                            color = LiroutiTheme.colors.borderStrong,
+                            modifier = Modifier.height(10.dp),
+                        )
+                    }
+                    if (category.isNotEmpty()) {
+                        Text(
+                            text = category,
+                            style = metaStyle,
+                            color = LiroutiTheme.colors.labelInfo,
+                        )
+                    }
+                }
             }
         }
         if (repeatLabel.isNotEmpty()) {
@@ -388,7 +439,7 @@ private fun RoutineChecklistScreenPreview() {
             allSelected = items.all { it.checked },
             onSelectAllChange = { checked -> items = items.map { it.copy(checked = checked) } },
             onAddRoutineClick = {},
-            primaryButtonText = "방 만들기",
+            primaryButtonText = "완료",
             onPrimaryButtonClick = {},
             onBackClick = {},
             onCloseClick = {},
