@@ -2,15 +2,19 @@ package com.li_routi.feature.login.vm
 
 import android.app.Activity
 import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
+import com.li_routi.core.data.di.ProfileContainer
 import com.li_routi.core.domain.auth.SocialProvider
+import com.li_routi.core.domain.profile.ProfileImageUpload
 import com.li_routi.feature.login.BuildConfig
 import com.li_routi.feature.login.auth.GoogleAuthHelper
 import com.li_routi.feature.login.auth.KakaoAuthHelper
 import com.li_routi.feature.login.navigation.LoginScreenActions
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -18,6 +22,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 로그인 화면 ViewModel.
@@ -65,6 +70,29 @@ class LoginViewModel(
             }
             _uiState.value = _uiState.value.copy(isLoading = false)
         }
+    }
+
+    /** 온보딩 첫 로그인 시 [com.li_routi.feature.login.screen.ProfileScreen]의 "저장" 클릭에서 호출된다. */
+    fun onProfileSaveClick(context: Context, nickname: String, profileImageUri: Uri?) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true)
+            val image = profileImageUri?.let { uri ->
+                withContext(Dispatchers.IO) { readProfileImageUpload(context, uri) }
+            }
+            when (val result = ProfileContainer.updateProfileUseCase(nickname, image)) {
+                is ResultState.Success -> emitEvent(LoginUiEvent.ProfileSaveSucceeded)
+                is ResultState.Error -> emitEvent(LoginUiEvent.ShowError(result.message))
+                ResultState.Loading -> Unit
+            }
+            _uiState.value = _uiState.value.copy(isLoading = false)
+        }
+    }
+
+    /** content:// Uri에서 업로드할 바이트와 MIME 타입을 읽어온다. IO 작업이라 호출부에서 IO 디스패처로 실행한다. */
+    private fun readProfileImageUpload(context: Context, uri: Uri): ProfileImageUpload? {
+        val bytes = context.contentResolver.openInputStream(uri)?.use { it.readBytes() } ?: return null
+        val contentType = context.contentResolver.getType(uri) ?: "image/jpeg"
+        return ProfileImageUpload(bytes = bytes, contentType = contentType)
     }
 
     private suspend fun socialLogin(provider: SocialProvider, providerToken: String, nonce: String?) {

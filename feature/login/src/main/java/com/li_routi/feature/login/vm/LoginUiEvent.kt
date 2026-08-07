@@ -11,5 +11,8 @@ sealed interface LoginUiEvent {
      */
     data class LoginSucceeded(val token: AuthToken) : LoginUiEvent
 
+    /** 프로필 저장(PATCH /api/members/me/profile) 성공 — 홈 화면으로 이동한다. */
+    object ProfileSaveSucceeded : LoginUiEvent
+
     data class ShowError(val message: String) : LoginUiEvent
 }

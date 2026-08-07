@@ -30,9 +30,12 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -43,6 +46,7 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -54,6 +58,8 @@ import com.li_routi.core.designsystem.component.LiroutiAvatar
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import java.io.File
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 val ProfileHeaderTopOffset = 44.dp
 val ProfileHeaderMinWidth = 360.dp
@@ -63,6 +69,9 @@ val ProfileHeaderTitleHeight = 28.dp
 
 val ProfileAvatarTopSpacing = 25.dp
 val ProfileAvatarSize = 80.dp
+
+/** 화면 회전 등으로 아바타가 [ProfileAvatarSize]보다 커 보이는 경우를 대비해 여유 있게 디코딩할 배율. */
+private const val ProfileAvatarBitmapScaleFactor = 2.5f
 
 val ProfileAvatarBadgeSize = 24.dp
 val ProfileAvatarBadgeStartOffset = 60.dp
@@ -142,7 +151,11 @@ fun ProfileAvatarWithCameraBadge(
     Box(modifier = modifier.size(avatarSize)) {
         if (profileImageUri != null) {
             LiroutiAvatar(size = avatarSize) {
-                ProfileAvatarImage(imageUri = profileImageUri, modifier = Modifier.fillMaxSize())
+                ProfileAvatarImage(
+                    imageUri = profileImageUri,
+                    avatarSize = avatarSize,
+                    modifier = Modifier.fillMaxSize(),
+                )
             }
         } else {
             LiroutiAvatar(size = avatarSize)
@@ -167,20 +180,37 @@ fun ProfileAvatarWithCameraBadge(
 }
 
 @Composable
-private fun ProfileAvatarImage(imageUri: Uri, modifier: Modifier = Modifier) {
+private fun ProfileAvatarImage(imageUri: Uri, avatarSize: Dp, modifier: Modifier = Modifier) {
     val context = LocalContext.current
-    val bitmap = remember(imageUri) { loadProfileBitmap(context, imageUri) } ?: return
+    val density = LocalDensity.current
+    // 실제 표시 크기보다 여유 있게 디코딩해 화질 저하 없이 메모리 사용량만 줄인다.
+    val targetSizePx = remember(avatarSize, density) {
+        with(density) { (avatarSize * ProfileAvatarBitmapScaleFactor).roundToPx() }
+    }
+    var bitmap by remember(imageUri, targetSizePx) { mutableStateOf<Bitmap?>(null) }
+
+    // 비트맵 디코딩은 무거운 작업이라 메인(UI) 스레드를 막지 않도록 IO 디스패처에서 실행한다.
+    LaunchedEffect(imageUri, targetSizePx) {
+        bitmap = withContext(Dispatchers.IO) {
+            loadProfileBitmap(context, imageUri, targetSizePx)
+        }
+    }
+
+    val loadedBitmap = bitmap ?: return
     Image(
-        bitmap = bitmap.asImageBitmap(),
+        bitmap = loadedBitmap.asImageBitmap(),
         contentDescription = "프로필 사진",
         modifier = modifier.clip(CircleShape),
         contentScale = ContentScale.Crop,
     )
 }
 
-private fun loadProfileBitmap(context: Context, uri: Uri): Bitmap? = runCatching {
+private fun loadProfileBitmap(context: Context, uri: Uri, targetSizePx: Int): Bitmap? = runCatching {
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
-        ImageDecoder.decodeBitmap(ImageDecoder.createSource(context.contentResolver, uri))
+        val source = ImageDecoder.createSource(context.contentResolver, uri)
+        ImageDecoder.decodeBitmap(source) { decoder, _, _ ->
+            decoder.setTargetSize(targetSizePx, targetSizePx)
+        }
     } else {
         @Suppress("DEPRECATION")
         MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
@@ -260,6 +290,12 @@ fun ProfileNicknameField(
     }
 }
 
+/** [Uri]는 Bundle에 직접 담기지 않으므로 문자열로 변환해 저장/복원한다. */
+private val UriSaver = Saver<Uri?, String>(
+    save = { uri -> uri?.toString() },
+    restore = { value -> Uri.parse(value) },
+)
+
 @Composable
 fun ProfileScreen(
     modifier: Modifier = Modifier,
@@ -268,9 +304,11 @@ fun ProfileScreen(
 ) {
     val context = LocalContext.current
     var showBottomSheet by remember { mutableStateOf(false) }
-    var nickname by remember { mutableStateOf(initialNickname) }
-    var profileImageUri by remember { mutableStateOf<Uri?>(null) }
-    var pendingCameraUri by remember { mutableStateOf<Uri?>(null) }
+    // 카메라 앱이 열려 있는 동안 시스템이 메모리 부족 등으로 화면을 재생성해도
+    // 값이 유지되도록 remember 대신 rememberSaveable을 사용한다.
+    var nickname by rememberSaveable { mutableStateOf(initialNickname) }
+    var profileImageUri by rememberSaveable(stateSaver = UriSaver) { mutableStateOf<Uri?>(null) }
+    var pendingCameraUri by rememberSaveable(stateSaver = UriSaver) { mutableStateOf<Uri?>(null) }
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture(),

@@ -48,6 +48,7 @@ fun LoginRoute(
                         showProfileScreen = true
                     }
                 }
+                LoginUiEvent.ProfileSaveSucceeded -> goToMainActivity()
                 is LoginUiEvent.ShowError ->
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
             }
@@ -57,9 +58,8 @@ fun LoginRoute(
     if (showProfileScreen) {
         ProfileScreen(
             modifier = modifier,
-            onSaveClick = { _, _ ->
-                // 저장 API 없음: 백엔드 프로필 저장 로직은 아직 없고, 홈 화면으로 이동만 수행한다.
-                goToMainActivity()
+            onSaveClick = { nickname, profileImageUri ->
+                viewModel.onProfileSaveClick(context, nickname, profileImageUri)
             },
         )
     } else {

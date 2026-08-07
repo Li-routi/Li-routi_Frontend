@@ -3,6 +3,8 @@ package com.li_routi.core.data.network
 import android.content.Context
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.ChallengeApiService
+import com.li_routi.core.data.network.service.MediaApiService
+import com.li_routi.core.data.network.service.MemberApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -37,6 +39,19 @@ object NetworkModule {
             .build()
     }
 
+    /**
+     * S3 presigned URL 업로드 전용 클라이언트. [okHttpClient]와 달리 [AuthInterceptor]를 붙이지 않는다 —
+     * 우리 서버용 JWT가 S3로 함께 전송되면 안 되기 때문이다.
+     */
+    val uploadOkHttpClient: OkHttpClient by lazy {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.BASIC
+        }
+        OkHttpClient.Builder()
+            .addInterceptor(logging)
+            .build()
+    }
+
     private val retrofit: Retrofit by lazy {
         Retrofit.Builder()
             .baseUrl(BASE_URL)
@@ -51,5 +66,13 @@ object NetworkModule {
 
     val authApiService: AuthApiService by lazy {
         retrofit.create(AuthApiService::class.java)
+    }
+
+    val memberApiService: MemberApiService by lazy {
+        retrofit.create(MemberApiService::class.java)
+    }
+
+    val mediaApiService: MediaApiService by lazy {
+        retrofit.create(MediaApiService::class.java)
     }
 }
