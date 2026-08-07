@@ -868,13 +868,16 @@ class GroupRoutineViewModel(
                             )
                         }
                         _uiState.update {
+                            val existingServerRoutines = it.routines.filter { routine ->
+                                routine.id > 0L && routine.id != newRoutine.id
+                            }
                             it.copy(
                                 screenMode = GroupRoutineScreenMode.Detail,
                                 selectedRoutineId = groupId,
                                 roomNameInput = "",
                                 routineOptions = createdOptions,
                                 selectedCategory = "전체",
-                                routines = listOf(newRoutine),
+                                routines = listOf(newRoutine) + existingServerRoutines,
                                 todos = selectedTodos,
                                 actionMessage = "방이 만들어졌어요.",
                             )
@@ -946,8 +949,7 @@ private val DefaultCategoryIds = mapOf(
 )
 
 private fun Set<String>.toGroupRoutineSchedules(startTime: String, endTime: String): List<GroupRoutineSchedule> {
-    val days = ifEmpty { KoreanDayToRepeatDay.keys }
-    return days.mapNotNull { KoreanDayToRepeatDay[it] }.map { day ->
+    return mapNotNull { KoreanDayToRepeatDay[it] }.map { day ->
         GroupRoutineSchedule(repeatDay = day, startTime = startTime, endTime = endTime)
     }
 }

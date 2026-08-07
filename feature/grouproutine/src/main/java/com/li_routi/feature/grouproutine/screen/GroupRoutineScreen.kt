@@ -1905,7 +1905,7 @@ private fun GroupRoutineDetailScreen(
             onSettingsClick = onSettingsClick,
         )
 
-        Box(modifier = Modifier.weight(1f)) {
+        Column(modifier = Modifier.weight(1f)) {
             DetailMemberSection(
                 title = routine.title,
                 members = uiState.members,
@@ -1913,14 +1913,13 @@ private fun GroupRoutineDetailScreen(
                 onMessageEditClick = onMessageEditClick,
                 onInviteCodeClick = onInviteCodeClick,
                 onMemberClick = onMemberClick,
-                modifier = Modifier.align(Alignment.TopCenter),
             )
             DetailRoutineTabSheet(
                 title = "${routine.title}의 루틴",
                 todos = uiState.todos,
                 progressLabel = uiState.todoProgressLabel,
                 onTodoCheckedChange = onTodoCheckedChange,
-                modifier = Modifier.align(Alignment.BottomCenter),
+                modifier = Modifier.weight(1f),
             )
         }
 
@@ -2043,7 +2042,7 @@ private fun DetailRoutineTabSheet(
     Column(
         modifier = modifier
             .fillMaxWidth()
-            .height(384.dp)
+            .fillMaxHeight()
             .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
             .background(Color.White),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -3146,7 +3145,9 @@ private fun MemberSeat(
                 style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                 maxLines = 1,
                 overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(start = if (member.isMe) 4.dp else 0.dp),
+                modifier = Modifier
+                    .weight(1f, fill = false)
+                    .padding(start = if (member.isMe) 4.dp else 0.dp),
             )
             Text(
                 text = "🔥${member.streak}",
