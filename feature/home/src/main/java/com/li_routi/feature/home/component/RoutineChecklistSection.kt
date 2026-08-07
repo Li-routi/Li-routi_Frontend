@@ -101,10 +101,10 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
         id = "my_2",
         title = "아침 회의",
         dueLabel = "마감 23:00",
-        categoryLabel = "업무",
+        categoryLabel = "공부",
         isDone = true,
         routineId = 2L,
-        categoryColor = CategoryColor.Magenta,
+        categoryColor = CategoryColor.Green,
     ),
     RoutineChecklistItemUiModel(
         id = "my_3",
@@ -119,10 +119,10 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
         id = "my_4",
         title = "물 마시기",
         dueLabel = "마감 22:00",
-        categoryLabel = "건강",
+        categoryLabel = "코딩",
         isDone = true,
         routineId = 4L,
-        categoryColor = CategoryColor.Blue,
+        categoryColor = CategoryColor.Magenta,
     ),
 )
 
@@ -160,16 +160,16 @@ val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
 )
 
 /**
- * Preview/개발 확인용 그룹 루틴 카테고리 필터.
- * Figma Design Page [1.1] 그룹 탭: 전체 / 건강 / 운동 / 공부 (+ 는 별도 chip).
+ * Preview/개발 확인용 그룹 루틴 방 필터.
+ * Figma Design Page [1.1] 그룹 탭: 전체 / 방 이름(그룹1…) — 카테고리가 아님.
  */
-val SampleGroupRoomFilters: List<String> = listOf("전체", "건강", "운동", "공부")
+val SampleGroupRoomFilters: List<String> = listOf("전체", "바디프로필", "사이드 프로젝트")
 
 /**
  * Preview/개발 확인용 "오늘의 루틴" 카테고리 필터.
- * [SampleMyRoutineItems]의 categoryLabel과 일치해야 한다.
+ * Figma Design Page [1.1]: 전체 / 건강 / 운동 / 공부 / 코딩
  */
-val SampleMyRoutineFilters: List<String> = listOf("전체", "건강", "운동", "업무")
+val SampleMyRoutineFilters: List<String> = listOf("전체", "건강", "운동", "공부", "코딩")
 
 /** Preview/개발 확인용 "그룹 루틴" 샘플. [categoryLabel]이 필터 chip과 일치해야 한다.
  * id는 업로드 파서와 동일하게 `group_{groupId}_{routineId}` 형식을 쓴다.
@@ -213,12 +213,20 @@ val SampleGroupRoomItems: List<RoutineChecklistItemUiModel> = listOf(
 
 private const val AllCategoryFilterLabel = "전체"
 
-/** 카테고리 필터 chip 선택에 맞게 그룹 루틴 목록을 걸러낸다. "전체"면 원본 그대로. */
+/** 카테고리 필터 chip 선택에 맞게 개인 루틴 목록을 걸러낸다. "전체"면 원본 그대로. */
 internal fun List<RoutineChecklistItemUiModel>.filteredByCategory(
     selectedCategoryName: String,
 ): List<RoutineChecklistItemUiModel> {
     if (selectedCategoryName == AllCategoryFilterLabel) return this
     return filter { it.categoryLabel == selectedCategoryName }
+}
+
+/** 방 이름 필터 chip 선택에 맞게 그룹 루틴 목록을 걸러낸다. "전체"면 원본 그대로. */
+internal fun List<RoutineChecklistItemUiModel>.filteredByRoom(
+    selectedRoomName: String,
+): List<RoutineChecklistItemUiModel> {
+    if (selectedRoomName == AllCategoryFilterLabel) return this
+    return filter { it.roomLabel == selectedRoomName }
 }
 
 /**
@@ -242,7 +250,8 @@ private val HomeMainTabLabels = listOf("오늘의 루틴", "그룹 루틴")
  *
  * "오늘의 루틴"/"그룹 루틴"은 [LiroutiLineTab](밑줄 탭)으로 전환한다.
  * 그룹방 유무와 관계없이 두 탭을 노출하고, 그룹방 없이 「그룹 루틴」을 고르면 empty를 보여준다.
- * 두 탭 모두 현재 탭의 필터 목록이 비어 있지 않을 때 카테고리 필터 chip(전체/카테고리… +)을 표시한다.
+ * - 오늘의 루틴: 카테고리 필터 chip(전체/카테고리… +)
+ * - 그룹 루틴: 방 이름 필터 chip(전체/그룹1…) — `+` 카테고리 추가는 개인 탭만
  *
  * 완료된 항목은 Figma 주석대로 하단에 정렬한다.
  */
@@ -258,16 +267,16 @@ fun RoutineChecklistSection(
     onAddCategoryClick: () -> Unit = {},
 ) {
     var selectedMainTab by remember { mutableIntStateOf(0) }
-    // 인덱스가 아니라 카테고리명으로 보관 — refresh로 필터 목록이 바뀌어도 선택이 어긋나지 않는다.
-    var selectedCategoryName by remember { mutableStateOf(AllCategoryFilterLabel) }
+    // 인덱스가 아니라 필터명으로 보관 — refresh로 필터 목록이 바뀌어도 선택이 어긋나지 않는다.
+    var selectedFilterName by remember { mutableStateOf(AllCategoryFilterLabel) }
 
     // Design Page [1.1]: 탭은 항상 노출. 그룹방 없어도 「그룹 루틴」 선택 시 empty 문구.
     val isGroupTab = selectedMainTab == 1
     val currentFilters = if (isGroupTab) groupRoomFilters else myRoutineFilters
 
     LaunchedEffect(currentFilters) {
-        if (currentFilters.isNotEmpty() && selectedCategoryName !in currentFilters) {
-            selectedCategoryName = AllCategoryFilterLabel
+        if (currentFilters.isNotEmpty() && selectedFilterName !in currentFilters) {
+            selectedFilterName = AllCategoryFilterLabel
         }
     }
 
@@ -277,11 +286,11 @@ fun RoutineChecklistSection(
         hasGroupRoom,
         myRoutineItems,
         groupRoomItems,
-        selectedCategoryName,
+        selectedFilterName,
     ) {
         when {
-            !isGroupTab -> myRoutineItems.filteredByCategory(selectedCategoryName)
-            hasGroupRoom -> groupRoomItems.filteredByCategory(selectedCategoryName)
+            !isGroupTab -> myRoutineItems.filteredByCategory(selectedFilterName)
+            hasGroupRoom -> groupRoomItems.filteredByRoom(selectedFilterName)
             else -> emptyList()
         }
     }
@@ -316,12 +325,15 @@ fun RoutineChecklistSection(
                 itemsIndexed(currentFilters) { _, label ->
                     LiroutiLabel(
                         text = label,
-                        selected = label == selectedCategoryName,
-                        onClick = { selectedCategoryName = label },
+                        selected = label == selectedFilterName,
+                        onClick = { selectedFilterName = label },
                     )
                 }
-                item {
-                    AddCategoryChip(onClick = onAddCategoryClick)
+                // Figma: 카테고리 `+`는 오늘의 루틴 탭만. 그룹 탭은 방 필터만.
+                if (!isGroupTab) {
+                    item {
+                        AddCategoryChip(onClick = onAddCategoryClick)
+                    }
                 }
             }
         }
@@ -358,8 +370,9 @@ fun RoutineChecklistSection(
                 ) {
                     Text(
                         text = "$doneCount/${displayedItems.size} 완료",
+                        // Figma Caption/Regular 12/14
                         style = LiroutiTheme.typography.captionRegular.copy(
-                            fontSize = 11.sp,
+                            fontSize = 12.sp,
                             lineHeight = 14.sp,
                         ),
                         color = LiroutiTheme.colors.labelSub,

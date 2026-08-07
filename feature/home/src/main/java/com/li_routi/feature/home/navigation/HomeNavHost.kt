@@ -15,13 +15,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.li_routi.core.common.ui.nav.AppBottomTab
-import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
-import com.li_routi.core.common.ui.routine.CategoryColor
-import com.li_routi.core.common.ui.routine.RoutineChecklistItem
-import com.li_routi.core.common.ui.routine.RoutineDeleteDialog
-import com.li_routi.core.common.ui.routine.RoutineEditBottomSheet
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
-import com.li_routi.feature.home.screen.MyRoutineScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
 import com.li_routi.feature.home.vm.NotificationUiEvent
 import com.li_routi.feature.shopping.navigation.ShoppingRoute
@@ -117,71 +111,10 @@ fun HomeNavHost(
         }
 
         composable(RouteMyRoutine) {
-            var query by remember { mutableStateOf("") }
-            var selectedCategory by remember { mutableStateOf("전체") }
-            var showRoutineSheet by remember { mutableStateOf(false) }
-            var showCategorySheet by remember { mutableStateOf(false) }
-            var showDeleteDialog by remember { mutableStateOf(false) }
-            var routineName by remember { mutableStateOf("") }
-            var categoryName by remember { mutableStateOf("") }
-            var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
-            var selectedDays by remember { mutableStateOf(emptySet<Int>()) }
-
-            MyRoutineScreen(
-                query = query,
-                onQueryChange = { query = it },
-                categories = listOf("전체", "건강", "운동", "공부"),
-                selectedCategory = selectedCategory,
-                onCategorySelected = { selectedCategory = it },
-                onAddCategoryClick = { showCategorySheet = true },
-                routines = listOf(
-                    RoutineChecklistItem("1", "물 마시기", false, "마감 22:00", "건강", "주중"),
-                    RoutineChecklistItem("2", "물 마시기", false, "마감 22:00", "건강", "월,수,금"),
-                    RoutineChecklistItem("3", "물 마시기", false, "마감 22:00", "건강", "금요일마다"),
-                ),
-                onAddRoutineClick = { showRoutineSheet = true },
-                onBackClick = { navController.popBackStack() },
-                onCloseClick = { navController.popBackStack() },
+            MyRoutineRoute(
+                onNavigateBack = { navController.popBackStack() },
+                onNavigateToAddRoutine = { navController.navigate(RouteRoutineManage) },
             )
-
-            if (showCategorySheet) {
-                CategoryAddBottomSheet(
-                    name = categoryName,
-                    onNameChange = { categoryName = it },
-                    selectedColor = categoryColor,
-                    onColorSelected = { categoryColor = it },
-                    onConfirm = { showCategorySheet = false },
-                    onDismissRequest = { showCategorySheet = false },
-                )
-            }
-
-            if (showRoutineSheet) {
-                RoutineEditBottomSheet(
-                    name = routineName,
-                    onNameChange = { routineName = it },
-                    deadlineText = "오후 11:00",
-                    repeatText = "없음",
-                    selectedDays = selectedDays,
-                    onDayClick = { index ->
-                        selectedDays = if (index in selectedDays) selectedDays - index else selectedDays + index
-                    },
-                    alarmText = "없음",
-                    onAlarmClick = {},
-                    onDeleteClick = { showDeleteDialog = true },
-                    onConfirm = { showRoutineSheet = false },
-                    onDismissRequest = { showRoutineSheet = false },
-                )
-            }
-
-            if (showDeleteDialog) {
-                RoutineDeleteDialog(
-                    onDismissRequest = { showDeleteDialog = false },
-                    onConfirmDelete = {
-                        showDeleteDialog = false
-                        showRoutineSheet = false
-                    },
-                )
-            }
         }
 
         composable(RouteRoutineManage) {

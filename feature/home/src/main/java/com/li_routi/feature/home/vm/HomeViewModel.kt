@@ -134,15 +134,14 @@ class HomeViewModel(
     }
 
     /**
-     * 새로 만든 카테고리를 개인/그룹 루틴 필터 chip에 둘 다 붙인다(같은 "루틴 카테고리" 개념을
-     * 두 탭이 나눠 쓰므로, "+"를 어느 탭에서 눌렀든 동일하게 반영). 이미 있으면 무시. "전체"는 예약어.
+     * 새로 만든 카테고리를 개인 루틴 필터 chip에만 붙인다.
+     * 그룹 탭 필터는 방 이름(Figma)이라 카테고리 추가와 무관하다. 이미 있으면 무시. "전체"는 예약어.
      */
     private fun appendGroupCategoryFilter(categoryName: String) {
         if (categoryName == "전체") return
         _uiState.update { state ->
             state.copy(
                 myRoutineFilters = state.myRoutineFilters.withAppendedCategory(categoryName),
-                groupRoomFilters = state.groupRoomFilters.withAppendedCategory(categoryName),
             )
         }
     }

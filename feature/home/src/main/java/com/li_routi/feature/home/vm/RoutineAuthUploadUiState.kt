@@ -1,6 +1,7 @@
 package com.li_routi.feature.home.vm
 
 import android.net.Uri
+import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.domain.challenge.MyChallenge
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
 import com.li_routi.feature.home.component.RoutineChecklistKind
@@ -11,7 +12,7 @@ import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
 /**
  * 촬영 후 메모/루틴 선택(업로드) 화면 UI 상태.
  *
- * Figma `촬영 후 메모/선택` (예: node `2176:20314`).
+ * Figma `촬영 후 메모/선택` (Design Page 1.1, node `3610:26875`).
  */
 data class RoutineAuthUploadUiState(
     val photoUri: Uri? = null,
@@ -19,20 +20,31 @@ data class RoutineAuthUploadUiState(
     val routines: List<RoutineAuthSelectableUiModel> = SampleRoutineAuthSelectables,
     val selectedRoutineIds: Set<String> = emptySet(),
     val isUploading: Boolean = false,
-    val uploadErrorMessage: String? = null,
+    /** 업로드 성공 후 「완료」 버튼·성공 토스트 상태. */
+    val isUploadCompleted: Boolean = false,
+    /** null이 아니면 하단 버튼 위 토스트 표시 (실패/성공). */
+    val toastMessage: String? = null,
+    val showExitConfirmDialog: Boolean = false,
 ) {
     val isUploadEnabled: Boolean
-        get() = photoUri != null && selectedRoutineIds.isNotEmpty() && !isUploading
+        get() = when {
+            isUploadCompleted -> true
+            else -> photoUri != null && selectedRoutineIds.isNotEmpty() && !isUploading
+        }
 
     val showUploadFailedToast: Boolean
-        get() = uploadErrorMessage != null
+        get() = toastMessage != null && !isUploadCompleted
 }
 
 /**
  * 인증할 루틴 선택 리스트 한 항목.
  *
- * @param subtitle 마감 옆 보조 텍스트. null이면 마감만 표시.
- * @param badgeTone 카테고리 Badge 색 톤. DS Badge 완성 전까지 화면에서 placeholder/톤만 구분한다.
+ * Figma List(3610:26875): 제목 앞 category-dot, 메타 `카테고리 | 마감`, Badge는 방 이름/챌린지.
+ *
+ * @param subtitle 그룹 방 이름. Badge에 표시. null이면 Secondary Badge 숨김.
+ * @param categoryLabel 메타 첫 칸(카테고리) 또는 챌린지 Badge 문구.
+ * @param badgeTone Challenge면 Orange Badge, Secondary면 방 이름 Blue Badge.
+ * @param categoryColor 제목 앞 category-dot. null이면 미표시(챌린지 등).
  * @param memberRoutineId 개인 루틴 서버 id. 있으면 문자열 id 파싱보다 우선한다.
  * @param groupId 그룹방 id (그룹 루틴만).
  * @param groupRoutineId 그룹 루틴 서버 id (그룹 루틴만).
@@ -45,6 +57,7 @@ data class RoutineAuthSelectableUiModel(
     val subtitle: String? = null,
     val categoryLabel: String,
     val badgeTone: RoutineAuthBadgeTone = RoutineAuthBadgeTone.Secondary,
+    val categoryColor: CategoryColor? = null,
     val memberRoutineId: Long? = null,
     val groupId: Long? = null,
     val groupRoutineId: Long? = null,
@@ -65,6 +78,7 @@ private fun RoutineChecklistItemUiModel.toAuthSelectable(
     subtitle = roomLabel,
     categoryLabel = categoryLabel,
     badgeTone = badgeTone,
+    categoryColor = categoryColor,
     memberRoutineId = if (kind == RoutineChecklistKind.Member) routineId else null,
     groupId = groupId,
     groupRoutineId = if (kind == RoutineChecklistKind.Group) routineId else null,

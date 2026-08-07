@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
@@ -57,8 +58,11 @@ import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.component.LiroutiDivider
 import com.li_routi.core.designsystem.component.LiroutiDividerOrientation
 import com.li_routi.core.designsystem.component.LiroutiTextField
+import com.li_routi.core.designsystem.component.LiroutiToast
+import com.li_routi.core.designsystem.component.LiroutiToastStyle
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.feature.home.component.toFigmaDotColor
 import com.li_routi.feature.home.navigation.RoutineAuthUploadScreenActions
 import com.li_routi.feature.home.navigation.RoutineAuthUploadScreenActions.Companion.MEMO_MAX_LENGTH
 import com.li_routi.feature.home.vm.RoutineAuthBadgeTone
@@ -73,12 +77,13 @@ import kotlinx.coroutines.withContext
 private const val PhotoPreviewTargetSizePx = 1024
 
 /**
- * 촬영 후 메모/루틴 선택(업로드) 화면 (Figma `촬영 후 메모/선택`, node `2176:20314` 등).
+ * 촬영 후 메모/루틴 선택(업로드) 화면 (Figma `촬영 후 메모/선택`).
  *
  * - 메모는 선택 입력 (최대 [MEMO_MAX_LENGTH]자)
  * - 루틴 1개 이상 선택 시 하단 업로드 버튼 활성
- * - 뒤로가기/X → 저장 없이 즉시 이탈
- * - 업로드 실패 시에만 토스트 표시
+ * - 뒤로가기/X → 이탈 확인 다이얼로그
+ * - 업로드 실패/성공 → 버튼 위 16dp 토스트
+ * - 업로드 성공 후 버튼「완료」
  */
 @Composable
 fun RoutineAuthUploadScreen(
@@ -88,8 +93,11 @@ fun RoutineAuthUploadScreen(
     selectedRoutineIds: Set<String>,
     isUploadEnabled: Boolean,
     isUploading: Boolean,
-    showUploadFailedToast: Boolean,
-    uploadErrorMessage: String? = null,
+    isUploadCompleted: Boolean = false,
+    toastMessage: String? = null,
+    showExitConfirmDialog: Boolean = false,
+    onDismissExitConfirmDialog: () -> Unit = {},
+    onConfirmExit: () -> Unit = {},
     photoUri: Uri? = null,
     modifier: Modifier = Modifier,
 ) {
@@ -101,8 +109,6 @@ fun RoutineAuthUploadScreen(
     Scaffold(
         modifier = modifier
             .fillMaxSize()
-            // 콘텐츠 Column에만 있으면 topBar/bottomBar 영역은 아예 범위 밖이라 탭해도
-            // 키보드가 안 닫혔다. Scaffold 전체로 옮겨 그 영역의 빈 공간도 커버한다.
             .pointerInput(Unit) {
                 detectTapGestures(onTap = {
                     keyboardController?.hide()
@@ -123,11 +129,20 @@ fun RoutineAuthUploadScreen(
                     .navigationBarsPadding()
                     .padding(horizontal = 16.dp)
                     .padding(bottom = 32.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                // Figma: 토스트와 업로드 버튼 사이 16
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
+                toastMessage?.let { message ->
+                    LiroutiToast(
+                        message = message,
+                        style = LiroutiToastStyle.Black,
+                        onCloseClick = actions::onDismissUploadFailedToast,
+                    )
+                }
                 UploadActionButton(
                     enabled = isUploadEnabled,
                     isUploading = isUploading,
+                    isUploadCompleted = isUploadCompleted,
                     onClick = actions::onUploadClick,
                 )
             }
@@ -167,16 +182,15 @@ fun RoutineAuthUploadScreen(
         }
     }
 
-    // Figma node 4424:52039 "서버 오류" 다이얼로그. "취소"는 에러만 지우고 화면에 남아 재시도할 수
-    // 있게 하고, "임시 저장"은 저장 없이 플로우를 완전히 닫는다(onCloseClick과 동일하게 처리).
-    if (showUploadFailedToast) {
+    if (showExitConfirmDialog) {
         LiroutiConfirmDialog(
-            title = "서버 오류",
-            message = uploadErrorMessage ?: "서버 통신 상태가 원활하지 않습니다.",
-            confirmText = "임시 저장",
+            title = "화면을 나가시겠어요?",
+            message = "작성 중인 메모가 사라져요.",
+            confirmText = "나가기",
+            cancelText = "취소",
             isConfirmDestructive = false,
-            onConfirm = actions::onCloseClick,
-            onDismissRequest = actions::onDismissUploadFailedToast,
+            onConfirm = onConfirmExit,
+            onDismissRequest = onDismissExitConfirmDialog,
         )
     }
 }
@@ -324,6 +338,11 @@ private fun RoutineSelectRow(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val badgeText = when (item.badgeTone) {
+        RoutineAuthBadgeTone.Challenge -> item.categoryLabel
+        // 그룹: 방 이름. 개인: 카테고리(방 없음).
+        RoutineAuthBadgeTone.Secondary -> item.subtitle ?: item.categoryLabel
+    }
     Row(
         modifier = modifier
             .fillMaxWidth()
@@ -343,45 +362,59 @@ private fun RoutineSelectRow(
             onClick = onClick,
         )
         Column(modifier = Modifier.weight(1f)) {
-            Text(
-                text = item.title,
-                style = LiroutiTheme.typography.body2,
-                color = LiroutiTheme.colors.labelStrong,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-            )
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                item.categoryColor?.let { color ->
+                    Box(
+                        modifier = Modifier
+                            .size(6.dp)
+                            .clip(CircleShape)
+                            .background(color.toFigmaDotColor()),
+                    )
+                }
+                Text(
+                    text = item.title,
+                    style = LiroutiTheme.typography.body2,
+                    color = LiroutiTheme.colors.labelStrong,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
+            // Figma List: "카테고리 | 마감 HH:mm"
             if (item.dueLabel != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
+                        text = item.categoryLabel,
+                        style = LiroutiTheme.typography.caption,
+                        color = LiroutiTheme.colors.labelInfo,
+                    )
+                    LiroutiDivider(
+                        orientation = LiroutiDividerOrientation.Vertical,
+                        color = LiroutiTheme.colors.borderStrong,
+                        modifier = Modifier.height(10.dp),
+                    )
+                    Text(
                         text = item.dueLabel,
                         style = LiroutiTheme.typography.caption,
                         color = LiroutiTheme.colors.labelInfo,
                     )
-                    if (item.subtitle != null) {
-                        LiroutiDivider(
-                            orientation = LiroutiDividerOrientation.Vertical,
-                            color = LiroutiTheme.colors.borderStrong,
-                            modifier = Modifier.height(10.dp),
-                        )
-                        Text(
-                            text = item.subtitle,
-                            style = LiroutiTheme.typography.caption,
-                            color = LiroutiTheme.colors.labelInfo,
-                        )
-                    }
                 }
             }
         }
-        LiroutiBadge(
-            text = item.categoryLabel,
-            color = when (item.badgeTone) {
-                RoutineAuthBadgeTone.Secondary -> LiroutiBadgeColor.Blue
-                RoutineAuthBadgeTone.Challenge -> LiroutiBadgeColor.Green
-            },
-        )
+        if (badgeText != null) {
+            LiroutiBadge(
+                text = badgeText,
+                color = when (item.badgeTone) {
+                    RoutineAuthBadgeTone.Secondary -> LiroutiBadgeColor.Blue
+                    RoutineAuthBadgeTone.Challenge -> LiroutiBadgeColor.Orange
+                },
+            )
+        }
     }
 }
 
@@ -389,6 +422,7 @@ private fun RoutineSelectRow(
 private fun UploadActionButton(
     enabled: Boolean,
     isUploading: Boolean,
+    isUploadCompleted: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -412,18 +446,28 @@ private fun UploadActionButton(
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
-        if (isUploading) {
-            CircularProgressIndicator(
-                modifier = Modifier.size(20.dp),
-                color = contentColor,
-                strokeWidth = 2.dp,
-            )
-        } else {
-            Text(
-                text = "업로드",
-                style = LiroutiTheme.typography.body2,
-                color = contentColor,
-            )
+        when {
+            isUploading -> {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    color = contentColor,
+                    strokeWidth = 2.dp,
+                )
+            }
+            isUploadCompleted -> {
+                Text(
+                    text = "완료",
+                    style = LiroutiTheme.typography.body2,
+                    color = contentColor,
+                )
+            }
+            else -> {
+                Text(
+                    text = "업로드",
+                    style = LiroutiTheme.typography.body2,
+                    color = contentColor,
+                )
+            }
         }
     }
 }
@@ -448,7 +492,6 @@ private fun RoutineAuthUploadScreenDisabledPreview() {
             selectedRoutineIds = emptySet(),
             isUploadEnabled = false,
             isUploading = false,
-            showUploadFailedToast = false,
         )
     }
 }
@@ -464,7 +507,6 @@ private fun RoutineAuthUploadScreenEnabledPreview() {
             selectedRoutineIds = setOf("my_0"),
             isUploadEnabled = true,
             isUploading = false,
-            showUploadFailedToast = false,
         )
     }
 }
@@ -480,8 +522,24 @@ private fun RoutineAuthUploadScreenFailedPreview() {
             selectedRoutineIds = setOf("my_0"),
             isUploadEnabled = true,
             isUploading = false,
-            showUploadFailedToast = true,
-            uploadErrorMessage = "지금은 인증할 수 없습니다. 이미 완료했거나 가능한 시간이 아닙니다.",
+            toastMessage = "업로드 실패",
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800, name = "업로드 완료")
+@Composable
+private fun RoutineAuthUploadScreenCompletedPreview() {
+    LiroutiFrontendTheme {
+        RoutineAuthUploadScreen(
+            actions = PreviewRoutineAuthUploadScreenActions,
+            memo = "오늘의 루틴 끝",
+            routines = SampleRoutineAuthSelectables,
+            selectedRoutineIds = setOf("my_0"),
+            isUploadEnabled = true,
+            isUploading = false,
+            isUploadCompleted = true,
+            toastMessage = "업로드가 완료되었습니다!",
         )
     }
 }

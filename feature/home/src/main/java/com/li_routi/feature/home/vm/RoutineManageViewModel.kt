@@ -96,6 +96,21 @@ data class RoutineManageUiState(
     /** 등록 중이 아니면 완료 버튼 활성 (선택 없어도 탭 가능). */
     val canSubmit: Boolean
         get() = !isSubmitting
+
+    /**
+     * 템플릿 선택·커스텀 추가 등 이탈 시 확인할 초안 변경.
+     * alreadyAdded로 잠긴 기본 선택은 제외한다.
+     */
+    val hasDraftChanges: Boolean
+        get() {
+            if (customItems.isNotEmpty()) return true
+            val lockedIds = templates
+                .asSequence()
+                .filter { it.alreadyAdded }
+                .map { it.templateId.toString() }
+                .toSet()
+            return selectedIds.any { it !in lockedIds }
+        }
 }
 
 sealed interface RoutineManageUiEvent {
@@ -210,7 +225,12 @@ class RoutineManageViewModel(
         }
     }
 
-    fun onAddCustomRoutine(name: String, categoryId: Long?) {
+    fun onAddCustomRoutine(
+        name: String,
+        categoryId: Long?,
+        endTime: String? = null,
+        repeatDays: List<String>? = null,
+    ) {
         val trimmed = name.trim()
         val targetCategoryId = categoryId
             ?: _uiState.value.selectedCategoryId
@@ -227,6 +247,8 @@ class RoutineManageViewModel(
                     categoryId = targetCategoryId,
                     templateId = null,
                     name = trimmed,
+                    endTime = endTime,
+                    repeatDays = repeatDays?.takeIf { it.isNotEmpty() },
                 ),
                 selectedIds = state.selectedIds + customId,
                 errorMessage = null,

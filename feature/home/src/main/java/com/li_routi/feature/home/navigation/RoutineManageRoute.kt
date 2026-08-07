@@ -1,5 +1,6 @@
 package com.li_routi.feature.home.navigation
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -22,11 +23,25 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.RoutineChecklistScreen
+import com.li_routi.core.common.ui.routine.RoutineDeleteDialog
 import com.li_routi.core.common.ui.routine.RoutineEditBottomSheet
 import com.li_routi.core.data.di.RoutineContainer
+import com.li_routi.core.designsystem.component.LiroutiClockTime
+import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.vm.RoutineManageUiEvent
 import com.li_routi.feature.home.vm.RoutineManageViewModel
+
+/** LiroutiDaySelector 인덱스: 0=일 … 6=토 */
+private val DayIndexToApi = listOf(
+    "SUNDAY",
+    "MONDAY",
+    "TUESDAY",
+    "WEDNESDAY",
+    "THURSDAY",
+    "FRIDAY",
+    "SATURDAY",
+)
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -47,10 +62,14 @@ fun RoutineManageRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showCategorySheet by remember { mutableStateOf(false) }
     var showRoutineSheet by remember { mutableStateOf(false) }
+    var showSheetDeleteDialog by remember { mutableStateOf(false) }
+    var showExitConfirmDialog by remember { mutableStateOf(false) }
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
     var routineName by remember { mutableStateOf("") }
     var selectedDays by remember { mutableStateOf(emptySet<Int>()) }
+    var startTime by remember { mutableStateOf(LiroutiClockTime.DefaultMorning) }
+    var endTime by remember { mutableStateOf(LiroutiClockTime.DefaultEvening) }
 
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
@@ -60,6 +79,16 @@ fun RoutineManageRoute(
             }
         }
     }
+
+    fun requestExit() {
+        if (uiState.hasDraftChanges) {
+            showExitConfirmDialog = true
+        } else {
+            viewModel.onBack()
+        }
+    }
+
+    BackHandler(onBack = ::requestExit)
 
     Box(modifier = modifier.fillMaxSize()) {
         RoutineChecklistScreen(
@@ -85,13 +114,15 @@ fun RoutineManageRoute(
             onAddRoutineClick = {
                 routineName = ""
                 selectedDays = emptySet()
+                startTime = LiroutiClockTime.DefaultMorning
+                endTime = LiroutiClockTime.DefaultEvening
                 showRoutineSheet = true
             },
             primaryButtonText = if (uiState.isSubmitting) "등록 중..." else "완료",
             primaryButtonEnabled = uiState.canSubmit,
             onPrimaryButtonClick = viewModel::onSubmit,
-            onBackClick = viewModel::onBack,
-            onCloseClick = viewModel::onBack,
+            onBackClick = ::requestExit,
+            onCloseClick = ::requestExit,
         )
 
         if (uiState.isLoading) {
@@ -134,23 +165,54 @@ fun RoutineManageRoute(
         RoutineEditBottomSheet(
             name = routineName,
             onNameChange = { routineName = it.take(20) },
-            deadlineText = "오후 11:59",
-            repeatText = "매일",
+            startTime = startTime,
+            onStartTimeChange = { startTime = it },
+            endTime = endTime,
+            onEndTimeChange = { endTime = it },
             selectedDays = selectedDays,
             onDayClick = { index ->
                 selectedDays = if (index in selectedDays) selectedDays - index else selectedDays + index
             },
-            alarmText = "없음",
-            onAlarmClick = {},
-            onDeleteClick = { showRoutineSheet = false },
+            showAlarmSection = false,
+            showRoomInfo = false,
+            onDeleteClick = { showSheetDeleteDialog = true },
             onConfirm = {
                 viewModel.onAddCustomRoutine(
                     name = routineName,
                     categoryId = uiState.selectedCategoryId,
+                    endTime = endTime.toApiHHmm(),
+                    repeatDays = selectedDays.toApiRepeatDays(),
                 )
                 showRoutineSheet = false
             },
             onDismissRequest = { showRoutineSheet = false },
         )
     }
+
+    if (showSheetDeleteDialog) {
+        RoutineDeleteDialog(
+            onDismissRequest = { showSheetDeleteDialog = false },
+            onConfirmDelete = {
+                showSheetDeleteDialog = false
+                showRoutineSheet = false
+            },
+        )
+    }
+
+    if (showExitConfirmDialog) {
+        LiroutiConfirmDialog(
+            title = "화면을 나가시겠어요?",
+            message = "작성 중인 내용이 사라져요.",
+            confirmText = "나가기",
+            isConfirmDestructive = false,
+            onConfirm = {
+                showExitConfirmDialog = false
+                viewModel.onBack()
+            },
+            onDismissRequest = { showExitConfirmDialog = false },
+        )
+    }
 }
+
+private fun Set<Int>.toApiRepeatDays(): List<String> =
+    sorted().mapNotNull { DayIndexToApi.getOrNull(it) }

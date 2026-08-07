@@ -17,13 +17,15 @@ import com.li_routi.feature.home.component.RoutineChecklistKind
 fun HomeSummary.toHomeUiState(): HomeUiState {
     val myItems = myRoutines.map { it.toChecklistItem() }
     val groupItems = groupRoutines.map { it.toChecklistItem() }
-    // Design Page [1.1] 탭 필터: 전체 + 카테고리명 (그룹 탭은 방 이름이 아니라 카테고리명).
+    // Design Page [1.1] 탭 필터:
+    // - 오늘의 루틴: 전체 + 카테고리명
+    // - 그룹 루틴: 전체 + 방 이름(Figma `그룹1` …)
     val myCategoryNames = myRoutines
         .map { it.categoryName.trim() }
         .filter { it.isNotEmpty() }
         .distinct()
-    val groupCategoryNames = groupRoutines
-        .map { it.categoryName.trim() }
+    val groupRoomNames = groupRoutines
+        .map { it.groupName.trim() }
         .filter { it.isNotEmpty() }
         .distinct()
     return HomeUiState(
@@ -35,7 +37,7 @@ fun HomeSummary.toHomeUiState(): HomeUiState {
         groupRoomFilters = if (groupRoutines.isEmpty()) {
             emptyList()
         } else {
-            listOf("전체") + groupCategoryNames
+            listOf("전체") + groupRoomNames
         },
         groupRoomItems = groupItems,
         isLoading = false,
