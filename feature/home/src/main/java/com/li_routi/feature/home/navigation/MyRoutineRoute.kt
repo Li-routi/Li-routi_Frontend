@@ -39,6 +39,8 @@ import com.li_routi.feature.home.vm.toDayIndexes
 fun MyRoutineRoute(
     onNavigateBack: () -> Unit,
     onNavigateToAddRoutine: () -> Unit,
+    /** 루틴 수정/삭제 성공 후 홈 요약 재조회용. */
+    onRoutinesChanged: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: MyRoutineViewModel = viewModel {
         MyRoutineViewModel(
@@ -72,10 +74,12 @@ fun MyRoutineRoute(
                 MyRoutineUiEvent.EditCompleted -> {
                     editingRoutineId = null
                     showDeleteDialog = false
+                    onRoutinesChanged()
                 }
                 MyRoutineUiEvent.DeleteCompleted -> {
                     editingRoutineId = null
                     showDeleteDialog = false
+                    onRoutinesChanged()
                 }
             }
         }
@@ -165,6 +169,7 @@ fun MyRoutineRoute(
             name = editName,
             onNameChange = { editName = it.take(20) },
             startTime = editStartTime,
+            // API에 startTime 필드 없음 — UI만 유지, 저장은 endTime만 전송
             onStartTimeChange = { editStartTime = it },
             endTime = editEndTime,
             onEndTimeChange = { editEndTime = it },

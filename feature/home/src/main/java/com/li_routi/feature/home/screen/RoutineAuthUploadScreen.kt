@@ -188,7 +188,7 @@ fun RoutineAuthUploadScreen(
             message = "작성 중인 메모가 사라져요.",
             confirmText = "나가기",
             cancelText = "취소",
-            isConfirmDestructive = false,
+            isConfirmDestructive = true,
             onConfirm = onConfirmExit,
             onDismissRequest = onDismissExitConfirmDialog,
         )
@@ -340,8 +340,8 @@ private fun RoutineSelectRow(
 ) {
     val badgeText = when (item.badgeTone) {
         RoutineAuthBadgeTone.Challenge -> item.categoryLabel
-        // 그룹: 방 이름. 개인: 카테고리(방 없음).
-        RoutineAuthBadgeTone.Secondary -> item.subtitle ?: item.categoryLabel
+        // 그룹: 방 이름. 개인(방 없음): Secondary 배지 숨김.
+        RoutineAuthBadgeTone.Secondary -> item.subtitle
     }
     Row(
         modifier = modifier

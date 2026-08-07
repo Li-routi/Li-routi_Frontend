@@ -230,15 +230,15 @@ class RoutineManageViewModel(
         categoryId: Long?,
         endTime: String? = null,
         repeatDays: List<String>? = null,
-    ) {
+    ): Boolean {
         val trimmed = name.trim()
         val targetCategoryId = categoryId
             ?: _uiState.value.selectedCategoryId
             ?: _uiState.value.categories.firstOrNull()?.categoryId
-            ?: return
+            ?: return false
         if (trimmed.isEmpty() || trimmed.length > 20 || trimmed.contains('\n')) {
             _uiState.update { it.copy(errorMessage = "루틴 이름은 1~20자로 입력해 주세요.") }
-            return
+            return false
         }
         val customId = "$CustomIdPrefix${_uiState.value.customItems.size}"
         _uiState.update { state ->
@@ -254,6 +254,7 @@ class RoutineManageViewModel(
                 errorMessage = null,
             )
         }
+        return true
     }
 
     fun onSubmit() {

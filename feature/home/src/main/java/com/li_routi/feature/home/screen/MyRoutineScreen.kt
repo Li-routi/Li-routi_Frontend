@@ -17,9 +17,11 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -103,9 +105,11 @@ fun MyRoutineScreen(
 
         Column(
             modifier = Modifier
+                .weight(1f)
                 .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
                 .padding(horizontal = 16.dp)
-                .padding(top = 25.dp),
+                .padding(top = 25.dp, bottom = 16.dp),
             verticalArrangement = Arrangement.spacedBy(32.dp),
         ) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

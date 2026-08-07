@@ -114,6 +114,10 @@ fun HomeNavHost(
             MyRoutineRoute(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToAddRoutine = { navController.navigate(RouteRoutineManage) },
+                onRoutinesChanged = {
+                    navController.getBackStackEntry(RouteHomeMain)
+                        .savedStateHandle[KeyRefreshHome] = true
+                },
             )
         }
 

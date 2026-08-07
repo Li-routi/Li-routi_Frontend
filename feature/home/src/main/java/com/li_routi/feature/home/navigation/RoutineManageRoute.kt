@@ -64,6 +64,7 @@ fun RoutineManageRoute(
     var showRoutineSheet by remember { mutableStateOf(false) }
     var showSheetDeleteDialog by remember { mutableStateOf(false) }
     var showExitConfirmDialog by remember { mutableStateOf(false) }
+    var pendingExitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
     var routineName by remember { mutableStateOf("") }
@@ -71,20 +72,54 @@ fun RoutineManageRoute(
     var startTime by remember { mutableStateOf(LiroutiClockTime.DefaultMorning) }
     var endTime by remember { mutableStateOf(LiroutiClockTime.DefaultEvening) }
 
+    val hasRoutineSheetDraft =
+        routineName.isNotBlank() ||
+            selectedDays.isNotEmpty() ||
+            startTime != LiroutiClockTime.DefaultMorning ||
+            endTime != LiroutiClockTime.DefaultEvening
+
+    fun askDiscardConfirm(onConfirm: () -> Unit) {
+        pendingExitAction = onConfirm
+        showExitConfirmDialog = true
+    }
+
+    fun closeRoutineSheet() {
+        showRoutineSheet = false
+        showSheetDeleteDialog = false
+        routineName = ""
+        selectedDays = emptySet()
+        startTime = LiroutiClockTime.DefaultMorning
+        endTime = LiroutiClockTime.DefaultEvening
+    }
+
+    fun requestExit() {
+        when {
+            showRoutineSheet && hasRoutineSheetDraft -> {
+                askDiscardConfirm {
+                    closeRoutineSheet()
+                    viewModel.onBack()
+                }
+            }
+            showRoutineSheet -> closeRoutineSheet()
+            uiState.hasDraftChanges -> askDiscardConfirm { viewModel.onBack() }
+            else -> viewModel.onBack()
+        }
+    }
+
+    fun requestRoutineSheetDismiss() {
+        if (hasRoutineSheetDraft) {
+            askDiscardConfirm { closeRoutineSheet() }
+        } else {
+            closeRoutineSheet()
+        }
+    }
+
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
             when (event) {
                 RoutineManageUiEvent.NavigateBack -> onNavigateBack()
                 RoutineManageUiEvent.SubmitSuccess -> onSubmitSuccess()
             }
-        }
-    }
-
-    fun requestExit() {
-        if (uiState.hasDraftChanges) {
-            showExitConfirmDialog = true
-        } else {
-            viewModel.onBack()
         }
     }
 
@@ -166,6 +201,7 @@ fun RoutineManageRoute(
             name = routineName,
             onNameChange = { routineName = it.take(20) },
             startTime = startTime,
+            // API에 startTime 필드 없음 — UI만 유지, 저장은 endTime만 전송
             onStartTimeChange = { startTime = it },
             endTime = endTime,
             onEndTimeChange = { endTime = it },
@@ -177,15 +213,17 @@ fun RoutineManageRoute(
             showRoomInfo = false,
             onDeleteClick = { showSheetDeleteDialog = true },
             onConfirm = {
-                viewModel.onAddCustomRoutine(
+                val accepted = viewModel.onAddCustomRoutine(
                     name = routineName,
                     categoryId = uiState.selectedCategoryId,
                     endTime = endTime.toApiHHmm(),
                     repeatDays = selectedDays.toApiRepeatDays(),
                 )
-                showRoutineSheet = false
+                if (accepted) {
+                    closeRoutineSheet()
+                }
             },
-            onDismissRequest = { showRoutineSheet = false },
+            onDismissRequest = ::requestRoutineSheetDismiss,
         )
     }
 
@@ -194,7 +232,7 @@ fun RoutineManageRoute(
             onDismissRequest = { showSheetDeleteDialog = false },
             onConfirmDelete = {
                 showSheetDeleteDialog = false
-                showRoutineSheet = false
+                closeRoutineSheet()
             },
         )
     }
@@ -207,9 +245,13 @@ fun RoutineManageRoute(
             isConfirmDestructive = false,
             onConfirm = {
                 showExitConfirmDialog = false
-                viewModel.onBack()
+                pendingExitAction?.invoke()
+                pendingExitAction = null
             },
-            onDismissRequest = { showExitConfirmDialog = false },
+            onDismissRequest = {
+                showExitConfirmDialog = false
+                pendingExitAction = null
+            },
         )
     }
 }
