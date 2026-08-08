@@ -49,6 +49,10 @@ class GroupRoutineViewModel(
     // CodeRabbit 반영: 새로 생성된(서버) 카테고리의 이름 -> categoryId. DefaultCategoryIds에 없는 카테고리 제출 시 사용
     private var serverCategoryIds: Map<String, Long> = emptyMap()
 
+    fun onDismissActionMessage() {
+        _uiState.update { it.copy(actionMessage = null) }
+    }
+
     fun onRoutineClick(routineId: Long) {
         _uiState.update {
             it.copy(
@@ -533,6 +537,8 @@ class GroupRoutineViewModel(
                 isRoutineSettingSheetVisible = true,
                 editingRoutineId = null,
                 routineDraftName = "",
+                routineDraftStartTime = "08:00",
+                routineDraftEndTime = "20:00",
                 routineDraftRepeatDays = emptySet(),
                 actionMessage = null,
             )
@@ -546,6 +552,8 @@ class GroupRoutineViewModel(
                 isRoutineSettingSheetVisible = true,
                 editingRoutineId = optionId,
                 routineDraftName = option.title,
+                routineDraftStartTime = option.startTime,
+                routineDraftEndTime = option.deadline,
                 routineDraftRepeatDays = option.repeatDays,
                 actionMessage = null,
             )
@@ -558,6 +566,8 @@ class GroupRoutineViewModel(
                 isRoutineSettingSheetVisible = false,
                 editingRoutineId = null,
                 routineDraftName = "",
+                routineDraftStartTime = "08:00",
+                routineDraftEndTime = "20:00",
                 routineDraftRepeatDays = emptySet(),
                 isDeleteRoutineDialogVisible = false,
             )
@@ -566,6 +576,14 @@ class GroupRoutineViewModel(
 
     fun onRoutineDraftNameChange(value: String) {
         _uiState.update { it.copy(routineDraftName = value, actionMessage = null) }
+    }
+
+    fun onRoutineDraftStartTimeChange(value: String) {
+        _uiState.update { it.copy(routineDraftStartTime = value, actionMessage = null) }
+    }
+
+    fun onRoutineDraftEndTimeChange(value: String) {
+        _uiState.update { it.copy(routineDraftEndTime = value, actionMessage = null) }
     }
 
     fun onRepeatDayClick(day: String) {
@@ -613,7 +631,10 @@ class GroupRoutineViewModel(
         _uiState.update { it.copy(isSubmitting = true) }
 
         val categoryName = state.selectedCategory
-        val schedules = state.routineDraftRepeatDays.toGroupRoutineSchedules(endTime = "23:00")
+        val schedules = state.routineDraftRepeatDays.toGroupRoutineSchedules(
+            startTime = state.routineDraftStartTime,
+            endTime = state.routineDraftEndTime,
+        )
         val editingId = state.editingRoutineId
         // CodeRabbit 반영: 기본 카테고리에 없으면 새로 생성한 서버 카테고리 ID를 사용
         val categoryId = DefaultCategoryIds[categoryName] ?: serverCategoryIds[categoryName]
@@ -654,8 +675,9 @@ class GroupRoutineViewModel(
                         val savedOption = CreateRoutineOptionUiModel(
                             id = routine.routineId,
                             title = routine.title,
-                            deadline = "23:00",
+                            deadline = state.routineDraftEndTime,
                             category = categoryName,
+                            startTime = state.routineDraftStartTime,
                             repeatLabel = repeatLabel,
                             repeatDays = state.routineDraftRepeatDays,
                         )
@@ -673,6 +695,8 @@ class GroupRoutineViewModel(
                                 isRoutineSettingSheetVisible = false,
                                 editingRoutineId = null,
                                 routineDraftName = "",
+                                routineDraftStartTime = "08:00",
+                                routineDraftEndTime = "20:00",
                                 routineDraftRepeatDays = emptySet(),
                                 actionMessage = null,
                             )
@@ -698,8 +722,9 @@ class GroupRoutineViewModel(
             state.routineOptions + CreateRoutineOptionUiModel(
                 id = newId,
                 title = title,
-                deadline = "23:00",
+                deadline = state.routineDraftEndTime,
                 category = categoryName,
+                startTime = state.routineDraftStartTime,
                 repeatLabel = repeatLabel,
                 repeatDays = state.routineDraftRepeatDays,
             )
@@ -708,6 +733,8 @@ class GroupRoutineViewModel(
                 if (option.id == editingId) {
                     option.copy(
                         title = title,
+                        deadline = state.routineDraftEndTime,
+                        startTime = state.routineDraftStartTime,
                         repeatLabel = repeatLabel,
                         repeatDays = state.routineDraftRepeatDays,
                     )
@@ -723,6 +750,8 @@ class GroupRoutineViewModel(
                 isRoutineSettingSheetVisible = false,
                 editingRoutineId = null,
                 routineDraftName = "",
+                routineDraftStartTime = "08:00",
+                routineDraftEndTime = "20:00",
                 routineDraftRepeatDays = emptySet(),
                 actionMessage = null,
             )
@@ -749,6 +778,8 @@ class GroupRoutineViewModel(
                 isDeleteRoutineDialogVisible = false,
                 editingRoutineId = null,
                 routineDraftName = "",
+                routineDraftStartTime = "08:00",
+                routineDraftEndTime = "20:00",
                 routineDraftRepeatDays = emptySet(),
                 actionMessage = null,
             )
@@ -782,7 +813,7 @@ class GroupRoutineViewModel(
                 categoryKey = if (option.category in DefaultCategoryIds) null else option.category,
                 title = option.title,
                 description = option.title,
-                schedules = option.repeatDays.toGroupRoutineSchedules(endTime = option.deadline),
+                schedules = option.repeatDays.toGroupRoutineSchedules(startTime = option.startTime, endTime = option.deadline),
             )
         }
 
@@ -837,13 +868,16 @@ class GroupRoutineViewModel(
                             )
                         }
                         _uiState.update {
+                            val existingServerRoutines = it.routines.filter { routine ->
+                                routine.id > 0L && routine.id != newRoutine.id
+                            }
                             it.copy(
                                 screenMode = GroupRoutineScreenMode.Detail,
                                 selectedRoutineId = groupId,
                                 roomNameInput = "",
                                 routineOptions = createdOptions,
                                 selectedCategory = "전체",
-                                routines = listOf(newRoutine) + it.routines,
+                                routines = listOf(newRoutine) + existingServerRoutines,
                                 todos = selectedTodos,
                                 actionMessage = "방이 만들어졌어요.",
                             )
@@ -875,24 +909,33 @@ class GroupRoutineViewModel(
     }
 
     private fun repeatDaysLabel(days: Set<String>): String {
+        if (days.isEmpty()) return "\uC5C6\uC74C"
+
+        val orderedDays = listOf("\uC77C", "\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0")
+        val weekdays = setOf("\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08")
+        val weekend = setOf("\uD1A0", "\uC77C")
+        val allDays = orderedDays.toSet()
+
         return when (days) {
-            emptySet<String>() -> "없음"
-            setOf("일", "월", "화", "수", "목", "금", "토") -> "매일"
-            setOf("월", "화", "수", "목", "금") -> "주중"
-            setOf("일", "토") -> "주말"
-            else -> days.joinToString(" ")
+            allDays -> "\uB9E4\uC77C"
+            weekdays -> "\uC8FC\uC911"
+            weekend -> "\uC8FC\uB9D0"
+            else -> {
+                val sortedDays = orderedDays.filter { it in days }
+                if (sortedDays.size == 1) "${sortedDays.first()}\uC694\uC77C\uB9C8\uB2E4" else sortedDays.joinToString(",")
+            }
         }
     }
 }
 
 private val KoreanDayToRepeatDay = mapOf(
-    "일" to RepeatDay.SUNDAY,
-    "월" to RepeatDay.MONDAY,
-    "화" to RepeatDay.TUESDAY,
-    "수" to RepeatDay.WEDNESDAY,
-    "목" to RepeatDay.THURSDAY,
-    "금" to RepeatDay.FRIDAY,
-    "토" to RepeatDay.SATURDAY,
+    "\uC77C" to RepeatDay.SUNDAY,
+    "\uC6D4" to RepeatDay.MONDAY,
+    "\uD654" to RepeatDay.TUESDAY,
+    "\uC218" to RepeatDay.WEDNESDAY,
+    "\uBAA9" to RepeatDay.THURSDAY,
+    "\uAE08" to RepeatDay.FRIDAY,
+    "\uD1A0" to RepeatDay.SATURDAY,
 )
 
 // 백엔드 기본 카테고리(운동/건강/자기계발/생활정리/마음관리/취미) 이름 → categoryId
@@ -905,9 +948,8 @@ private val DefaultCategoryIds = mapOf(
     "취미" to 6L,
 )
 
-private fun Set<String>.toGroupRoutineSchedules(endTime: String): List<GroupRoutineSchedule> {
-    val days = ifEmpty { KoreanDayToRepeatDay.keys }
-    return days.mapNotNull { KoreanDayToRepeatDay[it] }.map { day ->
-        GroupRoutineSchedule(repeatDay = day, startTime = "00:00", endTime = endTime)
+private fun Set<String>.toGroupRoutineSchedules(startTime: String, endTime: String): List<GroupRoutineSchedule> {
+    return mapNotNull { KoreanDayToRepeatDay[it] }.map { day ->
+        GroupRoutineSchedule(repeatDay = day, startTime = startTime, endTime = endTime)
     }
 }
