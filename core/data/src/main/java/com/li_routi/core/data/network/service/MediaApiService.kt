@@ -8,8 +8,9 @@ import retrofit2.http.POST
 
 interface MediaApiService {
 
+    /** S3 직접 업로드용 presigned URL을 발급받는다. 발급된 [PresignedUrlResponse.uploadUrl]로 파일을 직접 PUT한다. */
     @POST("api/media/presigned-url")
     suspend fun issuePresignedUrl(
-        @Body body: PresignedUrlRequest,
+        @Body request: PresignedUrlRequest,
     ): ApiResponse<PresignedUrlResponse>
 }

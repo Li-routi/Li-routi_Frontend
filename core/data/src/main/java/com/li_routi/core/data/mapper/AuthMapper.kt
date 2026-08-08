@@ -20,6 +20,7 @@ fun MyInfoResponse.toDomain(): MyInfo = MyInfo(
     memberId = memberId,
     email = email,
     nickname = nickname,
+    profileImageUrl = profileImageUrl,
     socialProvider = socialProvider.toSocialProvider(),
     onboardingCompleted = onboardingCompleted,
 )

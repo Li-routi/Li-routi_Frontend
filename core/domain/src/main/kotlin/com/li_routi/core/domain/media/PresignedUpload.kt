@@ -8,6 +8,7 @@ enum class MediaPurpose {
     CHALLENGE_VERIFICATION,
     MEMBER_ROUTINE_VERIFICATION,
     GROUP_ROUTINE_VERIFICATION,
+    PROFILE,
 }
 
 /** 발급된 S3 업로드 정보. PUT 시 [contentType]/[contentLength]는 이 값을 그대로 써야 한다. */

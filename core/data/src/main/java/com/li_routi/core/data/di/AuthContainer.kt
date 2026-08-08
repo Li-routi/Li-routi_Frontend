@@ -22,7 +22,11 @@ object AuthContainer {
     }
 
     private val repository: AuthRepository by lazy {
-        AuthRepositoryImpl(NetworkModule.authApiService, tokenPreference)
+        AuthRepositoryImpl(
+            api = NetworkModule.authApiService,
+            tokenPreference = tokenPreference,
+            uploadMediaUseCase = MediaContainer.uploadMediaUseCase,
+        )
     }
 
     val socialLoginUseCase: SocialLoginUseCase by lazy {

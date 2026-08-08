@@ -27,6 +27,6 @@ interface AuthRepository {
     /** 로그인한 회원의 프로필 정보를 조회한다. */
     suspend fun getMyInfo(): ResultState<MyInfo>
 
-    /** 로그인한 회원의 닉네임을 수정한다. */
-    suspend fun updateProfile(nickname: String): ResultState<MyInfo>
+    /** 로그인한 회원의 닉네임/프로필 이미지를 수정한다. [image]가 null이면 기존 프로필 이미지를 그대로 유지한다. */
+    suspend fun updateProfile(nickname: String, image: ProfileImageUpload? = null): ResultState<MyInfo>
 }

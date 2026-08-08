@@ -14,12 +14,16 @@ import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.domain.auth.AuthRepository
 import com.li_routi.core.domain.auth.AuthToken
 import com.li_routi.core.domain.auth.MyInfo
+import com.li_routi.core.domain.auth.ProfileImageUpload
 import com.li_routi.core.domain.auth.SocialProvider
+import com.li_routi.core.domain.media.MediaPurpose
+import com.li_routi.core.domain.media.UploadMediaUseCase
 import kotlinx.coroutines.flow.first
 
 class AuthRepositoryImpl(
     private val api: AuthApiService,
     private val tokenPreference: AuthTokenPreference,
+    private val uploadMediaUseCase: UploadMediaUseCase,
 ) : AuthRepository {
 
     override suspend fun issueGoogleNonce(): ResultState<String> = safeApiCall {
@@ -55,9 +59,21 @@ class AuthRepositoryImpl(
         apiCall { api.getMyInfo() }.toDomain()
     }
 
-    override suspend fun updateProfile(nickname: String): ResultState<MyInfo> = safeApiCall {
-        apiCall { api.updateProfile(UpdateProfileRequest(nickname = nickname)) }.toDomain()
-    }
+    override suspend fun updateProfile(nickname: String, image: ProfileImageUpload?): ResultState<MyInfo> =
+        safeApiCall {
+            val profileImageKey = image?.let { uploadProfileImage(it) }
+            apiCall {
+                api.updateProfile(UpdateProfileRequest(nickname = nickname, profileImageKey = profileImageKey))
+            }.toDomain()
+        }
+
+    /** presigned URL 발급 → S3 PUT까지 미디어 도메인에 위임하고, 프로필 API에 넘길 mediaKey를 반환한다. */
+    private suspend fun uploadProfileImage(image: ProfileImageUpload): String =
+        when (val uploaded = uploadMediaUseCase(MediaPurpose.PROFILE, image.contentType, image.bytes)) {
+            is ResultState.Success -> uploaded.data
+            is ResultState.Error -> throw ApiException(uploaded.message)
+            ResultState.Loading -> throw ApiException("업로드가 완료되지 않았습니다.")
+        }
 
     // 탈퇴 응답도 로그아웃과 동일하게 non-null 결과를 요구하는 apiCall()을 못 써서 isSuccess만 직접 확인한다.
     override suspend fun withdraw(): ResultState<Unit> = safeApiCall {
