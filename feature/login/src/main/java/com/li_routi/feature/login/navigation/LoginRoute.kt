@@ -58,6 +58,7 @@ fun LoginRoute(
     if (showProfileScreen) {
         ProfileScreen(
             modifier = modifier,
+            isLoading = uiState.isLoading,
             onSaveClick = { nickname, profileImageUri ->
                 viewModel.onProfileSaveClick(context, nickname, profileImageUri)
             },

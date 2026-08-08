@@ -42,13 +42,11 @@ object NetworkModule {
     /**
      * S3 presigned URL 업로드 전용 클라이언트. [okHttpClient]와 달리 [AuthInterceptor]를 붙이지 않는다 —
      * 우리 서버용 JWT가 S3로 함께 전송되면 안 되기 때문이다.
+     * 로깅 인터셉터도 붙이지 않는다 — presigned URL의 쿼리 파라미터에 임시 인증 정보(AWS
+     * Signature 등)가 포함되어 있어 요청 URL을 로그로 남기면 유출 위험이 있다.
      */
     val uploadOkHttpClient: OkHttpClient by lazy {
-        val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BASIC
-        }
         OkHttpClient.Builder()
-            .addInterceptor(logging)
             .build()
     }
 

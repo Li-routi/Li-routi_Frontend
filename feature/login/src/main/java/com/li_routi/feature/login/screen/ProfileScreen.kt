@@ -39,6 +39,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
@@ -95,6 +96,9 @@ val ProfileNicknameInputBackgroundColor = Color(0xFFFFFFFF)
 val ProfileActionButtonBottomSpacing = 40.dp
 val ProfileActionButtonWidth = 328.dp
 val ProfileActionButtonHeight = 44.dp
+
+/** 저장 요청이 진행 중일 때 저장 버튼이 비활성 상태임을 나타내기 위해 적용하는 투명도. */
+const val ProfileActionButtonDisabledAlpha = 0.5f
 
 const val ProfileDefaultNickname = "잠자는 개구리"
 
@@ -213,6 +217,7 @@ private fun loadProfileBitmap(context: Context, uri: Uri, targetSizePx: Int): Bi
         }
     } else {
         @Suppress("DEPRECATION")
+
         MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
     }
 }.getOrNull()
@@ -300,6 +305,7 @@ private val UriSaver = Saver<Uri?, String>(
 fun ProfileScreen(
     modifier: Modifier = Modifier,
     initialNickname: String = ProfileDefaultNickname,
+    isLoading: Boolean = false,
     onSaveClick: (nickname: String, profileImageUri: Uri?) -> Unit = { _, _ -> },
 ) {
     val context = LocalContext.current
@@ -355,8 +361,11 @@ fun ProfileScreen(
                 containerHeight = ProfileActionButtonHeight,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
-                    .padding(bottom = ProfileActionButtonBottomSpacing),
-                onRightClick = { onSaveClick(nickname, profileImageUri) },
+                    .padding(bottom = ProfileActionButtonBottomSpacing)
+                    // HorizontalDoubleButton에 enabled 옵션이 없어, 로딩 중엔 시각적으로 흐리게 표시해 비활성 상태임을 알린다.
+                    .alpha(if (isLoading) ProfileActionButtonDisabledAlpha else 1f),
+                // 클릭 자체는 항상 열려 있으므로, 로딩 중에는 여기서 막아 연타로 인한 중복 저장 요청을 방지한다.
+                onRightClick = { if (!isLoading) onSaveClick(nickname, profileImageUri) },
             )
         }
 
