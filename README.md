@@ -223,8 +223,9 @@ Figma: https://www.figma.com/design/VzJt8ozfEDxZJVf7GDtebx/%EB%A6%AC%EB%A3%A8%ED
 | 루틴 체크리스트(내 루틴 관리 / 방 루틴 추가 공용) | RoutineChecklistScreen 외 | 홈 `+` 메뉴 → "내 루틴 관리" / 방 만들기 → 다음 | 정규은, 임은지 |
 | 공용 하단 GNB | AppBottomNavBar | 홈/그룹 루틴/챌린지 루트 화면 공통 | 정규은, 임은지 |
 | 상점 / 재화 구매 | ShopScreen / CurrencyShopScreen | 앱 내비게이션 연결 예정 | 이동진, 최종희 |
-| 마이 | - | 마이 탭 (하단 GNB) — 화면 구현 예정 | 정규은      |
-| 로그인 / 온보딩 | - | 구현 예정 | 임은지      |
+| 마이 | MyPageScreen 외 | 마이 탭 (하단 GNB) | 정규은      |
+| 로그인 | ProfileScreen 외 | 비로그인 시 MainActivity → LoginActivity 리다이렉트 (소셜 로그인 + 최초 프로필 설정) | 임은지      |
+| 온보딩 | - | 구현 예정 | 임은지      |
 
 ---
 
