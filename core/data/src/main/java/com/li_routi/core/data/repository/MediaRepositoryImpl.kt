@@ -44,6 +44,10 @@ class MediaRepositoryImpl(
             if (bytes.size.toLong() != presigned.contentLength) {
                 throw ApiException("업로드 파일 크기가 발급 시 contentLength와 일치하지 않습니다.")
             }
+            // 서버 응답을 그대로 신뢰해 업로드 대상 URL로 쓰므로, 최소한 HTTPS인지는 확인해 평문 전송/스킴 다운그레이드를 막는다.
+            if (!presigned.uploadUrl.startsWith("https://")) {
+                throw ApiException("업로드 URL이 안전하지 않습니다.")
+            }
             val body = bytes.toRequestBody(presigned.contentType.toMediaType())
             val request = Request.Builder()
                 .url(presigned.uploadUrl)

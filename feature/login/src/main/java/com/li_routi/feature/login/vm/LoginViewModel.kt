@@ -202,15 +202,18 @@ class LoginViewModel(
         return scaled
     }
 
-    /** EXIF 방향 값에 맞춰 픽셀을 회전시킨다. 회전이 필요 없으면(NORMAL 등) 원본 비트맵을 그대로 반환한다. */
+    /** EXIF 방향 값에 맞춰 픽셀을 회전/반전시킨다. 회전이 필요 없으면(NORMAL 등) 원본 비트맵을 그대로 반환한다. */
     private fun Bitmap.rotateForExifOrientation(orientation: Int): Bitmap {
-        val degrees = when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> 90f
-            ExifInterface.ORIENTATION_ROTATE_180 -> 180f
-            ExifInterface.ORIENTATION_ROTATE_270 -> 270f
+        val matrix = when (orientation) {
+            ExifInterface.ORIENTATION_ROTATE_90 -> Matrix().apply { postRotate(90f) }
+            ExifInterface.ORIENTATION_ROTATE_180 -> Matrix().apply { postRotate(180f) }
+            ExifInterface.ORIENTATION_ROTATE_270 -> Matrix().apply { postRotate(270f) }
+            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> Matrix().apply { postScale(-1f, 1f) }
+            ExifInterface.ORIENTATION_FLIP_VERTICAL -> Matrix().apply { postScale(1f, -1f) }
+            ExifInterface.ORIENTATION_TRANSPOSE -> Matrix().apply { postScale(-1f, 1f); postRotate(270f) }
+            ExifInterface.ORIENTATION_TRANSVERSE -> Matrix().apply { postScale(-1f, 1f); postRotate(90f) }
             else -> return this
         }
-        val matrix = Matrix().apply { postRotate(degrees) }
         val rotated = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
         if (rotated !== this) recycle()
         return rotated
