@@ -56,4 +56,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // Coil (채팅 이모티콘, 프로필 이미지 등 서버 이미지)
+    implementation(libs.coil.compose)
 }

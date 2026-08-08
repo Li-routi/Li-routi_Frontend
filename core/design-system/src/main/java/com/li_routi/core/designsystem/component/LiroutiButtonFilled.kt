@@ -431,7 +431,7 @@ fun LabelButtonComparisonColumn() {
 
 @Preview(
 
-    showBackground = false,
+    showBackground = true,
 
     widthDp = 600
 
