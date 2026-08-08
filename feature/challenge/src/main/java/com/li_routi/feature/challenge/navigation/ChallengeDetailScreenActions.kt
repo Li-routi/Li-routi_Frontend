@@ -17,4 +17,28 @@ interface ChallengeDetailScreenActions {
 
     /** 더보기 바텀시트의 "챌린지 나가기" 탭 */
     fun onLeaveChallengeClick()
+
+    /** 내 인증 게시글 더보기 바텀시트의 "수정하기" 완료(=수정 화면의 "완료" 버튼) */
+    fun onEditCertificationSubmit(certificationId: Long, content: String)
+
+    /** 인증 수정 화면을 닫을 때(뒤로가기/닫기 또는 수정 성공 후). 이전 실패 시 남은 에러 메시지를 지운다. */
+    fun onEditCertificationDismiss()
+
+    /**
+     * 내 인증 게시글 더보기 바텀시트의 "삭제하기" 탭.
+     * 백엔드에 인증 삭제 API가 아직 없어 현재는 버튼 UI만 존재하고 동작은 없다(API 추가는 별도 진행 예정).
+     */
+    fun onDeleteCertificationClick(certificationId: Long)
+
+    /** 신고 사유 선택 화면의 "완료" 탭. [reason]은 미리 정의된 사유 텍스트, "기타" 직접 입력 텍스트, 또는 null(미선택). */
+    fun onReportCertificationClick(certificationId: Long, reason: String?)
+
+    /** "인증"(전체) 탭 인증 게시글의 좋아요 아이콘 탭 (현재 liked 상태에 따라 좋아요/취소 전환) */
+    fun onLikeToggleClick(certificationId: Long)
+
+    /** 새 인증 게시글 업로드(사진+코멘트) 성공 후 호출. 상세/인증 목록을 새로고침한다. */
+    fun onVerificationSubmitted()
+
+    /** 목록을 당겨서 새로고침. 상세/현재 탭(들)을 처음부터 다시 불러온다. */
+    fun onRefresh()
 }

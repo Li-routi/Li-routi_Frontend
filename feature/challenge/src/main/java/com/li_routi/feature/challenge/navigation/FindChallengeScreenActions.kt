@@ -9,6 +9,9 @@ interface FindChallengeScreenActions {
     /** 필터 칩 선택 ("전체" 칩은 category = null) */
     fun onCategorySelected(category: ChallengeCategory?)
 
+    /** 검색어 입력. 타이핑마다 호출되며, 실제 서버 조회는 디바운스되어 실행된다. */
+    fun onSearchQueryChanged(query: String)
+
     /** 목록 조회 실패 후 재시도 */
     fun onRetryClick()
 }

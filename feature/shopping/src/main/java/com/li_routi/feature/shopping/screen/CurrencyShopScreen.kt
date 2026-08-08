@@ -25,30 +25,36 @@ import com.li_routi.feature.shopping.component.CurrencyChargeDialogContent
 import com.li_routi.feature.shopping.component.CurrencyProductList
 import com.li_routi.feature.shopping.component.CurrencyProductUiModel
 import com.li_routi.feature.shopping.component.CurrencyShopLineTab
-import com.li_routi.feature.shopping.component.SampleCurrencyProducts
+import com.li_routi.feature.shopping.component.SampleBlueGemProducts
+import com.li_routi.feature.shopping.component.SampleOrangeGemProducts
 import com.li_routi.feature.shopping.component.ShopTopBar
 import com.li_routi.feature.shopping.navigation.CurrencyShopScreenActions
 
-/** Figma node `2305:14471` 탭 라벨. */
+/** Figma node `2305:14471` 탭 라벨. index 0 = 주황, 1 = 파란. */
 private val CurrencyTabLabels = listOf("주황보석", "파란보석")
 
+private const val TabOrange = 0
+private const val TabBlue = 1
+
 /**
- * 재화 구매 리스트 화면 (Figma node `2299:22979`).
+ * 재화 구매 리스트 화면 (Figma node `2299:22979` / 파란보석 탭).
  *
- * API 연동 전: 주황보석/파란보석 탭은 UI 선택만 반영하고 상품 목록 필터는 하지 않는다.
+ * 주황보석 → 재화 결제 리스트, 파란보석 → 원화 결제 리스트.
  */
 @Composable
 fun CurrencyShopScreen(
     actions: CurrencyShopScreenActions,
     coinBalance: Int = 450,
     gemBalance: Int = 30,
-    products: List<CurrencyProductUiModel> = SampleCurrencyProducts,
+    orangeProducts: List<CurrencyProductUiModel> = SampleOrangeGemProducts,
+    blueProducts: List<CurrencyProductUiModel> = SampleBlueGemProducts,
     selectedProductId: String? = null,
     chargeDialogProduct: CurrencyProductUiModel? = null,
     modifier: Modifier = Modifier,
+    initialTabIndex: Int = TabOrange,
 ) {
-    // API 연동 전: 탭 선택 UI만. 상품 리스트 교체는 미연결.
-    var selectedTabIndex by remember { mutableIntStateOf(0) }
+    var selectedTabIndex by remember { mutableIntStateOf(initialTabIndex) }
+    val products = if (selectedTabIndex == TabBlue) blueProducts else orangeProducts
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -58,6 +64,8 @@ fun CurrencyShopScreen(
                 coinBalance = coinBalance,
                 gemBalance = gemBalance,
                 onBackClick = actions::onBackClick,
+                onOrangeGemClick = { selectedTabIndex = TabOrange },
+                onBlueGemClick = { selectedTabIndex = TabBlue },
             )
         },
     ) { innerPadding ->
@@ -104,13 +112,26 @@ private object PreviewCurrencyShopScreenActions : CurrencyShopScreenActions {
     override fun onConfirmChargeClick() = Unit
 }
 
-@Preview(showBackground = true, heightDp = 800, name = "선택됨")
+@Preview(showBackground = true, heightDp = 800, name = "파란보석 탭")
 @Composable
-private fun CurrencyShopScreenSelectedPreview() {
+private fun CurrencyShopScreenBlueTabPreview() {
     LiroutiFrontendTheme {
         CurrencyShopScreen(
             actions = PreviewCurrencyShopScreenActions,
-            selectedProductId = "currency_2",
+            selectedProductId = "blue_2",
+            initialTabIndex = TabBlue,
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800, name = "주황보석 탭")
+@Composable
+private fun CurrencyShopScreenOrangeTabPreview() {
+    LiroutiFrontendTheme {
+        CurrencyShopScreen(
+            actions = PreviewCurrencyShopScreenActions,
+            selectedProductId = "orange_2",
+            initialTabIndex = TabOrange,
         )
     }
 }
@@ -126,7 +147,8 @@ private fun CurrencyShopScreenChargeDialogPreview() {
         Box(modifier = Modifier.fillMaxSize()) {
             CurrencyShopScreen(
                 actions = PreviewCurrencyShopScreenActions,
-                selectedProductId = "currency_2",
+                selectedProductId = "blue_2",
+                initialTabIndex = TabBlue,
             )
             Box(
                 modifier = Modifier
@@ -135,7 +157,7 @@ private fun CurrencyShopScreenChargeDialogPreview() {
                 contentAlignment = Alignment.Center,
             ) {
                 CurrencyChargeDialogContent(
-                    product = SampleCurrencyProducts[2],
+                    product = SampleBlueGemProducts[2],
                     onDismiss = {},
                     onConfirmCharge = {},
                 )

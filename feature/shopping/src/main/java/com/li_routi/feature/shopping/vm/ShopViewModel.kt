@@ -32,8 +32,12 @@ class ShopViewModel(
         emitEvent(ShopUiEvent.NavigateBack)
     }
 
-    override fun onCurrencyChipClick() {
-        emitEvent(ShopUiEvent.NavigateToCurrencyShop)
+    override fun onOrangeGemClick() {
+        emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = 0))
+    }
+
+    override fun onBlueGemClick() {
+        emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = 1))
     }
 
     override fun onItemClick(itemId: String) {

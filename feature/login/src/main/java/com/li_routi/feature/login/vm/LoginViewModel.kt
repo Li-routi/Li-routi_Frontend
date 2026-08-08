@@ -11,9 +11,8 @@ import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
-import com.li_routi.core.data.di.ProfileContainer
+import com.li_routi.core.domain.auth.ProfileImageUpload
 import com.li_routi.core.domain.auth.SocialProvider
-import com.li_routi.core.domain.profile.ProfileImageUpload
 import com.li_routi.feature.login.BuildConfig
 import com.li_routi.feature.login.auth.GoogleAuthHelper
 import com.li_routi.feature.login.auth.KakaoAuthHelper
@@ -102,7 +101,7 @@ class LoginViewModel(
                     return@launch
                 }
                 val image = imageResult?.getOrNull()
-                when (val result = ProfileContainer.updateProfileUseCase(nickname, image)) {
+                when (val result = AuthContainer.updateProfileUseCase(nickname, image)) {
                     is ResultState.Success -> emitEvent(LoginUiEvent.ProfileSaveSucceeded)
                     is ResultState.Error -> emitEvent(LoginUiEvent.ShowError(result.message))
                     ResultState.Loading -> Unit

@@ -1,8 +1,10 @@
 package com.cmc.li_routi_frontend
 
 import android.content.Intent
+import android.graphics.Color
 import android.os.Bundle
 import androidx.activity.ComponentActivity
+import androidx.activity.SystemBarStyle
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.fillMaxSize
@@ -27,7 +29,10 @@ class MainActivity : ComponentActivity() {
             return
         }
 
-        enableEdgeToEdge()
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(Color.WHITE, Color.WHITE),
+        )
         setContent {
             LiroutiFrontendTheme {
                 AppNavHost(modifier = Modifier.fillMaxSize())

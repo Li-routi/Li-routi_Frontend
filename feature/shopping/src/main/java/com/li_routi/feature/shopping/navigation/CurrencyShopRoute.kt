@@ -20,6 +20,7 @@ import com.li_routi.feature.shopping.vm.CurrencyShopViewModel
 fun CurrencyShopRoute(
     onEvent: (CurrencyShopUiEvent) -> Unit = {},
     modifier: Modifier = Modifier,
+    initialTabIndex: Int = 0,
     viewModel: CurrencyShopViewModel = viewModel {
         CurrencyShopViewModel(initialState = CurrencyShopUiState())
     },
@@ -36,9 +37,11 @@ fun CurrencyShopRoute(
         actions = viewModel,
         coinBalance = uiState.coinBalance,
         gemBalance = uiState.gemBalance,
-        products = uiState.products,
+        orangeProducts = uiState.orangeProducts,
+        blueProducts = uiState.blueProducts,
         selectedProductId = uiState.selectedProductId,
         chargeDialogProduct = uiState.chargeDialogProduct,
+        initialTabIndex = initialTabIndex,
         modifier = modifier,
     )
 }

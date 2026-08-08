@@ -17,13 +17,11 @@ import kotlinx.coroutines.launch
 /**
  * 촬영 후 메모/루틴 선택(업로드) 화면 ViewModel.
  *
- * - 사진([RoutineAuthUploadUiState.photoUri]) + 루틴 1개 이상 선택 시 업로드 버튼 활성
- * - 뒤로가기/X → 저장 없이 즉시 Navigate 이벤트 발행 (로컬 초안 폐기)
- * - 업로드 성공 → [RoutineAuthUploadUiEvent.NavigateToHome]
- * - 업로드 실패 → 토스트 표시 ([RoutineAuthUploadUiState.showUploadFailedToast])
- *
- * @param upload 실제 API 연동 전까지 주입 가능한 업로드 처리. 기본은 성공.
- *  첫 인자 [photoUri]에 촬영 사진을 반드시 전달한다.
+ * - 사진 + 루틴 1개 이상 선택 시 업로드 버튼 활성
+ * - 뒤로가기/X → 이탈 확인 다이얼로그 (Figma)
+ * - 업로드 중 → 버튼 스피너
+ * - 업로드 실패 → 하단 토스트에 실패 사유(서버 메시지, 없으면 「업로드 실패」) 표시(버튼 위 16dp)
+ * - 업로드 성공 → 토스트「업로드가 완료되었습니다」+ 버튼「완료」→ 탭 시 홈
  */
 class RoutineAuthUploadViewModel(
     initialState: RoutineAuthUploadUiState = RoutineAuthUploadUiState(),
@@ -31,7 +29,8 @@ class RoutineAuthUploadViewModel(
         photoUri: Uri,
         memo: String,
         selectedRoutineIds: Set<String>,
-    ) -> Result<Unit> = { _, _, _ -> Result.success(Unit) },
+        routines: List<RoutineAuthSelectableUiModel>,
+    ) -> Result<Unit>,
 ) : BaseViewModel(), RoutineAuthUploadScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -41,11 +40,11 @@ class RoutineAuthUploadViewModel(
     val uiEvent: SharedFlow<RoutineAuthUploadUiEvent> = _uiEvent.asSharedFlow()
 
     override fun onBackClick() {
-        emitEvent(RoutineAuthUploadUiEvent.NavigateBack)
+        requestExit(navigateBack = true)
     }
 
     override fun onCloseClick() {
-        emitEvent(RoutineAuthUploadUiEvent.NavigateClose)
+        requestExit(navigateBack = false)
     }
 
     override fun onMemoChange(memo: String) {
@@ -54,6 +53,7 @@ class RoutineAuthUploadViewModel(
 
     override fun onRoutineToggle(routineId: String) {
         _uiState.update { state ->
+            if (state.isUploading || state.isUploadCompleted) return@update state
             val next = state.selectedRoutineIds.toMutableSet()
             if (!next.add(routineId)) next.remove(routineId)
             state.copy(selectedRoutineIds = next)
@@ -62,25 +62,74 @@ class RoutineAuthUploadViewModel(
 
     override fun onUploadClick() {
         val state = _uiState.value
+        if (state.isUploadCompleted) {
+            emitEvent(RoutineAuthUploadUiEvent.NavigateToHome)
+            return
+        }
         if (!state.isUploadEnabled) return
         val photoUri = state.photoUri ?: return
 
         viewModelScope.launch {
             _uiState.update {
-                it.copy(isUploading = true, showUploadFailedToast = false)
+                it.copy(isUploading = true, toastMessage = null)
             }
-            val result = upload(photoUri, state.memo, state.selectedRoutineIds)
-            _uiState.update { it.copy(isUploading = false) }
+            val result = upload(
+                photoUri,
+                state.memo,
+                state.selectedRoutineIds,
+                state.routines,
+            )
             if (result.isSuccess) {
-                emitEvent(RoutineAuthUploadUiEvent.NavigateToHome)
+                _uiState.update {
+                    it.copy(
+                        isUploading = false,
+                        isUploadCompleted = true,
+                        toastMessage = "업로드가 완료되었습니다!",
+                    )
+                }
             } else {
-                _uiState.update { it.copy(showUploadFailedToast = true) }
+                _uiState.update {
+                    it.copy(
+                        isUploading = false,
+                        toastMessage = result.exceptionOrNull()?.message ?: "업로드 실패",
+                    )
+                }
             }
         }
     }
 
     override fun onDismissUploadFailedToast() {
-        _uiState.update { it.copy(showUploadFailedToast = false) }
+        _uiState.update { it.copy(toastMessage = null) }
+    }
+
+    fun onDismissExitConfirmDialog() {
+        _uiState.update { it.copy(showExitConfirmDialog = false) }
+    }
+
+    fun onConfirmExit() {
+        val navigateBack = _pendingNavigateBack
+        _pendingNavigateBack = true
+        _uiState.update { it.copy(showExitConfirmDialog = false) }
+        emitEvent(
+            if (navigateBack) {
+                RoutineAuthUploadUiEvent.NavigateBack
+            } else {
+                RoutineAuthUploadUiEvent.NavigateClose
+            },
+        )
+    }
+
+    private var _pendingNavigateBack: Boolean = true
+
+    private fun requestExit(navigateBack: Boolean) {
+        val state = _uiState.value
+        if (state.isUploading) return
+        if (state.isUploadCompleted) {
+            emitEvent(RoutineAuthUploadUiEvent.NavigateToHome)
+            return
+        }
+        _pendingNavigateBack = navigateBack
+        _uiState.update { it.copy(showExitConfirmDialog = true) }
     }
 
     private fun emitEvent(event: RoutineAuthUploadUiEvent) {

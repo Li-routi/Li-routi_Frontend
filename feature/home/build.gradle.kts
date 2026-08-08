@@ -34,8 +34,10 @@ dependencies {
     implementation(project(":core:common:kotlin"))
     implementation(project(":core:common:android"))
     implementation(project(":core:domain"))
+    implementation(project(":core:data"))
     implementation(project(":core:common:ui"))
     implementation(project(":core:design-system"))
+    implementation(project(":feature:shopping"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

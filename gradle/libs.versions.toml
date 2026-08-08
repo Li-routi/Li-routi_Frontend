@@ -25,6 +25,7 @@ kakaoSdk = "2.24.0"
 androidxCredentials = "1.6.0"
 googleId = "1.2.0"
 datastorePreferences = "1.2.1"
+coil = "2.7.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -81,6 +82,9 @@ google-id = { group = "com.google.android.libraries.identity.googleid", name = "
 
 # DataStore (토큰 저장용)
 androidx-datastore-preferences = { group = "androidx.datastore", name = "datastore-preferences", version.ref = "datastorePreferences" }
+
+# Coil (인증 게시글 이미지 등 네트워크 이미지 로딩)
+coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

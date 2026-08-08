@@ -17,4 +17,16 @@ interface AuthRepository {
         providerToken: String,
         nonce: String?,
     ): ResultState<AuthToken>
+
+    /** 서버 세션을 무효화하고 로컬에 저장된 토큰을 지운다. */
+    suspend fun logout(): ResultState<Unit>
+
+    /** 회원 탈퇴를 요청하고, 성공하면 로컬에 저장된 토큰을 지운다. */
+    suspend fun withdraw(): ResultState<Unit>
+
+    /** 로그인한 회원의 프로필 정보를 조회한다. */
+    suspend fun getMyInfo(): ResultState<MyInfo>
+
+    /** 로그인한 회원의 닉네임/프로필 이미지를 수정한다. [image]가 null이면 기존 프로필 이미지를 그대로 유지한다. */
+    suspend fun updateProfile(nickname: String, image: ProfileImageUpload? = null): ResultState<MyInfo>
 }

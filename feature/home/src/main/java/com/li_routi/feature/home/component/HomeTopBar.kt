@@ -17,6 +17,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -47,7 +48,11 @@ fun HomeTopBar(
         Spacer(modifier = Modifier.width(4.dp))
         Text(
             text = "LI-ROUTI",
-            style = LiroutiTheme.typography.heading2,
+            // Figma nav: Pretendard SemiBold 20/28
+            style = LiroutiTheme.typography.heading2SemiBold.copy(
+                fontSize = 20.sp,
+                lineHeight = 28.sp,
+            ),
             color = LiroutiTheme.colors.labelStrong,
             modifier = Modifier.weight(1f),
         )

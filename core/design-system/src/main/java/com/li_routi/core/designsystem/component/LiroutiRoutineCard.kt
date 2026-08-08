@@ -1,6 +1,7 @@
 package com.li_routi.core.designsystem.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -135,11 +136,13 @@ fun LiroutiRoutineSimpleCard(
     subtitle: String,
     modifier: Modifier = Modifier,
     badgeText: String? = "참여중",
+    onClick: () -> Unit = {},
     icon: @Composable () -> Unit = { LiroutiRoutineIcon() },
 ) {
     Row(
         modifier = modifier
-            .width(328.dp)
+            .fillMaxWidth()
+            .clickable(onClick = onClick)
             .background(LiroutiTheme.colors.backgroundDefault, CardShape)
             .padding(16.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),

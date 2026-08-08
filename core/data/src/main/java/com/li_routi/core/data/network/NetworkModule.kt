@@ -1,10 +1,13 @@
 package com.li_routi.core.data.network
 
 import android.content.Context
+import com.li_routi.core.data.BuildConfig
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.ChallengeApiService
+import com.li_routi.core.data.network.service.GroupRoutineApiService
+import com.li_routi.core.data.network.service.HomeApiService
 import com.li_routi.core.data.network.service.MediaApiService
-import com.li_routi.core.data.network.service.MemberApiService
+import com.li_routi.core.data.network.service.RoutineApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -20,7 +23,7 @@ import retrofit2.converter.gson.GsonConverterFactory
  */
 object NetworkModule {
 
-    private const val BASE_URL = "http://13.125.35.99:8080/"
+    private val BASE_URL = BuildConfig.BASE_URL
 
     internal lateinit var appContext: Context
         private set
@@ -29,24 +32,34 @@ object NetworkModule {
         appContext = context.applicationContext
     }
 
+    private val authTokenPreference: AuthTokenPreference by lazy { AuthTokenPreference(appContext) }
+
     private val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
-            level = HttpLoggingInterceptor.Level.BODY
+            // PR 반영: 릴리즈 빌드에서는 로그를 끄고, 디버그 모드에서도 Body 노출(초대코드 등) 방지를 위해 BASIC 사용
+            level = if (BuildConfig.DEBUG) {
+                HttpLoggingInterceptor.Level.BASIC
+            } else {
+                HttpLoggingInterceptor.Level.NONE
+            }
         }
         OkHttpClient.Builder()
-            .addInterceptor(AuthInterceptor(AuthTokenPreference(appContext)))
+            .addInterceptor(AuthInterceptor(authTokenPreference))
+            .authenticator(TokenAuthenticator(authTokenPreference) { authApiService })
             .addInterceptor(logging)
             .build()
     }
-
     /**
-     * S3 presigned URL 업로드 전용 클라이언트. [okHttpClient]와 달리 [AuthInterceptor]를 붙이지 않는다 —
-     * 우리 서버용 JWT가 S3로 함께 전송되면 안 되기 때문이다.
-     * 로깅 인터셉터도 붙이지 않는다 — presigned URL의 쿼리 파라미터에 임시 인증 정보(AWS
-     * Signature 등)가 포함되어 있어 요청 URL을 로그로 남기면 유출 위험이 있다.
+     * S3 presigned PUT 전용 클라이언트.
+     * Bearer 토큰을 붙이면 서명이 깨지므로 AuthInterceptor를 넣지 않는다.
+     * 바이너리 body 로그는 남기지 않는다.
      */
-    val uploadOkHttpClient: OkHttpClient by lazy {
+    val s3OkHttpClient: OkHttpClient by lazy {
+        val logging = HttpLoggingInterceptor().apply {
+            level = HttpLoggingInterceptor.Level.HEADERS
+        }
         OkHttpClient.Builder()
+            .addInterceptor(logging)
             .build()
     }
 
@@ -66,11 +79,19 @@ object NetworkModule {
         retrofit.create(AuthApiService::class.java)
     }
 
-    val memberApiService: MemberApiService by lazy {
-        retrofit.create(MemberApiService::class.java)
+    val groupRoutineApiService: GroupRoutineApiService by lazy {
+        retrofit.create(GroupRoutineApiService::class.java)
+    }
+
+    val homeApiService: HomeApiService by lazy {
+        retrofit.create(HomeApiService::class.java)
     }
 
     val mediaApiService: MediaApiService by lazy {
         retrofit.create(MediaApiService::class.java)
+    }
+
+    val routineApiService: RoutineApiService by lazy {
+        retrofit.create(RoutineApiService::class.java)
     }
 }

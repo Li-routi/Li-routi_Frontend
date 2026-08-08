@@ -3,9 +3,14 @@ package com.li_routi.core.data.mapper
 import com.li_routi.core.data.network.dto.response.ChallengeDetailResponse
 import com.li_routi.core.data.network.dto.response.ChallengeListingResponse
 import com.li_routi.core.data.network.dto.response.ChallengeSummaryResponse
+import com.li_routi.core.data.network.dto.response.CreateVerificationResponse
+import com.li_routi.core.data.network.dto.response.LikeResponse
 import com.li_routi.core.data.network.dto.response.MyChallengeListingResponse
 import com.li_routi.core.data.network.dto.response.MyChallengeSummaryResponse
+import com.li_routi.core.data.network.dto.response.MyVerificationFeedResponse
+import com.li_routi.core.data.network.dto.response.MyVerificationResponse
 import com.li_routi.core.data.network.dto.response.ParticipationResponse
+import com.li_routi.core.data.network.dto.response.UpdateVerificationMemoResponse
 import com.li_routi.core.data.network.dto.response.VerificationFeedResponse
 import com.li_routi.core.data.network.dto.response.VerificationResponse
 import com.li_routi.core.domain.challenge.Certification
@@ -14,6 +19,11 @@ import com.li_routi.core.domain.challenge.Challenge
 import com.li_routi.core.domain.challenge.ChallengeCategory
 import com.li_routi.core.domain.challenge.ChallengeDetail
 import com.li_routi.core.domain.challenge.ChallengePage
+import com.li_routi.core.domain.challenge.CreatedVerification
+import com.li_routi.core.domain.challenge.EditedVerification
+import com.li_routi.core.domain.challenge.LikeResult
+import com.li_routi.core.domain.challenge.MyCertification
+import com.li_routi.core.domain.challenge.MyCertificationPage
 import com.li_routi.core.domain.challenge.MyChallenge
 import com.li_routi.core.domain.challenge.Participation
 import com.li_routi.core.domain.challenge.RoutineCycle
@@ -48,6 +58,7 @@ fun ChallengeDetailResponse.toDomain(): ChallengeDetail = ChallengeDetail(
     participantCount = participantCount,
     verificationPostCount = verificationPostCount,
     todayCompletionCount = todayCompletionCount,
+    verifiedInCurrentPeriod = verifiedInCurrentPeriod,
 )
 
 fun VerificationResponse.toDomain(): Certification = Certification(
@@ -56,12 +67,50 @@ fun VerificationResponse.toDomain(): Certification = Certification(
     content = content,
     imageUrl = imageUrl.orEmpty(),
     verifiedAt = verifiedAt,
+    likeCount = likeCount,
+    liked = liked,
+    isMine = mine,
 )
 
 fun VerificationFeedResponse.toDomain(): CertificationPage = CertificationPage(
     certifications = verifications.map { it.toDomain() },
     nextCursor = nextCursor,
     hasNext = hasNext,
+)
+
+fun MyVerificationResponse.toDomain(): MyCertification = MyCertification(
+    id = verificationId,
+    content = content,
+    imageUrl = imageUrl.orEmpty(),
+    verifiedDate = verifiedDate,
+    verifiedAt = verifiedAt,
+    likeCount = likeCount,
+)
+
+fun MyVerificationFeedResponse.toDomain(): MyCertificationPage = MyCertificationPage(
+    certifications = verifications.map { it.toDomain() },
+    currentStreak = currentStreak,
+    nextCursor = nextCursor,
+    hasNext = hasNext,
+)
+
+fun LikeResponse.toDomain(): LikeResult = LikeResult(
+    verificationId = verificationId,
+    likeCount = likeCount,
+    liked = liked,
+)
+
+fun CreateVerificationResponse.toDomain(): CreatedVerification = CreatedVerification(
+    verificationId = verificationId,
+    imageUrl = imageUrl,
+    content = content,
+    currentStreak = currentStreak,
+    reverified = reverified,
+)
+
+fun UpdateVerificationMemoResponse.toDomain(): EditedVerification = EditedVerification(
+    verificationId = verificationId,
+    content = content,
 )
 
 fun ParticipationResponse.toDomain(): Participation = Participation(
