@@ -70,10 +70,12 @@ fun List<RoutineChecklistItemUiModel>.toAuthSelectables(): List<RoutineAuthSelec
 /**
  * 촬영 URI → 개인/그룹 루틴 + 챌린지 인증.
  *
- * purpose가 달라 종류를 섞어 고르면 미디어 업로드를 종류별로 1회씩 수행한다: 개인·그룹 루틴은
- * [RoutineContainer.submitRoutineAuthUseCase]가 자체적으로 1회 업로드하고, 챌린지가 하나라도
- * 섞여 있으면 별도로 1회 더 업로드해 [ChallengeContainer.createVerificationUseCase]를 챌린지별로
- * 반복 호출한다(같은 사진 바이트, 같은 메모).
+ * purpose가 달라 종류를 섞어 고르면 미디어 업로드를 종류별로 1회씩 수행한다. 챌린지는 서버(AI)가
+ * 주제 적합성을 판정해 등록을 거부할 수 있으므로 **항상 먼저** 처리한다: 챌린지가 하나라도 섞여
+ * 있으면 미디어를 1회 업로드해 [ChallengeContainer.createVerificationUseCase]를 챌린지별로 반복
+ * 호출하고, 그중 하나라도 실패하면 즉시 실패를 반환해 개인/그룹 루틴 업로드는 시도조차 하지 않는다.
+ * 선택된 챌린지가 모두 통과했을 때만 개인·그룹 루틴을 [RoutineContainer.submitRoutineAuthUseCase]로
+ * 업로드한다(같은 사진 바이트, 같은 메모).
  */
 internal suspend fun submitRoutineAuthUpload(
     photoUri: Uri,
@@ -119,23 +121,6 @@ internal suspend fun submitRoutineAuthUpload(
     // 챌린지 인증과 동일: 빈 코멘트는 null로 보내고, 값이 있으면 content로 저장.
     val content = memo.trim().ifBlank { null }
 
-    if (memberIds.isNotEmpty() || groupTargets.isNotEmpty()) {
-        when (
-            val result = RoutineContainer.submitRoutineAuthUseCase(
-                contentType = contentType,
-                bytes = bytes,
-                content = content,
-                memberRoutineIds = memberIds,
-                groupTargets = groupTargets,
-            )
-        ) {
-            is ResultState.Success -> Unit
-            is ResultState.Error -> return@withContext Result.failure(IllegalStateException(result.message))
-            ResultState.Loading ->
-                return@withContext Result.failure(IllegalStateException("업로드가 완료되지 않았습니다."))
-        }
-    }
-
     if (challengeIds.isNotEmpty()) {
         val challengeMediaKey = when (
             val uploaded = MediaContainer.uploadMediaUseCase(
@@ -162,6 +147,23 @@ internal suspend fun submitRoutineAuthUpload(
                 ResultState.Loading ->
                     return@withContext Result.failure(IllegalStateException("등록이 완료되지 않았습니다."))
             }
+        }
+    }
+
+    if (memberIds.isNotEmpty() || groupTargets.isNotEmpty()) {
+        when (
+            val result = RoutineContainer.submitRoutineAuthUseCase(
+                contentType = contentType,
+                bytes = bytes,
+                content = content,
+                memberRoutineIds = memberIds,
+                groupTargets = groupTargets,
+            )
+        ) {
+            is ResultState.Success -> Unit
+            is ResultState.Error -> return@withContext Result.failure(IllegalStateException(result.message))
+            ResultState.Loading ->
+                return@withContext Result.failure(IllegalStateException("업로드가 완료되지 않았습니다."))
         }
     }
 
