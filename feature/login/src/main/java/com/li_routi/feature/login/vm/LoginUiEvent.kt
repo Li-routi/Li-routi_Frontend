@@ -6,8 +6,8 @@ sealed interface LoginUiEvent {
     /**
      * 소셜 로그인 + 서버 검증까지 성공.
      *
-     * [AuthToken.onboardingCompleted]는 이후 온보딩/홈 라우팅을 담당할 화면에서 사용한다 —
-     * 실제 화면 전환은 이번 범위 밖(다른 담당자가 이 이벤트를 구독하는 쪽에서 연결한다).
+     * [AuthToken.onboardingCompleted]를 보고 [com.li_routi.feature.login.navigation.LoginRoute]가
+     * 프로필 설정 화면 표시 여부를 분기한다.
      */
     data class LoginSucceeded(val token: AuthToken) : LoginUiEvent
 

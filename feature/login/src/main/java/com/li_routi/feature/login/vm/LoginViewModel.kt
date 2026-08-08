@@ -11,6 +11,7 @@ import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.domain.auth.ProfileImageUpload
 import com.li_routi.core.domain.auth.SocialProvider
 import com.li_routi.feature.login.BuildConfig
@@ -38,8 +39,8 @@ import kotlinx.coroutines.withContext
  * `/api/auth/social-login`에 검증을 요청해 서비스 토큰을 발급받는다. 발급된 토큰은
  * [AuthContainer]의 리포지토리 계층에서 저장까지 책임진다(이 ViewModel은 저장소를 모른다).
  *
- * 온보딩/홈 라우팅 등 로그인 성공 이후의 화면 전환은 이번 범위 밖 — [LoginUiEvent.LoginSucceeded]를
- * 구독하는 쪽(다른 담당자)이 연결한다.
+ * 온보딩/홈 라우팅 등 로그인 성공 이후의 화면 전환은 [LoginUiEvent.LoginSucceeded]를 구독하는
+ * [com.li_routi.feature.login.navigation.LoginRoute]가 담당한다.
  */
 class LoginViewModel(
     private val kakaoAuthHelper: KakaoAuthHelper = KakaoAuthHelper(),
@@ -100,7 +101,11 @@ class LoginViewModel(
                     emitEvent(LoginUiEvent.ShowError("프로필 이미지를 불러오지 못했습니다."))
                     return@launch
                 }
+                // 서버 API가 profileImageKey를 필수값으로 받는다(서버 쪽 디폴트 프로필 이미지 기능은 아직 없음).
+                // 사용자가 사진을 고르지 않았으면 앱 로고를 임시 기본 이미지로 대신 올린다 —
+                // 서버에 진짜 디폴트 이미지 처리가 추가되면 이 대체 로직은 제거한다.
                 val image = imageResult?.getOrNull()
+                    ?: withContext(Dispatchers.IO) { readDefaultProfileImageUpload(context) }
                 when (val result = AuthContainer.updateProfileUseCase(nickname, image)) {
                     is ResultState.Success -> emitEvent(LoginUiEvent.ProfileSaveSucceeded)
                     is ResultState.Error -> emitEvent(LoginUiEvent.ShowError(result.message))
@@ -156,6 +161,21 @@ class LoginViewModel(
         }
         bitmap.recycle()
 
+        return ProfileImageUpload(bytes = bytes, contentType = "image/jpeg")
+    }
+
+    /**
+     * 사용자가 사진을 고르지 않았을 때 대신 올리는 임시 기본 이미지(앱 로고).
+     * TODO: 서버에 디폴트 프로필 이미지 기능이 추가되면 이 함수와 호출부를 제거한다.
+     */
+    private fun readDefaultProfileImageUpload(context: Context): ProfileImageUpload {
+        val bitmap = BitmapFactory.decodeResource(context.resources, R.drawable.img_default_profile)
+            ?: throw IOException("기본 프로필 이미지를 불러올 수 없습니다.")
+        val bytes = ByteArrayOutputStream().use { output ->
+            bitmap.compress(Bitmap.CompressFormat.JPEG, PROFILE_IMAGE_JPEG_QUALITY, output)
+            output.toByteArray()
+        }
+        bitmap.recycle()
         return ProfileImageUpload(bytes = bytes, contentType = "image/jpeg")
     }
 
