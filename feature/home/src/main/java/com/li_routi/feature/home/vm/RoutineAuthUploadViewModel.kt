@@ -20,7 +20,7 @@ import kotlinx.coroutines.launch
  * - 사진 + 루틴 1개 이상 선택 시 업로드 버튼 활성
  * - 뒤로가기/X → 이탈 확인 다이얼로그 (Figma)
  * - 업로드 중 → 버튼 스피너
- * - 업로드 실패 → 하단 토스트「업로드 실패」(버튼 위 16dp)
+ * - 업로드 실패 → 하단 토스트에 실패 사유(서버 메시지, 없으면 「업로드 실패」) 표시(버튼 위 16dp)
  * - 업로드 성공 → 토스트「업로드가 완료되었습니다」+ 버튼「완료」→ 탭 시 홈
  */
 class RoutineAuthUploadViewModel(
@@ -91,7 +91,7 @@ class RoutineAuthUploadViewModel(
                 _uiState.update {
                     it.copy(
                         isUploading = false,
-                        toastMessage = "업로드 실패",
+                        toastMessage = result.exceptionOrNull()?.message ?: "업로드 실패",
                     )
                 }
             }
