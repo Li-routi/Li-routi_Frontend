@@ -56,4 +56,8 @@ dependencies {
 
     // DataStore (토큰 저장용)
     implementation(libs.androidx.datastore.preferences)
+
+    // Krossbow (채팅 STOMP over WebSocket)
+    implementation(libs.krossbow.stomp.core)
+    implementation(libs.krossbow.websocket.okhttp)
 }

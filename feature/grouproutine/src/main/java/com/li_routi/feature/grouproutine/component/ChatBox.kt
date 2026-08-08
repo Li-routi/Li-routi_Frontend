@@ -23,6 +23,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
 import java.util.Calendar
@@ -41,7 +42,7 @@ private val BubbleStartOffset = LeftMargin + AvatarSize + AvatarToNicknameGap
 /**
  * 채팅 메시지 한 건. [sentAtMillis]는 그룹핑(같은 분인지 판단)에만 쓰이고 화면엔 표시하지 않는다.
  *
- * [emojiResId]가 있으면 이모티콘 메시지다 — 말풍선(텍스트) 없이 이모티콘 이미지만 그대로 보여주고,
+ * [emojiUrl]이 있으면 이모티콘 메시지다 — 말풍선(텍스트) 없이 이모티콘 이미지만 그대로 보여주고,
  * 이때 [message]는 쓰이지 않는다(빈 문자열).
  */
 data class ChatMessageUiModel(
@@ -50,7 +51,7 @@ data class ChatMessageUiModel(
     val message: String,
     val sentAtMillis: Long,
     val isMine: Boolean,
-    val emojiResId: Int? = null,
+    val emojiUrl: String? = null,
 )
 
 /**
@@ -79,7 +80,7 @@ private fun Long.toMinuteOfHour(): Int =
  * 프로필/닉네임 없이 같은 64dp 지점에 말풍선만 이어붙는다 — 세로 간격은 이 컴포저블이 아니라
  * 메시지 리스트를 그리는 쪽(LazyColumn의 verticalArrangement)에서 10dp로 통일해서 준다.
  *
- * [emojiSize]는 이모티콘 메시지([ChatMessageUiModel.emojiResId])를 그릴 때 쓰는 크기로,
+ * [emojiSize]는 이모티콘 메시지([ChatMessageUiModel.emojiUrl])를 그릴 때 쓰는 크기로,
  * 이모지 패널에서 실제로 보였던 아이콘 크기를 그대로 넘겨받아 패널과 동일한 크기로 보이게 한다.
  */
 @Composable
@@ -96,9 +97,9 @@ fun ChatBox(
                 .padding(end = LeftMargin),
             horizontalArrangement = Arrangement.End,
         ) {
-            if (message.emojiResId != null) {
-                Image(
-                    painter = painterResource(id = message.emojiResId),
+            if (message.emojiUrl != null) {
+                AsyncImage(
+                    model = message.emojiUrl,
                     contentDescription = "이모티콘",
                     modifier = Modifier.size(emojiSize),
                 )

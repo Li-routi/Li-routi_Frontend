@@ -1,5 +1,8 @@
 package com.li_routi.feature.grouproutine.vm
 
+import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
+import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
+
 enum class GroupRoutineScreenMode {
     List,
     Detail,
@@ -101,6 +104,10 @@ data class GroupRoutineUiState(
     val categoryInput: String = "",
     val isMessageEditSheetVisible: Boolean = false,
     val messageDraft: String = "",
+    val chatMessages: List<ChatMessageUiModel> = emptyList(),
+    val chatDraftText: String = "",
+    val chatEmoticons: List<ChatEmoticonUiModel> = emptyList(),
+    val isChatLoading: Boolean = false,
     val newCertifications: List<NewCertificationUiModel> = SampleNewCertifications,
     val routines: List<GroupRoutineUiModel> = SampleGroupRoutines,
     val members: List<GroupMemberUiModel> = SampleGroupMembers,

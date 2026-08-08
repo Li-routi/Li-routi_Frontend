@@ -22,7 +22,6 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -45,9 +44,9 @@ import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.component.ChatBar
 import com.li_routi.feature.grouproutine.component.ChatBox
+import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 import com.li_routi.feature.grouproutine.component.EmojiPannel
-import com.li_routi.feature.grouproutine.component.emojiDrawableRes
 import com.li_routi.feature.grouproutine.component.isGroupStart
 
 /** 채팅바 하단에 무엇이 떠 있는지: 아무것도 없음 / 소프트 키보드 / 이모지 패널. */
@@ -71,14 +70,17 @@ private val MessageAreaBackground = Color(0xFFE8EAED)
 @Composable
 fun RoomDetailScreen(
     room: GroupRoomUiModel,
+    messages: List<ChatMessageUiModel>,
+    chatDraftText: String,
+    emoticons: List<ChatEmoticonUiModel>,
     onBackClick: () -> Unit,
+    onChatMessageChange: (String) -> Unit,
     modifier: Modifier = Modifier,
     emptyChatMessage: String = "채팅을 시작해 보세요!",
     onEmojiClick: () -> Unit = {},
     onSendClick: () -> Unit = {},
+    onEmojiSelected: (ChatEmoticonUiModel) -> Unit = {},
 ) {
-    var chatMessage by remember { mutableStateOf("") }
-    val messages = remember { mutableStateListOf<ChatMessageUiModel>() }
     var chatInputMode by remember { mutableStateOf(ChatInputMode.NONE) }
     val chatFieldFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -172,8 +174,8 @@ fun RoomDetailScreen(
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             ChatBar(
-                message = chatMessage,
-                onMessageChange = { chatMessage = it },
+                message = chatDraftText,
+                onMessageChange = onChatMessageChange,
                 focusRequester = chatFieldFocusRequester,
                 isEmojiPanelOpen = chatInputMode == ChatInputMode.EMOJI,
                 onFocusChanged = { focused -> if (focused) chatInputMode = ChatInputMode.KEYBOARD },
@@ -190,42 +192,18 @@ fun RoomDetailScreen(
                     onEmojiClick()
                 },
                 onSendClick = {
-                    if (chatMessage.isNotBlank()) {
-                        messages.add(
-                            ChatMessageUiModel(
-                                id = messages.size.toLong(),
-                                senderName = "나",
-                                message = chatMessage,
-                                sentAtMillis = System.currentTimeMillis(),
-                                isMine = true,
-                            ),
-                        )
-                        onSendClick()
-                    }
-                    chatMessage = ""
+                    if (chatDraftText.isNotBlank()) onSendClick()
                 },
             )
 
             if (chatInputMode == ChatInputMode.EMOJI) {
                 EmojiPannel(
+                    emoticons = emoticons,
                     height = emojiPanelHeight,
                     onCellSizeMeasured = { emojiSize = it },
-                    onEmojiSelected = { emojiId ->
+                    onEmojiSelected = { emoticon ->
                         // 채팅바에 입력되거나 전송 버튼을 거치지 않고, 탭한 즉시 채팅으로 전송된다.
-                        val emojiResId = emojiDrawableRes(emojiId)
-                        if (emojiResId != null) {
-                            messages.add(
-                                ChatMessageUiModel(
-                                    id = messages.size.toLong(),
-                                    senderName = "나",
-                                    message = "",
-                                    sentAtMillis = System.currentTimeMillis(),
-                                    isMine = true,
-                                    emojiResId = emojiResId,
-                                ),
-                            )
-                            onSendClick()
-                        }
+                        onEmojiSelected(emoticon)
                         chatInputMode = ChatInputMode.NONE
                     },
                 )
@@ -240,7 +218,11 @@ private fun RoomDetailScreenPreview() {
     LiroutiFrontendTheme {
         RoomDetailScreen(
             room = GroupRoomUiModel(id = "1", name = "갓생살자", memberCount = 3, routineCount = 7),
+            messages = emptyList(),
+            chatDraftText = "",
+            emoticons = emptyList(),
             onBackClick = {},
+            onChatMessageChange = {},
         )
     }
 }

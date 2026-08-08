@@ -19,6 +19,7 @@ import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -26,18 +27,21 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 private const val EmojiGridColumns = 4
 private const val EmojiGridRows = 2
 
-/** [emojiId](=칸 번호)에 대응하는 이모티콘 드로어블. 아직 칸 0에만 실제 이모티콘이 있다. */
-internal fun emojiDrawableRes(emojiId: Int): Int? = when (emojiId) {
-    0 -> R.drawable.emoji
-    else -> null
-}
+/** 채팅 이모티콘 하나(서버 `GET /api/chat/emoticons` 응답을 UI용으로 변환한 값). */
+data class ChatEmoticonUiModel(
+    val id: Long,
+    val code: String,
+    val assetUrl: String,
+)
 
+/** [emoticons]가 8개(4x2)를 넘으면 스크롤 없이 앞 8개만 보여준다 — 패널 레이아웃이 고정 그리드라서. */
 @Composable
 fun EmojiPannel(
+    emoticons: List<ChatEmoticonUiModel>,
     modifier: Modifier = Modifier,
     height: Dp = 250.dp,
     onCellSizeMeasured: (Dp) -> Unit = {},
-    onEmojiSelected: (emojiId: Int) -> Unit = {},
+    onEmojiSelected: (ChatEmoticonUiModel) -> Unit = {},
 ) {
     val density = LocalDensity.current
     Column(
@@ -68,10 +72,10 @@ fun EmojiPannel(
                 Row(modifier = Modifier.fillMaxWidth()) {
                     repeat(EmojiGridColumns) { columnIndex ->
                         val cellIndex = rowIndex * EmojiGridColumns + columnIndex
-                        val emojiResId = emojiDrawableRes(cellIndex)
-                        if (emojiResId != null) {
-                            Image(
-                                painter = painterResource(id = emojiResId),
+                        val emoticon = emoticons.getOrNull(cellIndex)
+                        if (emoticon != null) {
+                            AsyncImage(
+                                model = emoticon.assetUrl,
                                 contentDescription = "이모티콘",
                                 modifier = Modifier
                                     .weight(1f)
@@ -82,7 +86,7 @@ fun EmojiPannel(
                                     .onGloballyPositioned { coordinates ->
                                         onCellSizeMeasured(with(density) { coordinates.size.width.toDp() })
                                     }
-                                    .clickable(onClick = { onEmojiSelected(cellIndex) }),
+                                    .clickable(onClick = { onEmojiSelected(emoticon) }),
                             )
                         } else {
                             Box(
@@ -102,6 +106,6 @@ fun EmojiPannel(
 @Composable
 private fun EmojiPannelPreview() {
     LiroutiFrontendTheme {
-        EmojiPannel()
+        EmojiPannel(emoticons = emptyList())
     }
 }
