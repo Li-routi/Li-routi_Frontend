@@ -3,7 +3,18 @@ package com.li_routi.feature.grouproutine.vm
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.data.di.ChatContainer
 import com.li_routi.core.data.di.GroupRoutineContainer
+import com.li_routi.core.domain.chat.ChatMessage
+import com.li_routi.core.domain.chat.ChatMessageType
+import com.li_routi.core.domain.chat.ConnectChatSocketUseCase
+import com.li_routi.core.domain.chat.DisconnectChatSocketUseCase
+import com.li_routi.core.domain.chat.GetChatMessagesUseCase
+import com.li_routi.core.domain.chat.GetEmoticonsUseCase
+import com.li_routi.core.domain.chat.NewChatMessage
+import com.li_routi.core.domain.chat.ObserveChatMessagesUseCase
+import com.li_routi.core.domain.chat.SendChatMessageUseCase
+import com.li_routi.core.domain.chat.UpdateChatReadPositionUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineCategoryUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
@@ -16,6 +27,13 @@ import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.RepeatDay
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
+import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
+import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
+import java.time.Instant
+import java.util.UUID
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -31,10 +49,20 @@ class GroupRoutineViewModel(
     private val getGroupRoutineCategoriesUseCase: GetGroupRoutineCategoriesUseCase = GroupRoutineContainer.getGroupRoutineCategoriesUseCase,
     private val createGroupRoutineCategoryUseCase: CreateGroupRoutineCategoryUseCase = GroupRoutineContainer.createGroupRoutineCategoryUseCase,
     private val getGroupRoutineVerificationsUseCase: GetGroupRoutineVerificationsUseCase = GroupRoutineContainer.getGroupRoutineVerificationsUseCase,
+    private val getChatMessagesUseCase: GetChatMessagesUseCase = ChatContainer.getChatMessagesUseCase,
+    private val updateChatReadPositionUseCase: UpdateChatReadPositionUseCase = ChatContainer.updateChatReadPositionUseCase,
+    private val getEmoticonsUseCase: GetEmoticonsUseCase = ChatContainer.getEmoticonsUseCase,
+    private val connectChatSocketUseCase: ConnectChatSocketUseCase = ChatContainer.connectChatSocketUseCase,
+    private val observeChatMessagesUseCase: ObserveChatMessagesUseCase = ChatContainer.observeChatMessagesUseCase,
+    private val sendChatMessageUseCase: SendChatMessageUseCase = ChatContainer.sendChatMessageUseCase,
+    private val disconnectChatSocketUseCase: DisconnectChatSocketUseCase = ChatContainer.disconnectChatSocketUseCase,
 ) : BaseViewModel() {
 
     private val _uiState = MutableStateFlow(GroupRoutineUiState())
     val uiState: StateFlow<GroupRoutineUiState> = _uiState.asStateFlow()
+
+    // 채팅방 진입 중에만 살아있는 소켓 연결+구독 코루틴. 화면 이탈/ViewModel 소멸 시 취소한다.
+    private var chatSocketJob: Job? = null
 
     // PR 반영: Mock ID와 실제 서버 ID 분리
     // createGroupUseCase 성공 시나 초대코드로 조인했을 때 발급되는 실제 서버 그룹 ID를 저장합니다.
@@ -66,6 +94,7 @@ class GroupRoutineViewModel(
     }
 
     fun onBackClick() {
+        val leavingChat = _uiState.value.screenMode == GroupRoutineScreenMode.GroupChat
         _uiState.update { state ->
             when (state.screenMode) {
                 GroupRoutineScreenMode.Detail -> state.copy(
@@ -115,6 +144,7 @@ class GroupRoutineViewModel(
                 GroupRoutineScreenMode.List -> state.copy(actionMessage = null)
             }
         }
+        if (leavingChat) leaveChatSocket()
     }
 
     fun onCreateFlowCloseClick() {
@@ -150,6 +180,147 @@ class GroupRoutineViewModel(
                 actionMessage = null,
             )
         }
+        if (_uiState.value.chatEmoticons.isEmpty()) loadEmoticons()
+        enterChatSocket()
+    }
+
+    fun onChatMessageChange(value: String) {
+        _uiState.update { it.copy(chatDraftText = value) }
+    }
+
+    fun onChatSendClick() {
+        val text = _uiState.value.chatDraftText.trim()
+        if (text.isBlank()) return
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        val message = NewChatMessage(
+            clientMessageId = UUID.randomUUID().toString(),
+            type = ChatMessageType.TEXT,
+            content = text,
+            emoticonCode = null,
+        )
+        viewModelScope.launch {
+            when (val result = sendChatMessageUseCase(groupId, message)) {
+                is ResultState.Success -> _uiState.update { it.copy(chatDraftText = "") }
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    // 탭한 즉시 채팅으로 전송된다 — 실제 화면 반영은 소켓 구독으로 돌아오는 브로드캐스트를 통해 이뤄진다.
+    fun onChatEmojiSelected(emoticon: ChatEmoticonUiModel) {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        val message = NewChatMessage(
+            clientMessageId = UUID.randomUUID().toString(),
+            type = ChatMessageType.EMOTICON,
+            content = null,
+            emoticonCode = emoticon.code,
+        )
+        viewModelScope.launch {
+            when (val result = sendChatMessageUseCase(groupId, message)) {
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                else -> Unit
+            }
+        }
+    }
+
+    /** 소켓 연결 → 브로드캐스트 구독 시작 → REST 이력 조회 순서로 진행해, 연결 이후 온 메시지를 놓치지 않는다. */
+    private fun enterChatSocket() {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        chatSocketJob?.cancel()
+        chatSocketJob = viewModelScope.launch {
+            when (val result = connectChatSocketUseCase(groupId)) {
+                is ResultState.Error -> {
+                    _uiState.update { it.copy(actionMessage = result.message) }
+                    return@launch
+                }
+                is ResultState.Success -> Unit
+                ResultState.Loading -> Unit
+            }
+
+            launch {
+                observeChatMessagesUseCase().collect { incoming ->
+                    val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
+                    _uiState.update { state ->
+                        if (state.chatMessages.any { it.id == incoming.id }) return@update state
+                        state.copy(chatMessages = state.chatMessages + incoming.toUiModel(isMine = incoming.senderId == myMemberId))
+                    }
+                    markChatRead(groupId, incoming.id)
+                }
+            }
+
+            loadChatMessages(groupId)
+        }
+    }
+
+    private fun leaveChatSocket() {
+        chatSocketJob?.cancel()
+        chatSocketJob = null
+        viewModelScope.launch { disconnectChatSocketUseCase() }
+    }
+
+    private suspend fun loadChatMessages(groupId: Long) {
+        _uiState.update { it.copy(isChatLoading = true) }
+        when (val result = getChatMessagesUseCase(groupId = groupId, size = 50)) {
+            is ResultState.Success -> {
+                val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
+                val historyMessages = result.data.messages.map { it.toUiModel(isMine = it.senderId == myMemberId) }
+                _uiState.update { state ->
+                    // 조회 응답이 오기 전 소켓으로 먼저 들어온 메시지와 겹칠 수 있어 id 기준으로 합친다.
+                    val merged = (historyMessages + state.chatMessages).distinctBy { it.id }.sortedBy { it.id }
+                    state.copy(chatMessages = merged, isChatLoading = false)
+                }
+                // 마지막 메시지까지 읽은 것으로 서버에 반영(화면에 들어와 목록을 봤으므로).
+                historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
+            }
+
+            is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message, isChatLoading = false) }
+            ResultState.Loading -> _uiState.update { it.copy(isChatLoading = false) }
+        }
+    }
+
+    private fun markChatRead(groupId: Long, lastReadMessageId: Long) {
+        viewModelScope.launch {
+            updateChatReadPositionUseCase(groupId, lastReadMessageId)
+        }
+    }
+
+    private fun loadEmoticons() {
+        viewModelScope.launch {
+            when (val result = getEmoticonsUseCase()) {
+                is ResultState.Success -> {
+                    _uiState.update {
+                        it.copy(
+                            chatEmoticons = result.data.map { emoticon ->
+                                ChatEmoticonUiModel(id = emoticon.id, code = emoticon.code, assetUrl = emoticon.assetUrl)
+                            },
+                        )
+                    }
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    override fun onCleared() {
+        chatSocketJob?.cancel()
+        // viewModelScope는 onCleared() 시점엔 이미 취소되어 있어 여기서 쓸 수 없다 — 별도 스코프로 소켓만 정리.
+        CoroutineScope(Dispatchers.IO).launch { disconnectChatSocketUseCase() }
+        super.onCleared()
     }
 
     fun onMessageEditClick() {
@@ -926,7 +1097,21 @@ class GroupRoutineViewModel(
             }
         }
     }
+
+    private fun ChatMessage.toUiModel(isMine: Boolean): ChatMessageUiModel = ChatMessageUiModel(
+        id = id,
+        senderName = senderNickname,
+        message = if (type == ChatMessageType.TEXT) content else "",
+        sentAtMillis = createdAt.toEpochMillisOrNow(),
+        isMine = isMine,
+        emojiUrl = if (type == ChatMessageType.EMOTICON) emoticon?.assetUrl else null,
+    )
 }
+
+// 스웨거 문서에 createdAt 포맷 예시가 없어 ISO-8601(Instant)로 우선 가정하고, 파싱에 실패하면
+// (그룹핑 판단용이라 실패해도 치명적이지 않으므로) 현재 시각으로 대체한다.
+private fun String.toEpochMillisOrNow(): Long =
+    runCatching { Instant.parse(this).toEpochMilli() }.getOrDefault(System.currentTimeMillis())
 
 private val KoreanDayToRepeatDay = mapOf(
     "\uC77C" to RepeatDay.SUNDAY,

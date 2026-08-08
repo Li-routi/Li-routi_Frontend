@@ -95,6 +95,7 @@ import com.li_routi.core.designsystem.R as DesignSystemR
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
+import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
 import com.li_routi.feature.grouproutine.vm.CertificationPostUiModel
 import com.li_routi.feature.grouproutine.vm.CreateRoutineOptionUiModel
@@ -184,6 +185,9 @@ fun GroupRoutineRoute(
         onMemberClick = viewModel::onMemberClick,
         onDismissMemberDialog = viewModel::onDismissMemberDialog,
         onChatClick = viewModel::onChatClick,
+        onChatMessageChange = viewModel::onChatMessageChange,
+        onChatSendClick = viewModel::onChatSendClick,
+        onChatEmojiSelected = viewModel::onChatEmojiSelected,
         onMessageEditClick = viewModel::onMessageEditClick,
         onMessageDraftChange = viewModel::onMessageDraftChange,
         onDismissMessageEditSheet = viewModel::onDismissMessageEditSheet,
@@ -244,6 +248,9 @@ private fun GroupRoutineScreen(
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
     onChatClick: () -> Unit,
+    onChatMessageChange: (String) -> Unit,
+    onChatSendClick: () -> Unit,
+    onChatEmojiSelected: (ChatEmoticonUiModel) -> Unit,
     onMessageEditClick: () -> Unit,
     onMessageDraftChange: (String) -> Unit,
     onDismissMessageEditSheet: () -> Unit,
@@ -294,10 +301,23 @@ private fun GroupRoutineScreen(
                 onTabSelected = onTabSelected,
             )
 
-            GroupRoutineScreenMode.GroupChat -> GroupChatScreen(
-                uiState = uiState,
-                onBackClick = onBackClick,
-            )
+            GroupRoutineScreenMode.GroupChat -> uiState.selectedRoutine?.let { routine ->
+                RoomDetailScreen(
+                    room = GroupRoomUiModel(
+                        id = routine.id.toString(),
+                        name = routine.title,
+                        memberCount = routine.memberCount,
+                        routineCount = routine.routineCount,
+                    ),
+                    messages = uiState.chatMessages,
+                    chatDraftText = uiState.chatDraftText,
+                    emoticons = uiState.chatEmoticons,
+                    onBackClick = onBackClick,
+                    onChatMessageChange = onChatMessageChange,
+                    onSendClick = onChatSendClick,
+                    onEmojiSelected = onChatEmojiSelected,
+                )
+            }
 
             GroupRoutineScreenMode.GroupSettings -> GroupSettingsScreen(
                 uiState = uiState,
@@ -3743,6 +3763,9 @@ private fun GroupRoutineListPreview() {
             onMemberClick = {},
             onDismissMemberDialog = {},
             onChatClick = {},
+            onChatMessageChange = {},
+            onChatSendClick = {},
+            onChatEmojiSelected = {},
             onMessageEditClick = {},
             onMessageDraftChange = {},
             onDismissMessageEditSheet = {},
@@ -3804,6 +3827,9 @@ private fun CreateRoomNamePreview() {
             onMemberClick = {},
             onDismissMemberDialog = {},
             onChatClick = {},
+            onChatMessageChange = {},
+            onChatSendClick = {},
+            onChatEmojiSelected = {},
             onMessageEditClick = {},
             onMessageDraftChange = {},
             onDismissMessageEditSheet = {},

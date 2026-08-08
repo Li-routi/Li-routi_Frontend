@@ -14,11 +14,11 @@ Figma: https://www.figma.com/design/VzJt8ozfEDxZJVf7GDtebx/%EB%A6%AC%EB%A3%A8%ED
 
 ### 💙 팀원 소개
 
-|                                  김지아 (팀장)                                  |                                  강수아                                  |                                  이동진                                  |                                   정규은                                   |                                  최종희                                  |                                   임은지                                   |
-|:---------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-----------------------------------------------------------------------:|:-------------------------------------------------------------------------:|:-----------------------------------------------------------------------:|
-| <img src="https://github.com/Lemon0610.png" width="150" height="150">       | <img src="https://github.com/sua710.png" width="150" height="150">        | <img src="https://github.com/East0219.png" width="150" height="150">      | <img src="https://github.com/jeongkyueun.png" width="150" height="150"> | <img src="https://github.com/jongheecode.png" width="150" height="150">   | <img src="https://github.com/mookeunji05.png" width="150" height="150"> |
-|                  [@Lemon0610](https://github.com/Lemon0610)                  |                 [@sua710](https://github.com/sua710)                  |                 [@East0219](https://github.com/East0219)                |             [@jeongkyueun](https://github.com/jeongkyueun)              |             [@jongheecode](https://github.com/jongheecode)              |             [@mookeunji05](https://github.com/mookeunji05)              |
-|                     챌린지 화면 구현, 앱 내비게이션                     |                       그룹 루틴(모임) 화면 구현                       |                                   홈 화면 구현                                   |                         공용 컴포넌트 구현, 마이페이지 화면 구현                         |                              홈 화면 구현, 컬러·타이포그래피                              |                          공용 컴포넌트 구현, 로그인 화면 구현                          |
+|                               김지아 (팀장)                                |                                강수아                                 |                                 이동진                                  |                                   정규은                                   |                                   최종희                                   |                                   임은지                                   |
+|:---------------------------------------------------------------------:|:------------------------------------------------------------------:|:--------------------------------------------------------------------:|:-----------------------------------------------------------------------:|:-----------------------------------------------------------------------:|:-----------------------------------------------------------------------:|
+| <img src="https://github.com/Lemon0610.png" width="150" height="150"> | <img src="https://github.com/sua710.png" width="150" height="150"> | <img src="https://github.com/East0219.png" width="150" height="150"> | <img src="https://github.com/jeongkyueun.png" width="150" height="150"> | <img src="https://github.com/jongheecode.png" width="150" height="150"> | <img src="https://github.com/mookeunji05.png" width="150" height="150"> |
+|              [@Lemon0610](https://github.com/Lemon0610)               |                [@sua710](https://github.com/sua710)                |               [@East0219](https://github.com/East0219)               |             [@jeongkyueun](https://github.com/jeongkyueun)              |             [@jongheecode](https://github.com/jongheecode)              |             [@mookeunji05](https://github.com/mookeunji05)              |
+|    챌린지 화면 구현 및 api 연동, 앱 내비게이션, 채팅 이모티콘 기능 구현, 상점 api 연동, 전체 코드 정비    |                      그룹 루틴(모임) 화면 구현 및 api 연동                      |                           홈 화면 구현 및 api 연동                           |                    공용 컴포넌트 구현, 마이페이지 화면 구현 및 api 연동                     |                    홈 화면 구현, 컬러·타이포그래피 구현, 그룹 api 연동                     |                공용 컴포넌트 구현, 로그인 화면 구현 및 api 연동, 채팅 api 연동                |
 
 ---
 
@@ -40,6 +40,7 @@ Figma: https://www.figma.com/design/VzJt8ozfEDxZJVf7GDtebx/%EB%A6%AC%EB%A3%A8%ED
   - Lifecycle(ViewModel) 2.9.2
   - Coroutines 1.10.2
   - Retrofit 2.11.0 + OkHttp 4.12.0 + Gson
+  - Krossbow (STOMP over WebSocket) 9.3.0 — 채팅 실시간 통신
 
 - **빌드 환경**
   - AGP 9.1.1
@@ -215,15 +216,15 @@ Figma: https://www.figma.com/design/VzJt8ozfEDxZJVf7GDtebx/%EB%A6%AC%EB%A3%A8%ED
 | 루틴 인증 촬영 | RoutineAuthCameraScreen | 홈 스와이프 / 체크리스트 카메라 아이콘 | 이동진, 최종희 |
 | 루틴 인증 작성 | RoutineAuthUploadScreen | 루틴 인증 촬영 → 촬영 완료 | 이동진, 최종희 |
 | 모임 메인 | RoomListScreen | 그룹 루틴 탭 (하단 GNB) | 강수아      |
-| 모임방 상세 | RoomDetailScreen | 모임 메인 → 방 카드 탭 (채팅·인증·관리는 다음 단계에서 확장 예정) | 강수아      |
+| 모임방 상세 | RoomDetailScreen | 모임 메인 → 방 카드 탭 (실시간 채팅 지원, 인증·관리는 다음 단계에서 확장 예정) | 강수아      |
 | 방 만들기 | MakeRoomScreen | 홈/모임 메인 → `+` 메뉴 → "방 만들기" | 강수아      |
 | 초대코드 입력 | InviteCodeScreen | 홈/모임 메인 → `+` 메뉴 → "초대코드로 참여" | 강수아      |
 | 방 참여 확인 | JoinRoomConfirmDialog | 초대코드 입력 → 확인 | 강수아      |
 | 루틴 체크리스트(내 루틴 관리 / 방 루틴 추가 공용) | RoutineChecklistScreen 외 | 홈 `+` 메뉴 → "내 루틴 관리" / 방 만들기 → 다음 | 정규은, 임은지 |
 | 공용 하단 GNB | AppBottomNavBar | 홈/그룹 루틴/챌린지 루트 화면 공통 | 정규은, 임은지 |
 | 상점 / 재화 구매 | ShopScreen / CurrencyShopScreen | 앱 내비게이션 연결 예정 | 이동진, 최종희 |
-| 마이 | - | 마이 탭 (하단 GNB) — 화면 구현 예정 | 정규은      |
-| 로그인 / 온보딩 | - | 구현 예정 | 임은지      |
+| 마이 | MyPageScreen 외 | 마이 탭 (하단 GNB) | 정규은      |
+| 로그인 / 온보딩 | ProfileScreen 외 | 비로그인 시 MainActivity → LoginActivity 리다이렉트 (소셜 로그인 + 최초 로그인 시 온보딩 프로필 설정) | 임은지      |
 
 ---
 
@@ -287,7 +288,9 @@ RoomListScreen (모임 메인)
 ├── 참여 중인 방 카드 탭
 │      │
 │      ▼
-│  RoomDetailScreen (채팅·인증·관리는 다음 단계에서 확장 예정)
+│  RoomDetailScreen
+│      └── 실시간 채팅(STOMP 웹소켓) — 텍스트/이모티콘 전송, 메시지 이력 조회, 읽음 위치 동기화
+│          (인증·관리는 다음 단계에서 확장 예정)
 │
 └── "+" 메뉴
        ├── 방 만들기
