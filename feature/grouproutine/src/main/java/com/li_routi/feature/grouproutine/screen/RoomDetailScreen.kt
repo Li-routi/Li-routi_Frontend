@@ -180,6 +180,7 @@ fun RoomDetailScreen(
                 isEmojiPanelOpen = chatInputMode == ChatInputMode.EMOJI,
                 onFocusChanged = { focused -> if (focused) chatInputMode = ChatInputMode.KEYBOARD },
                 onTextFieldTap = {
+                    chatFieldFocusRequester.requestFocus()
                     chatInputMode = ChatInputMode.KEYBOARD
                     keyboardController?.show()
                 },

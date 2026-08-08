@@ -238,8 +238,12 @@ class GroupRoutineViewModel(
         chatSocketJob?.cancel()
         chatSocketJob = viewModelScope.launch {
             when (val result = connectChatSocketUseCase(groupId)) {
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
-                else -> Unit
+                is ResultState.Error -> {
+                    _uiState.update { it.copy(actionMessage = result.message) }
+                    return@launch
+                }
+                is ResultState.Success -> Unit
+                ResultState.Loading -> Unit
             }
 
             launch {
@@ -279,7 +283,7 @@ class GroupRoutineViewModel(
             }
 
             is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message, isChatLoading = false) }
-            ResultState.Loading -> Unit
+            ResultState.Loading -> _uiState.update { it.copy(isChatLoading = false) }
         }
     }
 

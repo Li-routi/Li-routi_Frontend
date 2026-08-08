@@ -1,6 +1,7 @@
 package com.li_routi.core.data.network.socket
 
 import com.google.gson.Gson
+import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.network.dto.request.SendChatMessageRequest
 import com.li_routi.core.data.network.dto.response.ChatMessageItemResponse
@@ -58,7 +59,8 @@ class ChatSocketClient(
     fun incomingMessages(): Flow<ChatMessageItemResponse> = incoming
 
     suspend fun send(groupId: Long, request: SendChatMessageRequest) {
-        session?.sendText(SendMessageDestinationFormat.format(groupId), gson.toJson(request))
+        val current = session ?: throw ApiException("채팅 연결이 끊겼습니다. 다시 시도해 주세요.")
+        current.sendText(SendMessageDestinationFormat.format(groupId), gson.toJson(request))
     }
 
     suspend fun disconnect() {

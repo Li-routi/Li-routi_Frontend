@@ -26,7 +26,6 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
-import java.util.Calendar
 
 private val ChatBubbleTextColor = Color(0xFF000000)
 
@@ -65,11 +64,8 @@ fun ChatMessageUiModel.isGroupStart(previous: ChatMessageUiModel?): Boolean {
     if (previous == null) return true
     if (previous.isMine != isMine) return true
     if (!isMine && previous.senderName != senderName) return true
-    return previous.sentAtMillis.toMinuteOfHour() != sentAtMillis.toMinuteOfHour()
+    return previous.sentAtMillis / 60_000 != sentAtMillis / 60_000
 }
-
-private fun Long.toMinuteOfHour(): Int =
-    Calendar.getInstance().apply { timeInMillis = this@toMinuteOfHour }.get(Calendar.MINUTE)
 
 /**
  * 채팅 말풍선 한 줄.
@@ -144,7 +140,15 @@ fun ChatBox(
                 .fillMaxWidth()
                 .padding(start = BubbleStartOffset),
         ) {
-            ChatBubble(text = message.message)
+            if (message.emojiUrl != null) {
+                AsyncImage(
+                    model = message.emojiUrl,
+                    contentDescription = "이모티콘",
+                    modifier = Modifier.size(emojiSize),
+                )
+            } else {
+                ChatBubble(text = message.message)
+            }
         }
     }
 }
