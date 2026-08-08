@@ -1,14 +1,16 @@
 package com.li_routi.feature.mypage.vm
 
 /**
- * 마이페이지 화면 상태.
+ * 마이페이지 화면 상태. [nickname]/[email]은 `GET /api/members/me` 조회 결과로 채워진다.
  *
- * 아직 프로필 조회 API가 없어 [nickname]/[email]은 샘플 값으로 초기화된다 — 실제 사용자 프로필 연동은
- * 이번 범위 밖이며, 연동 시 이 상태를 채우는 use case만 [MyPageViewModel]에 추가하면 된다.
+ * [isProfileLoaded]가 true가 되기 전에는 프로필 수정 화면 진입을 막는다 — 조회 응답이 오기 전에
+ * 진입하면 [nickname]이 빈 값으로 초기화됐다가 응답 도착 시 바뀌면서 입력 중이던 값이 날아가기 때문.
  */
 data class MyPageUiState(
-    val nickname: String = "잠자는개구리",
-    val email: String = "example@gamil.com",
+    val nickname: String = "",
+    val email: String = "",
+    val isProfileLoaded: Boolean = false,
+    val isSavingProfile: Boolean = false,
 )
 
 /** 마이페이지에서 발생하는 일회성 내비게이션 이벤트. */
@@ -30,4 +32,10 @@ sealed interface MyPageUiEvent {
 
     /** "계정 관리" 탭 → 계정 관리 화면 진입 */
     data object NavigateToAccountManage : MyPageUiEvent
+
+    /** 프로필(닉네임) 저장 성공 → 마이페이지로 복귀 */
+    data object ProfileSaved : MyPageUiEvent
+
+    /** 프로필 저장 실패 → 에러 메시지 노출 */
+    data class ShowError(val message: String) : MyPageUiEvent
 }
