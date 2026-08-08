@@ -112,7 +112,7 @@ fun LiroutiBottomSheetField(
     ) {
         Text(text = label, style = FieldLabelTextStyle, color = LiroutiTheme.colors.labelSub)
         Row(
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = value, style = FieldValueTextStyle, color = LiroutiTheme.colors.labelSub)
@@ -128,6 +128,9 @@ fun LiroutiBottomSheetRepeatField(
     onDayClick: (Int) -> Unit,
     modifier: Modifier = Modifier,
     label: String = "반복",
+    /** null이면 헤더 클릭 없음. 접기/펼치기용. */
+    onHeaderClick: (() -> Unit)? = null,
+    headerTrailingExpanded: Boolean = false,
 ) {
     Column(
         modifier = modifier
@@ -140,18 +143,111 @@ fun LiroutiBottomSheetRepeatField(
         Row(
             modifier = Modifier
                 .fillMaxWidth()
+                .then(
+                    if (onHeaderClick != null) Modifier.clickable(onClick = onHeaderClick)
+                    else Modifier,
+                )
                 .padding(vertical = 8.dp),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically,
         ) {
             Text(text = label, style = FieldLabelTextStyle, color = LiroutiTheme.colors.labelSub)
-            Text(text = value, style = FieldValueTextStyle, color = LiroutiTheme.colors.labelSub)
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(text = value, style = FieldValueTextStyle, color = LiroutiTheme.colors.labelSub)
+                if (onHeaderClick != null) {
+                    if (headerTrailingExpanded) {
+                        LiroutiChevronUpIcon(
+                            modifier = Modifier.size(16.dp),
+                            color = LiroutiTheme.colors.labelSub,
+                        )
+                    } else {
+                        LiroutiChevronDownIcon(
+                            modifier = Modifier.size(16.dp),
+                            color = LiroutiTheme.colors.labelSub,
+                        )
+                    }
+                }
+            }
         }
         LiroutiDivider(color = LiroutiTheme.colors.borderSub)
         LiroutiDaySelector(
             selectedDays = selectedDays,
             onDayClick = onDayClick,
             modifier = Modifier.padding(horizontal = 12.dp),
+        )
+    }
+}
+
+/**
+ * Figma DS Bottom Sheet `시작시간` / `마감시간` 필드.
+ * 펼침 시 헤더 + Divider + 타임휠이 하나의 fill 카드 안에 들어간다.
+ */
+@Composable
+fun LiroutiBottomSheetTimeField(
+    label: String,
+    time: LiroutiClockTime,
+    expanded: Boolean,
+    onHeaderClick: () -> Unit,
+    onTimeChange: (LiroutiClockTime) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    if (expanded) {
+        Column(
+            modifier = modifier
+                .fillMaxWidth()
+                .background(LiroutiTheme.colors.backgroundFill, RoundedCornerShape(4.dp))
+                .padding(horizontal = 12.dp)
+                .padding(top = 5.dp, bottom = 14.dp),
+            verticalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clickable(onClick = onHeaderClick)
+                    .padding(vertical = 8.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                Text(
+                    text = label,
+                    style = FieldLabelTextStyle,
+                    color = LiroutiTheme.colors.labelSub,
+                )
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = time.toDisplayText(),
+                        style = FieldValueTextStyle,
+                        color = LiroutiTheme.colors.labelSub,
+                    )
+                    LiroutiChevronUpIcon(
+                        modifier = Modifier.size(16.dp),
+                        color = LiroutiTheme.colors.labelSub,
+                    )
+                }
+            }
+            LiroutiDivider(color = LiroutiTheme.colors.borderSub)
+            LiroutiTimeWheelPicker(
+                value = time,
+                onValueChange = onTimeChange,
+            )
+        }
+    } else {
+        LiroutiBottomSheetField(
+            label = label,
+            value = time.toDisplayText(),
+            modifier = modifier.clickable(onClick = onHeaderClick),
+            trailing = {
+                LiroutiChevronDownIcon(
+                    modifier = Modifier.size(16.dp),
+                    color = LiroutiTheme.colors.labelSub,
+                )
+            },
         )
     }
 }
@@ -170,7 +266,7 @@ fun LiroutiBottomSheetDeleteButton(
     )
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "ListItem")
 @Composable
 private fun LiroutiBottomSheetListItemPreview() {
     LiroutiFrontendTheme {
@@ -182,22 +278,34 @@ private fun LiroutiBottomSheetListItemPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "TimeField 접힘")
 @Composable
-private fun LiroutiBottomSheetFieldPreview() {
+private fun LiroutiBottomSheetTimeFieldCollapsedPreview() {
     LiroutiFrontendTheme {
         Column(
             modifier = Modifier.padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
-            LiroutiBottomSheetField(label = "마감시간", value = "오후 11:00")
-            LiroutiBottomSheetRepeatField(value = "없음", selectedDays = emptySet(), onDayClick = {})
+            LiroutiBottomSheetTimeField(
+                label = "시작시간",
+                time = LiroutiClockTime.DefaultMorning,
+                expanded = false,
+                onHeaderClick = {},
+                onTimeChange = {},
+            )
+            LiroutiBottomSheetTimeField(
+                label = "마감시간",
+                time = LiroutiClockTime.DefaultEvening,
+                expanded = false,
+                onHeaderClick = {},
+                onTimeChange = {},
+            )
             LiroutiBottomSheetField(
-                label = "알람 시간",
+                label = "반복",
                 value = "없음",
                 trailing = {
-                    LiroutiChevronRightIcon(
-                        modifier = Modifier.size(20.dp),
+                    LiroutiChevronDownIcon(
+                        modifier = Modifier.size(16.dp),
                         color = LiroutiTheme.colors.labelSub,
                     )
                 },
@@ -206,7 +314,74 @@ private fun LiroutiBottomSheetFieldPreview() {
     }
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, name = "TimeField 시작시간 펼침")
+@Composable
+private fun LiroutiBottomSheetTimeFieldStartExpandedPreview() {
+    LiroutiFrontendTheme {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            LiroutiBottomSheetTimeField(
+                label = "시작시간",
+                time = LiroutiClockTime.DefaultMorning,
+                expanded = true,
+                onHeaderClick = {},
+                onTimeChange = {},
+            )
+            LiroutiBottomSheetTimeField(
+                label = "마감시간",
+                time = LiroutiClockTime.DefaultEvening,
+                expanded = false,
+                onHeaderClick = {},
+                onTimeChange = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "TimeField 마감시간 펼침")
+@Composable
+private fun LiroutiBottomSheetTimeFieldEndExpandedPreview() {
+    LiroutiFrontendTheme {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(2.dp),
+        ) {
+            LiroutiBottomSheetTimeField(
+                label = "시작시간",
+                time = LiroutiClockTime.DefaultMorning,
+                expanded = false,
+                onHeaderClick = {},
+                onTimeChange = {},
+            )
+            LiroutiBottomSheetTimeField(
+                label = "마감시간",
+                time = LiroutiClockTime.DefaultEvening,
+                expanded = true,
+                onHeaderClick = {},
+                onTimeChange = {},
+            )
+        }
+    }
+}
+
+@Preview(showBackground = true, name = "Repeat 펼침")
+@Composable
+private fun LiroutiBottomSheetRepeatFieldExpandedPreview() {
+    LiroutiFrontendTheme {
+        LiroutiBottomSheetRepeatField(
+            value = "월요일마다",
+            selectedDays = setOf(1),
+            onDayClick = {},
+            onHeaderClick = {},
+            headerTrailingExpanded = true,
+            modifier = Modifier.padding(16.dp),
+        )
+    }
+}
+
+@Preview(showBackground = true, name = "DeleteButton")
 @Composable
 private fun LiroutiBottomSheetDeleteButtonPreview() {
     LiroutiFrontendTheme {

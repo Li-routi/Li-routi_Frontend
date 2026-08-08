@@ -141,6 +141,30 @@ fun LiroutiArrowUpIcon(
 }
 
 @Composable
+fun LiroutiChevronUpIcon(
+    modifier: Modifier = Modifier,
+    color: Color = Color.Unspecified,
+) {
+    Canvas(modifier = modifier) {
+        val strokeColor = if (color == Color.Unspecified) Color.Black else color
+        val path = Path().apply {
+            moveTo(size.width * 0.1875f, size.height * 0.625f)
+            lineTo(size.width * 0.5f, size.height * 0.3125f)
+            lineTo(size.width * 0.8125f, size.height * 0.625f)
+        }
+        drawPath(
+            path = path,
+            color = strokeColor,
+            style = Stroke(
+                width = 1.6.dp.toPx(),
+                cap = StrokeCap.Round,
+                join = StrokeJoin.Round,
+            ),
+        )
+    }
+}
+
+@Composable
 fun LiroutiChevronDownIcon(
     modifier: Modifier = Modifier,
     color: Color = Color.Unspecified,
@@ -217,6 +241,7 @@ private fun LiroutiBottomSheetIconsPreview() {
             LiroutiChevronRightIcon(modifier = Modifier.size(24.dp))
             LiroutiChevronLeftIcon(modifier = Modifier.size(24.dp))
             LiroutiArrowUpIcon(modifier = Modifier.size(24.dp))
+            LiroutiChevronUpIcon(modifier = Modifier.size(24.dp))
             LiroutiChevronDownIcon(modifier = Modifier.size(24.dp))
             LiroutiPlusIcon(modifier = Modifier.size(24.dp))
             LiroutiDotMarkIcon(modifier = Modifier.size(24.dp))

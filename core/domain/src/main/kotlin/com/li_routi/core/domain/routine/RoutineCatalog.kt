@@ -45,3 +45,16 @@ data class CreateRoutinesResult(
     val routines: List<CreatedRoutine>,
     val activeRoutineCount: Int,
 )
+
+/** GET /api/routines — 활성 개인 루틴 목록. */
+data class MemberRoutineList(
+    val routines: List<CreatedRoutine>,
+)
+
+/** PATCH /api/routines/{routineId} 요청. */
+data class UpdateMemberRoutine(
+    val name: String,
+    val endTime: String,
+    val repeatDays: List<String>,
+    val alarmTime: String? = null,
+)

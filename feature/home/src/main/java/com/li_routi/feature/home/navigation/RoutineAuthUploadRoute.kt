@@ -76,8 +76,11 @@ fun RoutineAuthUploadRoute(
         selectedRoutineIds = uiState.selectedRoutineIds,
         isUploadEnabled = uiState.isUploadEnabled,
         isUploading = uiState.isUploading,
-        showUploadFailedToast = uiState.showUploadFailedToast,
-        uploadErrorMessage = uiState.uploadErrorMessage,
+        isUploadCompleted = uiState.isUploadCompleted,
+        toastMessage = uiState.toastMessage,
+        showExitConfirmDialog = uiState.showExitConfirmDialog,
+        onDismissExitConfirmDialog = viewModel::onDismissExitConfirmDialog,
+        onConfirmExit = viewModel::onConfirmExit,
         photoUri = uiState.photoUri,
         modifier = modifier,
     )

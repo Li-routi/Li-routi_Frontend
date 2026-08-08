@@ -3,6 +3,7 @@ package com.li_routi.core.data.mapper
 import com.li_routi.core.data.network.dto.request.CreateRoutineRequestItem
 import com.li_routi.core.data.network.dto.response.CreateRoutinesResultResponse
 import com.li_routi.core.data.network.dto.response.CreatedRoutineResponse
+import com.li_routi.core.data.network.dto.response.MemberRoutineListResponse
 import com.li_routi.core.data.network.dto.response.RoutineCategoryListResponse
 import com.li_routi.core.data.network.dto.response.RoutineCategoryResponse
 import com.li_routi.core.data.network.dto.response.RoutineTemplateListResponse
@@ -10,9 +11,14 @@ import com.li_routi.core.data.network.dto.response.RoutineTemplateResponse
 import com.li_routi.core.domain.routine.CreateRoutineItem
 import com.li_routi.core.domain.routine.CreateRoutinesResult
 import com.li_routi.core.domain.routine.CreatedRoutine
+import com.li_routi.core.domain.routine.MemberRoutineList
 import com.li_routi.core.domain.routine.RoutineCategory
 import com.li_routi.core.domain.routine.RoutineCategoryList
 import com.li_routi.core.domain.routine.RoutineTemplate
+
+fun MemberRoutineListResponse.toDomain(): MemberRoutineList = MemberRoutineList(
+    routines = routines.map { it.toDomain() },
+)
 
 fun RoutineCategoryListResponse.toDomain(): RoutineCategoryList = RoutineCategoryList(
     categories = categories.map { it.toDomain() },

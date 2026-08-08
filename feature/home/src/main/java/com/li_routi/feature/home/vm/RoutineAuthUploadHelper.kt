@@ -54,6 +54,7 @@ fun List<RoutineChecklistItemUiModel>.toAuthSelectables(): List<RoutineAuthSelec
                     RoutineChecklistKind.Member -> RoutineAuthBadgeTone.Secondary
                     RoutineChecklistKind.Group -> RoutineAuthBadgeTone.Secondary
                 },
+                categoryColor = item.categoryColor,
                 memberRoutineId = when (item.kind) {
                     RoutineChecklistKind.Member -> item.routineId
                     RoutineChecklistKind.Group -> null

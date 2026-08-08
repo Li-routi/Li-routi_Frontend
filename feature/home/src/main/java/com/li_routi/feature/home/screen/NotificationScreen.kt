@@ -93,7 +93,7 @@ fun NotificationScreen(
                 }
                 Text(
                     text = "7일 전 알림까지 확인할 수 있어요.",
-                    style = LiroutiTheme.typography.body2,
+                    style = LiroutiTheme.typography.body3Regular,
                     color = LiroutiTheme.colors.labelInfo,
                     textAlign = TextAlign.Center,
                     modifier = Modifier
