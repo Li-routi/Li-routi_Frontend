@@ -42,9 +42,9 @@ class MyPageViewModel(
         viewModelScope.launch {
             when (val result = getMyInfoUseCase()) {
                 is ResultState.Success -> _uiState.update {
-                    it.copy(nickname = result.data.nickname, email = result.data.email)
+                    it.copy(nickname = result.data.nickname, email = result.data.email, isProfileLoaded = true)
                 }
-                is ResultState.Error -> Unit
+                is ResultState.Error -> _uiState.update { it.copy(isProfileLoaded = true) }
                 ResultState.Loading -> Unit
             }
         }
@@ -53,6 +53,7 @@ class MyPageViewModel(
     /** 닉네임 변경 화면에서 "저장" 탭 시 호출된다. */
     fun onSaveNickname(newNickname: String) {
         viewModelScope.launch {
+            if (_uiState.value.isSavingProfile) return@launch
             _uiState.update { it.copy(isSavingProfile = true) }
             when (val result = updateProfileUseCase(newNickname)) {
                 is ResultState.Success -> {
@@ -72,7 +73,10 @@ class MyPageViewModel(
 
     override fun onNotificationClick() = Unit
     override fun onSettingsClick() = Unit
+
+    // 조회 응답이 오기 전엔 진입을 막는다 — MyPageUiState.isProfileLoaded 문서 참고.
     override fun onEditProfileClick() {
+        if (!_uiState.value.isProfileLoaded) return
         viewModelScope.launch { _uiEvent.emit(MyPageUiEvent.NavigateToEditProfile) }
     }
     override fun onMyVerificationClick() {

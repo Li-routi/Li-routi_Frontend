@@ -1,9 +1,15 @@
 package com.li_routi.feature.mypage.vm
 
-/** 마이페이지 화면 상태. [nickname]/[email]은 `GET /api/members/me` 조회 결과로 채워진다. */
+/**
+ * 마이페이지 화면 상태. [nickname]/[email]은 `GET /api/members/me` 조회 결과로 채워진다.
+ *
+ * [isProfileLoaded]가 true가 되기 전에는 프로필 수정 화면 진입을 막는다 — 조회 응답이 오기 전에
+ * 진입하면 [nickname]이 빈 값으로 초기화됐다가 응답 도착 시 바뀌면서 입력 중이던 값이 날아가기 때문.
+ */
 data class MyPageUiState(
     val nickname: String = "",
     val email: String = "",
+    val isProfileLoaded: Boolean = false,
     val isSavingProfile: Boolean = false,
 )
 

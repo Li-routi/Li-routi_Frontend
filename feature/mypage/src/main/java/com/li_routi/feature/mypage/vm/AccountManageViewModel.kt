@@ -25,6 +25,8 @@ class AccountManageViewModel(
     private val _uiEvent = MutableSharedFlow<AccountManageUiEvent>(extraBufferCapacity = 1)
     val uiEvent: SharedFlow<AccountManageUiEvent> = _uiEvent.asSharedFlow()
 
+    private var isWithdrawing = false
+
     fun onLogoutConfirmed() {
         viewModelScope.launch {
             when (val result = logoutUseCase()) {
@@ -35,13 +37,18 @@ class AccountManageViewModel(
         }
     }
 
+    // 탈퇴 확인 모달은 확정 즉시 닫히지만, 재호출(예: 프로그램적 재진입)로 DELETE가 중복 발생하지
+    // 않도록 진행 중 여부를 별도로 막는다.
     fun onWithdrawConfirmed() {
+        if (isWithdrawing) return
+        isWithdrawing = true
         viewModelScope.launch {
             when (val result = withdrawUseCase()) {
                 is ResultState.Success -> _uiEvent.emit(AccountManageUiEvent.WithdrawSucceeded)
                 is ResultState.Error -> _uiEvent.emit(AccountManageUiEvent.ShowError(result.message))
                 ResultState.Loading -> Unit
             }
+            isWithdrawing = false
         }
     }
 }
