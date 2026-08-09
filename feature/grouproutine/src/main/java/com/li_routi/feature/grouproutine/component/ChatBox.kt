@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -26,6 +27,9 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
 
 private val ChatBubbleTextColor = Color(0xFF000000)
 
@@ -65,6 +69,65 @@ fun ChatMessageUiModel.isGroupStart(previous: ChatMessageUiModel?): Boolean {
     if (previous.isMine != isMine) return true
     if (!isMine && previous.senderName != senderName) return true
     return previous.sentAtMillis / 60_000 != sentAtMillis / 60_000
+}
+
+/** [sentAtMillis]를 기기 로컬 타임존 기준 날짜로 변환한다. */
+internal fun Long.toLocalDate(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalDate()
+
+/**
+ * 이 메시지 앞에 날짜 구분선([ChatDateDivider])을 새로 보여줘야 하는지 판단한다.
+ *
+ * 이전 메시지가 없으면(=첫 채팅) true, 있으면 같은 날짜인지 비교해서 날짜가 하루라도
+ * 달라졌을 때만 true를 반환한다.
+ */
+fun ChatMessageUiModel.isNewDate(previous: ChatMessageUiModel?): Boolean {
+    if (previous == null) return true
+    return previous.sentAtMillis.toLocalDate() != sentAtMillis.toLocalDate()
+}
+
+private val ChatDateDividerShape = RoundedCornerShape(6.dp)
+private val ChatDateDividerBackground = Color(0xFF5D5D5D).copy(alpha = 0.60f)
+
+// CSS padding: 8px 8px 8px 12px (top right bottom left)
+private val ChatDateDividerPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+
+// 위쪽은 LazyColumn의 verticalArrangement(spacedBy 10dp)가 이전 말풍선과의 간격을 이미
+// 채워주고 있어서, 그 10dp를 뺀 나머지(10dp)만 여기서 더하면 합쳐서 20dp가 된다. 아래쪽은
+// 같은 아이템(Column) 안에서 바로 다음 닉네임/말풍선이 이어지므로 spacedBy가 관여하지 않아
+// 20dp를 그대로 준다.
+private val ChatDateDividerTopPadding = 10.dp
+private val ChatDateDividerBottomPadding = 20.dp
+
+/**
+ * 채팅 목록 중간에 들어가는 날짜 구분선. [ChatMessageUiModel.isNewDate]가 true인 메시지
+ * 바로 앞에 표시한다. 이전 그룹의 마지막 말풍선 기준 20dp 아래, 다음 그룹 첫 메시지의 닉네임
+ * 기준 20dp 위에 오도록 [ChatDateDividerTopPadding]/[ChatDateDividerBottomPadding]으로 맞춘다.
+ *
+ * 배경은 반투명 회색 pill 모양이다 — 실제 CSS 시안엔 `backdrop-filter: blur(5px)`(뒤에 있는
+ * 말풍선을 블러 처리)도 있지만, Compose 기본 `blur()`는 이 컴포저블 자기 자신(글씨 포함)을
+ * 블러 처리해버려서 못 쓴다. 진짜 backdrop blur는 API 31+ 전용이거나 별도 라이브러리가 필요해서
+ * (minSdk 24라 바로 못 씀) 반투명 배경색만으로 대체했다.
+ */
+@Composable
+fun ChatDateDivider(sentAtMillis: Long, modifier: Modifier = Modifier) {
+    val date = sentAtMillis.toLocalDate()
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = ChatDateDividerTopPadding, bottom = ChatDateDividerBottomPadding),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일",
+            style = LiroutiTheme.typography.captionMedium,
+            color = Color.White,
+            modifier = Modifier
+                .clip(ChatDateDividerShape)
+                .background(ChatDateDividerBackground)
+                .padding(ChatDateDividerPadding),
+        )
+    }
 }
 
 /**

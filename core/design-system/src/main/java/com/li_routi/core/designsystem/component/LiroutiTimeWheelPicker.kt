@@ -135,12 +135,13 @@ fun LiroutiTimeWheelPicker(
 }
 
 @Composable
-private fun WheelNumberPicker(
+internal fun WheelNumberPicker(
     values: Array<String>,
     selectedIndex: Int,
     onSelectedIndexChange: (Int) -> Unit,
     selectedTextColorArgb: Int,
     modifier: Modifier = Modifier,
+    wrapSelectorWheel: Boolean = true,
 ) {
     AndroidView(
         modifier = modifier.height(90.dp),
@@ -149,7 +150,7 @@ private fun WheelNumberPicker(
                 minValue = 0
                 maxValue = values.lastIndex
                 displayedValues = values
-                wrapSelectorWheel = true
+                this.wrapSelectorWheel = wrapSelectorWheel
                 descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
                 try {
                     NumberPicker::class.java.getDeclaredField("mSelectionDividerHeight").apply {

@@ -29,6 +29,7 @@ coil = "2.7.0"
 krossbow = "9.3.0"
 googleServicesPlugin = "4.4.2"
 firebaseBom = "33.14.0"
+desugarJdkLibs = "2.1.5"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
@@ -97,6 +98,9 @@ krossbow-websocket-okhttp = { group = "org.hildan.krossbow", name = "krossbow-we
 # Firebase (FCM)
 firebase-bom = { group = "com.google.firebase", name = "firebase-bom", version.ref = "firebaseBom" }
 firebase-messaging-ktx = { group = "com.google.firebase", name = "firebase-messaging-ktx" }
+
+# Core Library Desugaring (minSdk 24에서 java.time 사용)
+android-desugar-jdk-libs = { group = "com.android.tools", name = "desugar_jdk_libs", version.ref = "desugarJdkLibs" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }
