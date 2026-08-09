@@ -39,11 +39,23 @@ interface GroupRoutineRepository {
     /** 그룹에서 나감. OWNER는 나갈 수 없어서 [LeaveGroupResult.OwnerMustDelete]로 돌아옴 */
     suspend fun leaveGroup(groupId: Long): ResultState<LeaveGroupResult>
 
+    /** 초대코드로 그룹에 가입함 */
+    suspend fun joinGroup(inviteCode: String): ResultState<GroupJoinResult>
+
+    /** 가입 전에 초대코드로 그룹 정보를 미리 봄 */
+    suspend fun getGroupJoinPreview(inviteCode: String): ResultState<GroupJoinPreview>
+
+    /** 방 잠금/해제. 잠그면 초대코드로 새로 못 들어옴 */
+    suspend fun setGroupLock(groupId: Long, locked: Boolean): ResultState<Boolean>
+
+    /** 구성원을 강제 퇴장시킴. 방장만 가능함 */
+    suspend fun kickGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit>
+
+    /** 그룹 루틴을 삭제함 */
+    suspend fun deleteGroupRoutine(groupId: Long, routineId: Long): ResultState<Unit>
+
     /** 로그인한 회원이 속한 모든 그룹의 오늘자 루틴을 조회함 */
     suspend fun getTodayGroupRoutines(): ResultState<List<TodayGroupRoutine>>
-
-    /** 그룹 초대코드를 새로 발급함 */
-    suspend fun issueInviteCode(groupId: Long): ResultState<GroupInviteCode>
 
     /** 그룹의 현재 초대코드를 조회함 */
     suspend fun getInviteCode(groupId: Long): ResultState<GroupInviteCode>

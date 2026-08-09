@@ -4,6 +4,8 @@ import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.data.network.dto.response.GroupCreateResultResponse
 import com.li_routi.core.data.network.dto.response.GroupDetailResponse
 import com.li_routi.core.data.network.dto.response.GroupInviteCodeResponse
+import com.li_routi.core.data.network.dto.response.GroupJoinPreviewResponse
+import com.li_routi.core.data.network.dto.response.GroupJoinResultResponse
 import com.li_routi.core.data.network.dto.response.GroupMemberActivityResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryListResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
@@ -16,6 +18,8 @@ import com.li_routi.core.data.network.dto.response.TodayGroupRoutineResponse
 import com.li_routi.core.domain.grouproutine.CreatedGroup
 import com.li_routi.core.domain.grouproutine.GroupDetail
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
+import com.li_routi.core.domain.grouproutine.GroupJoinPreview
+import com.li_routi.core.domain.grouproutine.GroupJoinResult
 import com.li_routi.core.domain.grouproutine.GroupMemberActivity
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
@@ -51,6 +55,22 @@ fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberAct
     // 할당이 없는 구성원은 서버가 dailyProgress를 안 내려줄 수 있어서 0/0으로 채움
     completedCount = dailyProgress?.completedCount ?: 0L,
     totalCount = dailyProgress?.totalCount ?: 0L,
+)
+
+fun GroupJoinResultResponse.toDomain(): GroupJoinResult = GroupJoinResult(
+    groupId = groupId,
+    name = name,
+    memberStatus = memberStatus,
+)
+
+fun GroupJoinPreviewResponse.toDomain(): GroupJoinPreview = GroupJoinPreview(
+    groupId = groupId,
+    name = name,
+    activeMemberCount = activeMemberCount,
+    maxMemberCount = maxMemberCount,
+    totalRoutineCount = totalRoutineCount,
+    joinable = joinable,
+    unavailableReason = unavailableReason,
 )
 
 fun GroupRoutineScheduleResponse.toDomain(): GroupRoutineSchedule = GroupRoutineSchedule(

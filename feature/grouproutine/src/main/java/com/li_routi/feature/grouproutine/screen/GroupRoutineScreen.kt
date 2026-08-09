@@ -182,6 +182,7 @@ fun GroupRoutineRoute(
         onLeaveRoomConfirmClick = viewModel::onLeaveRoomConfirmClick,
         onDismissDeleteRoomDialog = viewModel::onDismissDeleteRoomDialog,
         onDeleteRoomConfirmClick = viewModel::onDeleteRoomConfirmClick,
+        onMemberKickClick = viewModel::onMemberKickClick,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
         onTodoCheckedChange = viewModel::onTodoCheckedChange,
         onCertificationTabClick = viewModel::onCertificationTabClick,
@@ -250,6 +251,7 @@ private fun GroupRoutineScreen(
     onLeaveRoomConfirmClick: () -> Unit,
     onDismissDeleteRoomDialog: () -> Unit,
     onDeleteRoomConfirmClick: () -> Unit,
+    onMemberKickClick: () -> Unit,
     onCreateRoomDoneClick: () -> Unit,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
@@ -297,6 +299,7 @@ private fun GroupRoutineScreen(
                 onCertificationSummaryClick = onCertificationSummaryClick,
                 onMemberClick = onMemberClick,
                 onDismissMemberDialog = onDismissMemberDialog,
+                onMemberKickClick = onMemberKickClick,
                 onChatClick = onChatClick,
                 onMessageEditClick = onMessageEditClick,
                 onSettingsClick = onSettingsClick,
@@ -1950,6 +1953,7 @@ private fun GroupRoutineDetailScreen(
     onCertificationSummaryClick: () -> Unit,
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
+    onMemberKickClick: () -> Unit,
     onChatClick: () -> Unit,
     onMessageEditClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -1998,8 +2002,11 @@ private fun GroupRoutineDetailScreen(
     uiState.selectedMember?.let { member ->
         MemberProfileDialog(
             member = member,
+            // 방장만 내보낼 수 있고, 자기 자신은 못 내보냄
+            canKick = uiState.isCurrentUserLeader && !member.isMe,
             onDismissRequest = onDismissMemberDialog,
             onPokeClick = onDismissMemberDialog,
+            onKickClick = onMemberKickClick,
         )
     }
 }
@@ -3234,8 +3241,10 @@ private fun MemberSeat(
 @Composable
 private fun MemberProfileDialog(
     member: GroupMemberUiModel,
+    canKick: Boolean,
     onDismissRequest: () -> Unit,
     onPokeClick: () -> Unit,
+    onKickClick: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Surface(
@@ -3318,6 +3327,19 @@ private fun MemberProfileDialog(
                     }
                 }
                 PrimaryButton(text = "쿡쿡 찔러보기", enabled = true, onClick = onPokeClick)
+                // 디자인이 아직 없어서 임시로 붙여둔 내보내기 액션 — 시안 나오면 교체 필요함
+                if (canKick) {
+                    Text(
+                        text = "내보내기",
+                        color = DangerBase,
+                        style = LiroutiTheme.typography.body3,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .clickable(onClick = onKickClick)
+                            .padding(vertical = 8.dp),
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }
@@ -3810,6 +3832,7 @@ private fun GroupRoutineListPreview() {
             onLeaveRoomConfirmClick = {},
             onDismissDeleteRoomDialog = {},
             onDeleteRoomConfirmClick = {},
+            onMemberKickClick = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
@@ -3879,6 +3902,7 @@ private fun CreateRoomNamePreview() {
             onLeaveRoomConfirmClick = {},
             onDismissDeleteRoomDialog = {},
             onDeleteRoomConfirmClick = {},
+            onMemberKickClick = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},

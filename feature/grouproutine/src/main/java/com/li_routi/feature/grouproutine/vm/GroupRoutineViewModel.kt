@@ -20,18 +20,24 @@ import com.li_routi.core.domain.chat.UpdateChatReadPositionUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineCategoryUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
+import com.li_routi.core.domain.grouproutine.DeleteGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.DeleteGroupUseCase
+import com.li_routi.core.domain.grouproutine.GetGroupJoinPreviewUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
+import com.li_routi.core.domain.grouproutine.GetTodayGroupRoutinesUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
-import com.li_routi.core.domain.grouproutine.IssueGroupInviteCodeUseCase
+import com.li_routi.core.domain.grouproutine.GroupRoutineStatus
+import com.li_routi.core.domain.grouproutine.JoinGroupUseCase
+import com.li_routi.core.domain.grouproutine.KickGroupMemberUseCase
 import com.li_routi.core.domain.grouproutine.LeaveGroupResult
 import com.li_routi.core.domain.grouproutine.LeaveGroupUseCase
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.RepeatDay
+import com.li_routi.core.domain.grouproutine.SetGroupLockUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
@@ -53,9 +59,14 @@ class GroupRoutineViewModel(
     private val getGroupDetailUseCase: GetGroupDetailUseCase = GroupRoutineContainer.getGroupDetailUseCase,
     private val deleteGroupUseCase: DeleteGroupUseCase = GroupRoutineContainer.deleteGroupUseCase,
     private val leaveGroupUseCase: LeaveGroupUseCase = GroupRoutineContainer.leaveGroupUseCase,
+    private val joinGroupUseCase: JoinGroupUseCase = GroupRoutineContainer.joinGroupUseCase,
+    private val getGroupJoinPreviewUseCase: GetGroupJoinPreviewUseCase = GroupRoutineContainer.getGroupJoinPreviewUseCase,
+    private val setGroupLockUseCase: SetGroupLockUseCase = GroupRoutineContainer.setGroupLockUseCase,
+    private val kickGroupMemberUseCase: KickGroupMemberUseCase = GroupRoutineContainer.kickGroupMemberUseCase,
+    private val deleteGroupRoutineUseCase: DeleteGroupRoutineUseCase = GroupRoutineContainer.deleteGroupRoutineUseCase,
+    private val getTodayGroupRoutinesUseCase: GetTodayGroupRoutinesUseCase = GroupRoutineContainer.getTodayGroupRoutinesUseCase,
     private val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase = GroupRoutineContainer.getGroupInviteCodeUseCase,
     private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
-    private val issueGroupInviteCodeUseCase: IssueGroupInviteCodeUseCase = GroupRoutineContainer.issueGroupInviteCodeUseCase,
     private val getGroupRoutineCategoriesUseCase: GetGroupRoutineCategoriesUseCase = GroupRoutineContainer.getGroupRoutineCategoriesUseCase,
     private val createGroupRoutineCategoryUseCase: CreateGroupRoutineCategoryUseCase = GroupRoutineContainer.createGroupRoutineCategoryUseCase,
     private val getGroupRoutineVerificationsUseCase: GetGroupRoutineVerificationsUseCase = GroupRoutineContainer.getGroupRoutineVerificationsUseCase,
@@ -108,6 +119,7 @@ class GroupRoutineViewModel(
         if (routineId > 0L) {
             backendGroupId = routineId
             loadGroupDetail(routineId)
+            loadTodayRoutines(routineId)
         }
     }
 
@@ -643,16 +655,84 @@ class GroupRoutineViewModel(
     }
 
     fun onRoomLockClick() {
-        _uiState.update { state ->
-            val nextLocked = !state.isRoomLocked
-            state.copy(
-                isRoomLocked = nextLocked,
-                actionMessage = if (nextLocked) {
-                    "더 이상 다른 사람이 참여할 수 없습니다."
-                } else {
-                    "다른 사람이 참여할 수 있습니다."
-                },
-            )
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+        val nextLocked = !_uiState.value.isRoomLocked
+
+        viewModelScope.launch {
+            when (val result = setGroupLockUseCase(groupId, nextLocked)) {
+                // 토글 상태는 낙관적으로 바꾸지 않고 서버가 알려준 최종 값을 씀
+                is ResultState.Success -> _uiState.update {
+                    it.copy(
+                        isRoomLocked = result.data,
+                        actionMessage = if (result.data) {
+                            "더 이상 다른 사람이 참여할 수 없습니다."
+                        } else {
+                            "다른 사람이 참여할 수 있습니다."
+                        },
+                    )
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onMemberKickClick() {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+        val targetMemberId = _uiState.value.selectedMemberId ?: return
+
+        viewModelScope.launch {
+            when (val result = kickGroupMemberUseCase(groupId, targetMemberId)) {
+                is ResultState.Success -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            members = state.members.filterNot { it.id == targetMemberId },
+                            selectedMemberId = null,
+                            actionMessage = "멤버를 내보냈어요.",
+                        )
+                    }
+                    loadGroupDetail(groupId)
+                }
+
+                is ResultState.Error -> _uiState.update {
+                    it.copy(selectedMemberId = null, actionMessage = result.message)
+                }
+
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    /** 오늘자 그룹 루틴을 불러와 방 상세 하단 체크리스트를 채움 */
+    private fun loadTodayRoutines(groupId: Long) {
+        viewModelScope.launch {
+            when (val result = getTodayGroupRoutinesUseCase()) {
+                is ResultState.Success -> {
+                    // 조회 API가 내가 속한 모든 그룹을 한 번에 주기 때문에 현재 방 것만 걸러냄
+                    val todos = result.data
+                        .filter { it.groupId == groupId }
+                        .map { routine ->
+                            GroupTodoUiModel(
+                                id = routine.routineId,
+                                title = routine.title,
+                                deadline = routine.scheduledEndTime,
+                                category = routine.categoryName,
+                                isDone = routine.status == GroupRoutineStatus.COMPLETED,
+                            )
+                        }
+                    _uiState.update { it.copy(todos = todos) }
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
         }
     }
 
@@ -714,16 +794,67 @@ class GroupRoutineViewModel(
     }
 
     fun onInviteCodeConfirmClick() {
-        _uiState.update { state ->
-            if (state.inviteCodeInput.isBlank()) {
-                state.copy(actionMessage = "초대코드를 입력해주세요.")
-            } else {
-                state.copy(
-                    screenMode = GroupRoutineScreenMode.Detail,
-                    selectedRoutineId = state.routines.firstOrNull()?.id,
-                    inviteCodeInput = "",
-                    actionMessage = "그룹방에 참여했어요.",
-                )
+        val inviteCode = _uiState.value.inviteCodeInput.trim()
+        if (inviteCode.isBlank()) {
+            _uiState.update { it.copy(actionMessage = "초대코드를 입력해주세요.") }
+            return
+        }
+        if (_uiState.value.isSubmitting) return
+
+        _uiState.update { it.copy(isSubmitting = true) }
+        viewModelScope.launch {
+            try {
+                // 가입 전에 미리보기로 막힌 이유(인원 초과, 잠긴 방 등)를 먼저 알려줌
+                val preview = getGroupJoinPreviewUseCase(inviteCode)
+                if (preview is ResultState.Error) {
+                    _uiState.update { it.copy(actionMessage = preview.message) }
+                    return@launch
+                }
+                if (preview is ResultState.Success && !preview.data.joinable) {
+                    _uiState.update {
+                        it.copy(actionMessage = preview.data.unavailableReason ?: "지금은 참여할 수 없는 방이에요.")
+                    }
+                    return@launch
+                }
+
+                when (val result = joinGroupUseCase(inviteCode)) {
+                    is ResultState.Success -> {
+                        val joined = result.data
+                        backendGroupId = joined.groupId
+                        val joinedRoutine = GroupRoutineUiModel(
+                            id = joined.groupId,
+                            title = joined.name,
+                            lastActiveLabel = "방금 전 활동",
+                            memberCount = 1,
+                            routineCount = 0,
+                            statusLabel = "진행중",
+                            isCompleted = false,
+                            todayCompletedCount = 0,
+                            todayTotalCount = 0,
+                            streakDays = 0,
+                            monthlyAchievementRate = 0,
+                            todayCertificationCount = 0,
+                        )
+                        _uiState.update { state ->
+                            val others = state.routines.filter { it.id > 0L && it.id != joined.groupId }
+                            state.copy(
+                                screenMode = GroupRoutineScreenMode.Detail,
+                                selectedRoutineId = joined.groupId,
+                                routines = listOf(joinedRoutine) + others,
+                                inviteCodeInput = "",
+                                actionMessage = "그룹방에 참여했어요.",
+                            )
+                        }
+                        // 실제 멤버/루틴 수는 상세 조회로 채움
+                        loadGroupDetail(joined.groupId)
+                        loadTodayRoutines(joined.groupId)
+                    }
+
+                    is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -1083,13 +1214,44 @@ class GroupRoutineViewModel(
     }
 
     fun onConfirmDeleteRoutineClick() {
+        val state = _uiState.value
+        val editingId = state.editingRoutineId
+        val groupId = currentGroupId()
+        // 이미 서버에 있는 루틴(그룹 루틴 관리 화면 진입)일 때만 실제로 삭제 요청함.
+        // 방 만들기 전 루틴 선택 단계랑 기본 샘플 루틴(음수 id)은 로컬 상태만 지움
+        val shouldCallApi = state.screenMode == GroupRoutineScreenMode.GroupRoutineManage &&
+            editingId != null && editingId > 0L && groupId != null
+
+        clearRoutineDraft(editingId)
+        if (!shouldCallApi) return
+
+        viewModelScope.launch {
+            when (val result = deleteGroupRoutineUseCase(groupId, editingId)) {
+                is ResultState.Success -> {
+                    _uiState.update { it.copy(actionMessage = "루틴을 삭제했어요.") }
+                    loadTodayRoutines(groupId)
+                }
+
+                // 서버에서 못 지웠으면 목록에서 지운 걸 되돌려야 해서 다시 불러옴
+                is ResultState.Error -> {
+                    _uiState.update { it.copy(actionMessage = result.message) }
+                    loadTodayRoutines(groupId)
+                }
+
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun clearRoutineDraft(editingId: Long?) {
         _uiState.update { state ->
-            val editingId = state.editingRoutineId ?: return@update state.copy(
-                isRoutineSettingSheetVisible = false,
-                isDeleteRoutineDialogVisible = false,
-            )
             state.copy(
-                routineOptions = state.routineOptions.filterNot { it.id == editingId },
+                routineOptions = if (editingId == null) {
+                    state.routineOptions
+                } else {
+                    state.routineOptions.filterNot { it.id == editingId }
+                },
+                todos = if (editingId == null) state.todos else state.todos.filterNot { it.id == editingId },
                 isRoutineSettingSheetVisible = false,
                 isDeleteRoutineDialogVisible = false,
                 editingRoutineId = null,

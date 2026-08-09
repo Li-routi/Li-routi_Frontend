@@ -9,12 +9,15 @@ import com.li_routi.core.data.network.dto.request.CreateGroupRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineCategoryRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.request.GroupRoutineScheduleRequest
+import com.li_routi.core.data.network.dto.request.JoinGroupRequest
 import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.service.GroupRoutineApiService
 import com.li_routi.core.domain.grouproutine.CreatedGroup
 import com.li_routi.core.domain.grouproutine.GroupDetail
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
+import com.li_routi.core.domain.grouproutine.GroupJoinPreview
+import com.li_routi.core.domain.grouproutine.GroupJoinResult
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
@@ -126,12 +129,29 @@ class GroupRoutineRepositoryImpl(
         }
     }
 
-    override suspend fun getTodayGroupRoutines(): ResultState<List<TodayGroupRoutine>> = safeApiCall {
-        api.getTodayRoutines().unwrap().toDomain()
+    override suspend fun joinGroup(inviteCode: String): ResultState<GroupJoinResult> = safeApiCall {
+        api.joinGroup(JoinGroupRequest(inviteCode = inviteCode)).unwrap().toDomain()
     }
 
-    override suspend fun issueInviteCode(groupId: Long): ResultState<GroupInviteCode> = safeApiCall {
-        api.issueInviteCode(groupId).unwrap().toDomain()
+    override suspend fun getGroupJoinPreview(inviteCode: String): ResultState<GroupJoinPreview> = safeApiCall {
+        api.getJoinPreview(inviteCode).unwrap().toDomain()
+    }
+
+    override suspend fun setGroupLock(groupId: Long, locked: Boolean): ResultState<Boolean> = safeApiCall {
+        val response = if (locked) api.lockGroup(groupId) else api.unlockGroup(groupId)
+        response.unwrap().isLocked
+    }
+
+    override suspend fun kickGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {
+        api.kickMember(groupId = groupId, targetMemberId = targetMemberId).ensureSuccess()
+    }
+
+    override suspend fun deleteGroupRoutine(groupId: Long, routineId: Long): ResultState<Unit> = safeApiCall {
+        api.deleteRoutine(groupId = groupId, routineId = routineId).ensureSuccess()
+    }
+
+    override suspend fun getTodayGroupRoutines(): ResultState<List<TodayGroupRoutine>> = safeApiCall {
+        api.getTodayRoutines().unwrap().toDomain()
     }
 
     override suspend fun getInviteCode(groupId: Long): ResultState<GroupInviteCode> = safeApiCall {

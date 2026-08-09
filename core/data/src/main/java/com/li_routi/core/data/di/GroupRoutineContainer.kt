@@ -5,15 +5,19 @@ import com.li_routi.core.data.repository.GroupRoutineRepositoryImpl
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineCategoryUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
+import com.li_routi.core.domain.grouproutine.DeleteGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.DeleteGroupUseCase
+import com.li_routi.core.domain.grouproutine.GetGroupJoinPreviewUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetTodayGroupRoutinesUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
-import com.li_routi.core.domain.grouproutine.IssueGroupInviteCodeUseCase
+import com.li_routi.core.domain.grouproutine.JoinGroupUseCase
+import com.li_routi.core.domain.grouproutine.KickGroupMemberUseCase
 import com.li_routi.core.domain.grouproutine.LeaveGroupUseCase
+import com.li_routi.core.domain.grouproutine.SetGroupLockUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
 
 /**
@@ -50,12 +54,28 @@ object GroupRoutineContainer {
         LeaveGroupUseCase(repository)
     }
 
-    val getTodayGroupRoutinesUseCase: GetTodayGroupRoutinesUseCase by lazy {
-        GetTodayGroupRoutinesUseCase(repository)
+    val joinGroupUseCase: JoinGroupUseCase by lazy {
+        JoinGroupUseCase(repository)
     }
 
-    val issueGroupInviteCodeUseCase: IssueGroupInviteCodeUseCase by lazy {
-        IssueGroupInviteCodeUseCase(repository)
+    val getGroupJoinPreviewUseCase: GetGroupJoinPreviewUseCase by lazy {
+        GetGroupJoinPreviewUseCase(repository)
+    }
+
+    val setGroupLockUseCase: SetGroupLockUseCase by lazy {
+        SetGroupLockUseCase(repository)
+    }
+
+    val kickGroupMemberUseCase: KickGroupMemberUseCase by lazy {
+        KickGroupMemberUseCase(repository)
+    }
+
+    val deleteGroupRoutineUseCase: DeleteGroupRoutineUseCase by lazy {
+        DeleteGroupRoutineUseCase(repository)
+    }
+
+    val getTodayGroupRoutinesUseCase: GetTodayGroupRoutinesUseCase by lazy {
+        GetTodayGroupRoutinesUseCase(repository)
     }
 
     val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase by lazy {
