@@ -86,12 +86,14 @@ data class GroupRoutineUiState(
     val isRoomLocked: Boolean = false,
     val isCurrentUserLeader: Boolean = true,
     val showOnlyMyCertifications: Boolean = false,
+    val selectedCertificationMemberName: String? = null,
     val isNewCertificationDialogVisible: Boolean = false,
     val isEmptyState: Boolean = false,
     val searchInput: String = "",
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",
     val groupInviteCode: String? = null,
+    val unreadChatCount: Int = 0,
     val selectedCategory: String = "전체",
     // PR 반영: 백엔드 카테고리와 일치시킴 ("공부" 제거 및 항목 추가)
     val categories: List<String> = listOf("전체", "운동", "건강", "자기계발", "생활정리", "마음관리", "취미"),
@@ -146,6 +148,11 @@ data class GroupRoutineUiState(
 
     val allVisibleRoutineOptionsSelected: Boolean
         get() = visibleRoutineOptions.isNotEmpty() && visibleRoutineOptions.all { it.isSelected }
+
+    val visibleCertificationPosts: List<CertificationPostUiModel>
+        get() = selectedCertificationMemberName?.let { name ->
+            posts.filter { it.userName == name }
+        } ?: posts
 
     val todoProgressLabel: String
         get() = "${todos.count { it.isDone }}/${todos.size} 완료"

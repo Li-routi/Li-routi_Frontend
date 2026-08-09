@@ -102,6 +102,7 @@ class GroupRoutineViewModel(
                     selectedRoutineId = null,
                     selectedMemberId = null,
                     showOnlyMyCertifications = false,
+                    selectedCertificationMemberName = null,
                     isNewCertificationDialogVisible = false,
                     actionMessage = null,
                 )
@@ -167,6 +168,7 @@ class GroupRoutineViewModel(
             it.copy(
                 screenMode = GroupRoutineScreenMode.CertificationCollection,
                 showOnlyMyCertifications = false,
+                selectedCertificationMemberName = null,
                 actionMessage = null,
             )
         }
@@ -1077,6 +1079,18 @@ class GroupRoutineViewModel(
 
     fun onCertificationTabClick(showOnlyMine: Boolean) {
         _uiState.update { it.copy(showOnlyMyCertifications = showOnlyMine, actionMessage = null) }
+    }
+
+    fun onCertificationMemberClick(memberName: String?) {
+        _uiState.update { state ->
+            state.copy(
+                selectedCertificationMemberName = memberName,
+                showOnlyMyCertifications = memberName?.let { name ->
+                    state.members.firstOrNull { member -> member.name == name }?.isMe == true
+                } ?: false,
+                actionMessage = null,
+            )
+        }
     }
 
     private fun repeatDaysLabel(days: Set<String>): String {
