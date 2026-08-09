@@ -41,7 +41,7 @@ private fun Long.requireId(name: String): Long {
 }
 
 fun GroupCreateResultResponse.toDomain(): CreatedGroup = CreatedGroup(
-    groupId = groupId,
+    groupId = groupId.requireId("groupId"),
     name = name,
     routines = routines.map { it.toDomain() },
     assignmentCount = assignmentCount,
@@ -67,13 +67,13 @@ fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberAct
 )
 
 fun GroupJoinResultResponse.toDomain(): GroupJoinResult = GroupJoinResult(
-    groupId = groupId,
+    groupId = groupId.requireId("groupId"),
     name = name,
     memberStatus = memberStatus,
 )
 
 fun GroupJoinPreviewResponse.toDomain(): GroupJoinPreview = GroupJoinPreview(
-    groupId = groupId,
+    groupId = groupId.requireId("groupId"),
     name = name,
     activeMemberCount = activeMemberCount,
     maxMemberCount = maxMemberCount,
@@ -90,8 +90,9 @@ fun GroupRoutineScheduleResponse.toDomain(): GroupRoutineSchedule = GroupRoutine
     endTime = endTime,
 )
 
+// 그룹 생성 응답(CreatedRoutine)에는 groupId가 없어서 0으로 들어옴 — routineId만 검증함
 fun GroupRoutineUpdateResultResponse.toDomain(): GroupRoutineUpdateResult = GroupRoutineUpdateResult(
-    routineId = routineId,
+    routineId = routineId.requireId("routineId"),
     groupId = groupId,
     categoryId = categoryId,
     categoryName = categoryName,
@@ -103,8 +104,8 @@ fun GroupRoutineUpdateResultResponse.toDomain(): GroupRoutineUpdateResult = Grou
 
 fun TodayGroupRoutineResponse.toDomain(): TodayGroupRoutine = TodayGroupRoutine(
     assignmentId = assignmentId,
-    routineId = routineId,
-    groupId = groupId,
+    routineId = routineId.requireId("routineId"),
+    groupId = groupId.requireId("groupId"),
     groupName = groupName,
     categoryId = categoryId,
     categoryName = categoryName,
