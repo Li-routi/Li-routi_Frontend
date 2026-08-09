@@ -1,5 +1,7 @@
 package com.li_routi.feature.mypage.vm
 
+import android.content.Context
+import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
@@ -7,6 +9,8 @@ import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.domain.auth.GetMyInfoUseCase
 import com.li_routi.core.domain.auth.UpdateProfileUseCase
 import com.li_routi.feature.mypage.navigation.MyPageScreenActions
+import com.li_routi.feature.mypage.util.readProfileImageUpload
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -15,6 +19,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 
 /**
  * 마이페이지 ViewModel.
@@ -42,7 +47,12 @@ class MyPageViewModel(
         viewModelScope.launch {
             when (val result = getMyInfoUseCase()) {
                 is ResultState.Success -> _uiState.update {
-                    it.copy(nickname = result.data.nickname, email = result.data.email, isProfileLoaded = true)
+                    it.copy(
+                        nickname = result.data.nickname,
+                        email = result.data.email,
+                        profileImageUrl = result.data.profileImageUrl,
+                        isProfileLoaded = true,
+                    )
                 }
                 is ResultState.Error -> _uiState.update { it.copy(isProfileLoaded = true) }
                 ResultState.Loading -> Unit
@@ -50,15 +60,33 @@ class MyPageViewModel(
         }
     }
 
-    /** 닉네임 변경 화면에서 "저장" 탭 시 호출된다. */
-    fun onSaveNickname(newNickname: String) {
+    /**
+     * 프로필 수정 화면에서 "저장" 탭 시 호출된다. [imageUri]가 null이면(사진을 새로 고르지 않았으면)
+     * 기존 프로필 사진을 그대로 두고 닉네임만 수정한다.
+     */
+    fun onSaveProfile(context: Context, newNickname: String, imageUri: Uri?) {
         viewModelScope.launch {
             if (_uiState.value.isSavingProfile) return@launch
             _uiState.update { it.copy(isSavingProfile = true) }
-            when (val result = updateProfileUseCase(newNickname)) {
+
+            val imageResult = imageUri?.let { uri ->
+                runCatching { withContext(Dispatchers.IO) { readProfileImageUpload(context, uri) } }
+            }
+            if (imageResult != null && imageResult.isFailure) {
+                _uiState.update { it.copy(isSavingProfile = false) }
+                _uiEvent.emit(MyPageUiEvent.ShowError("프로필 이미지를 불러오지 못했습니다."))
+                return@launch
+            }
+
+            when (val result = updateProfileUseCase(newNickname, imageResult?.getOrNull())) {
                 is ResultState.Success -> {
                     _uiState.update {
-                        it.copy(nickname = result.data.nickname, email = result.data.email, isSavingProfile = false)
+                        it.copy(
+                            nickname = result.data.nickname,
+                            email = result.data.email,
+                            profileImageUrl = result.data.profileImageUrl,
+                            isSavingProfile = false,
+                        )
                     }
                     _uiEvent.emit(MyPageUiEvent.ProfileSaved)
                 }

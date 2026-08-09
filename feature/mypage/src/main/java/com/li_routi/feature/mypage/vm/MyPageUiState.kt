@@ -9,6 +9,7 @@ package com.li_routi.feature.mypage.vm
 data class MyPageUiState(
     val nickname: String = "",
     val email: String = "",
+    val profileImageUrl: String? = null,
     val isProfileLoaded: Boolean = false,
     val isSavingProfile: Boolean = false,
 )

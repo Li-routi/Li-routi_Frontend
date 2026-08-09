@@ -1,5 +1,9 @@
 package com.li_routi.feature.mypage.screen
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.PickVisualMediaRequest
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -23,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -30,11 +35,13 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiAvatar
 import com.li_routi.core.designsystem.component.LiroutiTextField
@@ -43,23 +50,28 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.mypage.component.EditProfileTopBar
 
 /**
- * 프로필 수정(닉네임 변경) 화면. Figma node `205:18107`("마이") 기준.
+ * 프로필 수정(닉네임/프로필 사진) 화면. Figma node `205:18107`("마이") 기준.
  *
- * 마이페이지의 "프로필 수정" 버튼으로 진입한다. 지금은 닉네임 한 항목만 편집한다.
+ * 마이페이지의 "프로필 수정" 버튼으로 진입한다. 사진 편집 배지를 탭하면 시스템 포토 피커(갤러리)로
+ * 사진을 고를 수 있고, 실제 업로드는 "저장" 탭 시 [onSaveClick]으로 골라둔 [Uri]를 넘겨 처리한다.
  */
 @Composable
 fun EditProfileScreen(
     initialNickname: String,
+    profileImageUrl: String?,
     onBackClick: () -> Unit,
     onCancelClick: () -> Unit,
-    onSaveClick: (String) -> Unit,
-    onEditPhotoClick: () -> Unit = {},
+    onSaveClick: (nickname: String, imageUri: Uri?) -> Unit,
     isSaving: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     var nickname by remember(initialNickname) { mutableStateOf(initialNickname) }
+    var selectedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
+    val galleryLauncher = rememberLauncherForActivityResult(
+        ActivityResultContracts.PickVisualMedia(),
+    ) { uri -> if (uri != null) selectedImageUri = uri }
 
     Column(
         modifier = modifier
@@ -80,7 +92,13 @@ fun EditProfileScreen(
                 .padding(horizontal = 16.dp, vertical = 24.dp),
         ) {
             EditProfileAvatar(
-                onEditPhotoClick = onEditPhotoClick,
+                profileImageUrl = profileImageUrl,
+                selectedImageUri = selectedImageUri,
+                onEditPhotoClick = {
+                    galleryLauncher.launch(
+                        PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
+                    )
+                },
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
             Spacer(modifier = Modifier.height(24.dp))
@@ -108,7 +126,7 @@ fun EditProfileScreen(
             )
             EditProfileActionButton(
                 text = "저장",
-                onClick = { onSaveClick(nickname) },
+                onClick = { onSaveClick(nickname, selectedImageUri) },
                 backgroundColor = LiroutiTheme.colors.primaryNormal,
                 textColor = LiroutiTheme.colors.backgroundAlternative,
                 enabled = !isSaving,
@@ -123,11 +141,23 @@ private val EditProfilePhotoBadgeSize = 24.dp
 
 @Composable
 private fun EditProfileAvatar(
+    profileImageUrl: String?,
+    selectedImageUri: Uri?,
     onEditPhotoClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.size(EditProfileAvatarSize)) {
-        LiroutiAvatar(size = EditProfileAvatarSize)
+        LiroutiAvatar(size = EditProfileAvatarSize) {
+            val model = selectedImageUri ?: profileImageUrl
+            if (model != null) {
+                AsyncImage(
+                    model = model,
+                    contentDescription = "프로필 사진",
+                    modifier = Modifier.size(EditProfileAvatarSize),
+                    contentScale = ContentScale.Crop,
+                )
+            }
+        }
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -174,9 +204,10 @@ private fun EditProfileScreenPreview() {
     LiroutiFrontendTheme {
         EditProfileScreen(
             initialNickname = "잠자는 개구리",
+            profileImageUrl = null,
             onBackClick = {},
             onCancelClick = {},
-            onSaveClick = {},
+            onSaveClick = { _, _ -> },
         )
     }
 }
