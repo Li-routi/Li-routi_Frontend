@@ -4,6 +4,7 @@ plugins {
     alias(libs.plugins.android.library) apply false
     alias(libs.plugins.kotlin.jvm) apply false
     alias(libs.plugins.kotlin.compose) apply false
+    alias(libs.plugins.google.services) apply false
 }
 
 // Krossbow(채팅 STOMP 클라이언트)가 프로젝트 Kotlin 컴파일러(2.2.10)보다 새 kotlin-stdlib를 전이 의존성으로
