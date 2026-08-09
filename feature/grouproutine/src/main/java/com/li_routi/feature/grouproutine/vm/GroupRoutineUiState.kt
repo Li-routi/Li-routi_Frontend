@@ -1,5 +1,7 @@
 package com.li_routi.feature.grouproutine.vm
 
+import com.li_routi.core.common.ui.routine.CategoryColor
+
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 
@@ -110,6 +112,7 @@ data class GroupRoutineUiState(
     val isDeleteRoomDialogVisible: Boolean = false,
     val isCategorySheetVisible: Boolean = false,
     val categoryInput: String = "",
+    val categoryColorInput: CategoryColor? = null,
     val isMessageEditSheetVisible: Boolean = false,
     val messageDraft: String = "",
     val chatMessages: List<ChatMessageUiModel> = emptyList(),

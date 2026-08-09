@@ -3,6 +3,7 @@ package com.li_routi.feature.grouproutine.vm
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.data.di.ChatContainer
 import com.li_routi.core.data.di.GroupRoutineContainer
@@ -987,17 +988,22 @@ class GroupRoutineViewModel(
             it.copy(
                 isCategorySheetVisible = true,
                 categoryInput = "",
+                categoryColorInput = null,
                 actionMessage = null,
             )
         }
     }
 
     fun onDismissCategorySheet() {
-        _uiState.update { it.copy(isCategorySheetVisible = false, categoryInput = "") }
+        _uiState.update { it.copy(isCategorySheetVisible = false, categoryInput = "", categoryColorInput = null) }
     }
 
     fun onCategoryInputChange(value: String) {
         _uiState.update { it.copy(categoryInput = value, actionMessage = null) }
+    }
+
+    fun onCategoryColorSelected(color: CategoryColor) {
+        _uiState.update { it.copy(categoryColorInput = color, actionMessage = null) }
     }
 
     fun onCategoryConfirmClick() {
@@ -1018,6 +1024,7 @@ class GroupRoutineViewModel(
                     categories = it.categories + name,
                     selectedCategory = name,
                     categoryInput = "",
+                    categoryColorInput = null,
                     isCategorySheetVisible = false,
                     actionMessage = null,
                 )
@@ -1031,7 +1038,7 @@ class GroupRoutineViewModel(
         }
 
         viewModelScope.launch {
-            when (val result = createGroupRoutineCategoryUseCase(groupId, name, color = null)) {
+            when (val result = createGroupRoutineCategoryUseCase(groupId, name, color = state.categoryColorInput?.serverCode())) {
                 is ResultState.Success -> {
                     // CodeRabbit 반영: 이름뿐 아니라 서버 categoryId도 저장해야 루틴 제출 시 사용 가능
                     serverCategoryIds = serverCategoryIds + (result.data.name to result.data.categoryId)
@@ -1040,6 +1047,7 @@ class GroupRoutineViewModel(
                             categories = it.categories + result.data.name,
                             selectedCategory = result.data.name,
                             categoryInput = "",
+                            categoryColorInput = null,
                             isCategorySheetVisible = false,
                             actionMessage = null,
                         )
@@ -1528,3 +1536,6 @@ private fun Set<String>.toGroupRoutineSchedules(startTime: String, endTime: Stri
         GroupRoutineSchedule(repeatDay = day, startTime = startTime, endTime = endTime)
     }
 }
+
+/** 서버 카테고리 색은 RED/BLUE 같은 대문자 enum이라 Kotlin enum 이름을 그대로 보내면 400 남 */
+private fun CategoryColor.serverCode(): String = name.uppercase()

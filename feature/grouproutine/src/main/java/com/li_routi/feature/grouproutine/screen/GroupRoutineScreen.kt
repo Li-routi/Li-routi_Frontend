@@ -85,6 +85,8 @@ import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.designsystem.component.CheckBoxState
 import com.li_routi.core.designsystem.component.CustomCheckBox
+import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
+import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
 import com.li_routi.core.designsystem.component.LiroutiDaySelector
@@ -184,6 +186,7 @@ fun GroupRoutineRoute(
         onDeleteRoomConfirmClick = viewModel::onDeleteRoomConfirmClick,
         onMemberKickClick = viewModel::onMemberKickClick,
         onRoutineDraftCategoryClick = viewModel::onRoutineDraftCategoryClick,
+        onCategoryColorSelected = viewModel::onCategoryColorSelected,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
         onTodoCheckedChange = viewModel::onTodoCheckedChange,
         onCertificationTabClick = viewModel::onCertificationTabClick,
@@ -214,6 +217,7 @@ fun GroupRoutineRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GroupRoutineScreen(
     uiState: GroupRoutineUiState,
@@ -254,6 +258,7 @@ private fun GroupRoutineScreen(
     onDeleteRoomConfirmClick: () -> Unit,
     onMemberKickClick: () -> Unit,
     onRoutineDraftCategoryClick: (String) -> Unit,
+    onCategoryColorSelected: (CategoryColor) -> Unit,
     onCreateRoomDoneClick: () -> Unit,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
@@ -512,11 +517,14 @@ private fun GroupRoutineScreen(
     }
 
     if (uiState.isCategorySheetVisible) {
-        CategoryAddSheet(
-            category = uiState.categoryInput,
+        // 개인 루틴 쪽이랑 같은 공용 시트를 씀 — 색 피커가 이미 들어있음
+        CategoryAddBottomSheet(
+            name = uiState.categoryInput,
+            onNameChange = onCategoryInputChange,
+            selectedColor = uiState.categoryColorInput,
+            onColorSelected = onCategoryColorSelected,
+            onConfirm = onCategoryConfirmClick,
             onDismissRequest = onDismissCategorySheet,
-            onCategoryChange = onCategoryInputChange,
-            onConfirmClick = onCategoryConfirmClick,
         )
     }
 
@@ -1699,39 +1707,6 @@ private fun NewCertificationDialog(
                     Text(text = "좋아요", style = LiroutiTheme.typography.body3)
                 }
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CategoryAddSheet(
-    category: String,
-    onDismissRequest: () -> Unit,
-    onCategoryChange: (String) -> Unit,
-    onConfirmClick: () -> Unit,
-) {
-    LiroutiBottomSheet(
-        onDismissRequest = onDismissRequest,
-        contentPadding = PaddingValues(start = 20.dp, top = 30.dp, end = 20.dp, bottom = 28.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Spacer(modifier = Modifier.weight(1f))
-                Text(text = "×", color = LabelDefault, fontSize = 28.sp, modifier = Modifier.clickable(onClick = onDismissRequest))
-            }
-            Text(
-                text = "카테고리",
-                color = LabelDefault,
-                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
-            )
-            BasicInputBox(
-                value = category,
-                onValueChange = onCategoryChange,
-                placeholder = "최대 20자",
-                showClear = false,
-            )
-            PrimaryButton(text = "확인", enabled = category.isNotBlank(), onClick = onConfirmClick)
         }
     }
 }
@@ -3889,6 +3864,7 @@ private fun GroupRoutineListPreview() {
             onDeleteRoomConfirmClick = {},
             onMemberKickClick = {},
             onRoutineDraftCategoryClick = {},
+            onCategoryColorSelected = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
@@ -3960,6 +3936,7 @@ private fun CreateRoomNamePreview() {
             onDeleteRoomConfirmClick = {},
             onMemberKickClick = {},
             onRoutineDraftCategoryClick = {},
+            onCategoryColorSelected = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
