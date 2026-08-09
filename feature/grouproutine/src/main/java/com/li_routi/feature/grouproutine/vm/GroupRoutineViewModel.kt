@@ -987,9 +987,15 @@ class GroupRoutineViewModel(
                 routineDraftStartTime = "08:00",
                 routineDraftEndTime = "20:00",
                 routineDraftRepeatDays = emptySet(),
+                // 필터로 특정 카테고리를 보고 있었으면 그걸 기본값으로 깔아줌
+                routineDraftCategory = it.selectedCategory.takeIf { name -> name != "전체" }.orEmpty(),
                 actionMessage = null,
             )
         }
+    }
+
+    fun onRoutineDraftCategoryClick(category: String) {
+        _uiState.update { it.copy(routineDraftCategory = category, actionMessage = null) }
     }
 
     fun onRoutineSettingClick(optionId: Long) {
@@ -1002,6 +1008,7 @@ class GroupRoutineViewModel(
                 routineDraftStartTime = option.startTime,
                 routineDraftEndTime = option.deadline,
                 routineDraftRepeatDays = option.repeatDays,
+                routineDraftCategory = option.category,
                 actionMessage = null,
             )
         }
@@ -1053,8 +1060,8 @@ class GroupRoutineViewModel(
             return
         }
 
-        // PR 반영: "전체" 카테고리는 조회(필터) 전용이므로 생성/수정 시 선택을 강제
-        if (state.selectedCategory == "전체") {
+        // 상단 칩은 목록 필터라서 루틴 카테고리로 쓰면 안 됨 — 시트에서 고른 값을 씀
+        if (state.routineDraftCategory.isBlank()) {
             _uiState.update { it.copy(actionMessage = "카테고리를 선택해주세요.") }
             return
         }
@@ -1077,7 +1084,7 @@ class GroupRoutineViewModel(
         if (state.isSubmitting) return
         _uiState.update { it.copy(isSubmitting = true) }
 
-        val categoryName = state.selectedCategory
+        val categoryName = state.routineDraftCategory
         val schedules = state.routineDraftRepeatDays.toGroupRoutineSchedules(
             startTime = state.routineDraftStartTime,
             endTime = state.routineDraftEndTime,
@@ -1162,7 +1169,7 @@ class GroupRoutineViewModel(
     private fun applyLocalRoutineDraft(state: GroupRoutineUiState, title: String) {
         val repeatLabel = repeatDaysLabel(state.routineDraftRepeatDays)
         val editingId = state.editingRoutineId
-        val categoryName = state.selectedCategory
+        val categoryName = state.routineDraftCategory
         
         val nextOptions = if (editingId == null) {
             val newId = (state.routineOptions.maxOfOrNull { it.id } ?: 0L) + 1L

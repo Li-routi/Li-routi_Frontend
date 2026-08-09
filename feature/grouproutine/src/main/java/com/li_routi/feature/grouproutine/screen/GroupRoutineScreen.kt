@@ -183,6 +183,7 @@ fun GroupRoutineRoute(
         onDismissDeleteRoomDialog = viewModel::onDismissDeleteRoomDialog,
         onDeleteRoomConfirmClick = viewModel::onDeleteRoomConfirmClick,
         onMemberKickClick = viewModel::onMemberKickClick,
+        onRoutineDraftCategoryClick = viewModel::onRoutineDraftCategoryClick,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
         onTodoCheckedChange = viewModel::onTodoCheckedChange,
         onCertificationTabClick = viewModel::onCertificationTabClick,
@@ -252,6 +253,7 @@ private fun GroupRoutineScreen(
     onDismissDeleteRoomDialog: () -> Unit,
     onDeleteRoomConfirmClick: () -> Unit,
     onMemberKickClick: () -> Unit,
+    onRoutineDraftCategoryClick: (String) -> Unit,
     onCreateRoomDoneClick: () -> Unit,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
@@ -460,6 +462,9 @@ private fun GroupRoutineScreen(
             startTime = uiState.routineDraftStartTime,
             endTime = uiState.routineDraftEndTime,
             repeatDays = uiState.routineDraftRepeatDays,
+            categories = uiState.categories,
+            selectedCategory = uiState.routineDraftCategory,
+            onCategoryClick = onRoutineDraftCategoryClick,
             onDismissRequest = onDismissRoutineSettingSheet,
             onNameChange = onRoutineDraftNameChange,
             onStartTimeChange = onRoutineDraftStartTimeChange,
@@ -1074,6 +1079,9 @@ private fun RoutineSettingSheet(
     startTime: String,
     endTime: String,
     repeatDays: Set<String>,
+    categories: List<String>,
+    selectedCategory: String,
+    onCategoryClick: (String) -> Unit,
     onDismissRequest: () -> Unit,
     onNameChange: (String) -> Unit,
     onStartTimeChange: (String) -> Unit,
@@ -1116,6 +1124,22 @@ private fun RoutineSettingSheet(
                     .clip(RoundedCornerShape(4.dp)),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
+                RoutineSettingExpandableRow(
+                    label = "카테고리",
+                    value = selectedCategory.ifBlank { "선택 안 함" },
+                    expanded = expandedSection == RoutineSettingSection.Category,
+                    onClick = {
+                        expandedSection = if (expandedSection == RoutineSettingSection.Category) null else RoutineSettingSection.Category
+                    },
+                )
+                if (expandedSection == RoutineSettingSection.Category) {
+                    RoutineSettingDivider()
+                    RoutineCategoryRow(
+                        categories = categories,
+                        selectedCategory = selectedCategory,
+                        onCategoryClick = onCategoryClick,
+                    )
+                }
                 RoutineSettingExpandableRow(
                     label = "시작시간",
                     value = displayRoutineTime(startTime),
@@ -1165,6 +1189,7 @@ private fun RoutineSettingSheet(
 }
 
 private enum class RoutineSettingSection {
+    Category,
     StartTime,
     EndTime,
     Repeat,
@@ -1416,6 +1441,36 @@ private fun TimePickerPreviewRow(
             textAlign = TextAlign.End,
             modifier = Modifier.weight(1f),
         )
+    }
+}
+
+@Composable
+private fun RoutineCategoryRow(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategoryClick: (String) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // "전체"는 목록 필터용이라 루틴에 붙일 수 없어서 뺌
+        items(categories.filterNot { it == "전체" }) { category ->
+            val selected = category == selectedCategory
+            Text(
+                text = category,
+                color = if (selected) Color.White else LabelSub,
+                style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(100.dp))
+                    .background(if (selected) PrimaryNormal else Color.White)
+                    .border(1.dp, if (selected) PrimaryNormal else BorderDefault, RoundedCornerShape(100.dp))
+                    .clickable { onCategoryClick(category) }
+                    .padding(horizontal = 16.dp, vertical = 9.dp),
+            )
+        }
     }
 }
 
@@ -3833,6 +3888,7 @@ private fun GroupRoutineListPreview() {
             onDismissDeleteRoomDialog = {},
             onDeleteRoomConfirmClick = {},
             onMemberKickClick = {},
+            onRoutineDraftCategoryClick = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
@@ -3903,6 +3959,7 @@ private fun CreateRoomNamePreview() {
             onDismissDeleteRoomDialog = {},
             onDeleteRoomConfirmClick = {},
             onMemberKickClick = {},
+            onRoutineDraftCategoryClick = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},

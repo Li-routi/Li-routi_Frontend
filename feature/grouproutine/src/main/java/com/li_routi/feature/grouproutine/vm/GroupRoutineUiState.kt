@@ -102,6 +102,8 @@ data class GroupRoutineUiState(
     val routineDraftStartTime: String = "08:00",
     val routineDraftEndTime: String = "20:00",
     val routineDraftRepeatDays: Set<String> = emptySet(),
+    // 상단 카테고리 칩은 목록 필터 전용이라, 루틴에 붙일 카테고리는 따로 들고 있어야 함
+    val routineDraftCategory: String = "",
     val isDeleteRoutineDialogVisible: Boolean = false,
     val isLeaveRoomDialogVisible: Boolean = false,
     // 방장이라 나갈 수 없을 때(GROUP409_1) 삭제로 유도하는 다이얼로그
