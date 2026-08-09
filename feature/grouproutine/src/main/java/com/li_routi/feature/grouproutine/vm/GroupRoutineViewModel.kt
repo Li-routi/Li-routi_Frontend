@@ -40,6 +40,11 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+private data class ChatReadTarget(
+    val groupId: Long,
+    val lastReadMessageId: Long,
+)
+
 class GroupRoutineViewModel(
     private val createGroupUseCase: CreateGroupUseCase = GroupRoutineContainer.createGroupUseCase,
     private val createGroupRoutineUseCase: CreateGroupRoutineUseCase = GroupRoutineContainer.createGroupRoutineUseCase,
@@ -63,6 +68,8 @@ class GroupRoutineViewModel(
 
     // 채팅방 진입 중에만 살아있는 소켓 연결+구독 코루틴. 화면 이탈/ViewModel 소멸 시 취소한다.
     private var chatSocketJob: Job? = null
+    private var chatReadJob: Job? = null
+    private var latestChatReadTarget: ChatReadTarget? = null
 
     // PR 반영: Mock ID와 실제 서버 ID 분리
     // createGroupUseCase 성공 시나 초대코드로 조인했을 때 발급되는 실제 서버 그룹 ID를 저장합니다.
@@ -179,7 +186,6 @@ class GroupRoutineViewModel(
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.GroupChat,
-                unreadChatCount = 0,
                 actionMessage = null,
             )
         }
@@ -294,7 +300,11 @@ class GroupRoutineViewModel(
                 _uiState.update { state ->
                     // 조회 응답이 오기 전 소켓으로 먼저 들어온 메시지와 겹칠 수 있어 id 기준으로 합친다.
                     val merged = (historyMessages + state.chatMessages).distinctBy { it.id }.sortedBy { it.id }
-                    state.copy(chatMessages = merged, isChatLoading = false, unreadChatCount = 0)
+                    state.copy(
+                        chatMessages = merged,
+                        isChatLoading = false,
+                        unreadChatCount = if (historyMessages.isEmpty()) 0 else state.unreadChatCount,
+                    )
                 }
                 // 마지막 메시지까지 읽은 것으로 서버에 반영(화면에 들어와 목록을 봤으므로).
                 historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
@@ -306,9 +316,38 @@ class GroupRoutineViewModel(
     }
 
     private fun markChatRead(groupId: Long, lastReadMessageId: Long) {
-        viewModelScope.launch {
-            updateChatReadPositionUseCase(groupId, lastReadMessageId)
-            _uiState.update { it.copy(unreadChatCount = 0) }
+        val currentTarget = latestChatReadTarget
+        if (
+            chatReadJob?.isActive == true &&
+            currentTarget?.groupId == groupId &&
+            currentTarget.lastReadMessageId >= lastReadMessageId
+        ) {
+            return
+        }
+
+        latestChatReadTarget = ChatReadTarget(groupId, lastReadMessageId)
+        if (chatReadJob?.isActive == true) return
+
+        chatReadJob = viewModelScope.launch {
+            while (true) {
+                val target = latestChatReadTarget ?: return@launch
+                when (val result = updateChatReadPositionUseCase(target.groupId, target.lastReadMessageId)) {
+                    is ResultState.Success -> {
+                        if (latestChatReadTarget == target) {
+                            latestChatReadTarget = null
+                            _uiState.update { it.copy(unreadChatCount = 0) }
+                            return@launch
+                        }
+                    }
+
+                    is ResultState.Error -> {
+                        _uiState.update { it.copy(actionMessage = result.message) }
+                        return@launch
+                    }
+
+                    ResultState.Loading -> Unit
+                }
+            }
         }
     }
 
