@@ -53,6 +53,7 @@ data class GroupTodoUiModel(
 
 data class CertificationPostUiModel(
     val id: Long,
+    val memberId: Long,
     val userName: String,
     val body: String,
     val likeCount: Int,
@@ -92,12 +93,14 @@ data class GroupRoutineUiState(
     // (방을 직접 만들었거나 / 나가기가 GROUP409_1로 막혔거나)
     val isConfirmedOwner: Boolean = false,
     val showOnlyMyCertifications: Boolean = false,
+    val selectedCertificationMemberId: Long? = null,
     val isNewCertificationDialogVisible: Boolean = false,
     val isEmptyState: Boolean = false,
     val searchInput: String = "",
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",
     val groupInviteCode: String? = null,
+    val unreadChatCount: Int = 0,
     val selectedCategory: String = "전체",
     // PR 반영: 백엔드 카테고리와 일치시킴 ("공부" 제거 및 항목 추가)
     val categories: List<String> = listOf("전체", "운동", "건강", "자기계발", "생활정리", "마음관리", "취미"),
@@ -159,6 +162,11 @@ data class GroupRoutineUiState(
     val allVisibleRoutineOptionsSelected: Boolean
         get() = visibleRoutineOptions.isNotEmpty() && visibleRoutineOptions.all { it.isSelected }
 
+    val visibleCertificationPosts: List<CertificationPostUiModel>
+        get() = selectedCertificationMemberId?.let { memberId ->
+            posts.filter { it.memberId == memberId }
+        } ?: posts
+
     val todoProgressLabel: String
         get() = "${todos.count { it.isDone }}/${todos.size} 완료"
 }
@@ -199,6 +207,7 @@ private val SampleGroupTodos = listOf(
 private val SampleCertificationPosts = listOf(
     CertificationPostUiModel(
         id = 1L,
+        memberId = 1L,
         userName = "민지",
         body = "물 마시기 1일차 인증! 오늘도 잊지 않고 해냈어요.",
         likeCount = 1,
@@ -207,6 +216,7 @@ private val SampleCertificationPosts = listOf(
     ),
     CertificationPostUiModel(
         id = 2L,
+        memberId = 2L,
         userName = "서현",
         body = "스트레칭 완료. 내일도 같이 이어가요.",
         likeCount = 3,

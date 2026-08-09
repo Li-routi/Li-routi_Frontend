@@ -35,6 +35,7 @@ fun MyPageScreen(
     onTabSelected: (AppBottomTab) -> Unit,
     nickname: String,
     email: String,
+    profileImageUrl: String?,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -52,6 +53,7 @@ fun MyPageScreen(
             MyPageProfileHeader(
                 nickname = nickname,
                 email = email,
+                profileImageUrl = profileImageUrl,
                 onEditProfileClick = actions::onEditProfileClick,
             )
             LiroutiDivider(
@@ -89,6 +91,7 @@ private fun MyPageScreenPreview() {
             onTabSelected = {},
             nickname = "잠자는개구리",
             email = "example@gamil.com",
+            profileImageUrl = null,
         )
     }
 }
