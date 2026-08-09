@@ -31,6 +31,8 @@ import com.li_routi.core.domain.grouproutine.LeaveGroupResult
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
+import com.google.gson.Gson
+import com.google.gson.JsonObject
 import retrofit2.HttpException
 
 class GroupRoutineRepositoryImpl(
@@ -127,8 +129,9 @@ class GroupRoutineRepositoryImpl(
             api.leaveGroup(groupId).ensureSuccess()
             LeaveGroupResult.Left
         } catch (e: HttpException) {
-            // 409는 OWNER라 못 나가는 경우뿐임(GROUP409_1) — 에러 대신 결과로 돌려줘서 삭제로 유도함
-            if (e.code() == 409) LeaveGroupResult.OwnerMustDelete else throw e
+            // OWNER라 못 나가는 경우(GROUP409_1)만 결과로 바꿔서 삭제로 유도함.
+            // 409를 상태코드만 보고 판단하면 나중에 다른 사유가 409로 묶였을 때 엉뚱하게 삭제를 권하게 됨
+            if (e.errorCode() == OwnerCannotLeaveCode) LeaveGroupResult.OwnerMustDelete else throw e
         }
     }
 
@@ -211,6 +214,16 @@ class GroupRoutineRepositoryImpl(
         ).unwrap().toDomain()
     }
 }
+
+/** OWNER는 그룹을 나갈 수 없음 */
+private const val OwnerCannotLeaveCode = "GROUP409_1"
+
+/** 에러 응답 바디에서 서버가 준 code를 꺼냄. 못 읽으면 null */
+private fun HttpException.errorCode(): String? = runCatching {
+    response()?.errorBody()?.string()?.let { body ->
+        Gson().fromJson(body, JsonObject::class.java)?.get("code")?.asString
+    }
+}.getOrNull()
 
 private fun <T> ApiResponse<T>.unwrap(): T {
     val result = result

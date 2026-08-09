@@ -31,6 +31,15 @@ import com.li_routi.core.domain.grouproutine.GroupRoutineUpdateResult
 import com.li_routi.core.domain.grouproutine.RepeatDay
 import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
 
+/**
+ * Gson은 응답에 없는 숫자 필드를 0으로 채움 — 그대로 두면 0이 실제 식별자인 것처럼
+ * 도메인까지 흘러가서 엉뚱한 대상에 요청이 나감. 식별자는 0을 거부함
+ */
+private fun Long.requireId(name: String): Long {
+    if (this == 0L) throw ApiException("서버 응답에 $name 가 없습니다.")
+    return this
+}
+
 fun GroupCreateResultResponse.toDomain(): CreatedGroup = CreatedGroup(
     groupId = groupId,
     name = name,
@@ -39,14 +48,14 @@ fun GroupCreateResultResponse.toDomain(): CreatedGroup = CreatedGroup(
 )
 
 fun GroupDetailResponse.toDomain(): GroupDetail = GroupDetail(
-    groupId = groupId,
+    groupId = groupId.requireId("groupId"),
     groupName = groupName.orEmpty(),
     inviteCode = inviteCode.orEmpty(),
     members = members.orEmpty().map { it.toDomain() },
 )
 
 fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberActivity(
-    memberId = memberId,
+    memberId = memberId.requireId("memberId"),
     name = name.orEmpty(),
     profileImageKey = profileImageKey,
     statusMessage = statusMessage,
