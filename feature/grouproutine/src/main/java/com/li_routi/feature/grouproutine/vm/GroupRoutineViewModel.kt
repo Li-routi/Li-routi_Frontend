@@ -137,6 +137,10 @@ class GroupRoutineViewModel(
         } else {
             // mock 방을 열었는데 직전 그룹 id가 남아 있으면 엉뚱한 그룹으로 요청이 나감
             backendGroupId = null
+            // 서버 방을 보다 넘어온 경우 그 방의 멤버/체크리스트가 그대로 남아 보임
+            _uiState.update {
+                it.copy(members = DefaultGroupMembers, todos = DefaultGroupTodos, groupInviteCode = null)
+            }
         }
         // 방마다 방장이 다르니 방을 옮기면 이전 방 기준 판단을 버림
         _uiState.update { it.copy(isConfirmedOwner = false) }
@@ -563,6 +567,10 @@ class GroupRoutineViewModel(
                 selectedRoutineId = null,
                 selectedMemberId = null,
                 groupInviteCode = null,
+                // 나간 방의 멤버/체크리스트가 다음 방 화면에 남지 않게 비움
+                members = emptyList(),
+                todos = emptyList(),
+                isConfirmedOwner = false,
                 isLeaveRoomDialogVisible = false,
                 isDeleteRoomDialogVisible = false,
                 actionMessage = message,
@@ -574,8 +582,17 @@ class GroupRoutineViewModel(
     private fun loadGroupDetail(groupId: Long) {
         viewModelScope.launch {
             if (myMemberId == null) {
-                val myInfo = getMyInfoUseCase()
-                if (myInfo is ResultState.Success) myMemberId = myInfo.data.memberId
+                when (val myInfo = getMyInfoUseCase()) {
+                    is ResultState.Success -> myMemberId = myInfo.data.memberId
+                    // 내 memberId를 모르면 모든 구성원이 남으로 찍혀서 상태 메시지 수정/채팅
+                    // 말풍선/내보내기 판단이 전부 어긋남. 잘못된 화면을 그리느니 알리고 멈춤
+                    is ResultState.Error -> {
+                        _uiState.update { it.copy(actionMessage = myInfo.message) }
+                        return@launch
+                    }
+
+                    ResultState.Loading -> return@launch
+                }
             }
 
             when (val result = getGroupDetailUseCase(groupId)) {
@@ -826,11 +843,22 @@ class GroupRoutineViewModel(
     }
 
     fun onMemberKickClick() {
+        _uiState.update { it.copy(isKickMemberDialogVisible = true) }
+    }
+
+    fun onDismissKickMemberDialog() {
+        _uiState.update { it.copy(isKickMemberDialogVisible = false) }
+    }
+
+    fun onKickMemberConfirmClick() {
         val groupId = currentGroupId() ?: run {
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
             return
         }
-        val targetMemberId = _uiState.value.selectedMemberId ?: return
+        val targetMemberId = _uiState.value.selectedMemberId ?: run {
+            _uiState.update { it.copy(isKickMemberDialogVisible = false) }
+            return
+        }
         if (_uiState.value.isSubmitting) return
         _uiState.update { it.copy(isSubmitting = true) }
 
@@ -840,8 +868,9 @@ class GroupRoutineViewModel(
                     is ResultState.Success -> {
                         _uiState.update { state ->
                             state.copy(
-                                members = state.members.filterNot { it.id == targetMemberId },
+                                    members = state.members.filterNot { it.id == targetMemberId },
                                 selectedMemberId = null,
+                                isKickMemberDialogVisible = false,
                                 actionMessage = "멤버를 내보냈어요.",
                             )
                         }
@@ -849,7 +878,11 @@ class GroupRoutineViewModel(
                     }
 
                     is ResultState.Error -> _uiState.update {
-                        it.copy(selectedMemberId = null, actionMessage = result.message)
+                        it.copy(
+                            selectedMemberId = null,
+                            isKickMemberDialogVisible = false,
+                            actionMessage = result.message,
+                        )
                     }
 
                     ResultState.Loading -> Unit
@@ -860,11 +893,16 @@ class GroupRoutineViewModel(
         }
     }
 
+    private var todayRoutinesJob: Job? = null
+
     /** 오늘자 그룹 루틴을 불러와 방 상세 하단 체크리스트를 채움 */
     private fun loadTodayRoutines(groupId: Long) {
-        viewModelScope.launch {
+        todayRoutinesJob?.cancel()
+        todayRoutinesJob = viewModelScope.launch {
             when (val result = getTodayGroupRoutinesUseCase()) {
                 is ResultState.Success -> {
+                    // 응답이 늦게 오는 사이 방을 옮겼으면 지금 방 체크리스트를 덮어쓰면 안 됨
+                    if (backendGroupId != groupId) return@launch
                     // 조회 API가 내가 속한 모든 그룹을 한 번에 주기 때문에 현재 방 것만 걸러냄
                     val todos = result.data
                         .filter { it.groupId == groupId }
@@ -989,6 +1027,7 @@ class GroupRoutineViewModel(
                     return@launch
                 }
 
+                val previewData = (preview as? ResultState.Success)?.data
                 when (val result = joinGroupUseCase(inviteCode)) {
                     is ResultState.Success -> {
                         val joined = result.data
@@ -997,8 +1036,8 @@ class GroupRoutineViewModel(
                             id = joined.groupId,
                             title = joined.name,
                             lastActiveLabel = "방금 전 활동",
-                            memberCount = 1,
-                            routineCount = 0,
+                            memberCount = previewData?.activeMemberCount ?: 1,
+                            routineCount = previewData?.totalRoutineCount ?: 0,
                             statusLabel = "진행중",
                             isCompleted = false,
                             todayCompletedCount = 0,
@@ -1008,7 +1047,7 @@ class GroupRoutineViewModel(
                             todayCertificationCount = 0,
                         )
                         _uiState.update { state ->
-                            val others = state.routines.filter { it.id > 0L && it.id != joined.groupId }
+                            val others = state.routines.filterNot { it.id == joined.groupId }
                             state.copy(
                                 screenMode = GroupRoutineScreenMode.Detail,
                                 selectedRoutineId = joined.groupId,
@@ -1417,30 +1456,38 @@ class GroupRoutineViewModel(
         val shouldCallApi = state.screenMode == GroupRoutineScreenMode.GroupRoutineManage &&
             editingId != null && editingId > 0L && groupId != null
 
-        clearRoutineDraft(editingId)
-        if (!shouldCallApi) return
+        if (!shouldCallApi) {
+            // 로컬 전용(방 만들기 전 단계, 샘플 루틴)이면 바로 목록에서 지움
+            clearRoutineDraft(editingId)
+            return
+        }
         if (state.isSubmitting) return
+        // 삭제가 실패하면 routineOptions는 되돌릴 방법이 없어서, 시트만 닫고 목록은 성공 후에 건드림
+        closeRoutineSheets()
         _uiState.update { it.copy(isSubmitting = true) }
 
         viewModelScope.launch {
             try {
                 when (val result = deleteGroupRoutineUseCase(groupId, editingId)) {
                     is ResultState.Success -> {
+                        clearRoutineDraft(editingId)
                         _uiState.update { it.copy(actionMessage = "루틴을 삭제했어요.") }
                         loadTodayRoutines(groupId)
                     }
 
-                    // 서버에서 못 지웠으면 목록에서 지운 걸 되돌려야 해서 다시 불러옴
-                    is ResultState.Error -> {
-                        _uiState.update { it.copy(actionMessage = result.message) }
-                        loadTodayRoutines(groupId)
-                    }
-
+                    is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                     ResultState.Loading -> Unit
                 }
             } finally {
                 _uiState.update { it.copy(isSubmitting = false) }
             }
+        }
+    }
+
+    /** 목록은 그대로 두고 편집 시트/삭제 다이얼로그만 닫음 */
+    private fun closeRoutineSheets() {
+        _uiState.update {
+            it.copy(isRoutineSettingSheetVisible = false, isDeleteRoutineDialogVisible = false)
         }
     }
 

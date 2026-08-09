@@ -117,6 +117,7 @@ data class GroupRoutineUiState(
     val isLeaveRoomDialogVisible: Boolean = false,
     // 방장이라 나갈 수 없을 때(GROUP409_1) 삭제로 유도하는 다이얼로그
     val isDeleteRoomDialogVisible: Boolean = false,
+    val isKickMemberDialogVisible: Boolean = false,
     val isCategorySheetVisible: Boolean = false,
     val categoryInput: String = "",
     val categoryColorInput: CategoryColor? = null,
@@ -245,3 +246,7 @@ private val SampleCreateRoutineOptions = listOf(
 )
 
 val DefaultCreateRoutineOptions = SampleCreateRoutineOptions
+
+// mock 방으로 돌아갈 때 이전 서버 방 데이터를 지우고 되돌릴 기본값
+val DefaultGroupMembers = SampleGroupMembers
+val DefaultGroupTodos = SampleGroupTodos

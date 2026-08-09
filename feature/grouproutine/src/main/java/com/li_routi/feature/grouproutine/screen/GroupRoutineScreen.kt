@@ -192,6 +192,8 @@ fun GroupRoutineRoute(
         onDismissDeleteRoomDialog = viewModel::onDismissDeleteRoomDialog,
         onDeleteRoomConfirmClick = viewModel::onDeleteRoomConfirmClick,
         onMemberKickClick = viewModel::onMemberKickClick,
+        onDismissKickMemberDialog = viewModel::onDismissKickMemberDialog,
+        onKickMemberConfirmClick = viewModel::onKickMemberConfirmClick,
         onRoutineDraftCategoryClick = viewModel::onRoutineDraftCategoryClick,
         onCategoryColorSelected = viewModel::onCategoryColorSelected,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
@@ -265,6 +267,8 @@ private fun GroupRoutineScreen(
     onDismissDeleteRoomDialog: () -> Unit,
     onDeleteRoomConfirmClick: () -> Unit,
     onMemberKickClick: () -> Unit,
+    onDismissKickMemberDialog: () -> Unit,
+    onKickMemberConfirmClick: () -> Unit,
     onRoutineDraftCategoryClick: (String) -> Unit,
     onCategoryColorSelected: (CategoryColor) -> Unit,
     onCreateRoomDoneClick: () -> Unit,
@@ -503,6 +507,16 @@ private fun GroupRoutineScreen(
             confirmLabel = "나가기",
             onDismissRequest = onDismissLeaveRoomDialog,
             onConfirmClick = onLeaveRoomConfirmClick,
+        )
+    }
+
+    if (uiState.isKickMemberDialogVisible) {
+        DangerConfirmDialog(
+            title = "내보내기",
+            description = "이 멤버를 방에서 내보낼까요? 내보낸 뒤에는 초대코드로 다시 들어와야 해요.",
+            confirmLabel = "내보내기",
+            onDismissRequest = onDismissKickMemberDialog,
+            onConfirmClick = onKickMemberConfirmClick,
         )
     }
 
@@ -3399,8 +3413,9 @@ private fun MemberProfileDialog(
                         style = LiroutiTheme.typography.body3,
                         modifier = Modifier
                             .fillMaxWidth()
+                            .heightIn(min = 48.dp)
                             .clickable(onClick = onKickClick)
-                            .padding(vertical = 8.dp),
+                            .padding(vertical = 14.dp),
                         textAlign = TextAlign.Center,
                     )
                 }
@@ -3998,6 +4013,8 @@ private fun GroupRoutineListPreview() {
             onDismissDeleteRoomDialog = {},
             onDeleteRoomConfirmClick = {},
             onMemberKickClick = {},
+            onDismissKickMemberDialog = {},
+            onKickMemberConfirmClick = {},
             onRoutineDraftCategoryClick = {},
             onCategoryColorSelected = {},
               onCreateRoomDoneClick = {},
@@ -4071,6 +4088,8 @@ private fun CreateRoomNamePreview() {
             onDismissDeleteRoomDialog = {},
             onDeleteRoomConfirmClick = {},
             onMemberKickClick = {},
+            onDismissKickMemberDialog = {},
+            onKickMemberConfirmClick = {},
             onRoutineDraftCategoryClick = {},
             onCategoryColorSelected = {},
               onCreateRoomDoneClick = {},
