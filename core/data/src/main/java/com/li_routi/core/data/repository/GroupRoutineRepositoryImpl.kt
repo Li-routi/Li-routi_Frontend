@@ -10,6 +10,9 @@ import com.li_routi.core.data.network.dto.request.CreateGroupRoutineCategoryRequ
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.request.GroupRoutineScheduleRequest
 import com.li_routi.core.data.network.dto.request.JoinGroupRequest
+import com.li_routi.core.data.network.dto.request.TransferGroupOwnerRequest
+import com.li_routi.core.data.network.dto.request.UpdateGroupNameRequest
+import com.li_routi.core.data.network.dto.request.UpdateStatusMessageRequest
 import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.service.GroupRoutineApiService
@@ -140,6 +143,24 @@ class GroupRoutineRepositoryImpl(
     override suspend fun setGroupLock(groupId: Long, locked: Boolean): ResultState<Boolean> = safeApiCall {
         val response = if (locked) api.lockGroup(groupId) else api.unlockGroup(groupId)
         response.unwrap().isLocked
+    }
+
+    override suspend fun updateMyStatusMessage(groupId: Long, statusMessage: String): ResultState<String> = safeApiCall {
+        api.updateStatusMessage(
+            groupId = groupId,
+            request = UpdateStatusMessageRequest(statusMessage = statusMessage),
+        ).unwrap().statusMessage
+    }
+
+    override suspend fun updateGroupName(groupId: Long, name: String): ResultState<Unit> = safeApiCall {
+        api.updateGroupName(groupId = groupId, request = UpdateGroupNameRequest(name = name)).ensureSuccess()
+    }
+
+    override suspend fun transferGroupOwner(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {
+        api.transferOwner(
+            groupId = groupId,
+            request = TransferGroupOwnerRequest(targetMemberId = targetMemberId),
+        ).ensureSuccess()
     }
 
     override suspend fun kickGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {

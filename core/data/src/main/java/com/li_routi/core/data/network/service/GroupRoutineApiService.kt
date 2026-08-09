@@ -3,6 +3,9 @@ package com.li_routi.core.data.network.service
 import com.li_routi.core.data.network.dto.request.CreateGroupRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineCategoryRequest
 import com.li_routi.core.data.network.dto.request.JoinGroupRequest
+import com.li_routi.core.data.network.dto.request.TransferGroupOwnerRequest
+import com.li_routi.core.data.network.dto.request.UpdateGroupNameRequest
+import com.li_routi.core.data.network.dto.request.UpdateStatusMessageRequest
 import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.GroupCreateResultResponse
@@ -12,6 +15,7 @@ import com.li_routi.core.data.network.dto.response.GroupJoinPreviewResponse
 import com.li_routi.core.data.network.dto.response.GroupJoinResultResponse
 import com.li_routi.core.data.network.dto.response.GroupLockStateResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryListResponse
+import com.li_routi.core.data.network.dto.response.GroupStatusMessageResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultResponse
@@ -81,6 +85,24 @@ interface GroupRoutineApiService {
     suspend fun unlockGroup(
         @Path("groupId") groupId: Long,
     ): ApiResponse<GroupLockStateResponse>
+
+    @PATCH("api/groups/{groupId}/members/me/status-message")
+    suspend fun updateStatusMessage(
+        @Path("groupId") groupId: Long,
+        @Body request: UpdateStatusMessageRequest,
+    ): ApiResponse<GroupStatusMessageResponse>
+
+    @PATCH("api/groups/{groupId}/name")
+    suspend fun updateGroupName(
+        @Path("groupId") groupId: Long,
+        @Body request: UpdateGroupNameRequest,
+    ): ApiResponse<Unit?>
+
+    @PATCH("api/groups/{groupId}/owner")
+    suspend fun transferOwner(
+        @Path("groupId") groupId: Long,
+        @Body request: TransferGroupOwnerRequest,
+    ): ApiResponse<Unit?>
 
     @DELETE("api/groups/{groupId}/members/{targetMemberId}")
     suspend fun kickMember(

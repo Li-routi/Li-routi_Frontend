@@ -48,6 +48,15 @@ interface GroupRoutineRepository {
     /** 방 잠금/해제. 잠그면 초대코드로 새로 못 들어옴 */
     suspend fun setGroupLock(groupId: Long, locked: Boolean): ResultState<Boolean>
 
+    /** 이 그룹에서 쓰는 내 상태 메시지를 바꿈 */
+    suspend fun updateMyStatusMessage(groupId: Long, statusMessage: String): ResultState<String>
+
+    /** 방 이름을 바꿈. 방장만 가능함 */
+    suspend fun updateGroupName(groupId: Long, name: String): ResultState<Unit>
+
+    /** 방장 권한을 다른 구성원에게 넘김 */
+    suspend fun transferGroupOwner(groupId: Long, targetMemberId: Long): ResultState<Unit>
+
     /** 구성원을 강제 퇴장시킴. 방장만 가능함 */
     suspend fun kickGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit>
 

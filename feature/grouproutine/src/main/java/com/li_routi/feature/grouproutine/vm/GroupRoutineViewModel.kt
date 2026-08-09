@@ -38,6 +38,9 @@ import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.RepeatDay
 import com.li_routi.core.domain.grouproutine.SetGroupLockUseCase
+import com.li_routi.core.domain.grouproutine.TransferGroupOwnerUseCase
+import com.li_routi.core.domain.grouproutine.UpdateGroupMemberStatusMessageUseCase
+import com.li_routi.core.domain.grouproutine.UpdateGroupNameUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
@@ -63,6 +66,9 @@ class GroupRoutineViewModel(
     private val getGroupJoinPreviewUseCase: GetGroupJoinPreviewUseCase = GroupRoutineContainer.getGroupJoinPreviewUseCase,
     private val setGroupLockUseCase: SetGroupLockUseCase = GroupRoutineContainer.setGroupLockUseCase,
     private val kickGroupMemberUseCase: KickGroupMemberUseCase = GroupRoutineContainer.kickGroupMemberUseCase,
+    private val updateGroupMemberStatusMessageUseCase: UpdateGroupMemberStatusMessageUseCase = GroupRoutineContainer.updateGroupMemberStatusMessageUseCase,
+    private val updateGroupNameUseCase: UpdateGroupNameUseCase = GroupRoutineContainer.updateGroupNameUseCase,
+    private val transferGroupOwnerUseCase: TransferGroupOwnerUseCase = GroupRoutineContainer.transferGroupOwnerUseCase,
     private val deleteGroupRoutineUseCase: DeleteGroupRoutineUseCase = GroupRoutineContainer.deleteGroupRoutineUseCase,
     private val getTodayGroupRoutinesUseCase: GetTodayGroupRoutinesUseCase = GroupRoutineContainer.getTodayGroupRoutinesUseCase,
     private val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase = GroupRoutineContainer.getGroupInviteCodeUseCase,
@@ -369,9 +375,31 @@ class GroupRoutineViewModel(
     }
 
     fun onMessageEditConfirmClick() {
+        val message = _uiState.value.messageDraft.trim()
+        val groupId = currentGroupId()
+        // mock 방(서버 그룹 아님)에선 예전처럼 로컬 상태만 바꿈
+        if (groupId == null) {
+            applyMyStatusMessage(message)
+            return
+        }
+
+        viewModelScope.launch {
+            when (val result = updateGroupMemberStatusMessageUseCase(groupId, message)) {
+                // 서버가 저장한 값을 그대로 반영해야 다른 사람 화면이랑 어긋나지 않음
+                is ResultState.Success -> applyMyStatusMessage(result.data)
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isMessageEditSheetVisible = false, actionMessage = result.message)
+                }
+
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun applyMyStatusMessage(message: String) {
         _uiState.update { state ->
             state.copy(
-                members = state.members.map { if (it.isMe) it.copy(message = state.messageDraft) else it },
+                members = state.members.map { if (it.isMe) it.copy(message = message) else it },
                 isMessageEditSheetVisible = false,
             )
         }
@@ -643,13 +671,43 @@ class GroupRoutineViewModel(
     }
 
     fun onLeaderTransferConfirmClick() {
+        val state = _uiState.value
+        val targetMemberId = state.pendingLeaderMemberId
+        val myId = state.members.firstOrNull { it.isMe }?.id
+        // 나를 고른 채로 확인하면 바뀌는 게 없어서 서버까지 갈 필요 없음
+        if (targetMemberId == null || targetMemberId == myId) {
+            applyLeaderTransfer(isStillLeader = true, message = null)
+            return
+        }
+        val groupId = currentGroupId()
+        if (groupId == null) {
+            applyLeaderTransfer(isStillLeader = false, message = "방장이 변경되었습니다.")
+            return
+        }
+
+        viewModelScope.launch {
+            when (val result = transferGroupOwnerUseCase(groupId, targetMemberId)) {
+                is ResultState.Success -> {
+                    applyLeaderTransfer(isStillLeader = false, message = "방장이 변경되었습니다.")
+                    loadGroupDetail(groupId)
+                }
+
+                is ResultState.Error -> _uiState.update {
+                    it.copy(pendingLeaderMemberId = null, actionMessage = result.message)
+                }
+
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun applyLeaderTransfer(isStillLeader: Boolean, message: String?) {
         _uiState.update { state ->
-            val myMemberId = state.members.firstOrNull { it.isMe }?.id
             state.copy(
                 screenMode = GroupRoutineScreenMode.GroupSettings,
-                isCurrentUserLeader = state.pendingLeaderMemberId == myMemberId,
+                isCurrentUserLeader = isStillLeader,
                 pendingLeaderMemberId = null,
-                actionMessage = if (state.pendingLeaderMemberId == myMemberId) null else "방장이 변경되었습니다.",
+                actionMessage = message,
             )
         }
     }
@@ -737,19 +795,35 @@ class GroupRoutineViewModel(
     }
 
     fun onRoomNameEditConfirmClick() {
-        _uiState.update { state ->
-            val title = state.roomNameInput.trim()
-            if (title.isBlank()) {
-                state.copy(actionMessage = "방 이름을 입력해주세요.")
-            } else {
-                state.copy(
-                    screenMode = GroupRoutineScreenMode.GroupSettings,
-                    routines = state.routines.map { routine ->
-                        if (routine.id == state.selectedRoutine?.id) routine.copy(title = title) else routine
-                    },
-                    actionMessage = "방 이름이 변경됐어요.",
-                )
+        val title = _uiState.value.roomNameInput.trim()
+        if (title.isBlank()) {
+            _uiState.update { it.copy(actionMessage = "방 이름을 입력해주세요.") }
+            return
+        }
+        val groupId = currentGroupId()
+        if (groupId == null) {
+            applyRoomName(title)
+            return
+        }
+
+        viewModelScope.launch {
+            when (val result = updateGroupNameUseCase(groupId, title)) {
+                is ResultState.Success -> applyRoomName(title)
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
             }
+        }
+    }
+
+    private fun applyRoomName(title: String) {
+        _uiState.update { state ->
+            state.copy(
+                screenMode = GroupRoutineScreenMode.GroupSettings,
+                routines = state.routines.map { routine ->
+                    if (routine.id == state.selectedRoutine?.id) routine.copy(title = title) else routine
+                },
+                actionMessage = "방 이름이 변경됐어요.",
+            )
         }
     }
 

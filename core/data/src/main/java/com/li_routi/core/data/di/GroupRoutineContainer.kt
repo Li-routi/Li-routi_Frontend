@@ -18,6 +18,9 @@ import com.li_routi.core.domain.grouproutine.JoinGroupUseCase
 import com.li_routi.core.domain.grouproutine.KickGroupMemberUseCase
 import com.li_routi.core.domain.grouproutine.LeaveGroupUseCase
 import com.li_routi.core.domain.grouproutine.SetGroupLockUseCase
+import com.li_routi.core.domain.grouproutine.TransferGroupOwnerUseCase
+import com.li_routi.core.domain.grouproutine.UpdateGroupMemberStatusMessageUseCase
+import com.li_routi.core.domain.grouproutine.UpdateGroupNameUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
 
 /**
@@ -64,6 +67,18 @@ object GroupRoutineContainer {
 
     val setGroupLockUseCase: SetGroupLockUseCase by lazy {
         SetGroupLockUseCase(repository)
+    }
+
+    val updateGroupMemberStatusMessageUseCase: UpdateGroupMemberStatusMessageUseCase by lazy {
+        UpdateGroupMemberStatusMessageUseCase(repository)
+    }
+
+    val updateGroupNameUseCase: UpdateGroupNameUseCase by lazy {
+        UpdateGroupNameUseCase(repository)
+    }
+
+    val transferGroupOwnerUseCase: TransferGroupOwnerUseCase by lazy {
+        TransferGroupOwnerUseCase(repository)
     }
 
     val kickGroupMemberUseCase: KickGroupMemberUseCase by lazy {
