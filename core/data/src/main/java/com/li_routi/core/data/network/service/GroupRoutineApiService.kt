@@ -13,6 +13,7 @@ import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineListResponse
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -45,6 +46,16 @@ interface GroupRoutineApiService {
     suspend fun getGroupDetail(
         @Path("groupId") groupId: Long,
     ): ApiResponse<GroupDetailResponse>
+
+    @DELETE("api/groups/{groupId}")
+    suspend fun deleteGroup(
+        @Path("groupId") groupId: Long,
+    ): ApiResponse<Unit?>
+
+    @DELETE("api/groups/{groupId}/leave")
+    suspend fun leaveGroup(
+        @Path("groupId") groupId: Long,
+    ): ApiResponse<Unit?>
 
     @GET("api/groups/routines/today")
     suspend fun getTodayRoutines(): ApiResponse<TodayGroupRoutineListResponse>

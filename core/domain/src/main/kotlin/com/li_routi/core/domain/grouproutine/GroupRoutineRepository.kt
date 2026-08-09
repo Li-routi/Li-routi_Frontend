@@ -33,6 +33,12 @@ interface GroupRoutineRepository {
     /** 그룹방 상세(그룹명/초대코드/구성원별 활동 현황)를 조회함 */
     suspend fun getGroupDetail(groupId: Long): ResultState<GroupDetail>
 
+    /** 그룹을 삭제함. ACTIVE OWNER만 가능하고 그룹에 종속된 데이터까지 지워짐 */
+    suspend fun deleteGroup(groupId: Long): ResultState<Unit>
+
+    /** 그룹에서 나감. OWNER는 나갈 수 없어서 [LeaveGroupResult.OwnerMustDelete]로 돌아옴 */
+    suspend fun leaveGroup(groupId: Long): ResultState<LeaveGroupResult>
+
     /** 로그인한 회원이 속한 모든 그룹의 오늘자 루틴을 조회함 */
     suspend fun getTodayGroupRoutines(): ResultState<List<TodayGroupRoutine>>
 

@@ -103,6 +103,9 @@ data class GroupRoutineUiState(
     val routineDraftEndTime: String = "20:00",
     val routineDraftRepeatDays: Set<String> = emptySet(),
     val isDeleteRoutineDialogVisible: Boolean = false,
+    val isLeaveRoomDialogVisible: Boolean = false,
+    // 방장이라 나갈 수 없을 때(GROUP409_1) 삭제로 유도하는 다이얼로그
+    val isDeleteRoomDialogVisible: Boolean = false,
     val isCategorySheetVisible: Boolean = false,
     val categoryInput: String = "",
     val isMessageEditSheetVisible: Boolean = false,

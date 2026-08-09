@@ -20,12 +20,15 @@ import com.li_routi.core.domain.chat.UpdateChatReadPositionUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineCategoryUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
+import com.li_routi.core.domain.grouproutine.DeleteGroupUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.IssueGroupInviteCodeUseCase
+import com.li_routi.core.domain.grouproutine.LeaveGroupResult
+import com.li_routi.core.domain.grouproutine.LeaveGroupUseCase
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.RepeatDay
@@ -48,6 +51,8 @@ class GroupRoutineViewModel(
     private val createGroupRoutineUseCase: CreateGroupRoutineUseCase = GroupRoutineContainer.createGroupRoutineUseCase,
     private val updateGroupRoutineUseCase: UpdateGroupRoutineUseCase = GroupRoutineContainer.updateGroupRoutineUseCase,
     private val getGroupDetailUseCase: GetGroupDetailUseCase = GroupRoutineContainer.getGroupDetailUseCase,
+    private val deleteGroupUseCase: DeleteGroupUseCase = GroupRoutineContainer.deleteGroupUseCase,
+    private val leaveGroupUseCase: LeaveGroupUseCase = GroupRoutineContainer.leaveGroupUseCase,
     private val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase = GroupRoutineContainer.getGroupInviteCodeUseCase,
     private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
     private val issueGroupInviteCodeUseCase: IssueGroupInviteCodeUseCase = GroupRoutineContainer.issueGroupInviteCodeUseCase,
@@ -369,6 +374,90 @@ class GroupRoutineViewModel(
             )
         }
         loadInviteCode()
+    }
+
+    fun onLeaveRoomClick() {
+        _uiState.update { it.copy(isLeaveRoomDialogVisible = true) }
+    }
+
+    fun onDismissLeaveRoomDialog() {
+        _uiState.update { it.copy(isLeaveRoomDialogVisible = false) }
+    }
+
+    fun onDismissDeleteRoomDialog() {
+        _uiState.update { it.copy(isDeleteRoomDialogVisible = false) }
+    }
+
+    fun onLeaveRoomConfirmClick() {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(isLeaveRoomDialogVisible = false, actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+        if (_uiState.value.isSubmitting) return
+
+        _uiState.update { it.copy(isSubmitting = true) }
+        viewModelScope.launch {
+            try {
+                when (val result = leaveGroupUseCase(groupId)) {
+                    is ResultState.Success -> when (result.data) {
+                        LeaveGroupResult.Left -> exitRoom(groupId, "방에서 나왔어요.")
+                        // 방장은 못 나감 — 나가기 대신 삭제할지 다시 물어봄
+                        LeaveGroupResult.OwnerMustDelete -> _uiState.update {
+                            it.copy(isLeaveRoomDialogVisible = false, isDeleteRoomDialogVisible = true)
+                        }
+                    }
+
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(isLeaveRoomDialogVisible = false, actionMessage = result.message)
+                    }
+
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
+            }
+        }
+    }
+
+    fun onDeleteRoomConfirmClick() {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(isDeleteRoomDialogVisible = false, actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+        if (_uiState.value.isSubmitting) return
+
+        _uiState.update { it.copy(isSubmitting = true) }
+        viewModelScope.launch {
+            try {
+                when (val result = deleteGroupUseCase(groupId)) {
+                    is ResultState.Success -> exitRoom(groupId, "방을 삭제했어요.")
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(isDeleteRoomDialogVisible = false, actionMessage = result.message)
+                    }
+
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
+            }
+        }
+    }
+
+    /** 나가기/삭제 공통 뒷정리 — 목록에서 해당 방 카드를 지우고 목록 화면으로 돌려보냄 */
+    private fun exitRoom(groupId: Long, message: String) {
+        backendGroupId = null
+        _uiState.update { state ->
+            state.copy(
+                screenMode = GroupRoutineScreenMode.List,
+                routines = state.routines.filterNot { it.id == groupId },
+                selectedRoutineId = null,
+                selectedMemberId = null,
+                groupInviteCode = null,
+                isLeaveRoomDialogVisible = false,
+                isDeleteRoomDialogVisible = false,
+                actionMessage = message,
+            )
+        }
     }
 
     /** 그룹방 상세를 불러와 그룹명/초대코드/구성원 목록을 실제 서버 데이터로 채움 */

@@ -177,6 +177,11 @@ fun GroupRoutineRoute(
         onRoutineDeleteClick = viewModel::onRoutineDeleteClick,
         onDismissDeleteRoutineDialog = viewModel::onDismissDeleteRoutineDialog,
         onConfirmDeleteRoutineClick = viewModel::onConfirmDeleteRoutineClick,
+        onLeaveRoomClick = viewModel::onLeaveRoomClick,
+        onDismissLeaveRoomDialog = viewModel::onDismissLeaveRoomDialog,
+        onLeaveRoomConfirmClick = viewModel::onLeaveRoomConfirmClick,
+        onDismissDeleteRoomDialog = viewModel::onDismissDeleteRoomDialog,
+        onDeleteRoomConfirmClick = viewModel::onDeleteRoomConfirmClick,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
         onTodoCheckedChange = viewModel::onTodoCheckedChange,
         onCertificationTabClick = viewModel::onCertificationTabClick,
@@ -240,6 +245,11 @@ private fun GroupRoutineScreen(
     onRoutineDeleteClick: () -> Unit,
     onDismissDeleteRoutineDialog: () -> Unit,
     onConfirmDeleteRoutineClick: () -> Unit,
+    onLeaveRoomClick: () -> Unit,
+    onDismissLeaveRoomDialog: () -> Unit,
+    onLeaveRoomConfirmClick: () -> Unit,
+    onDismissDeleteRoomDialog: () -> Unit,
+    onDeleteRoomConfirmClick: () -> Unit,
     onCreateRoomDoneClick: () -> Unit,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
@@ -328,6 +338,7 @@ private fun GroupRoutineScreen(
                 onRoomAlarmSettingsClick = onRoomAlarmSettingsClick,
                 onRoomLockClick = onRoomLockClick,
                 onInviteCodeCopyClick = onInviteCodeCopyClick,
+                onLeaveRoomClick = onLeaveRoomClick,
             )
 
             GroupRoutineScreenMode.GroupRoutineManage -> GroupRoutineManageScreen(
@@ -460,6 +471,26 @@ private fun GroupRoutineScreen(
         DeleteRoutineDialog(
             onDismissRequest = onDismissDeleteRoutineDialog,
             onConfirmClick = onConfirmDeleteRoutineClick,
+        )
+    }
+
+    if (uiState.isLeaveRoomDialogVisible) {
+        DangerConfirmDialog(
+            title = "방 나가기",
+            description = "방을 나가면 진행 중인 그룹 루틴이 사라져요.",
+            confirmLabel = "나가기",
+            onDismissRequest = onDismissLeaveRoomDialog,
+            onConfirmClick = onLeaveRoomConfirmClick,
+        )
+    }
+
+    if (uiState.isDeleteRoomDialogVisible) {
+        DangerConfirmDialog(
+            title = "방 삭제하기",
+            description = "방장은 방을 나갈 수 없어요. 대신 방을 삭제하면 방의 모든 기록이 함께 사라져요.",
+            confirmLabel = "삭제",
+            onDismissRequest = onDismissDeleteRoomDialog,
+            onConfirmClick = onDeleteRoomConfirmClick,
         )
     }
 
@@ -1443,6 +1474,24 @@ private fun DeleteRoutineDialog(
     onDismissRequest: () -> Unit,
     onConfirmClick: () -> Unit,
 ) {
+    DangerConfirmDialog(
+        title = "삭제하기",
+        description = "작성 중이던 루틴이 삭제됩니다.",
+        confirmLabel = "삭제",
+        onDismissRequest = onDismissRequest,
+        onConfirmClick = onConfirmClick,
+    )
+}
+
+/** 되돌릴 수 없는 동작(루틴 삭제, 방 나가기/삭제)을 한 번 더 확인받는 다이얼로그 */
+@Composable
+private fun DangerConfirmDialog(
+    title: String,
+    description: String,
+    confirmLabel: String,
+    onDismissRequest: () -> Unit,
+    onConfirmClick: () -> Unit,
+) {
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -1458,7 +1507,7 @@ private fun DeleteRoutineDialog(
         ) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "삭제하기",
+                    text = title,
                     color = LabelDefault,
                     style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.weight(1f),
@@ -1466,7 +1515,7 @@ private fun DeleteRoutineDialog(
                 Text(text = "×", color = LabelDefault, fontSize = 28.sp, modifier = Modifier.clickable(onClick = onDismissRequest))
             }
             Text(
-                text = "작성 중이던 루틴이 삭제됩니다.",
+                text = description,
                 color = LabelSub,
                 style = LiroutiTheme.typography.body2Long,
             )
@@ -1489,7 +1538,7 @@ private fun DeleteRoutineDialog(
                         .weight(1f)
                         .height(48.dp),
                 ) {
-                    Text(text = "삭제")
+                    Text(text = confirmLabel)
                 }
             }
         }
@@ -2410,6 +2459,7 @@ private fun GroupSettingsScreen(
     onRoomAlarmSettingsClick: () -> Unit,
     onRoomLockClick: () -> Unit,
     onInviteCodeCopyClick: () -> Unit,
+    onLeaveRoomClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isLeader = uiState.isCurrentUserLeader
@@ -2491,7 +2541,7 @@ private fun GroupSettingsScreen(
         }
 
         Button(
-            onClick = {},
+            onClick = onLeaveRoomClick,
             shape = RoundedCornerShape(6.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = DangerBase,
@@ -3755,6 +3805,11 @@ private fun GroupRoutineListPreview() {
             onRoutineDeleteClick = {},
             onDismissDeleteRoutineDialog = {},
             onConfirmDeleteRoutineClick = {},
+            onLeaveRoomClick = {},
+            onDismissLeaveRoomDialog = {},
+            onLeaveRoomConfirmClick = {},
+            onDismissDeleteRoomDialog = {},
+            onDeleteRoomConfirmClick = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
@@ -3819,6 +3874,11 @@ private fun CreateRoomNamePreview() {
             onRoutineDeleteClick = {},
             onDismissDeleteRoutineDialog = {},
             onConfirmDeleteRoutineClick = {},
+            onLeaveRoomClick = {},
+            onDismissLeaveRoomDialog = {},
+            onLeaveRoomConfirmClick = {},
+            onDismissDeleteRoomDialog = {},
+            onDeleteRoomConfirmClick = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},

@@ -21,9 +21,11 @@ import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.GroupRoutineUpdateResult
 import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationFeed
+import com.li_routi.core.domain.grouproutine.LeaveGroupResult
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
+import retrofit2.HttpException
 
 class GroupRoutineRepositoryImpl(
     private val api: GroupRoutineApiService,
@@ -110,6 +112,20 @@ class GroupRoutineRepositoryImpl(
         api.getGroupDetail(groupId).unwrap().toDomain()
     }
 
+    override suspend fun deleteGroup(groupId: Long): ResultState<Unit> = safeApiCall {
+        api.deleteGroup(groupId).ensureSuccess()
+    }
+
+    override suspend fun leaveGroup(groupId: Long): ResultState<LeaveGroupResult> = safeApiCall {
+        try {
+            api.leaveGroup(groupId).ensureSuccess()
+            LeaveGroupResult.Left
+        } catch (e: HttpException) {
+            // 409는 OWNER라 못 나가는 경우뿐임(GROUP409_1) — 에러 대신 결과로 돌려줘서 삭제로 유도함
+            if (e.code() == 409) LeaveGroupResult.OwnerMustDelete else throw e
+        }
+    }
+
     override suspend fun getTodayGroupRoutines(): ResultState<List<TodayGroupRoutine>> = safeApiCall {
         api.getTodayRoutines().unwrap().toDomain()
     }
@@ -159,4 +175,9 @@ private fun <T> ApiResponse<T>.unwrap(): T {
     val result = result
     if (!isSuccess || result == null) throw ApiException(message)
     return result
+}
+
+/** result가 비어 오는(Void) 응답용 — 성공 여부만 확인함 */
+private fun ApiResponse<*>.ensureSuccess() {
+    if (!isSuccess) throw ApiException(message)
 }
