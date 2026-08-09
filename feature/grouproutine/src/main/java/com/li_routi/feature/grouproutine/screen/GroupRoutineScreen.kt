@@ -2033,7 +2033,7 @@ private fun GroupRoutineDetailScreen(
         MemberProfileDialog(
             member = member,
             // 방장만 내보낼 수 있고, 자기 자신은 못 내보냄
-            canKick = uiState.isCurrentUserLeader && !member.isMe,
+            canKick = uiState.isConfirmedOwner && !member.isMe,
             onDismissRequest = onDismissMemberDialog,
             onPokeClick = onDismissMemberDialog,
             onKickClick = onMemberKickClick,

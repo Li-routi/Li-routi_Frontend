@@ -40,14 +40,14 @@ fun GroupCreateResultResponse.toDomain(): CreatedGroup = CreatedGroup(
 
 fun GroupDetailResponse.toDomain(): GroupDetail = GroupDetail(
     groupId = groupId,
-    groupName = groupName,
-    inviteCode = inviteCode,
-    members = members.map { it.toDomain() },
+    groupName = groupName.orEmpty(),
+    inviteCode = inviteCode.orEmpty(),
+    members = members.orEmpty().map { it.toDomain() },
 )
 
 fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberActivity(
     memberId = memberId,
-    name = name,
+    name = name.orEmpty(),
     profileImageKey = profileImageKey,
     statusMessage = statusMessage,
     currentStreak = currentStreak,

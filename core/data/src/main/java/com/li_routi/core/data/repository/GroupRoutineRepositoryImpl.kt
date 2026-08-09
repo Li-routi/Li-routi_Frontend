@@ -149,7 +149,7 @@ class GroupRoutineRepositoryImpl(
         api.updateStatusMessage(
             groupId = groupId,
             request = UpdateStatusMessageRequest(statusMessage = statusMessage),
-        ).unwrap().statusMessage
+        ).unwrap().statusMessage.orEmpty()
     }
 
     override suspend fun updateGroupName(groupId: Long, name: String): ResultState<Unit> = safeApiCall {

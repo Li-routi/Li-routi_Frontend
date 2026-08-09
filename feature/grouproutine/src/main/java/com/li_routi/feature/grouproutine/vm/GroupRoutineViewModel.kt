@@ -127,7 +127,12 @@ class GroupRoutineViewModel(
             backendGroupId = routineId
             loadGroupDetail(routineId)
             loadTodayRoutines(routineId)
+        } else {
+            // mock 방을 열었는데 직전 그룹 id가 남아 있으면 엉뚱한 그룹으로 요청이 나감
+            backendGroupId = null
         }
+        // 방마다 방장이 다르니 방을 옮기면 이전 방 기준 판단을 버림
+        _uiState.update { it.copy(isConfirmedOwner = false) }
     }
 
     fun onBackClick() {
@@ -384,15 +389,21 @@ class GroupRoutineViewModel(
             return
         }
 
+        if (_uiState.value.isSubmitting) return
+        _uiState.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
-            when (val result = updateGroupMemberStatusMessageUseCase(groupId, message)) {
-                // 서버가 저장한 값을 그대로 반영해야 다른 사람 화면이랑 어긋나지 않음
-                is ResultState.Success -> applyMyStatusMessage(result.data)
-                is ResultState.Error -> _uiState.update {
-                    it.copy(isMessageEditSheetVisible = false, actionMessage = result.message)
-                }
+            try {
+                when (val result = updateGroupMemberStatusMessageUseCase(groupId, message)) {
+                    // 서버가 저장한 값을 그대로 반영해야 다른 사람 화면이랑 어긋나지 않음
+                    is ResultState.Success -> applyMyStatusMessage(result.data)
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(isMessageEditSheetVisible = false, actionMessage = result.message)
+                    }
 
-                ResultState.Loading -> Unit
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -444,7 +455,11 @@ class GroupRoutineViewModel(
                         LeaveGroupResult.Left -> exitRoom(groupId, "방에서 나왔어요.")
                         // 방장은 못 나감 — 나가기 대신 삭제할지 다시 물어봄
                         LeaveGroupResult.OwnerMustDelete -> _uiState.update {
-                            it.copy(isLeaveRoomDialogVisible = false, isDeleteRoomDialogVisible = true)
+                            it.copy(
+                                isLeaveRoomDialogVisible = false,
+                                isDeleteRoomDialogVisible = true,
+                                isConfirmedOwner = true,
+                            )
                         }
                     }
 
@@ -686,18 +701,24 @@ class GroupRoutineViewModel(
             return
         }
 
+        if (state.isSubmitting) return
+        _uiState.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
-            when (val result = transferGroupOwnerUseCase(groupId, targetMemberId)) {
-                is ResultState.Success -> {
-                    applyLeaderTransfer(isStillLeader = false, message = "방장이 변경되었습니다.")
-                    loadGroupDetail(groupId)
-                }
+            try {
+                when (val result = transferGroupOwnerUseCase(groupId, targetMemberId)) {
+                    is ResultState.Success -> {
+                        applyLeaderTransfer(isStillLeader = false, message = "방장이 변경되었습니다.")
+                        loadGroupDetail(groupId)
+                    }
 
-                is ResultState.Error -> _uiState.update {
-                    it.copy(pendingLeaderMemberId = null, actionMessage = result.message)
-                }
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(pendingLeaderMemberId = null, actionMessage = result.message)
+                    }
 
-                ResultState.Loading -> Unit
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -707,6 +728,8 @@ class GroupRoutineViewModel(
             state.copy(
                 screenMode = GroupRoutineScreenMode.GroupSettings,
                 isCurrentUserLeader = isStillLeader,
+                // 방장을 넘겼으면 더 이상 방장이 아님
+                isConfirmedOwner = if (isStillLeader) state.isConfirmedOwner else false,
                 pendingLeaderMemberId = null,
                 actionMessage = message,
             )
@@ -719,23 +742,30 @@ class GroupRoutineViewModel(
             return
         }
         val nextLocked = !_uiState.value.isRoomLocked
+        // 연타하면 lock/unlock이 순서 보장 없이 동시에 나감
+        if (_uiState.value.isSubmitting) return
+        _uiState.update { it.copy(isSubmitting = true) }
 
         viewModelScope.launch {
-            when (val result = setGroupLockUseCase(groupId, nextLocked)) {
-                // 토글 상태는 낙관적으로 바꾸지 않고 서버가 알려준 최종 값을 씀
-                is ResultState.Success -> _uiState.update {
-                    it.copy(
-                        isRoomLocked = result.data,
-                        actionMessage = if (result.data) {
-                            "더 이상 다른 사람이 참여할 수 없습니다."
-                        } else {
-                            "다른 사람이 참여할 수 있습니다."
-                        },
-                    )
-                }
+            try {
+                when (val result = setGroupLockUseCase(groupId, nextLocked)) {
+                    // 토글 상태는 낙관적으로 바꾸지 않고 서버가 알려준 최종 값을 씀
+                    is ResultState.Success -> _uiState.update {
+                        it.copy(
+                            isRoomLocked = result.data,
+                            actionMessage = if (result.data) {
+                                "더 이상 다른 사람이 참여할 수 없습니다."
+                            } else {
+                                "다른 사람이 참여할 수 있습니다."
+                            },
+                        )
+                    }
 
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
-                ResultState.Loading -> Unit
+                    is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -746,25 +776,31 @@ class GroupRoutineViewModel(
             return
         }
         val targetMemberId = _uiState.value.selectedMemberId ?: return
+        if (_uiState.value.isSubmitting) return
+        _uiState.update { it.copy(isSubmitting = true) }
 
         viewModelScope.launch {
-            when (val result = kickGroupMemberUseCase(groupId, targetMemberId)) {
-                is ResultState.Success -> {
-                    _uiState.update { state ->
-                        state.copy(
-                            members = state.members.filterNot { it.id == targetMemberId },
-                            selectedMemberId = null,
-                            actionMessage = "멤버를 내보냈어요.",
-                        )
+            try {
+                when (val result = kickGroupMemberUseCase(groupId, targetMemberId)) {
+                    is ResultState.Success -> {
+                        _uiState.update { state ->
+                            state.copy(
+                                members = state.members.filterNot { it.id == targetMemberId },
+                                selectedMemberId = null,
+                                actionMessage = "멤버를 내보냈어요.",
+                            )
+                        }
+                        loadGroupDetail(groupId)
                     }
-                    loadGroupDetail(groupId)
-                }
 
-                is ResultState.Error -> _uiState.update {
-                    it.copy(selectedMemberId = null, actionMessage = result.message)
-                }
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(selectedMemberId = null, actionMessage = result.message)
+                    }
 
-                ResultState.Loading -> Unit
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -807,11 +843,17 @@ class GroupRoutineViewModel(
             return
         }
 
+        if (_uiState.value.isSubmitting) return
+        _uiState.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
-            when (val result = updateGroupNameUseCase(groupId, title)) {
-                is ResultState.Success -> applyRoomName(title)
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
-                ResultState.Loading -> Unit
+            try {
+                when (val result = updateGroupNameUseCase(groupId, title)) {
+                    is ResultState.Success -> applyRoomName(title)
+                    is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -917,6 +959,7 @@ class GroupRoutineViewModel(
                                 selectedRoutineId = joined.groupId,
                                 routines = listOf(joinedRoutine) + others,
                                 inviteCodeInput = "",
+                                isConfirmedOwner = false,
                                 actionMessage = "그룹방에 참여했어요.",
                             )
                         }
@@ -1148,6 +1191,12 @@ class GroupRoutineViewModel(
             return
         }
 
+        // 서버가 schedules를 최소 1개 요구해서(문서엔 0개 가능이라 적혀 있음) 미리 막음
+        if (state.routineDraftRepeatDays.isEmpty()) {
+            _uiState.update { it.copy(actionMessage = "반복할 요일을 선택해주세요.") }
+            return
+        }
+
         if (state.screenMode == GroupRoutineScreenMode.GroupRoutineManage) {
             submitGroupRoutine(state, title)
         } else {
@@ -1237,6 +1286,8 @@ class GroupRoutineViewModel(
                                 actionMessage = null,
                             )
                         }
+                        // 상세 화면 체크리스트(todos)는 오늘의 루틴 조회로 채워지니 여기서도 다시 불러와야 함
+                        loadTodayRoutines(groupId)
                     }
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                     ResultState.Loading -> Unit
@@ -1313,21 +1364,27 @@ class GroupRoutineViewModel(
 
         clearRoutineDraft(editingId)
         if (!shouldCallApi) return
+        if (state.isSubmitting) return
+        _uiState.update { it.copy(isSubmitting = true) }
 
         viewModelScope.launch {
-            when (val result = deleteGroupRoutineUseCase(groupId, editingId)) {
-                is ResultState.Success -> {
-                    _uiState.update { it.copy(actionMessage = "루틴을 삭제했어요.") }
-                    loadTodayRoutines(groupId)
-                }
+            try {
+                when (val result = deleteGroupRoutineUseCase(groupId, editingId)) {
+                    is ResultState.Success -> {
+                        _uiState.update { it.copy(actionMessage = "루틴을 삭제했어요.") }
+                        loadTodayRoutines(groupId)
+                    }
 
-                // 서버에서 못 지웠으면 목록에서 지운 걸 되돌려야 해서 다시 불러옴
-                is ResultState.Error -> {
-                    _uiState.update { it.copy(actionMessage = result.message) }
-                    loadTodayRoutines(groupId)
-                }
+                    // 서버에서 못 지웠으면 목록에서 지운 걸 되돌려야 해서 다시 불러옴
+                    is ResultState.Error -> {
+                        _uiState.update { it.copy(actionMessage = result.message) }
+                        loadTodayRoutines(groupId)
+                    }
 
-                ResultState.Loading -> Unit
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
             }
         }
     }
@@ -1446,6 +1503,7 @@ class GroupRoutineViewModel(
                                 selectedCategory = "전체",
                                 routines = listOf(newRoutine) + existingServerRoutines,
                                 todos = selectedTodos,
+                                isConfirmedOwner = true,
                                 actionMessage = "방이 만들어졌어요.",
                             )
                         }

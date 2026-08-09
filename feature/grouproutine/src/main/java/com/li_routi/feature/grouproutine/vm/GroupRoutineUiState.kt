@@ -87,6 +87,10 @@ data class GroupRoutineUiState(
     val actionMessage: String? = null,
     val isRoomLocked: Boolean = false,
     val isCurrentUserLeader: Boolean = true,
+    // 서버가 그룹 상세에 OWNER 여부를 안 내려줌. isCurrentUserLeader는 기본값이 true라
+    // 실제 권한 판단에 쓸 수 없어서, 방장인 게 증명된 경우에만 켜지는 플래그를 따로 둠
+    // (방을 직접 만들었거나 / 나가기가 GROUP409_1로 막혔거나)
+    val isConfirmedOwner: Boolean = false,
     val showOnlyMyCertifications: Boolean = false,
     val isNewCertificationDialogVisible: Boolean = false,
     val isEmptyState: Boolean = false,
