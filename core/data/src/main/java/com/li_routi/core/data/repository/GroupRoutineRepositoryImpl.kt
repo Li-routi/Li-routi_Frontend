@@ -13,6 +13,7 @@ import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.service.GroupRoutineApiService
 import com.li_routi.core.domain.grouproutine.CreatedGroup
+import com.li_routi.core.domain.grouproutine.GroupDetail
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
@@ -104,6 +105,10 @@ class GroupRoutineRepositoryImpl(
             )
         },
     )
+
+    override suspend fun getGroupDetail(groupId: Long): ResultState<GroupDetail> = safeApiCall {
+        api.getGroupDetail(groupId).unwrap().toDomain()
+    }
 
     override suspend fun getTodayGroupRoutines(): ResultState<List<TodayGroupRoutine>> = safeApiCall {
         api.getTodayRoutines().unwrap().toDomain()

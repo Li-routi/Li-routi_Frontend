@@ -2,7 +2,9 @@ package com.li_routi.core.data.mapper
 
 import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.data.network.dto.response.GroupCreateResultResponse
+import com.li_routi.core.data.network.dto.response.GroupDetailResponse
 import com.li_routi.core.data.network.dto.response.GroupInviteCodeResponse
+import com.li_routi.core.data.network.dto.response.GroupMemberActivityResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryListResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
@@ -12,7 +14,9 @@ import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultRespo
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineListResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineResponse
 import com.li_routi.core.domain.grouproutine.CreatedGroup
+import com.li_routi.core.domain.grouproutine.GroupDetail
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
+import com.li_routi.core.domain.grouproutine.GroupMemberActivity
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
 import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationFeed
@@ -28,6 +32,25 @@ fun GroupCreateResultResponse.toDomain(): CreatedGroup = CreatedGroup(
     name = name,
     routines = routines.map { it.toDomain() },
     assignmentCount = assignmentCount,
+)
+
+fun GroupDetailResponse.toDomain(): GroupDetail = GroupDetail(
+    groupId = groupId,
+    groupName = groupName,
+    inviteCode = inviteCode,
+    members = members.map { it.toDomain() },
+)
+
+fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberActivity(
+    memberId = memberId,
+    name = name,
+    profileImageKey = profileImageKey,
+    statusMessage = statusMessage,
+    currentStreak = currentStreak,
+    totalLikeCount = totalLikeCount,
+    // 할당이 없는 구성원은 서버가 dailyProgress를 안 내려줄 수 있어서 0/0으로 채움
+    completedCount = dailyProgress?.completedCount ?: 0L,
+    totalCount = dailyProgress?.totalCount ?: 0L,
 )
 
 fun GroupRoutineScheduleResponse.toDomain(): GroupRoutineSchedule = GroupRoutineSchedule(

@@ -3,8 +3,10 @@ package com.li_routi.feature.grouproutine.vm
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.data.di.ChatContainer
 import com.li_routi.core.data.di.GroupRoutineContainer
+import com.li_routi.core.domain.auth.GetMyInfoUseCase
 import com.li_routi.core.domain.chat.ChatMessage
 import com.li_routi.core.domain.chat.ChatMessageType
 import com.li_routi.core.domain.chat.ConnectChatSocketUseCase
@@ -18,6 +20,7 @@ import com.li_routi.core.domain.chat.UpdateChatReadPositionUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineCategoryUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
+import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
@@ -44,7 +47,9 @@ class GroupRoutineViewModel(
     private val createGroupUseCase: CreateGroupUseCase = GroupRoutineContainer.createGroupUseCase,
     private val createGroupRoutineUseCase: CreateGroupRoutineUseCase = GroupRoutineContainer.createGroupRoutineUseCase,
     private val updateGroupRoutineUseCase: UpdateGroupRoutineUseCase = GroupRoutineContainer.updateGroupRoutineUseCase,
+    private val getGroupDetailUseCase: GetGroupDetailUseCase = GroupRoutineContainer.getGroupDetailUseCase,
     private val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase = GroupRoutineContainer.getGroupInviteCodeUseCase,
+    private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
     private val issueGroupInviteCodeUseCase: IssueGroupInviteCodeUseCase = GroupRoutineContainer.issueGroupInviteCodeUseCase,
     private val getGroupRoutineCategoriesUseCase: GetGroupRoutineCategoriesUseCase = GroupRoutineContainer.getGroupRoutineCategoriesUseCase,
     private val createGroupRoutineCategoryUseCase: CreateGroupRoutineCategoryUseCase = GroupRoutineContainer.createGroupRoutineCategoryUseCase,
@@ -77,6 +82,9 @@ class GroupRoutineViewModel(
     // CodeRabbit 반영: 새로 생성된(서버) 카테고리의 이름 -> categoryId. DefaultCategoryIds에 없는 카테고리 제출 시 사용
     private var serverCategoryIds: Map<String, Long> = emptyMap()
 
+    // 구성원 목록에서 "나"를 가려내고 채팅 말풍선 좌우를 정하는 데 씀. 세션 내내 안 바뀌어서 한 번만 조회함
+    private var myMemberId: Long? = null
+
     fun onDismissActionMessage() {
         _uiState.update { it.copy(actionMessage = null) }
     }
@@ -90,6 +98,11 @@ class GroupRoutineViewModel(
                 isNewCertificationDialogVisible = true,
                 actionMessage = null,
             )
+        }
+        // 목록에 아직 mock 카드(음수 id)가 섞여 있어서, 실제 서버 그룹일 때만 상세를 불러옴
+        if (routineId > 0L) {
+            backendGroupId = routineId
+            loadGroupDetail(routineId)
         }
     }
 
@@ -356,6 +369,49 @@ class GroupRoutineViewModel(
             )
         }
         loadInviteCode()
+    }
+
+    /** 그룹방 상세를 불러와 그룹명/초대코드/구성원 목록을 실제 서버 데이터로 채움 */
+    private fun loadGroupDetail(groupId: Long) {
+        viewModelScope.launch {
+            if (myMemberId == null) {
+                val myInfo = getMyInfoUseCase()
+                if (myInfo is ResultState.Success) myMemberId = myInfo.data.memberId
+            }
+
+            when (val result = getGroupDetailUseCase(groupId)) {
+                is ResultState.Success -> {
+                    val detail = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            groupInviteCode = detail.inviteCode,
+                            members = detail.members.map { member ->
+                                GroupMemberUiModel(
+                                    id = member.memberId,
+                                    name = member.name,
+                                    message = member.statusMessage.orEmpty(),
+                                    streak = member.currentStreak,
+                                    isMe = member.memberId == myMemberId,
+                                )
+                            },
+                            routines = state.routines.map { routine ->
+                                if (routine.id != groupId) {
+                                    routine
+                                } else {
+                                    routine.copy(
+                                        title = detail.groupName,
+                                        memberCount = detail.members.size,
+                                    )
+                                }
+                            },
+                        )
+                    }
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     private fun loadInviteCode() {
@@ -1053,6 +1109,8 @@ class GroupRoutineViewModel(
                                 actionMessage = "방이 만들어졌어요.",
                             )
                         }
+                        // 방을 막 만들면 구성원이 나 혼자라 mock 멤버가 그대로 남음 — 상세 조회로 덮어씀
+                        loadGroupDetail(groupId)
                     }
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                     ResultState.Loading -> Unit

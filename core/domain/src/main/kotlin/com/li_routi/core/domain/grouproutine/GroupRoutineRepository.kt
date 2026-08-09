@@ -30,6 +30,9 @@ interface GroupRoutineRepository {
         schedules: List<GroupRoutineSchedule>,
     ): ResultState<GroupRoutineUpdateResult>
 
+    /** 그룹방 상세(그룹명/초대코드/구성원별 활동 현황)를 조회함 */
+    suspend fun getGroupDetail(groupId: Long): ResultState<GroupDetail>
+
     /** 로그인한 회원이 속한 모든 그룹의 오늘자 루틴을 조회함 */
     suspend fun getTodayGroupRoutines(): ResultState<List<TodayGroupRoutine>>
 

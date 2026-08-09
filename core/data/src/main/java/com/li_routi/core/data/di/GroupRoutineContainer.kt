@@ -5,6 +5,7 @@ import com.li_routi.core.data.repository.GroupRoutineRepositoryImpl
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineCategoryUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
+import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
@@ -33,6 +34,10 @@ object GroupRoutineContainer {
 
     val updateGroupRoutineUseCase: UpdateGroupRoutineUseCase by lazy {
         UpdateGroupRoutineUseCase(repository)
+    }
+
+    val getGroupDetailUseCase: GetGroupDetailUseCase by lazy {
+        GetGroupDetailUseCase(repository)
     }
 
     val getTodayGroupRoutinesUseCase: GetTodayGroupRoutinesUseCase by lazy {
