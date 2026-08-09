@@ -102,7 +102,7 @@ class GroupRoutineViewModel(
                     selectedRoutineId = null,
                     selectedMemberId = null,
                     showOnlyMyCertifications = false,
-                    selectedCertificationMemberName = null,
+                    selectedCertificationMemberId = null,
                     isNewCertificationDialogVisible = false,
                     actionMessage = null,
                 )
@@ -168,7 +168,7 @@ class GroupRoutineViewModel(
             it.copy(
                 screenMode = GroupRoutineScreenMode.CertificationCollection,
                 showOnlyMyCertifications = false,
-                selectedCertificationMemberName = null,
+                selectedCertificationMemberId = null,
                 actionMessage = null,
             )
         }
@@ -179,6 +179,7 @@ class GroupRoutineViewModel(
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.GroupChat,
+                unreadChatCount = 0,
                 actionMessage = null,
             )
         }
@@ -255,11 +256,22 @@ class GroupRoutineViewModel(
             launch {
                 observeChatMessagesUseCase().collect { incoming ->
                     val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
+                    val shouldMarkRead = _uiState.value.screenMode == GroupRoutineScreenMode.GroupChat
                     _uiState.update { state ->
                         if (state.chatMessages.any { it.id == incoming.id }) return@update state
-                        state.copy(chatMessages = state.chatMessages + incoming.toUiModel(isMine = incoming.senderId == myMemberId))
+                        val isMine = incoming.senderId == myMemberId
+                        state.copy(
+                            chatMessages = state.chatMessages + incoming.toUiModel(isMine = isMine),
+                            unreadChatCount = if (shouldMarkRead || isMine) {
+                                state.unreadChatCount
+                            } else {
+                                state.unreadChatCount + 1
+                            },
+                        )
                     }
-                    markChatRead(groupId, incoming.id)
+                    if (shouldMarkRead) {
+                        markChatRead(groupId, incoming.id)
+                    }
                 }
             }
 
@@ -282,7 +294,7 @@ class GroupRoutineViewModel(
                 _uiState.update { state ->
                     // 조회 응답이 오기 전 소켓으로 먼저 들어온 메시지와 겹칠 수 있어 id 기준으로 합친다.
                     val merged = (historyMessages + state.chatMessages).distinctBy { it.id }.sortedBy { it.id }
-                    state.copy(chatMessages = merged, isChatLoading = false)
+                    state.copy(chatMessages = merged, isChatLoading = false, unreadChatCount = 0)
                 }
                 // 마지막 메시지까지 읽은 것으로 서버에 반영(화면에 들어와 목록을 봤으므로).
                 historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
@@ -296,6 +308,7 @@ class GroupRoutineViewModel(
     private fun markChatRead(groupId: Long, lastReadMessageId: Long) {
         viewModelScope.launch {
             updateChatReadPositionUseCase(groupId, lastReadMessageId)
+            _uiState.update { it.copy(unreadChatCount = 0) }
         }
     }
 
@@ -425,6 +438,7 @@ class GroupRoutineViewModel(
                             posts = result.data.verifications.map { item ->
                                 CertificationPostUiModel(
                                     id = item.verificationId,
+                                    memberId = item.memberId,
                                     userName = item.nickname,
                                     body = item.content.orEmpty(),
                                     likeCount = 0,
@@ -1081,12 +1095,12 @@ class GroupRoutineViewModel(
         _uiState.update { it.copy(showOnlyMyCertifications = showOnlyMine, actionMessage = null) }
     }
 
-    fun onCertificationMemberClick(memberName: String?) {
+    fun onCertificationMemberClick(memberId: Long?) {
         _uiState.update { state ->
             state.copy(
-                selectedCertificationMemberName = memberName,
-                showOnlyMyCertifications = memberName?.let { name ->
-                    state.members.firstOrNull { member -> member.name == name }?.isMe == true
+                selectedCertificationMemberId = memberId,
+                showOnlyMyCertifications = memberId?.let { id ->
+                    state.members.firstOrNull { member -> member.id == id }?.isMe == true
                 } ?: false,
                 actionMessage = null,
             )

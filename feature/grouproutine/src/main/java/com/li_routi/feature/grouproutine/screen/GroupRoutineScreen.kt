@@ -251,7 +251,7 @@ private fun GroupRoutineScreen(
     onCreateRoomDoneClick: () -> Unit,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
-    onCertificationMemberClick: (String?) -> Unit,
+    onCertificationMemberClick: (Long?) -> Unit,
     onCertificationSummaryClick: () -> Unit,
     onDismissNewCertificationDialog: () -> Unit,
     onMemberClick: (Long) -> Unit,
@@ -2075,6 +2075,8 @@ private fun DetailRoutineTabSheet(
     onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val dragThresholdPx = with(LocalDensity.current) { 24.dp.toPx() }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -2096,8 +2098,8 @@ private fun DetailRoutineTabSheet(
                         },
                         onDragEnd = {
                             when {
-                                dragAmountSum < -24f -> onExpandedChange(true)
-                                dragAmountSum > 24f -> onExpandedChange(false)
+                                dragAmountSum < -dragThresholdPx -> onExpandedChange(true)
+                                dragAmountSum > dragThresholdPx -> onExpandedChange(false)
                             }
                         },
                     )
@@ -2262,7 +2264,7 @@ private fun DetailRoutineTodoRow(
 private fun CertificationCollectionScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
-    onCertificationMemberClick: (String?) -> Unit,
+    onCertificationMemberClick: (Long?) -> Unit,
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -2287,7 +2289,7 @@ private fun CertificationCollectionScreen(
                     CertificationFeedCard(
                         posts = uiState.visibleCertificationPosts,
                         members = uiState.members,
-                        selectedMemberName = uiState.selectedCertificationMemberName,
+                        selectedMemberId = uiState.selectedCertificationMemberId,
                         onMemberClick = onCertificationMemberClick,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
@@ -3442,8 +3444,8 @@ private fun TodoRow(
 private fun CertificationFeedCard(
     posts: List<CertificationPostUiModel>,
     members: List<GroupMemberUiModel>,
-    selectedMemberName: String?,
-    onMemberClick: (String?) -> Unit,
+    selectedMemberId: Long?,
+    onMemberClick: (Long?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -3455,15 +3457,15 @@ private fun CertificationFeedCard(
             item {
                 CertificationMemberChip(
                     text = "전체",
-                    selected = selectedMemberName == null,
+                    selected = selectedMemberId == null,
                     onClick = { onMemberClick(null) },
                 )
             }
             items(members, key = { member -> member.id }) { member ->
                 CertificationMemberChip(
                     text = member.name,
-                    selected = selectedMemberName == member.name,
-                    onClick = { onMemberClick(member.name) },
+                    selected = selectedMemberId == member.id,
+                    onClick = { onMemberClick(member.id) },
                 )
             }
         }
