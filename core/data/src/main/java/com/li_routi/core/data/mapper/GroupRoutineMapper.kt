@@ -93,7 +93,6 @@ fun TodayGroupRoutineListResponse.toDomain(): List<TodayGroupRoutine> = routines
 
 fun GroupInviteCodeResponse.toDomain(): GroupInviteCode = GroupInviteCode(
     inviteCode = inviteCode,
-    expiresAt = expiresAt,
 )
 
 fun GroupRoutineCategoryListResponse.toDomain(): GroupRoutineCategoryList = GroupRoutineCategoryList(
