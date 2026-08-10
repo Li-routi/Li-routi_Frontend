@@ -85,6 +85,9 @@ fun RoomDetailScreen(
     onBackClick: () -> Unit,
     onChatMessageChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    replyTarget: ChatMessageUiModel? = null,
+    onReplySwipe: (ChatMessageUiModel) -> Unit = {},
+    onReplyCancelClick: () -> Unit = {},
     emptyChatMessage: String = "채팅을 시작해 보세요!",
     onEmojiClick: () -> Unit = {},
     onSendClick: () -> Unit = {},
@@ -185,7 +188,7 @@ fun RoomDetailScreen(
                     contentPadding = PaddingValues(vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    itemsIndexed(messages) { index, message ->
+                    itemsIndexed(items = messages, key = { _, message -> message.id }) { index, message ->
                         val previous = messages.getOrNull(index - 1)
                         Column {
                             if (message.isNewDate(previous)) {
@@ -195,6 +198,7 @@ fun RoomDetailScreen(
                                 message = message,
                                 isGroupStart = message.isGroupStart(previous),
                                 emojiSize = emojiSize,
+                                onReplySwipe = onReplySwipe,
                             )
                         }
                     }
@@ -213,6 +217,8 @@ fun RoomDetailScreen(
                 message = chatDraftText,
                 onMessageChange = onChatMessageChange,
                 focusRequester = chatFieldFocusRequester,
+                replyTarget = replyTarget,
+                onReplyCancelClick = onReplyCancelClick,
                 isEmojiPanelOpen = chatInputMode == ChatInputMode.EMOJI,
                 onFocusChanged = { focused -> if (focused) chatInputMode = ChatInputMode.KEYBOARD },
                 onTextFieldTap = {

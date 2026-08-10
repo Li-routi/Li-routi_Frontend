@@ -196,19 +196,38 @@ class GroupRoutineViewModel(
             return
         }
 
+        // 답장 대상이 있으면 원문을 인용 접두사로 앞에 합쳐서 보낸다 — 서버는 이걸 그냥
+        // 평범한 텍스트 메시지로 취급하므로 도메인/DTO 변경 없이 클라이언트에서만 처리 가능하다.
+        val replyTarget = _uiState.value.replyTarget
+        val content = if (replyTarget != null) {
+            "↩ ${replyTarget.senderName}: ${replyTarget.message.take(30)}\n$text"
+        } else {
+            text
+        }
+
         val message = NewChatMessage(
             clientMessageId = UUID.randomUUID().toString(),
             type = ChatMessageType.TEXT,
-            content = text,
+            content = content,
             emoticonCode = null,
         )
         viewModelScope.launch {
             when (val result = sendChatMessageUseCase(groupId, message)) {
-                is ResultState.Success -> _uiState.update { it.copy(chatDraftText = "") }
+                is ResultState.Success -> _uiState.update { it.copy(chatDraftText = "", replyTarget = null) }
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
         }
+    }
+
+    /** 채팅 메시지를 오른쪽으로 스와이프해서 답장 대상으로 지정했을 때 호출된다. */
+    fun onReplyTargetSelected(message: ChatMessageUiModel) {
+        _uiState.update { it.copy(replyTarget = message) }
+    }
+
+    /** 답장 미리보기(윗상자)의 취소 버튼을 눌렀을 때 호출된다. */
+    fun onReplyTargetCleared() {
+        _uiState.update { it.copy(replyTarget = null) }
     }
 
     // 탭한 즉시 채팅으로 전송된다 — 실제 화면 반영은 소켓 구독으로 돌아오는 브로드캐스트를 통해 이뤄진다.

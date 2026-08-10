@@ -1,7 +1,11 @@
 package com.li_routi.feature.grouproutine.component
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,6 +14,7 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -17,12 +22,17 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -30,6 +40,8 @@ import com.li_routi.feature.grouproutine.R
 import java.time.Instant
 import java.time.LocalDate
 import java.time.ZoneId
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 private val ChatBubbleTextColor = Color(0xFF000000)
 
@@ -41,6 +53,11 @@ private val NicknameToBubbleGap = 4.dp
 
 // 왼쪽 여백(16) + 프로필(40) + 프로필-닉네임 간격(8) = 화면 왼쪽 기준 64dp 지점.
 private val BubbleStartOffset = LeftMargin + AvatarSize + AvatarToNicknameGap
+
+// 상대 말풍선을 오른쪽으로 스와이프하면 답장 대상으로 지정한다 — 최대 64dp까지만 밀리고,
+// 48dp를 넘겨야 답장이 확정된다(안 넘기고 손을 떼면 스프링으로 원위치 복귀).
+private val ReplySwipeMaxOffset = 64.dp
+private val ReplySwipeTriggerThreshold = 48.dp
 
 /**
  * 채팅 메시지 한 건. [sentAtMillis]는 그룹핑(같은 분인지 판단)에만 쓰이고 화면엔 표시하지 않는다.
@@ -148,6 +165,7 @@ fun ChatBox(
     isGroupStart: Boolean,
     modifier: Modifier = Modifier,
     emojiSize: Dp = 40.dp,
+    onReplySwipe: (ChatMessageUiModel) -> Unit = {},
 ) {
     if (message.isMine) {
         Row(
@@ -198,10 +216,44 @@ fun ChatBox(
             Spacer(modifier = Modifier.height(NicknameToBubbleGap))
         }
 
+        val density = LocalDensity.current
+        val coroutineScope = rememberCoroutineScope()
+        val maxOffsetPx = remember(density) { with(density) { ReplySwipeMaxOffset.toPx() } }
+        val thresholdPx = remember(density) { with(density) { ReplySwipeTriggerThreshold.toPx() } }
+        // message.id로 remember해야 리스트가 갱신돼도 이전 아이템의 드래그 상태가 새 메시지로 새지 않는다.
+        val offsetX = remember(message.id) { Animatable(0f) }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = BubbleStartOffset),
+                .padding(start = BubbleStartOffset)
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                // 이모티콘 메시지는 답장에 실을 텍스트가 없으므로 스와이프 자체를 받지 않는다.
+                .then(
+                    if (message.emojiUrl == null) {
+                        Modifier.pointerInput(message.id) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    val triggered = offsetX.value > thresholdPx
+                                    coroutineScope.launch {
+                                        if (triggered) onReplySwipe(message)
+                                        offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                                    }
+                                },
+                                onDragCancel = {
+                                    coroutineScope.launch { offsetX.animateTo(0f) }
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    val next = (offsetX.value + dragAmount).coerceIn(0f, maxOffsetPx)
+                                    coroutineScope.launch { offsetX.snapTo(next) }
+                                },
+                            )
+                        }
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
             if (message.emojiUrl != null) {
                 AsyncImage(
