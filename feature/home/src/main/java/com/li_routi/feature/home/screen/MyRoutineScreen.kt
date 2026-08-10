@@ -73,6 +73,7 @@ fun MyRoutineScreen(
     modifier: Modifier = Modifier,
     addCategoryEnabled: Boolean = true,
     onRoutineClick: (String) -> Unit = {},
+    onCategoryLongClick: (String) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -135,6 +136,7 @@ fun MyRoutineScreen(
                     onCategorySelected = onCategorySelected,
                     onAddCategoryClick = onAddCategoryClick,
                     addCategoryEnabled = addCategoryEnabled,
+                    onCategoryLongClick = onCategoryLongClick,
                 )
 
                 Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {

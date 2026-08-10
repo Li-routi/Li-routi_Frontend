@@ -22,6 +22,10 @@ fun NotificationRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
     LaunchedEffect(viewModel) {
+        viewModel.refresh()
+    }
+
+    LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
             onEvent(event)
         }
@@ -33,6 +37,11 @@ fun NotificationRoute(
         selectedTabIndex = uiState.selectedTabIndex,
         notifications = uiState.filteredNotifications,
         showDeleteSheet = uiState.deleteTargetId != null,
+        isLoading = uiState.isLoading,
+        hasNext = uiState.hasNext,
+        errorMessage = uiState.errorMessage,
+        onLoadMore = viewModel::loadMore,
+        onRetryClick = viewModel::refresh,
         modifier = modifier,
     )
 }

@@ -79,6 +79,10 @@ fun HomeNavHost(
                             onStartVerification(event.routineId)
                         HomeUiEvent.CategoryCreated,
                         is HomeUiEvent.CategoryCreateFailed,
+                        HomeUiEvent.CategoryUpdated,
+                        is HomeUiEvent.CategoryUpdateFailed,
+                        HomeUiEvent.CategoryDeleted,
+                        is HomeUiEvent.CategoryDeleteFailed,
                         -> Unit
                     }
                 },

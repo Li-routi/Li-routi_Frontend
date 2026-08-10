@@ -25,6 +25,7 @@ import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.RoutineChecklistScreen
 import com.li_routi.core.common.ui.routine.RoutineDeleteDialog
 import com.li_routi.core.common.ui.routine.RoutineEditBottomSheet
+import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.designsystem.component.LiroutiClockTime
 import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
@@ -54,6 +55,8 @@ fun RoutineManageRoute(
         RoutineManageViewModel(
             getRoutineCategoriesUseCase = RoutineContainer.getRoutineCategoriesUseCase,
             createRoutineCategoryUseCase = RoutineContainer.createRoutineCategoryUseCase,
+            updateRoutineCategoryUseCase = RoutineContainer.updateRoutineCategoryUseCase,
+            deleteRoutineCategoryUseCase = RoutineContainer.deleteRoutineCategoryUseCase,
             getRoutineTemplatesUseCase = RoutineContainer.getRoutineTemplatesUseCase,
             createMemberRoutinesUseCase = RoutineContainer.createMemberRoutinesUseCase,
         )
@@ -61,10 +64,12 @@ fun RoutineManageRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showCategorySheet by remember { mutableStateOf(false) }
+    var showCategoryDeleteDialog by remember { mutableStateOf(false) }
     var showRoutineSheet by remember { mutableStateOf(false) }
     var showSheetDeleteDialog by remember { mutableStateOf(false) }
     var showExitConfirmDialog by remember { mutableStateOf(false) }
     var pendingExitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var editingCategoryId by remember { mutableStateOf<Long?>(null) }
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
     var routineName by remember { mutableStateOf("") }
@@ -119,6 +124,13 @@ fun RoutineManageRoute(
             when (event) {
                 RoutineManageUiEvent.NavigateBack -> onNavigateBack()
                 RoutineManageUiEvent.SubmitSuccess -> onSubmitSuccess()
+                RoutineManageUiEvent.CategorySaved,
+                RoutineManageUiEvent.CategoryDeleted,
+                -> {
+                    showCategorySheet = false
+                    showCategoryDeleteDialog = false
+                    editingCategoryId = null
+                }
             }
         }
     }
@@ -135,11 +147,20 @@ fun RoutineManageRoute(
             onCategorySelected = viewModel::onCategorySelected,
             onAddCategoryClick = {
                 if (uiState.addCategoryEnabled) {
+                    editingCategoryId = null
                     categoryName = ""
                     categoryColor = null
                     viewModel.clearError()
                     showCategorySheet = true
                 }
+            },
+            onCategoryLongClick = { name ->
+                val category = viewModel.categoryByName(name) ?: return@RoutineChecklistScreen
+                editingCategoryId = category.categoryId
+                categoryName = category.name
+                categoryColor = category.color.toCategoryColor()
+                viewModel.clearError()
+                showCategorySheet = true
             },
             addCategoryEnabled = uiState.addCategoryEnabled,
             items = uiState.checklistItems,
@@ -167,7 +188,7 @@ fun RoutineManageRoute(
             )
         }
 
-        uiState.errorMessage?.let { message ->
+        uiState.errorMessage?.takeIf { !showCategorySheet }?.let { message ->
             Text(
                 text = message,
                 style = LiroutiTheme.typography.caption,
@@ -184,15 +205,49 @@ fun RoutineManageRoute(
     if (showCategorySheet) {
         CategoryAddBottomSheet(
             name = categoryName,
-            onNameChange = { categoryName = it.take(10) },
+            onNameChange = {
+                categoryName = it.take(10)
+                viewModel.clearError()
+            },
             selectedColor = categoryColor,
             onColorSelected = { categoryColor = it },
             placeholder = "최대 10자",
+            errorMessage = uiState.categoryNameError ?: uiState.errorMessage,
             onConfirm = {
-                viewModel.onCreateCategory(categoryName, categoryColor)
-                showCategorySheet = false
+                val categoryId = editingCategoryId
+                if (categoryId == null) {
+                    viewModel.onCreateCategory(categoryName, categoryColor)
+                } else {
+                    viewModel.onUpdateCategory(categoryId, categoryName, categoryColor)
+                }
             },
-            onDismissRequest = { showCategorySheet = false },
+            onDeleteClick = {
+                val categoryId = editingCategoryId
+                if (categoryId == null) {
+                    showCategorySheet = false
+                } else {
+                    showCategoryDeleteDialog = true
+                }
+            },
+            onDismissRequest = {
+                showCategorySheet = false
+                editingCategoryId = null
+                viewModel.clearError()
+            },
+        )
+    }
+
+    if (showCategoryDeleteDialog && editingCategoryId != null) {
+        LiroutiConfirmDialog(
+            title = "카테고리를 삭제할까요?",
+            message = "이 카테고리에 속한 루틴이 있을 수 있어요.",
+            confirmText = "삭제",
+            onConfirm = {
+                val categoryId = editingCategoryId ?: return@LiroutiConfirmDialog
+                showCategoryDeleteDialog = false
+                viewModel.onDeleteCategory(categoryId)
+            },
+            onDismissRequest = { showCategoryDeleteDialog = false },
         )
     }
 

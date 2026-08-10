@@ -9,35 +9,73 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.LiroutiBottomSheet
-import com.li_routi.core.designsystem.component.LiroutiBottomSheetField
+import com.li_routi.core.designsystem.component.LiroutiBottomSheetCloseButton
+import com.li_routi.core.designsystem.component.LiroutiBottomSheetDeleteButton
 import com.li_routi.core.designsystem.component.LiroutiDivider
 import com.li_routi.core.designsystem.component.LiroutiTextField
+import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
 private val ContentPadding = PaddingValues(top = 30.dp, start = 16.dp, end = 16.dp, bottom = 32.dp)
+private val SheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
+private val ColorSectionShape = RoundedCornerShape(4.dp)
 private const val CategoryNameMaxLength = 20
 
-enum class CategoryColor(val label: String, val swatch: Color) {
-    Red("빨강", Color(0xFFFF5A5F)),
-    Orange("주황", Color(0xFFFF9F43)),
-    Yellow("노랑", Color(0xFFFFD93D)),
-    Green("초록", Color(0xFF3DD98C)),
-    Blue("파랑", Color(0xFF3B9AFF)),
-    Magenta("마젠타", Color(0xFFE066FF)),
-    Black("검정", Color(0xFF1A1A1A)),
+/**
+ * Figma `4741:43934` 카테고리 추가/편집 시트 스와치.
+ * fill + 테두리 hex는 Design Page 카테고리 시트와 동일하다.
+ */
+enum class CategoryColor(
+    val label: String,
+    val swatch: Color,
+    val border: Color,
+) {
+    Red("빨강", Color(0xFFFF5660), Color(0xFFFF1D37)),
+    Orange("주황", Color(0xFFFFA04A), Color(0xFFFF8500)),
+    Yellow("노랑", Color(0xFFFFD52B), Color(0xFFFFC900)),
+    Green("초록", Color(0xFF2FD571), Color(0xFF00C94D)),
+    Blue("파랑", Color(0xFF19A2FF), Color(0xFF008DFF)),
+    Magenta("마젠타", Color(0xFFE954EE), Color(0xFFDD22E5)),
+    Black("검정", Color(0xFF37383C), Color(0xFF000000)),
 }
 
+/** API `color` 필드용 (RED, ORANGE, …). */
+fun CategoryColor.toApiColor(): String = name.uppercase()
+
+/** 서버 color 문자열 → [CategoryColor]. 알 수 없으면 null. */
+fun String?.toCategoryColor(): CategoryColor? {
+    val key = this?.trim()?.uppercase().orEmpty()
+    if (key.isEmpty()) return null
+    return CategoryColor.entries.firstOrNull { it.toApiColor() == key }
+}
+
+/**
+ * 카테고리 추가/편집 Bottom Sheet.
+ *
+ * Figma `4741:43934`: 닫기(X) + 삭제, 이름 필드, 회색 배경 색 선택 영역, 확인.
+ * design-system [LiroutiBottomSheet] radius(6)와 달리 top 20을 쓴다.
+ */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun CategoryAddBottomSheet(
@@ -49,19 +87,33 @@ fun CategoryAddBottomSheet(
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
-    title: String = "카테고리",
+    onDeleteClick: () -> Unit = onDismissRequest,
     placeholder: String = "최대 20자",
+    errorMessage: String? = null,
 ) {
-    LiroutiBottomSheet(
+    ModalBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = modifier,
         sheetState = sheetState,
-        title = title,
-        contentPadding = ContentPadding,
-        primaryButtonText = "확인",
-        onPrimaryButtonClick = onConfirm,
+        shape = SheetShape,
+        containerColor = LiroutiTheme.colors.backgroundDefault,
+        dragHandle = null,
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(ContentPadding),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                LiroutiBottomSheetCloseButton(onClick = onDismissRequest)
+                LiroutiBottomSheetDeleteButton(onClick = onDeleteClick)
+            }
+
             LiroutiTextField(
                 value = name,
                 onValueChange = { onNameChange(it.take(CategoryNameMaxLength)) },
@@ -69,23 +121,88 @@ fun CategoryAddBottomSheet(
                 showLabel = false,
                 showHelper = false,
             )
-            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
-                    LiroutiBottomSheetField(label = "카테고리 색", value = selectedColor?.label ?: "없음")
-                    LiroutiDivider(color = LiroutiTheme.colors.borderSub)
-                }
-                Row(
+
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    style = LiroutiTheme.typography.caption,
+                    color = LiroutiTheme.colors.dangerText,
                     modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                ) {
-                    CategoryColor.entries.forEach { color ->
-                        CategoryColorSwatch(
-                            color = color,
-                            selected = color == selectedColor,
-                            onClick = { onColorSelected(color) },
-                        )
-                    }
-                }
+                )
+            }
+
+            CategoryColorSection(
+                selectedColor = selectedColor,
+                onColorSelected = onColorSelected,
+            )
+
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(44.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(LiroutiTheme.colors.primaryNormal)
+                    .clickable(onClick = onConfirm),
+                contentAlignment = Alignment.Center,
+            ) {
+                Text(
+                    text = "확인",
+                    style = LiroutiTheme.typography.body3Medium,
+                    color = LiroutiTheme.colors.backgroundAlternative,
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CategoryColorSection(
+    selectedColor: CategoryColor?,
+    onColorSelected: (CategoryColor) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(ColorSectionShape)
+            .background(LiroutiTheme.colors.backgroundFill)
+            .padding(horizontal = 12.dp)
+            .padding(top = 5.dp, bottom = 14.dp),
+        verticalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(vertical = 8.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            Text(
+                text = "카테고리 색",
+                style = LiroutiTheme.typography.body3Medium,
+                color = LiroutiTheme.colors.labelSub,
+            )
+            Text(
+                text = selectedColor?.label ?: "없음",
+                style = LiroutiTheme.typography.body3Bold,
+                color = LiroutiTheme.colors.labelSub,
+            )
+        }
+        LiroutiDivider(color = LiroutiTheme.colors.borderSub)
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 12.dp, vertical = 6.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CategoryColor.entries.forEach { color ->
+                CategoryColorSwatch(
+                    color = color,
+                    selected = color == selectedColor,
+                    onClick = { onColorSelected(color) },
+                )
             }
         }
     }
@@ -100,9 +217,10 @@ private fun CategoryColorSwatch(
 ) {
     Box(
         modifier = modifier
-            .size(32.dp)
+            .size(30.dp)
             .clip(CircleShape)
             .background(color.swatch)
+            .border(1.dp, color.border, CircleShape)
             .then(
                 if (selected) {
                     Modifier.border(2.dp, LiroutiTheme.colors.labelDefault, CircleShape)
@@ -112,4 +230,22 @@ private fun CategoryColorSwatch(
             )
             .clickable(onClick = onClick),
     )
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Preview(showBackground = true, backgroundColor = 0xFF888888)
+@Composable
+private fun CategoryAddBottomSheetPreview() {
+    LiroutiFrontendTheme {
+        var name by remember { mutableStateOf("물 마시기") }
+        var selected by remember { mutableStateOf<CategoryColor?>(null) }
+        CategoryAddBottomSheet(
+            name = name,
+            onNameChange = { name = it },
+            selectedColor = selected,
+            onColorSelected = { selected = it },
+            onConfirm = {},
+            onDismissRequest = {},
+        )
+    }
 }
