@@ -40,6 +40,9 @@ data class GroupMemberUiModel(
     val name: String,
     val message: String,
     val streak: Int,
+    val completedCount: Int = 0,
+    val totalCount: Int = 0,
+    val totalLikeCount: Int = 0,
     val isMe: Boolean = false,
 )
 
@@ -59,6 +62,9 @@ data class CertificationPostUiModel(
     val likeCount: Int,
     val timeAgo: String,
     val isMine: Boolean,
+    val isLiked: Boolean = false,
+    val disappointmentCount: Int = 0,
+    val isDisappointed: Boolean = false,
 )
 
 data class NewCertificationUiModel(

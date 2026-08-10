@@ -201,7 +201,10 @@ fun GroupRoutineRoute(
         onCertificationTabClick = viewModel::onCertificationTabClick,
         onCertificationMemberClick = viewModel::onCertificationMemberClick,
         onCertificationSummaryClick = viewModel::onCertificationSummaryClick,
+        onCertificationLikeClick = viewModel::onCertificationLikeClick,
         onDismissNewCertificationDialog = viewModel::onDismissNewCertificationDialog,
+        onNewCertificationDisappointClick = viewModel::onNewCertificationDisappointClick,
+        onNewCertificationLikeClick = viewModel::onNewCertificationLikeClick,
         onMemberClick = viewModel::onMemberClick,
         onDismissMemberDialog = viewModel::onDismissMemberDialog,
         onChatClick = viewModel::onChatClick,
@@ -276,7 +279,10 @@ private fun GroupRoutineScreen(
     onCertificationTabClick: (Boolean) -> Unit,
     onCertificationMemberClick: (Long?) -> Unit,
     onCertificationSummaryClick: () -> Unit,
+    onCertificationLikeClick: (Long, Boolean) -> Unit,
     onDismissNewCertificationDialog: () -> Unit,
+    onNewCertificationDisappointClick: (Long) -> Unit = {},
+    onNewCertificationLikeClick: (Long) -> Unit = {},
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
     onChatClick: () -> Unit,
@@ -331,6 +337,7 @@ private fun GroupRoutineScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
                 onCertificationMemberClick = onCertificationMemberClick,
+                onCertificationLikeClick = onCertificationLikeClick,
                 onTabSelected = onTabSelected,
             )
 
@@ -534,8 +541,8 @@ private fun GroupRoutineScreen(
         NewCertificationDialog(
             certifications = uiState.newCertifications,
             onDismissRequest = onDismissNewCertificationDialog,
-            onNegativeClick = onDismissNewCertificationDialog,
-            onPositiveClick = onDismissNewCertificationDialog,
+            onNegativeClick = onNewCertificationDisappointClick,
+            onPositiveClick = onNewCertificationLikeClick,
         )
     }
 
@@ -1638,8 +1645,8 @@ private fun DangerConfirmDialog(
 private fun NewCertificationDialog(
     certifications: List<NewCertificationUiModel>,
     onDismissRequest: () -> Unit,
-    onNegativeClick: () -> Unit,
-    onPositiveClick: () -> Unit,
+    onNegativeClick: (Long) -> Unit,
+    onPositiveClick: (Long) -> Unit,
 ) {
     if (certifications.isEmpty()) return
     val pagerState = rememberPagerState(pageCount = { certifications.size })
@@ -1709,8 +1716,8 @@ private fun NewCertificationDialog(
                 )
             }
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                Button(
-                    onClick = onNegativeClick,
+                  Button(
+                      onClick = { onNegativeClick(current.id) },
                     shape = RoundedCornerShape(6.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = FillBackground, contentColor = LabelDefault),
                     modifier = Modifier
@@ -1719,8 +1726,8 @@ private fun NewCertificationDialog(
                 ) {
                     Text(text = "아쉬워요", style = LiroutiTheme.typography.body3)
                 }
-                Button(
-                    onClick = onPositiveClick,
+                  Button(
+                      onClick = { onPositiveClick(current.id) },
                     shape = RoundedCornerShape(6.dp),
                     colors = ButtonDefaults.buttonColors(containerColor = PrimaryNormal, contentColor = Color.White),
                     modifier = Modifier
@@ -2365,6 +2372,7 @@ private fun CertificationCollectionScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
     onCertificationMemberClick: (Long?) -> Unit,
+    onCertificationLikeClick: (Long, Boolean) -> Unit,
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -2391,6 +2399,7 @@ private fun CertificationCollectionScreen(
                         members = uiState.members,
                         selectedMemberId = uiState.selectedCertificationMemberId,
                         onMemberClick = onCertificationMemberClick,
+                        onLikeClick = onCertificationLikeClick,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
@@ -3396,10 +3405,10 @@ private fun MemberProfileDialog(
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    MemberProfileInfoRow(label = "오늘 루틴 진행도", value = "3/4 완료")
-                    MemberProfileInfoRow(label = "연속 달성", value = "14일 째")
+                    MemberProfileInfoRow(label = "오늘 루틴 진행", value = "${member.completedCount}/${member.totalCount} 완료")
+                    MemberProfileInfoRow(label = "연속 달성", value = "${member.streak}일 째")
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ReactionBadge(text = "좋아요 42")
+                        ReactionBadge(text = "좋아요 ${member.totalLikeCount}")
                         ReactionBadge(text = "아쉬워요 3")
                         ReactionBadge(text = "쿡쿡 7")
                     }
@@ -3563,6 +3572,7 @@ private fun CertificationFeedCard(
     members: List<GroupMemberUiModel>,
     selectedMemberId: Long?,
     onMemberClick: (Long?) -> Unit,
+    onLikeClick: (Long, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -3586,7 +3596,12 @@ private fun CertificationFeedCard(
                 )
             }
         }
-        posts.forEach { post -> CertificationPostItem(post = post) }
+        posts.forEach { post ->
+            CertificationPostItem(
+                post = post,
+                onLikeClick = { onLikeClick(post.id, post.isLiked) },
+            )
+        }
     }
 }
 
@@ -3635,6 +3650,7 @@ private fun FeedTab(
 @Composable
 private fun CertificationPostItem(
     post: CertificationPostUiModel,
+    onLikeClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -3681,12 +3697,21 @@ private fun CertificationPostItem(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp),
         ) {
-            Text(text = "♡", color = LabelDefault, fontSize = 15.sp)
-            Text(
-                text = "좋아요 ${post.likeCount}",
-                color = LabelDefault,
-                style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
-            )
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable(onClick = onLikeClick)
+                    .padding(end = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(text = if (post.isLiked) "♥" else "♡", color = LabelDefault, fontSize = 15.sp)
+                Text(
+                    text = "좋아요 ${post.likeCount}",
+                    color = LabelDefault,
+                    style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
+                )
+            }
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = if (post.isMine) "내 인증" else "멤버 인증",
@@ -4022,6 +4047,7 @@ private fun GroupRoutineListPreview() {
             onCertificationTabClick = {},
             onCertificationMemberClick = {},
             onCertificationSummaryClick = {},
+            onCertificationLikeClick = { _, _ -> },
             onDismissNewCertificationDialog = {},
             onMemberClick = {},
             onDismissMemberDialog = {},
@@ -4097,6 +4123,7 @@ private fun CreateRoomNamePreview() {
             onCertificationTabClick = {},
             onCertificationMemberClick = {},
             onCertificationSummaryClick = {},
+            onCertificationLikeClick = { _, _ -> },
             onDismissNewCertificationDialog = {},
             onMemberClick = {},
             onDismissMemberDialog = {},
