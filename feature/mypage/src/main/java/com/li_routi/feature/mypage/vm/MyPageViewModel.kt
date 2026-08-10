@@ -55,10 +55,11 @@ class MyPageViewModel(
                     )
                 }
                 is ResultState.Error -> {
-                    // isProfileLoaded는 true로 둔다(그렇지 않으면 onEditProfileClick이 영영 막힘) — 대신
-                    // 실패 사실 자체는 조용히 삼키지 않고 토스트로 알린다.
-                    _uiState.update { it.copy(isProfileLoaded = true) }
-                    _uiEvent.emit(MyPageUiEvent.ShowError(result.message))
+                    // isProfileLoaded는 true로 둔다(그렇지 않으면 onEditProfileClick이 영영 막힘). 에러는
+                    // uiEvent(SharedFlow)로 곧장 emit하지 않는다 — init에서 바로 조회가 시작돼 MyPageRoute의
+                    // uiEvent 구독이 아직 시작되기 전에 끝날 수 있고, 그러면 재생 없이 조용히 유실된다.
+                    // 대신 상태에 담아 UI가 구독을 시작한 뒤에도 확실히 보이게 한다.
+                    _uiState.update { it.copy(isProfileLoaded = true, profileLoadError = result.message) }
                 }
                 ResultState.Loading -> Unit
             }
@@ -126,5 +127,10 @@ class MyPageViewModel(
     }
     override fun onAppInfoClick() {
         viewModelScope.launch { _uiEvent.emit(MyPageUiEvent.NavigateToAppInfo) }
+    }
+
+    /** [MyPageUiState.profileLoadError]를 화면에 보여준 뒤 호출 — 다시 보이지 않도록 지운다. */
+    fun onProfileLoadErrorShown() {
+        _uiState.update { it.copy(profileLoadError = null) }
     }
 }

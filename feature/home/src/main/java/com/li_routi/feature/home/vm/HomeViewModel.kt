@@ -126,8 +126,10 @@ class HomeViewModel(
     }
 
     override fun onCreateCategory(name: String, color: CategoryColor?) {
+        if (_uiState.value.isMutatingCategory) return
         val error = RoutineCategoryName.validate(name).onValid { trimmed ->
             viewModelScope.launch {
+                _uiState.update { it.copy(isMutatingCategory = true) }
                 when (
                     val result = createRoutineCategoryUseCase(
                         name = trimmed,
@@ -138,15 +140,17 @@ class HomeViewModel(
                         appendMyCategoryFilter(trimmed)
                         _uiState.update { state ->
                             state.copy(
+                                isMutatingCategory = false,
                                 myCategories = state.myCategories + result.data,
                                 addableCategoryCount = (state.addableCategoryCount - 1).coerceAtLeast(0),
                             )
                         }
                         emitEvent(HomeUiEvent.CategoryCreated)
                     }
-                    is ResultState.Error -> emitEvent(
-                        HomeUiEvent.CategoryCreateFailed(result.message),
-                    )
+                    is ResultState.Error -> {
+                        _uiState.update { it.copy(isMutatingCategory = false) }
+                        emitEvent(HomeUiEvent.CategoryCreateFailed(result.message))
+                    }
                     ResultState.Loading -> Unit
                 }
             }

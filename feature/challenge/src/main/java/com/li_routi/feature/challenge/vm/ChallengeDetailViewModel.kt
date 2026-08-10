@@ -246,11 +246,13 @@ class ChallengeDetailViewModel(
                 allCursor = null,
                 allCursorLikeCount = null,
                 allHasNext = true,
+                isLoadingMoreAll = false,
                 myCertifications = emptyList(),
                 myCursor = null,
                 myCursorLikeCount = null,
                 myHasNext = true,
                 myLoaded = false,
+                isLoadingMoreMy = false,
             )
         }
         loadVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
@@ -354,11 +356,13 @@ class ChallengeDetailViewModel(
                 allCursor = null,
                 allCursorLikeCount = null,
                 allHasNext = true,
+                isLoadingMoreAll = false,
                 myCertifications = emptyList(),
                 myCursor = null,
                 myCursorLikeCount = null,
                 myHasNext = true,
                 myLoaded = false,
+                isLoadingMoreMy = false,
                 // 방금 인증을 등록했으니, 아래 loadDetail()의 서버 응답이 오기 전에도 버튼이 즉시
                 // "인증 완료"로 바뀌도록 우선 반영한다. loadDetail()이 곧 서버 값으로 덮어쓴다.
                 verifiedInCurrentPeriod = true,
@@ -378,7 +382,8 @@ class ChallengeDetailViewModel(
         // 도착해도(위 onLoadMore의 isRefreshing 가드를 통과해 이미 시작된 경우) 결과를 버리도록
         // 세대를 올린다.
         certificationGeneration++
-        _uiState.update { it.copy(isRefreshing = true) }
+        val generation = certificationGeneration
+        _uiState.update { it.copy(isRefreshing = true, isLoadingMoreAll = false, isLoadingMoreMy = false) }
         val sort = _uiState.value.selectedSort
         viewModelScope.launch {
             when (val result = getChallengeDetailUseCase(challengeId)) {
@@ -389,13 +394,18 @@ class ChallengeDetailViewModel(
             when (
                 val result = getVerificationsUseCase(challengeId, cursor = null, cursorLikeCount = null, size = VerificationPageSize, sort = sort)
             ) {
-                is ResultState.Success -> _uiState.update { state ->
-                    state.copy(
-                        allCertifications = result.data.certifications.map { it.toUiModel() },
-                        allCursor = result.data.nextCursor,
-                        allCursorLikeCount = result.data.nextCursorLikeCount,
-                        allHasNext = result.data.hasNext,
-                    )
+                // 응답을 기다리는 동안 정렬이 바뀌는 등으로 generation이 또 올라갔으면(더 새로운 리셋이
+                // 이미 진행 중이면) 이 응답은 버린다 — 그렇지 않으면 오래된 정렬 기준 응답이 방금
+                // 새로 불러온 목록을 덮어쓸 수 있다.
+                is ResultState.Success -> if (generation == certificationGeneration) {
+                    _uiState.update { state ->
+                        state.copy(
+                            allCertifications = result.data.certifications.map { it.toUiModel() },
+                            allCursor = result.data.nextCursor,
+                            allCursorLikeCount = result.data.nextCursorLikeCount,
+                            allHasNext = result.data.hasNext,
+                        )
+                    }
                 }
                 is ResultState.Error -> Unit
                 ResultState.Loading -> Unit
@@ -404,19 +414,24 @@ class ChallengeDetailViewModel(
                 when (
                     val result = getMyVerificationsUseCase(challengeId, cursor = null, cursorLikeCount = null, size = VerificationPageSize, sort = sort)
                 ) {
-                    is ResultState.Success -> _uiState.update { state ->
-                        state.copy(
-                            myCertifications = result.data.certifications.map { it.toUiModel() },
-                            myCursor = result.data.nextCursor,
-                            myCursorLikeCount = result.data.nextCursorLikeCount,
-                            myHasNext = result.data.hasNext,
-                            myLoaded = true,
-                        )
+                    is ResultState.Success -> if (generation == certificationGeneration) {
+                        _uiState.update { state ->
+                            state.copy(
+                                myCertifications = result.data.certifications.map { it.toUiModel() },
+                                myCursor = result.data.nextCursor,
+                                myCursorLikeCount = result.data.nextCursorLikeCount,
+                                myHasNext = result.data.hasNext,
+                                myLoaded = true,
+                            )
+                        }
                     }
                     is ResultState.Error -> Unit
                     ResultState.Loading -> Unit
                 }
             }
+            // isRefreshing은 generation과 무관하게 항상 내린다 — 그렇지 않으면(다른 리셋이 그 사이
+            // 끼어들어 generation이 바뀌었다는 이유로 안 내리면) onRefresh() 재진입 가드가 영영 막혀
+            // 당겨서 새로고침을 다시는 못 쓰게 된다.
             _uiState.update { it.copy(isRefreshing = false) }
         }
     }

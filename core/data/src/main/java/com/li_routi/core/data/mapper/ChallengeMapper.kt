@@ -132,14 +132,15 @@ fun MyChallengeListingResponse.toDomain(): List<MyChallenge> = challenges.map { 
 
 /**
  * 서버가 새 카테고리를 추가했는데 앱이 아직 대응하지 못한 경우를 대비한 방어 코드.
- * [ChallengeCategory.entries.first]는 의미 있는 기본값이 아니라 "크래시하지 않기 위한" 최후의 fallback이다.
+ * 임의의 기존 값으로 대체하지 않고 [ChallengeCategory.UNKNOWN]으로 명시적으로 남겨서, "정말 그
+ * 카테고리"와 "매핑 실패"를 화면에서 구분할 수 있게 한다([ChallengeLabelMapper] 참고).
  */
 private fun String.toChallengeCategory(): ChallengeCategory =
-    runCatching { ChallengeCategory.valueOf(this) }.getOrDefault(ChallengeCategory.entries.first())
+    runCatching { ChallengeCategory.valueOf(this) }.getOrDefault(ChallengeCategory.UNKNOWN)
 
 /**
  * 서버가 새 인증 주기를 추가했는데 앱이 아직 대응하지 못한 경우를 대비한 방어 코드.
- * [RoutineCycle.entries.first]는 의미 있는 기본값이 아니라 "크래시하지 않기 위한" 최후의 fallback이다.
+ * [RoutineCycle.UNKNOWN] 참고 — [toChallengeCategory]와 같은 이유다.
  */
 private fun String.toRoutineCycle(): RoutineCycle =
-    runCatching { RoutineCycle.valueOf(this) }.getOrDefault(RoutineCycle.entries.first())
+    runCatching { RoutineCycle.valueOf(this) }.getOrDefault(RoutineCycle.UNKNOWN)

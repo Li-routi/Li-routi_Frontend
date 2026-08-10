@@ -248,6 +248,10 @@ class MyRoutineViewModel(
     }
 
     fun onCreateCategory(name: String, color: CategoryColor?) {
+        // addCategoryEnabled가 이미 isCreatingCategory를 감안하지만, 그대로 두면 이미 생성 중일 때
+        // "카테고리는 최대 5개까지 추가할 수 있습니다"라는 엉뚱한 이유로 막힌 것처럼 보인다 —
+        // 진행 중이라는 진짜 이유를 구분하기 위해 먼저 확인한다.
+        if (_uiState.value.isCreatingCategory) return
         val error = RoutineCategoryName.validate(name).onValid { trimmed ->
             if (!_uiState.value.addCategoryEnabled) {
                 _uiState.update { it.copy(errorMessage = "카테고리는 최대 5개까지 추가할 수 있습니다.") }

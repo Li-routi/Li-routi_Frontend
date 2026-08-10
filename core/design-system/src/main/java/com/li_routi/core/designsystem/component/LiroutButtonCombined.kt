@@ -22,9 +22,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-// Figma 변수 "outlined/outlined" (#121416). 아직 시맨틱 컬러 스킴에 승격되지 않아 로컬 상수로 둔다.
-private val OutlinedStrong = Color(0xFF121416)
-
 @Composable
 fun HorizontalDoubleButton(
     modifier: Modifier = Modifier,
@@ -37,7 +34,7 @@ fun HorizontalDoubleButton(
     cornerRadius: Dp = 8.dp,
 
     leftBackgroundColor: Color = LiroutiTheme.colors.backgroundAlternative,
-    leftTextColor: Color = OutlinedStrong,
+    leftTextColor: Color = LiroutiTheme.colors.labelDefault,
 
     rightBackgroundColor: Color = LiroutiTheme.colors.primaryNormal,
     rightTextColor: Color = LiroutiTheme.colors.backgroundAlternative,

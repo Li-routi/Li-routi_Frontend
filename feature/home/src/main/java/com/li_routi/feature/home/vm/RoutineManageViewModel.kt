@@ -202,9 +202,10 @@ class RoutineManageViewModel(
     }
 
     fun onCreateCategory(name: String, color: CategoryColor?) {
+        if (_uiState.value.isMutatingCategory) return
         val error = RoutineCategoryName.validate(name).onValid { trimmed ->
             viewModelScope.launch {
-                _uiState.update { it.copy(categoryNameError = null, errorMessage = null) }
+                _uiState.update { it.copy(isMutatingCategory = true, categoryNameError = null, errorMessage = null) }
                 when (
                     val result = createRoutineCategoryUseCase(
                         name = trimmed,
@@ -217,6 +218,7 @@ class RoutineManageViewModel(
                             is ResultState.Success -> {
                                 _uiState.update {
                                     it.copy(
+                                        isMutatingCategory = false,
                                         categories = categories.data.categories,
                                         addableCount = categories.data.addableCount,
                                         selectedCategoryName = created.name,
@@ -226,13 +228,14 @@ class RoutineManageViewModel(
                                 _uiEvent.emit(RoutineManageUiEvent.CategorySaved)
                             }
                             is ResultState.Error -> _uiState.update {
-                                it.copy(errorMessage = categories.message)
+                                it.copy(isMutatingCategory = false, errorMessage = categories.message)
                             }
                             ResultState.Loading -> Unit
                         }
                     }
                     is ResultState.Error -> _uiState.update {
                         it.copy(
+                            isMutatingCategory = false,
                             categoryNameError = result.message,
                             errorMessage = result.message,
                         )
@@ -480,14 +483,21 @@ class RoutineManageViewModel(
  * 수 있다).
  */
 private fun RoutineManageUiState.withCategoryRemoved(deletedCategoryId: Long): RoutineManageUiState {
+    val removedTemplateIds = templateCache.values
+        .filter { it.categoryId == deletedCategoryId }
+        .map { it.templateId.toString() }
+        .toSet()
     val survivingIndexed = customItems.withIndex()
         .filter { it.value.categoryId != deletedCategoryId }
     val newCustomItems = survivingIndexed.map { it.value }
-    val nonCustomSelectedIds = selectedIds.filterNot { it.startsWith(CustomIdPrefix) }
+    val nonCustomSelectedIds = selectedIds.filterNot {
+        it.startsWith(CustomIdPrefix) || it in removedTemplateIds
+    }
     val newCustomSelectedIds = survivingIndexed.mapIndexedNotNull { newIndex, indexed ->
         "$CustomIdPrefix$newIndex".takeIf { "$CustomIdPrefix${indexed.index}" in selectedIds }
     }
     return copy(
+        templateCache = templateCache.filterValues { it.categoryId != deletedCategoryId },
         customItems = newCustomItems,
         selectedIds = (nonCustomSelectedIds + newCustomSelectedIds).toSet(),
     )
