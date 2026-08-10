@@ -92,6 +92,8 @@ import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.designsystem.component.CheckBoxState
 import com.li_routi.core.designsystem.component.CustomCheckBox
+import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
+import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
 import com.li_routi.core.designsystem.component.LiroutiDaySelector
@@ -184,6 +186,16 @@ fun GroupRoutineRoute(
         onRoutineDeleteClick = viewModel::onRoutineDeleteClick,
         onDismissDeleteRoutineDialog = viewModel::onDismissDeleteRoutineDialog,
         onConfirmDeleteRoutineClick = viewModel::onConfirmDeleteRoutineClick,
+        onLeaveRoomClick = viewModel::onLeaveRoomClick,
+        onDismissLeaveRoomDialog = viewModel::onDismissLeaveRoomDialog,
+        onLeaveRoomConfirmClick = viewModel::onLeaveRoomConfirmClick,
+        onDismissDeleteRoomDialog = viewModel::onDismissDeleteRoomDialog,
+        onDeleteRoomConfirmClick = viewModel::onDeleteRoomConfirmClick,
+        onMemberKickClick = viewModel::onMemberKickClick,
+        onDismissKickMemberDialog = viewModel::onDismissKickMemberDialog,
+        onKickMemberConfirmClick = viewModel::onKickMemberConfirmClick,
+        onRoutineDraftCategoryClick = viewModel::onRoutineDraftCategoryClick,
+        onCategoryColorSelected = viewModel::onCategoryColorSelected,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
         onTodoCheckedChange = viewModel::onTodoCheckedChange,
         onCertificationTabClick = viewModel::onCertificationTabClick,
@@ -215,6 +227,7 @@ fun GroupRoutineRoute(
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GroupRoutineScreen(
     uiState: GroupRoutineUiState,
@@ -248,6 +261,16 @@ private fun GroupRoutineScreen(
     onRoutineDeleteClick: () -> Unit,
     onDismissDeleteRoutineDialog: () -> Unit,
     onConfirmDeleteRoutineClick: () -> Unit,
+    onLeaveRoomClick: () -> Unit,
+    onDismissLeaveRoomDialog: () -> Unit,
+    onLeaveRoomConfirmClick: () -> Unit,
+    onDismissDeleteRoomDialog: () -> Unit,
+    onDeleteRoomConfirmClick: () -> Unit,
+    onMemberKickClick: () -> Unit,
+    onDismissKickMemberDialog: () -> Unit,
+    onKickMemberConfirmClick: () -> Unit,
+    onRoutineDraftCategoryClick: (String) -> Unit,
+    onCategoryColorSelected: (CategoryColor) -> Unit,
     onCreateRoomDoneClick: () -> Unit,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
@@ -296,6 +319,7 @@ private fun GroupRoutineScreen(
                 onCertificationSummaryClick = onCertificationSummaryClick,
                 onMemberClick = onMemberClick,
                 onDismissMemberDialog = onDismissMemberDialog,
+                onMemberKickClick = onMemberKickClick,
                 onChatClick = onChatClick,
                 onMessageEditClick = onMessageEditClick,
                 onSettingsClick = onSettingsClick,
@@ -337,6 +361,7 @@ private fun GroupRoutineScreen(
                 onRoomAlarmSettingsClick = onRoomAlarmSettingsClick,
                 onRoomLockClick = onRoomLockClick,
                 onInviteCodeCopyClick = onInviteCodeCopyClick,
+                onLeaveRoomClick = onLeaveRoomClick,
             )
 
             GroupRoutineScreenMode.GroupRoutineManage -> GroupRoutineManageScreen(
@@ -455,6 +480,9 @@ private fun GroupRoutineScreen(
             startTime = uiState.routineDraftStartTime,
             endTime = uiState.routineDraftEndTime,
             repeatDays = uiState.routineDraftRepeatDays,
+            categories = uiState.categories,
+            selectedCategory = uiState.routineDraftCategory,
+            onCategoryClick = onRoutineDraftCategoryClick,
             onDismissRequest = onDismissRoutineSettingSheet,
             onNameChange = onRoutineDraftNameChange,
             onStartTimeChange = onRoutineDraftStartTimeChange,
@@ -472,6 +500,36 @@ private fun GroupRoutineScreen(
         )
     }
 
+    if (uiState.isLeaveRoomDialogVisible) {
+        DangerConfirmDialog(
+            title = "방 나가기",
+            description = "방을 나가면 진행 중인 그룹 루틴이 사라져요.",
+            confirmLabel = "나가기",
+            onDismissRequest = onDismissLeaveRoomDialog,
+            onConfirmClick = onLeaveRoomConfirmClick,
+        )
+    }
+
+    if (uiState.isKickMemberDialogVisible) {
+        DangerConfirmDialog(
+            title = "내보내기",
+            description = "이 멤버를 방에서 내보낼까요? 내보낸 뒤에는 초대코드로 다시 들어와야 해요.",
+            confirmLabel = "내보내기",
+            onDismissRequest = onDismissKickMemberDialog,
+            onConfirmClick = onKickMemberConfirmClick,
+        )
+    }
+
+    if (uiState.isDeleteRoomDialogVisible) {
+        DangerConfirmDialog(
+            title = "방 삭제하기",
+            description = "방장은 방을 나갈 수 없어요. 대신 방을 삭제하면 방의 모든 기록이 함께 사라져요.",
+            confirmLabel = "삭제",
+            onDismissRequest = onDismissDeleteRoomDialog,
+            onConfirmClick = onDeleteRoomConfirmClick,
+        )
+    }
+
     if (uiState.isNewCertificationDialogVisible) {
         NewCertificationDialog(
             certifications = uiState.newCertifications,
@@ -482,11 +540,14 @@ private fun GroupRoutineScreen(
     }
 
     if (uiState.isCategorySheetVisible) {
-        CategoryAddSheet(
-            category = uiState.categoryInput,
+        // 개인 루틴 쪽이랑 같은 공용 시트를 씀 — 색 피커가 이미 들어있음
+        CategoryAddBottomSheet(
+            name = uiState.categoryInput,
+            onNameChange = onCategoryInputChange,
+            selectedColor = uiState.categoryColorInput,
+            onColorSelected = onCategoryColorSelected,
+            onConfirm = onCategoryConfirmClick,
             onDismissRequest = onDismissCategorySheet,
-            onCategoryChange = onCategoryInputChange,
-            onConfirmClick = onCategoryConfirmClick,
         )
     }
 
@@ -1049,6 +1110,9 @@ private fun RoutineSettingSheet(
     startTime: String,
     endTime: String,
     repeatDays: Set<String>,
+    categories: List<String>,
+    selectedCategory: String,
+    onCategoryClick: (String) -> Unit,
     onDismissRequest: () -> Unit,
     onNameChange: (String) -> Unit,
     onStartTimeChange: (String) -> Unit,
@@ -1091,6 +1155,22 @@ private fun RoutineSettingSheet(
                     .clip(RoundedCornerShape(4.dp)),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
+                RoutineSettingExpandableRow(
+                    label = "카테고리",
+                    value = selectedCategory.ifBlank { "선택 안 함" },
+                    expanded = expandedSection == RoutineSettingSection.Category,
+                    onClick = {
+                        expandedSection = if (expandedSection == RoutineSettingSection.Category) null else RoutineSettingSection.Category
+                    },
+                )
+                if (expandedSection == RoutineSettingSection.Category) {
+                    RoutineSettingDivider()
+                    RoutineCategoryRow(
+                        categories = categories,
+                        selectedCategory = selectedCategory,
+                        onCategoryClick = onCategoryClick,
+                    )
+                }
                 RoutineSettingExpandableRow(
                     label = "시작시간",
                     value = displayRoutineTime(startTime),
@@ -1140,6 +1220,7 @@ private fun RoutineSettingSheet(
 }
 
 private enum class RoutineSettingSection {
+    Category,
     StartTime,
     EndTime,
     Repeat,
@@ -1395,6 +1476,36 @@ private fun TimePickerPreviewRow(
 }
 
 @Composable
+private fun RoutineCategoryRow(
+    categories: List<String>,
+    selectedCategory: String,
+    onCategoryClick: (String) -> Unit,
+) {
+    LazyRow(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(vertical = 12.dp),
+        horizontalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // "전체"는 목록 필터용이라 루틴에 붙일 수 없어서 뺌
+        items(categories.filterNot { it == "전체" }) { category ->
+            val selected = category == selectedCategory
+            Text(
+                text = category,
+                color = if (selected) Color.White else LabelSub,
+                style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+                modifier = Modifier
+                    .clip(RoundedCornerShape(100.dp))
+                    .background(if (selected) PrimaryNormal else Color.White)
+                    .border(1.dp, if (selected) PrimaryNormal else BorderDefault, RoundedCornerShape(100.dp))
+                    .clickable { onCategoryClick(category) }
+                    .padding(horizontal = 16.dp, vertical = 9.dp),
+            )
+        }
+    }
+}
+
+@Composable
 private fun RepeatDayRow(
     selectedDays: Set<String>,
     onRepeatDayClick: (String) -> Unit,
@@ -1452,6 +1563,24 @@ private fun DeleteRoutineDialog(
     onDismissRequest: () -> Unit,
     onConfirmClick: () -> Unit,
 ) {
+    DangerConfirmDialog(
+        title = "삭제하기",
+        description = "작성 중이던 루틴이 삭제됩니다.",
+        confirmLabel = "삭제",
+        onDismissRequest = onDismissRequest,
+        onConfirmClick = onConfirmClick,
+    )
+}
+
+/** 되돌릴 수 없는 동작(루틴 삭제, 방 나가기/삭제)을 한 번 더 확인받는 다이얼로그 */
+@Composable
+private fun DangerConfirmDialog(
+    title: String,
+    description: String,
+    confirmLabel: String,
+    onDismissRequest: () -> Unit,
+    onConfirmClick: () -> Unit,
+) {
     Dialog(
         onDismissRequest = onDismissRequest,
         properties = DialogProperties(usePlatformDefaultWidth = false),
@@ -1467,7 +1596,7 @@ private fun DeleteRoutineDialog(
         ) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
-                    text = "삭제하기",
+                    text = title,
                     color = LabelDefault,
                     style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.weight(1f),
@@ -1475,7 +1604,7 @@ private fun DeleteRoutineDialog(
                 Text(text = "×", color = LabelDefault, fontSize = 28.sp, modifier = Modifier.clickable(onClick = onDismissRequest))
             }
             Text(
-                text = "작성 중이던 루틴이 삭제됩니다.",
+                text = description,
                 color = LabelSub,
                 style = LiroutiTheme.typography.body2Long,
             )
@@ -1498,7 +1627,7 @@ private fun DeleteRoutineDialog(
                         .weight(1f)
                         .height(48.dp),
                 ) {
-                    Text(text = "삭제")
+                    Text(text = confirmLabel)
                 }
             }
         }
@@ -1601,39 +1730,6 @@ private fun NewCertificationDialog(
                     Text(text = "좋아요", style = LiroutiTheme.typography.body3)
                 }
             }
-        }
-    }
-}
-
-@OptIn(ExperimentalMaterial3Api::class)
-@Composable
-private fun CategoryAddSheet(
-    category: String,
-    onDismissRequest: () -> Unit,
-    onCategoryChange: (String) -> Unit,
-    onConfirmClick: () -> Unit,
-) {
-    LiroutiBottomSheet(
-        onDismissRequest = onDismissRequest,
-        contentPadding = PaddingValues(start = 20.dp, top = 30.dp, end = 20.dp, bottom = 28.dp),
-    ) {
-        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-            Row(modifier = Modifier.fillMaxWidth()) {
-                Spacer(modifier = Modifier.weight(1f))
-                Text(text = "×", color = LabelDefault, fontSize = 28.sp, modifier = Modifier.clickable(onClick = onDismissRequest))
-            }
-            Text(
-                text = "카테고리",
-                color = LabelDefault,
-                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
-            )
-            BasicInputBox(
-                value = category,
-                onValueChange = onCategoryChange,
-                placeholder = "최대 20자",
-                showClear = false,
-            )
-            PrimaryButton(text = "확인", enabled = category.isNotBlank(), onClick = onConfirmClick)
         }
     }
 }
@@ -1910,6 +2006,7 @@ private fun GroupRoutineDetailScreen(
     onCertificationSummaryClick: () -> Unit,
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
+    onMemberKickClick: () -> Unit,
     onChatClick: () -> Unit,
     onMessageEditClick: () -> Unit,
     onSettingsClick: () -> Unit,
@@ -1963,8 +2060,11 @@ private fun GroupRoutineDetailScreen(
     uiState.selectedMember?.let { member ->
         MemberProfileDialog(
             member = member,
+            // 방장만 내보낼 수 있고, 자기 자신은 못 내보냄
+            canKick = uiState.isConfirmedOwner && !member.isMe,
             onDismissRequest = onDismissMemberDialog,
             onPokeClick = onDismissMemberDialog,
+            onKickClick = onMemberKickClick,
         )
     }
 }
@@ -2444,6 +2544,7 @@ private fun GroupSettingsScreen(
     onRoomAlarmSettingsClick: () -> Unit,
     onRoomLockClick: () -> Unit,
     onInviteCodeCopyClick: () -> Unit,
+    onLeaveRoomClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val isLeader = uiState.isCurrentUserLeader
@@ -2525,7 +2626,7 @@ private fun GroupSettingsScreen(
         }
 
         Button(
-            onClick = {},
+            onClick = onLeaveRoomClick,
             shape = RoundedCornerShape(6.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = DangerBase,
@@ -3218,8 +3319,10 @@ private fun MemberSeat(
 @Composable
 private fun MemberProfileDialog(
     member: GroupMemberUiModel,
+    canKick: Boolean,
     onDismissRequest: () -> Unit,
     onPokeClick: () -> Unit,
+    onKickClick: () -> Unit,
 ) {
     Dialog(onDismissRequest = onDismissRequest) {
         Surface(
@@ -3302,6 +3405,20 @@ private fun MemberProfileDialog(
                     }
                 }
                 PrimaryButton(text = "쿡쿡 찔러보기", enabled = true, onClick = onPokeClick)
+                // 디자인이 아직 없어서 임시로 붙여둔 내보내기 액션 — 시안 나오면 교체 필요함
+                if (canKick) {
+                    Text(
+                        text = "내보내기",
+                        color = DangerBase,
+                        style = LiroutiTheme.typography.body3,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(min = 48.dp)
+                            .clickable(onClick = onKickClick)
+                            .padding(vertical = 14.dp),
+                        textAlign = TextAlign.Center,
+                    )
+                }
             }
         }
     }
@@ -3890,6 +4007,16 @@ private fun GroupRoutineListPreview() {
             onRoutineDeleteClick = {},
             onDismissDeleteRoutineDialog = {},
             onConfirmDeleteRoutineClick = {},
+            onLeaveRoomClick = {},
+            onDismissLeaveRoomDialog = {},
+            onLeaveRoomConfirmClick = {},
+            onDismissDeleteRoomDialog = {},
+            onDeleteRoomConfirmClick = {},
+            onMemberKickClick = {},
+            onDismissKickMemberDialog = {},
+            onKickMemberConfirmClick = {},
+            onRoutineDraftCategoryClick = {},
+            onCategoryColorSelected = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
@@ -3955,6 +4082,16 @@ private fun CreateRoomNamePreview() {
             onRoutineDeleteClick = {},
             onDismissDeleteRoutineDialog = {},
             onConfirmDeleteRoutineClick = {},
+            onLeaveRoomClick = {},
+            onDismissLeaveRoomDialog = {},
+            onLeaveRoomConfirmClick = {},
+            onDismissDeleteRoomDialog = {},
+            onDeleteRoomConfirmClick = {},
+            onMemberKickClick = {},
+            onDismissKickMemberDialog = {},
+            onKickMemberConfirmClick = {},
+            onRoutineDraftCategoryClick = {},
+            onCategoryColorSelected = {},
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
