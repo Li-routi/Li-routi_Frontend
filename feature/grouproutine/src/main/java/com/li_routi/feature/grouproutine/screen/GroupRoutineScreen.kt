@@ -900,7 +900,7 @@ private fun CategoryChipRow(
                 val selectedColor = categoryColors[label]?.swatch ?: PrimaryNormal
                 Text(
                     text = if (selected) "✓ $label" else label,
-                    color = if (selected) Color.White else LabelSub,
+                    color = if (selected) LabelDefault else LabelSub,
                     style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                     modifier = Modifier
                         .clip(RoundedCornerShape(100.dp))
@@ -1721,7 +1721,7 @@ private fun RoutineCategoryRow(
             val selected = category == selectedCategory
             Text(
                 text = category,
-                color = if (selected) Color.White else LabelSub,
+                color = if (selected) LabelDefault else LabelSub,
                 style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                 modifier = Modifier
                     .clip(RoundedCornerShape(100.dp))
@@ -2532,7 +2532,7 @@ private fun DetailRoutineCategoryTabs(
             val selectedColor = categoryColors[category]?.swatch ?: PrimaryNormal
             Text(
                 text = if (selected) "✓ $category" else category,
-                color = if (selected) Color.White else LabelSub,
+                color = if (selected) LabelDefault else LabelSub,
                 style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                 modifier = Modifier
                     .height(38.dp)
@@ -2566,7 +2566,8 @@ private fun DetailRoutineTodoRow(
             .background(Color.White)
             .border(1.dp, BorderAlternative, shape)
             .combinedClickable(
-                onClick = {},
+                onClick = { onCheckedChange(!todo.isDone) },
+                onLongClickLabel = "\uCE74\uD14C\uACE0\uB9AC \uC0C9\uC0C1 \uBCC0\uACBD",
                 onLongClick = onLongClick,
             ),
     ) {

@@ -146,6 +146,7 @@ class GroupRoutineViewModel(
         if (routineId > 0L) {
             backendGroupId = routineId
             loadGroupDetail(routineId)
+            loadGroupRoutineCategories()
             loadTodayRoutines(routineId)
             loadUnreadRoutineVerifications()
         } else {
@@ -1262,6 +1263,7 @@ class GroupRoutineViewModel(
                         }
                         // 실제 멤버/루틴 수는 상세 조회로 채움
                         loadGroupDetail(joined.groupId)
+                        loadGroupRoutineCategories()
                         loadTodayRoutines(joined.groupId)
                         loadUnreadRoutineVerifications()
                     }
