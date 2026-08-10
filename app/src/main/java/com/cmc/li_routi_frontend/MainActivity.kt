@@ -76,12 +76,24 @@ class MainActivity : ComponentActivity() {
         consumeNotificationIntent(intent)
     }
 
-    /** 알림을 탭해서 실행/재진입한 경우 [FcmNotificationPresenter]가 실어 보낸 이동 정보를 읽는다. */
+    /**
+     * 알림을 탭해서 실행/재진입한 경우 이동 정보를 읽는다.
+     *
+     * 앱이 포그라운드일 때는 [FcmNotificationPresenter]가 만든 커스텀 extras
+     * ([FcmNotificationPresenter.ExtraNotificationType] 등)를 쓴다. 반면 백그라운드/종료
+     * 상태에서는 시스템이 알림 payload로 직접 알림을 띄우고 기본 launcher 액티비티를
+     * 여는데, 이때는 우리 커스텀 extras 없이 FCM data payload의 raw 키("type",
+     * "referenceId")가 그대로 인텐트 extras로 들어온다. 그래서 커스텀 extras가 없으면
+     * raw 키로 한 번 더 시도한다.
+     */
     private fun consumeNotificationIntent(intent: Intent) {
-        val type = intent.getStringExtra(FcmNotificationPresenter.ExtraNotificationType) ?: return
+        val type = intent.getStringExtra(FcmNotificationPresenter.ExtraNotificationType)
+            ?: intent.getStringExtra("type")
+            ?: return
         val referenceId = intent
             .getLongExtra(FcmNotificationPresenter.ExtraNotificationReferenceId, -1L)
             .takeIf { it >= 0 }
+            ?: intent.getStringExtra("referenceId")?.toLongOrNull()
         pendingNotificationTarget = resolveNotificationNavigationTarget(type, referenceId) ?: return
         pendingNotificationToken++
     }

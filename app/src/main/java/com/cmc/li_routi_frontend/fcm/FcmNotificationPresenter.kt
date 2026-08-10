@@ -7,6 +7,7 @@ import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
 import android.os.Build
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
@@ -55,17 +56,23 @@ object FcmNotificationPresenter {
             ?: message.data["body"]
             ?: return
 
+        val id = nextNotificationId.getAndIncrement()
+
         val launchIntent = Intent(context, MainActivity::class.java).apply {
             flags = Intent.FLAG_ACTIVITY_NEW_TASK or
                 Intent.FLAG_ACTIVITY_CLEAR_TOP or
                 Intent.FLAG_ACTIVITY_SINGLE_TOP
+            // id를 data에 실어 알림마다 유효(distinct)한 PendingIntent가 되게 한다.
+            // 그렇지 않으면 request code가 0으로 같아 FLAG_UPDATE_CURRENT가 extras까지
+            // 최신 알림 것으로 덮어써서, 예전 알림을 눌러도 최신 알림의 대상으로 이동해버린다.
+            data = Uri.parse("lirouti://notification/$id")
             // MainActivity가 어느 화면으로 이동할지 판단하는 데 쓴다. resolveNotificationNavigationTarget 참고.
             putExtra(ExtraNotificationType, message.data["type"])
             putExtra(ExtraNotificationReferenceId, message.data["referenceId"]?.toLongOrNull() ?: -1L)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,
-            0,
+            id,
             launchIntent,
             PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE,
         )
@@ -80,7 +87,6 @@ object FcmNotificationPresenter {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
-        val id = nextNotificationId.getAndIncrement()
         val tag = message.messageId?.takeIf { it.isNotEmpty() } ?: "fcm"
         runCatching {
             NotificationManagerCompat.from(context).notify(tag, id, notification)
