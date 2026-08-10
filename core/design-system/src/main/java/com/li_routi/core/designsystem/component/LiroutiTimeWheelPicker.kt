@@ -176,6 +176,9 @@ internal fun WheelNumberPicker(
             if (picker.value != selectedIndex) {
                 picker.value = selectedIndex
             }
+            if (picker.wrapSelectorWheel != wrapSelectorWheel) {
+                picker.wrapSelectorWheel = wrapSelectorWheel
+            }
             try {
                 val selectorWheelPaintField =
                     NumberPicker::class.java.getDeclaredField("mSelectorWheelPaint")
