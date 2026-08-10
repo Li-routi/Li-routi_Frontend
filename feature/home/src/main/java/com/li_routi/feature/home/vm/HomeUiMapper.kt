@@ -1,9 +1,11 @@
 package com.li_routi.feature.home.vm
 
 import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.domain.home.GroupRoutine
 import com.li_routi.core.domain.home.HomeSummary
 import com.li_routi.core.domain.home.MyRoutine
+import com.li_routi.core.domain.routine.RoutineCategory
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
 import com.li_routi.feature.home.component.RoutineChecklistKind
 
@@ -45,6 +47,30 @@ fun HomeSummary.toHomeUiState(): HomeUiState {
     )
 }
 
+/**
+ * 카테고리 API 목록과 루틴에서 뽑은 필터를 합친다.
+ * 루틴이 아직 없는 사용자 카테고리 chip도 유지한다.
+ */
+fun mergeCategoryFilters(
+    routineFilters: List<String>,
+    categories: List<RoutineCategory>,
+    hasActiveRoutine: Boolean,
+): List<String> {
+    val fromCategories = categories.map { it.name.trim() }.filter { it.isNotEmpty() }
+    val fromRoutines = routineFilters.filter { it != "전체" }
+    val names = (fromCategories + fromRoutines).distinct()
+    if (names.isEmpty() && !hasActiveRoutine) return emptyList()
+    return listOf("전체") + names
+}
+
+fun RoutineChecklistItemUiModel.withCategoryColor(
+    colorByCategoryId: Map<Long, String?>,
+): RoutineChecklistItemUiModel {
+    val id = categoryId ?: return this
+    val mapped = colorByCategoryId[id].toCategoryColor() ?: return this
+    return copy(categoryColor = mapped)
+}
+
 private fun MyRoutine.toChecklistItem(): RoutineChecklistItemUiModel = RoutineChecklistItemUiModel(
     id = "my_$routineId",
     title = name,
@@ -55,8 +81,8 @@ private fun MyRoutine.toChecklistItem(): RoutineChecklistItemUiModel = RoutineCh
     kind = RoutineChecklistKind.Member,
     routineId = routineId,
     groupId = null,
+    categoryId = categoryId,
     canVerify = !completedToday,
-    // TODO: 홈 API에 categoryColor가 생기면 서버 색으로 교체. 현재는 id 기반 안정 매핑.
     categoryColor = categoryColorFromId(categoryId),
 )
 
@@ -70,14 +96,13 @@ private fun GroupRoutine.toChecklistItem(): RoutineChecklistItemUiModel = Routin
     kind = RoutineChecklistKind.Group,
     routineId = routineId,
     groupId = groupId,
+    categoryId = categoryId,
     canVerify = status.canVerify,
-    // TODO: 홈 API에 categoryColor가 생기면 서버 색으로 교체. 현재는 id 기반 안정 매핑.
     categoryColor = categoryColorFromId(categoryId),
 )
 
 /**
- * 홈 API에 카테고리 색 필드가 없어 categoryId로 [CategoryColor] 팔레트를 안정 매핑한다.
- * 서버가 색을 내려주면 그 값으로 교체한다.
+ * 카테고리 API color가 없을 때의 fallback. 서버 color가 오면 [withCategoryColor]로 덮어쓴다.
  */
 private fun categoryColorFromId(categoryId: Long): CategoryColor {
     val colors = CategoryColor.entries

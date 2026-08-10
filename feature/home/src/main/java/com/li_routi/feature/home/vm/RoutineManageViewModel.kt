@@ -5,13 +5,16 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.RoutineChecklistItem
+import com.li_routi.core.common.ui.routine.toApiColor
 import com.li_routi.core.domain.routine.CreateMemberRoutinesUseCase
 import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.CreateRoutineItem
+import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.GetRoutineCategoriesUseCase
 import com.li_routi.core.domain.routine.GetRoutineTemplatesUseCase
 import com.li_routi.core.domain.routine.RoutineCategory
 import com.li_routi.core.domain.routine.RoutineTemplate
+import com.li_routi.core.domain.routine.UpdateRoutineCategoryUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -116,11 +119,15 @@ data class RoutineManageUiState(
 sealed interface RoutineManageUiEvent {
     data object NavigateBack : RoutineManageUiEvent
     data object SubmitSuccess : RoutineManageUiEvent
+    data object CategorySaved : RoutineManageUiEvent
+    data object CategoryDeleted : RoutineManageUiEvent
 }
 
 class RoutineManageViewModel(
     private val getRoutineCategoriesUseCase: GetRoutineCategoriesUseCase,
     private val createRoutineCategoryUseCase: CreateRoutineCategoryUseCase,
+    private val updateRoutineCategoryUseCase: UpdateRoutineCategoryUseCase,
+    private val deleteRoutineCategoryUseCase: DeleteRoutineCategoryUseCase,
     private val getRoutineTemplatesUseCase: GetRoutineTemplatesUseCase,
     private val createMemberRoutinesUseCase: CreateMemberRoutinesUseCase,
 ) : BaseViewModel() {
@@ -207,6 +214,7 @@ class RoutineManageViewModel(
                                 )
                             }
                             loadTemplates(categoryId = created.categoryId)
+                            _uiEvent.emit(RoutineManageUiEvent.CategorySaved)
                         }
                         is ResultState.Error -> _uiState.update {
                             it.copy(errorMessage = categories.message)
@@ -224,6 +232,102 @@ class RoutineManageViewModel(
             }
         }
     }
+
+    fun onUpdateCategory(categoryId: Long, name: String, color: CategoryColor?) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) {
+            _uiState.update { it.copy(categoryNameError = "이름은 1~10자로 입력해 주세요.") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(categoryNameError = null, errorMessage = null) }
+            when (
+                val result = updateRoutineCategoryUseCase(
+                    categoryId = categoryId,
+                    name = trimmed,
+                    color = color?.toApiColor(),
+                )
+            ) {
+                is ResultState.Success -> {
+                    val updated = result.data
+                    when (val categories = getRoutineCategoriesUseCase()) {
+                        is ResultState.Success -> {
+                            _uiState.update { state ->
+                                state.copy(
+                                    categories = categories.data.categories,
+                                    addableCount = categories.data.addableCount,
+                                    selectedCategoryName = if (
+                                        state.categories.any {
+                                            it.categoryId == categoryId &&
+                                                it.name == state.selectedCategoryName
+                                        }
+                                    ) {
+                                        updated.name
+                                    } else {
+                                        state.selectedCategoryName
+                                    },
+                                )
+                            }
+                            loadTemplates(categoryId = _uiState.value.selectedCategoryId)
+                            _uiEvent.emit(RoutineManageUiEvent.CategorySaved)
+                        }
+                        is ResultState.Error -> _uiState.update {
+                            it.copy(errorMessage = categories.message)
+                        }
+                        ResultState.Loading -> Unit
+                    }
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(
+                        categoryNameError = result.message,
+                        errorMessage = result.message,
+                    )
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onDeleteCategory(categoryId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(errorMessage = null, categoryNameError = null) }
+            when (val result = deleteRoutineCategoryUseCase(categoryId)) {
+                is ResultState.Success -> {
+                    val wasSelected = _uiState.value.categories
+                        .firstOrNull { it.categoryId == categoryId }
+                        ?.name == _uiState.value.selectedCategoryName
+                    when (val categories = getRoutineCategoriesUseCase()) {
+                        is ResultState.Success -> {
+                            _uiState.update {
+                                it.copy(
+                                    categories = categories.data.categories,
+                                    addableCount = categories.data.addableCount,
+                                    selectedCategoryName = if (wasSelected) {
+                                        AllCategoryLabel
+                                    } else {
+                                        it.selectedCategoryName
+                                    },
+                                )
+                            }
+                            loadTemplates(categoryId = _uiState.value.selectedCategoryId)
+                            _uiEvent.emit(RoutineManageUiEvent.CategoryDeleted)
+                        }
+                        is ResultState.Error -> _uiState.update {
+                            it.copy(errorMessage = categories.message)
+                        }
+                        ResultState.Loading -> Unit
+                    }
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(errorMessage = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun categoryByName(name: String): RoutineCategory? =
+        _uiState.value.categories.firstOrNull { it.name == name && !it.fixed }
 
     fun onAddCustomRoutine(
         name: String,
@@ -266,6 +370,7 @@ class RoutineManageViewModel(
         val payload = buildCreatePayload(state)
         if (payload.isEmpty()) {
             // 새로 추가할 선택이 없으면 저장 없이 완료(뒤로가기).
+            _uiState.update { it.copy(isSubmitting = false) }
             viewModelScope.launch { _uiEvent.emit(RoutineManageUiEvent.NavigateBack) }
             return
         }
@@ -335,12 +440,3 @@ class RoutineManageViewModel(
     }
 }
 
-private fun CategoryColor.toApiColor(): String = when (this) {
-    CategoryColor.Red -> "RED"
-    CategoryColor.Orange -> "ORANGE"
-    CategoryColor.Yellow -> "YELLOW"
-    CategoryColor.Green -> "GREEN"
-    CategoryColor.Blue -> "BLUE"
-    CategoryColor.Magenta -> "MAGENTA"
-    CategoryColor.Black -> "BLACK"
-}

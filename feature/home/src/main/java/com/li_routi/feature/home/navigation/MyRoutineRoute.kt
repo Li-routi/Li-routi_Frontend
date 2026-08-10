@@ -26,6 +26,7 @@ import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.RoutineDeleteDialog
 import com.li_routi.core.common.ui.routine.RoutineEditBottomSheet
+import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.designsystem.component.LiroutiClockTime
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -47,6 +48,8 @@ fun MyRoutineRoute(
             getMemberRoutinesUseCase = RoutineContainer.getMemberRoutinesUseCase,
             getRoutineCategoriesUseCase = RoutineContainer.getRoutineCategoriesUseCase,
             createRoutineCategoryUseCase = RoutineContainer.createRoutineCategoryUseCase,
+            updateRoutineCategoryUseCase = RoutineContainer.updateRoutineCategoryUseCase,
+            deleteRoutineCategoryUseCase = RoutineContainer.deleteRoutineCategoryUseCase,
             updateMemberRoutineUseCase = RoutineContainer.updateMemberRoutineUseCase,
             deleteMemberRoutineUseCase = RoutineContainer.deleteMemberRoutineUseCase,
         )
@@ -54,6 +57,7 @@ fun MyRoutineRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showCategorySheet by remember { mutableStateOf(false) }
+    var editingCategoryId by remember { mutableStateOf<Long?>(null) }
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
     var editingRoutineId by remember { mutableStateOf<Long?>(null) }
@@ -81,6 +85,13 @@ fun MyRoutineRoute(
                     showDeleteDialog = false
                     onRoutinesChanged()
                 }
+                MyRoutineUiEvent.CategorySaved,
+                MyRoutineUiEvent.CategoryDeleted,
+                -> {
+                    showCategorySheet = false
+                    editingCategoryId = null
+                    onRoutinesChanged()
+                }
             }
         }
     }
@@ -101,11 +112,20 @@ fun MyRoutineRoute(
             onCategorySelected = viewModel::onCategorySelected,
             onAddCategoryClick = {
                 if (uiState.addCategoryEnabled) {
+                    editingCategoryId = null
                     categoryName = ""
                     categoryColor = null
                     viewModel.clearError()
                     showCategorySheet = true
                 }
+            },
+            onCategoryLongClick = { name ->
+                val category = viewModel.categoryByName(name) ?: return@MyRoutineScreen
+                editingCategoryId = category.categoryId
+                categoryName = category.name
+                categoryColor = category.color.toCategoryColor()
+                viewModel.clearError()
+                showCategorySheet = true
             },
             addCategoryEnabled = uiState.addCategoryEnabled,
             routines = uiState.visibleRoutines,
@@ -157,10 +177,25 @@ fun MyRoutineRoute(
             onColorSelected = { categoryColor = it },
             placeholder = "최대 10자",
             onConfirm = {
-                viewModel.onCreateCategory(categoryName, categoryColor)
-                showCategorySheet = false
+                val categoryId = editingCategoryId
+                if (categoryId == null) {
+                    viewModel.onCreateCategory(categoryName, categoryColor)
+                } else {
+                    viewModel.onUpdateCategory(categoryId, categoryName, categoryColor)
+                }
             },
-            onDismissRequest = { showCategorySheet = false },
+            onDeleteClick = {
+                val categoryId = editingCategoryId
+                if (categoryId == null) {
+                    showCategorySheet = false
+                } else {
+                    viewModel.onDeleteCategory(categoryId)
+                }
+            },
+            onDismissRequest = {
+                showCategorySheet = false
+                editingCategoryId = null
+            },
         )
     }
 

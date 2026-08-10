@@ -36,6 +36,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.common.ui.routine.AddCategoryChip
 import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.common.ui.routine.detectLabelLongClick
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.CheckBoxState
 import com.li_routi.core.designsystem.component.CustomCheckBox
@@ -69,6 +70,8 @@ data class RoutineChecklistItemUiModel(
     val kind: RoutineChecklistKind = RoutineChecklistKind.Member,
     val routineId: Long? = null,
     val groupId: Long? = null,
+    /** 개인 루틴 카테고리 id. 색 매핑용. */
+    val categoryId: Long? = null,
     /** 카메라/업로드 선택 가능 여부. 완료·MISSED 등은 false. */
     val canVerify: Boolean = !isDone,
     /**
@@ -230,18 +233,11 @@ internal fun List<RoutineChecklistItemUiModel>.filteredByRoom(
 }
 
 /**
- * Figma 카테고리 추가 시트(`3647:55242`) 스와치 fill.
- * core [CategoryColor.swatch]와 값이 달라 홈 체크리스트 점은 이 hex를 쓴다.
+ * Figma 카테고리 추가 시트(`4741:43934`) 스와치 fill.
+ * [CategoryColor.swatch]와 동일하므로 직접 swatch를 써도 된다.
  */
-internal fun CategoryColor.toFigmaDotColor(): Color = when (this) {
-    CategoryColor.Red -> Color(0xFFFF5660)
-    CategoryColor.Orange -> Color(0xFFFFA04A)
-    CategoryColor.Yellow -> Color(0xFFFFD52B)
-    CategoryColor.Green -> Color(0xFF2FD571)
-    CategoryColor.Blue -> Color(0xFF19A2FF)
-    CategoryColor.Magenta -> Color(0xFFE954EE)
-    CategoryColor.Black -> Color(0xFF37383C)
-}
+internal fun CategoryColor.toFigmaDotColor(): Color = swatch
+
 
 private val HomeMainTabLabels = listOf("오늘의 루틴", "그룹 루틴")
 
@@ -265,6 +261,8 @@ fun RoutineChecklistSection(
     groupRoomFilters: List<String> = SampleGroupRoomFilters,
     groupRoomItems: List<RoutineChecklistItemUiModel> = SampleGroupRoomItems,
     onAddCategoryClick: () -> Unit = {},
+    onCategoryLongClick: (String) -> Unit = {},
+    addCategoryEnabled: Boolean = true,
 ) {
     var selectedMainTab by remember { mutableIntStateOf(0) }
     // 인덱스가 아니라 필터명으로 보관 — refresh로 필터 목록이 바뀌어도 선택이 어긋나지 않는다.
@@ -323,16 +321,23 @@ fun RoutineChecklistSection(
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 itemsIndexed(currentFilters) { _, label ->
+                    val canEdit = !isGroupTab && label != AllCategoryFilterLabel
                     LiroutiLabel(
                         text = label,
                         selected = label == selectedFilterName,
                         onClick = { selectedFilterName = label },
+                        modifier = Modifier.detectLabelLongClick(enabled = canEdit) {
+                            onCategoryLongClick(label)
+                        },
                     )
                 }
                 // Figma: 카테고리 `+`는 오늘의 루틴 탭만. 그룹 탭은 방 필터만.
                 if (!isGroupTab) {
                     item {
-                        AddCategoryChip(onClick = onAddCategoryClick)
+                        AddCategoryChip(
+                            onClick = onAddCategoryClick,
+                            enabled = addCategoryEnabled,
+                        )
                     }
                 }
             }

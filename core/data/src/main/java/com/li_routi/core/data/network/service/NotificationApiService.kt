@@ -1,0 +1,27 @@
+package com.li_routi.core.data.network.service
+
+import com.li_routi.core.data.network.dto.response.ApiResponse
+import com.li_routi.core.data.network.dto.response.NotificationListResponse
+import com.li_routi.core.data.network.dto.response.NotificationReadAllResponse
+import retrofit2.http.GET
+import retrofit2.http.PATCH
+import retrofit2.http.Path
+import retrofit2.http.Query
+
+interface NotificationApiService {
+
+    @GET("api/notifications")
+    suspend fun getNotifications(
+        @Query("category") category: String?,
+        @Query("cursor") cursor: Long?,
+        @Query("size") size: Int?,
+    ): ApiResponse<NotificationListResponse>
+
+    @PATCH("api/notifications/{notificationId}/read")
+    suspend fun markRead(
+        @Path("notificationId") notificationId: Long,
+    ): ApiResponse<String?>
+
+    @PATCH("api/notifications/read-all")
+    suspend fun markAllRead(): ApiResponse<NotificationReadAllResponse>
+}

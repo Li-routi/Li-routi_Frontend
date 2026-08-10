@@ -25,6 +25,7 @@ import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.RoutineChecklistScreen
 import com.li_routi.core.common.ui.routine.RoutineDeleteDialog
 import com.li_routi.core.common.ui.routine.RoutineEditBottomSheet
+import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.designsystem.component.LiroutiClockTime
 import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
@@ -54,6 +55,8 @@ fun RoutineManageRoute(
         RoutineManageViewModel(
             getRoutineCategoriesUseCase = RoutineContainer.getRoutineCategoriesUseCase,
             createRoutineCategoryUseCase = RoutineContainer.createRoutineCategoryUseCase,
+            updateRoutineCategoryUseCase = RoutineContainer.updateRoutineCategoryUseCase,
+            deleteRoutineCategoryUseCase = RoutineContainer.deleteRoutineCategoryUseCase,
             getRoutineTemplatesUseCase = RoutineContainer.getRoutineTemplatesUseCase,
             createMemberRoutinesUseCase = RoutineContainer.createMemberRoutinesUseCase,
         )
@@ -65,6 +68,7 @@ fun RoutineManageRoute(
     var showSheetDeleteDialog by remember { mutableStateOf(false) }
     var showExitConfirmDialog by remember { mutableStateOf(false) }
     var pendingExitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    var editingCategoryId by remember { mutableStateOf<Long?>(null) }
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
     var routineName by remember { mutableStateOf("") }
@@ -119,6 +123,12 @@ fun RoutineManageRoute(
             when (event) {
                 RoutineManageUiEvent.NavigateBack -> onNavigateBack()
                 RoutineManageUiEvent.SubmitSuccess -> onSubmitSuccess()
+                RoutineManageUiEvent.CategorySaved,
+                RoutineManageUiEvent.CategoryDeleted,
+                -> {
+                    showCategorySheet = false
+                    editingCategoryId = null
+                }
             }
         }
     }
@@ -135,11 +145,20 @@ fun RoutineManageRoute(
             onCategorySelected = viewModel::onCategorySelected,
             onAddCategoryClick = {
                 if (uiState.addCategoryEnabled) {
+                    editingCategoryId = null
                     categoryName = ""
                     categoryColor = null
                     viewModel.clearError()
                     showCategorySheet = true
                 }
+            },
+            onCategoryLongClick = { name ->
+                val category = viewModel.categoryByName(name) ?: return@RoutineChecklistScreen
+                editingCategoryId = category.categoryId
+                categoryName = category.name
+                categoryColor = category.color.toCategoryColor()
+                viewModel.clearError()
+                showCategorySheet = true
             },
             addCategoryEnabled = uiState.addCategoryEnabled,
             items = uiState.checklistItems,
@@ -189,10 +208,25 @@ fun RoutineManageRoute(
             onColorSelected = { categoryColor = it },
             placeholder = "최대 10자",
             onConfirm = {
-                viewModel.onCreateCategory(categoryName, categoryColor)
-                showCategorySheet = false
+                val categoryId = editingCategoryId
+                if (categoryId == null) {
+                    viewModel.onCreateCategory(categoryName, categoryColor)
+                } else {
+                    viewModel.onUpdateCategory(categoryId, categoryName, categoryColor)
+                }
             },
-            onDismissRequest = { showCategorySheet = false },
+            onDeleteClick = {
+                val categoryId = editingCategoryId
+                if (categoryId == null) {
+                    showCategorySheet = false
+                } else {
+                    viewModel.onDeleteCategory(categoryId)
+                }
+            },
+            onDismissRequest = {
+                showCategorySheet = false
+                editingCategoryId = null
+            },
         )
     }
 

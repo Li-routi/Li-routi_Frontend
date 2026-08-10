@@ -2,6 +2,7 @@ package com.li_routi.feature.home.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,10 +13,16 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
@@ -47,6 +54,11 @@ fun NotificationScreen(
     notifications: List<NotificationItemUiModel>,
     showDeleteSheet: Boolean,
     modifier: Modifier = Modifier,
+    isLoading: Boolean = false,
+    hasNext: Boolean = false,
+    errorMessage: String? = null,
+    onLoadMore: () -> Unit = {},
+    onRetryClick: () -> Unit = {},
 ) {
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -66,41 +78,75 @@ fun NotificationScreen(
             }
         },
     ) { innerPadding ->
-        if (notifications.isEmpty()) {
-            NotificationEmptyContent(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-            )
-        } else {
-            Column(
-                modifier = Modifier
-                    .fillMaxSize()
-                    .padding(innerPadding),
-            ) {
-                LazyColumn(
+        when {
+            isLoading && notifications.isEmpty() && errorMessage == null -> {
+                Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .fillMaxWidth(),
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                    contentAlignment = Alignment.Center,
                 ) {
-                    items(items = notifications, key = { it.id }) { item ->
-                        NotificationListItem(
-                            item = item,
-                            onClick = { actions.onNotificationClick(item.id) },
-                            onMoreClick = { actions.onMoreClick(item.id) },
-                        )
+                    CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
+                }
+            }
+            errorMessage != null && notifications.isEmpty() -> {
+                NotificationErrorContent(
+                    message = errorMessage,
+                    onRetryClick = onRetryClick,
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                )
+            }
+            notifications.isEmpty() -> {
+                NotificationEmptyContent(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                )
+            }
+            else -> {
+                val listState = rememberLazyListState()
+                val shouldLoadMore by remember {
+                    derivedStateOf {
+                        val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                        lastVisible != null && lastVisible >= notifications.lastIndex - 2
                     }
                 }
-                Text(
-                    text = "7일 전 알림까지 확인할 수 있어요.",
-                    style = LiroutiTheme.typography.body3Regular,
-                    color = LiroutiTheme.colors.labelInfo,
-                    textAlign = TextAlign.Center,
+                LaunchedEffect(shouldLoadMore, hasNext) {
+                    if (shouldLoadMore && hasNext) onLoadMore()
+                }
+
+                Column(
                     modifier = Modifier
-                        .fillMaxWidth()
-                        .navigationBarsPadding()
-                        .padding(vertical = 16.dp),
-                )
+                        .fillMaxSize()
+                        .padding(innerPadding),
+                ) {
+                    LazyColumn(
+                        state = listState,
+                        modifier = Modifier
+                            .weight(1f)
+                            .fillMaxWidth(),
+                    ) {
+                        items(items = notifications, key = { it.id }) { item ->
+                            NotificationListItem(
+                                item = item,
+                                onClick = { actions.onNotificationClick(item.id) },
+                                onMoreClick = { actions.onMoreClick(item.id) },
+                            )
+                        }
+                    }
+                    Text(
+                        text = "7일 전 알림까지 확인할 수 있어요.",
+                        style = LiroutiTheme.typography.body3Regular,
+                        color = LiroutiTheme.colors.labelInfo,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .navigationBarsPadding()
+                            .padding(vertical = 16.dp),
+                    )
+                }
             }
         }
     }
@@ -136,6 +182,37 @@ private fun NotificationEmptyContent(
                 style = LiroutiTheme.typography.body2,
                 color = LiroutiTheme.colors.labelInfo,
                 textAlign = TextAlign.Center,
+            )
+        }
+    }
+}
+
+@Composable
+private fun NotificationErrorContent(
+    message: String,
+    onRetryClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+            modifier = Modifier.padding(horizontal = 24.dp),
+        ) {
+            Text(
+                text = message,
+                style = LiroutiTheme.typography.body2,
+                color = LiroutiTheme.colors.labelInfo,
+                textAlign = TextAlign.Center,
+            )
+            Text(
+                text = "다시 시도",
+                style = LiroutiTheme.typography.body3Medium,
+                color = LiroutiTheme.colors.primaryNormal,
+                modifier = Modifier.clickable(onClick = onRetryClick),
             )
         }
     }

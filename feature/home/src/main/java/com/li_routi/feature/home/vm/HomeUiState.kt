@@ -1,5 +1,6 @@
 package com.li_routi.feature.home.vm
 
+import com.li_routi.core.domain.routine.RoutineCategory
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
 import com.li_routi.feature.home.component.SampleGroupRoomFilters
 import com.li_routi.feature.home.component.SampleGroupRoomItems
@@ -18,6 +19,10 @@ data class HomeUiState(
     val hasGroupRoom: Boolean = false,
     val myRoutineItems: List<RoutineChecklistItemUiModel> = emptyList(),
     val myRoutineFilters: List<String> = emptyList(),
+    /** 개인 루틴 카테고리(롱프레스 편집/삭제용). GET /api/routines/categories */
+    val myCategories: List<RoutineCategory> = emptyList(),
+    /** POST 카테고리 가능 잔여 수. 홈 `+` 칩 활성 여부. */
+    val addableCategoryCount: Int = 0,
     val groupRoomFilters: List<String> = emptyList(),
     val groupRoomItems: List<RoutineChecklistItemUiModel> = emptyList(),
     val isLoading: Boolean = false,
@@ -26,6 +31,9 @@ data class HomeUiState(
     /** 개인/그룹 중 하나라도 있으면 체크리스트(또는 그룹만)를 보여 준다. */
     val showChecklist: Boolean
         get() = hasActiveRoutine || hasGroupRoom
+
+    val addCategoryEnabled: Boolean
+        get() = addableCategoryCount > 0
 
     companion object {
         /** 처음 진입 (루틴 없음). */
@@ -65,8 +73,12 @@ sealed interface HomeUiEvent {
     data object NavigateToManageMyRoutine : HomeUiEvent
     data object NavigateToCreateRoom : HomeUiEvent
     data object NavigateToJoinRoomWithInviteCode : HomeUiEvent
-    /** 그룹 필터 `+` 카테고리 생성 성공 — 시트는 이 이벤트 수신에만 닫는다. */
+    /** 카테고리 생성 성공 — 시트는 이 이벤트 수신에만 닫는다. */
     data object CategoryCreated : HomeUiEvent
-    /** 그룹 필터 `+` 카테고리 생성 실패 — 시트 유지 + 메시지 표시. */
+    /** 카테고리 생성 실패 — 시트 유지 + 메시지 표시. */
     data class CategoryCreateFailed(val message: String) : HomeUiEvent
+    data object CategoryUpdated : HomeUiEvent
+    data class CategoryUpdateFailed(val message: String) : HomeUiEvent
+    data object CategoryDeleted : HomeUiEvent
+    data class CategoryDeleteFailed(val message: String) : HomeUiEvent
 }

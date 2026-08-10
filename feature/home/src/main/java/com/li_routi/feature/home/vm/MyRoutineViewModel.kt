@@ -5,14 +5,17 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.RoutineChecklistItem
+import com.li_routi.core.common.ui.routine.toApiColor
 import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.CreatedRoutine
 import com.li_routi.core.domain.routine.DeleteMemberRoutineUseCase
+import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.GetMemberRoutinesUseCase
 import com.li_routi.core.domain.routine.GetRoutineCategoriesUseCase
 import com.li_routi.core.domain.routine.RoutineCategory
 import com.li_routi.core.domain.routine.UpdateMemberRoutine
 import com.li_routi.core.domain.routine.UpdateMemberRoutineUseCase
+import com.li_routi.core.domain.routine.UpdateRoutineCategoryUseCase
 import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -89,12 +92,16 @@ sealed interface MyRoutineUiEvent {
     data object NavigateToAddRoutine : MyRoutineUiEvent
     data object EditCompleted : MyRoutineUiEvent
     data object DeleteCompleted : MyRoutineUiEvent
+    data object CategorySaved : MyRoutineUiEvent
+    data object CategoryDeleted : MyRoutineUiEvent
 }
 
 class MyRoutineViewModel(
     private val getMemberRoutinesUseCase: GetMemberRoutinesUseCase,
     private val getRoutineCategoriesUseCase: GetRoutineCategoriesUseCase,
     private val createRoutineCategoryUseCase: CreateRoutineCategoryUseCase,
+    private val updateRoutineCategoryUseCase: UpdateRoutineCategoryUseCase,
+    private val deleteRoutineCategoryUseCase: DeleteRoutineCategoryUseCase,
     private val updateMemberRoutineUseCase: UpdateMemberRoutineUseCase,
     private val deleteMemberRoutineUseCase: DeleteMemberRoutineUseCase,
 ) : BaseViewModel() {
@@ -241,8 +248,12 @@ class MyRoutineViewModel(
 
     fun onCreateCategory(name: String, color: CategoryColor?) {
         val trimmed = name.trim()
-        if (trimmed.isEmpty()) {
-            _uiState.update { it.copy(errorMessage = "카테고리 이름을 입력해 주세요.") }
+        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) {
+            _uiState.update { it.copy(errorMessage = "카테고리 이름은 1~10자로 입력해 주세요.") }
+            return
+        }
+        if (trimmed == "전체") {
+            _uiState.update { it.copy(errorMessage = "「전체」는 사용할 수 없는 이름이에요.") }
             return
         }
         if (!_uiState.value.addCategoryEnabled) {
@@ -254,12 +265,13 @@ class MyRoutineViewModel(
             when (
                 val result = createRoutineCategoryUseCase(
                     name = trimmed,
-                    color = color?.name,
+                    color = color?.toApiColor(),
                 )
             ) {
                 is ResultState.Success -> {
                     _uiState.update { it.copy(isCreatingCategory = false) }
                     refresh()
+                    emitEvent(MyRoutineUiEvent.CategorySaved)
                 }
                 is ResultState.Error -> _uiState.update {
                     it.copy(isCreatingCategory = false, errorMessage = result.message)
@@ -268,6 +280,82 @@ class MyRoutineViewModel(
             }
         }
     }
+
+    fun onUpdateCategory(categoryId: Long, name: String, color: CategoryColor?) {
+        val trimmed = name.trim()
+        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) {
+            _uiState.update { it.copy(errorMessage = "카테고리 이름은 1~10자로 입력해 주세요.") }
+            return
+        }
+        if (trimmed == "전체") {
+            _uiState.update { it.copy(errorMessage = "「전체」는 사용할 수 없는 이름이에요.") }
+            return
+        }
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCreatingCategory = true, errorMessage = null) }
+            when (
+                val result = updateRoutineCategoryUseCase(
+                    categoryId = categoryId,
+                    name = trimmed,
+                    color = color?.toApiColor(),
+                )
+            ) {
+                is ResultState.Success -> {
+                    val updated = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            isCreatingCategory = false,
+                            selectedCategoryName = if (state.selectedCategoryName ==
+                                state.categories.firstOrNull { it.categoryId == categoryId }?.name
+                            ) {
+                                updated.name
+                            } else {
+                                state.selectedCategoryName
+                            },
+                        )
+                    }
+                    refresh()
+                    emitEvent(MyRoutineUiEvent.CategorySaved)
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isCreatingCategory = false, errorMessage = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onDeleteCategory(categoryId: Long) {
+        viewModelScope.launch {
+            _uiState.update { it.copy(isCreatingCategory = true, errorMessage = null) }
+            when (val result = deleteRoutineCategoryUseCase(categoryId)) {
+                is ResultState.Success -> {
+                    _uiState.update { state ->
+                        val deletedName = state.categories
+                            .firstOrNull { it.categoryId == categoryId }
+                            ?.name
+                        state.copy(
+                            isCreatingCategory = false,
+                            selectedCategoryName = if (state.selectedCategoryName == deletedName) {
+                                AllCategoryLabel
+                            } else {
+                                state.selectedCategoryName
+                            },
+                        )
+                    }
+                    refresh()
+                    emitEvent(MyRoutineUiEvent.CategoryDeleted)
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isCreatingCategory = false, errorMessage = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun categoryByName(name: String): RoutineCategory? =
+        _uiState.value.categories.firstOrNull { it.name == name && !it.fixed }
 
     fun clearError() {
         _uiState.update { it.copy(errorMessage = null) }

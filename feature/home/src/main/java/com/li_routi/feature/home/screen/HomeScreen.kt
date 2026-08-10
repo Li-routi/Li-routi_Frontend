@@ -41,9 +41,11 @@ import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.core.domain.routine.RoutineCategory
 import com.li_routi.feature.home.component.AddMenuBottomSheet
 import com.li_routi.feature.home.component.HomeTopBar
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
@@ -105,10 +107,14 @@ fun HomeScreen(
     loadError: Boolean = false,
     /** 카테고리 생성 성공/실패 등 홈 일회성 UI 이벤트. */
     uiEvent: Flow<HomeUiEvent> = emptyFlow(),
+    /** 롱프레스 편집 가능한 카테고리 조회(!fixed). */
+    findEditableCategory: (String) -> RoutineCategory? = { null },
+    addCategoryEnabled: Boolean = true,
     modifier: Modifier = Modifier,
 ) {
     var showAddMenuSheet by remember { mutableStateOf(false) }
     var showCategorySheet by remember { mutableStateOf(false) }
+    var editingCategoryId by remember { mutableStateOf<Long?>(null) }
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
     var categoryCreateError by remember { mutableStateOf<String?>(null) }
@@ -127,13 +133,23 @@ fun HomeScreen(
     LaunchedEffect(uiEvent) {
         uiEvent.collect { event ->
             when (event) {
-                HomeUiEvent.CategoryCreated -> {
+                HomeUiEvent.CategoryCreated,
+                HomeUiEvent.CategoryUpdated,
+                HomeUiEvent.CategoryDeleted,
+                -> {
                     showCategorySheet = false
+                    editingCategoryId = null
                     categoryName = ""
                     categoryColor = null
                     categoryCreateError = null
                 }
                 is HomeUiEvent.CategoryCreateFailed -> {
+                    categoryCreateError = event.message
+                }
+                is HomeUiEvent.CategoryUpdateFailed -> {
+                    categoryCreateError = event.message
+                }
+                is HomeUiEvent.CategoryDeleteFailed -> {
                     categoryCreateError = event.message
                 }
                 else -> Unit
@@ -252,10 +268,22 @@ fun HomeScreen(
                                     groupRoomItems = groupRoomItems,
                                     onRoutineCameraClick = actions::onRoutineCameraClick,
                                     onAddCategoryClick = {
+                                        if (!addCategoryEnabled) return@RoutineChecklistSection
+                                        editingCategoryId = null
                                         categoryName = ""
                                         categoryColor = null
+                                        categoryCreateError = null
                                         showCategorySheet = true
                                     },
+                                    onCategoryLongClick = { name ->
+                                        val category = findEditableCategory(name) ?: return@RoutineChecklistSection
+                                        editingCategoryId = category.categoryId
+                                        categoryName = category.name
+                                        categoryColor = category.color.toCategoryColor()
+                                        categoryCreateError = null
+                                        showCategorySheet = true
+                                    },
+                                    addCategoryEnabled = addCategoryEnabled,
                                     modifier = Modifier.weight(1f, fill = true),
                                 )
                                 // 하단 네비게이션 바(오버레이)에 가려지지 않도록 여백을 둔다.
@@ -323,11 +351,25 @@ fun HomeScreen(
             onColorSelected = { categoryColor = it },
             placeholder = "최대 10자",
             onConfirm = {
-                // 시트는 CategoryCreated 수신 시에만 닫는다.
-                actions.onCreateCategory(categoryName, categoryColor)
+                val categoryId = editingCategoryId
+                if (categoryId == null) {
+                    actions.onCreateCategory(categoryName, categoryColor)
+                } else {
+                    actions.onUpdateCategory(categoryId, categoryName, categoryColor)
+                }
+            },
+            onDeleteClick = {
+                val categoryId = editingCategoryId
+                if (categoryId == null) {
+                    showCategorySheet = false
+                    categoryCreateError = null
+                } else {
+                    actions.onDeleteCategory(categoryId)
+                }
             },
             onDismissRequest = {
                 showCategorySheet = false
+                editingCategoryId = null
                 categoryCreateError = null
             },
         )
@@ -362,6 +404,8 @@ private object PreviewHomeScreenActions : HomeScreenActions {
     override fun onJoinRoomWithInviteCodeClick() = Unit
     override fun onRetryLoadClick() = Unit
     override fun onCreateCategory(name: String, color: CategoryColor?) = Unit
+    override fun onUpdateCategory(categoryId: Long, name: String, color: CategoryColor?) = Unit
+    override fun onDeleteCategory(categoryId: Long) = Unit
 }
 
 @Preview(showBackground = true, heightDp = 800, name = "1. 처음 진입")
