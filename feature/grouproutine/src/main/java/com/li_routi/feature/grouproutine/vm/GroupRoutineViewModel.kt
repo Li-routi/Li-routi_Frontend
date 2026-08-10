@@ -110,6 +110,7 @@ class GroupRoutineViewModel(
     private var chatSocketJob: Job? = null
     private var chatReadJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
+    private var unreadRoutineVerificationsJob: Job? = null
 
     // PR 반영: Mock ID와 실제 서버 ID 분리
     // createGroupUseCase 성공 시나 초대코드로 조인했을 때 발급되는 실제 서버 그룹 ID를 저장합니다.
@@ -753,7 +754,8 @@ class GroupRoutineViewModel(
     private fun loadUnreadRoutineVerifications() {
         val groupId = currentGroupId() ?: return
 
-        viewModelScope.launch {
+        unreadRoutineVerificationsJob?.cancel()
+        unreadRoutineVerificationsJob = viewModelScope.launch {
             when (
                 val result = getUnreadGroupRoutineVerificationsUseCase(
                     groupId = groupId,
@@ -762,6 +764,8 @@ class GroupRoutineViewModel(
                 )
             ) {
                 is ResultState.Success -> {
+                    if (currentGroupId() != groupId) return@launch
+
                     val unreadCertifications = result.data.verifications.map { item ->
                         NewCertificationUiModel(
                             id = item.verificationId,
@@ -778,7 +782,11 @@ class GroupRoutineViewModel(
                     }
                 }
 
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                is ResultState.Error -> {
+                    if (currentGroupId() == groupId) {
+                        _uiState.update { it.copy(actionMessage = result.message) }
+                    }
+                }
                 ResultState.Loading -> Unit
             }
         }
@@ -848,7 +856,7 @@ class GroupRoutineViewModel(
 
     fun onCertificationDisappointmentClick(verificationId: Long, currentlyDisappointed: Boolean) {
         val groupId = currentGroupId() ?: run {
-            _uiState.update { it.copy(actionMessage = "洹몃９ ID瑜?李얠쓣 ???놁뒿?덈떎.") }
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
             return
         }
 
@@ -1219,6 +1227,7 @@ class GroupRoutineViewModel(
                         // 실제 멤버/루틴 수는 상세 조회로 채움
                         loadGroupDetail(joined.groupId)
                         loadTodayRoutines(joined.groupId)
+                        loadUnreadRoutineVerifications()
                     }
 
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
