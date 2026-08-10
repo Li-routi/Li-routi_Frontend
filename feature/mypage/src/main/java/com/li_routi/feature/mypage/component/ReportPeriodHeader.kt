@@ -23,13 +23,19 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 private val PeriodLabelTextStyle = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = (-0.08).sp)
 private val WeekdayLabelTextStyle = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp)
 
-/** 리포트 주간/월간 카드 상단의 "◀ 기간 라벨 ▶" 이전/다음 이동 행. */
+/**
+ * 리포트 주간/월간 카드 상단의 "◀ 기간 라벨 ▶" 이전/다음 이동 행.
+ *
+ * [onLabelClick]을 넘기면 라벨 텍스트 탭도 감지한다 — "내 인증" 화면에서 날짜/월 선택 바텀시트를
+ * 여는 용도로 쓰인다. 기본값(null)이면 기존 리포트 카드들처럼 라벨은 탭 불가 상태로 남는다.
+ */
 @Composable
 fun ReportPeriodHeader(
     label: String,
     onPreviousClick: () -> Unit,
     onNextClick: () -> Unit,
     modifier: Modifier = Modifier,
+    onLabelClick: (() -> Unit)? = null,
 ) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalAlignment = Alignment.CenterVertically) {
         Image(
@@ -37,7 +43,12 @@ fun ReportPeriodHeader(
             contentDescription = "이전",
             modifier = Modifier.size(16.dp).clickable(onClick = onPreviousClick),
         )
-        Text(text = label, style = PeriodLabelTextStyle, color = LiroutiTheme.colors.labelStrong)
+        Text(
+            text = label,
+            style = PeriodLabelTextStyle,
+            color = LiroutiTheme.colors.labelStrong,
+            modifier = if (onLabelClick != null) Modifier.clickable(onClick = onLabelClick) else Modifier,
+        )
         Image(
             painter = painterResource(id = R.drawable.chevron__right),
             contentDescription = "다음",
