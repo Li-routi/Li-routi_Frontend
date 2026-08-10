@@ -268,7 +268,10 @@ private fun YearMonthWheel(
     onYearChange: (Int) -> Unit,
     onMonthChange: (Int) -> Unit,
 ) {
-    val baseYear = remember { Calendar.getInstance().get(Calendar.YEAR) }
+    // 오늘 날짜가 아니라 휠이 열릴 때의 실제 표시 연도([year])를 기준으로 ±10년 범위를 잡는다 —
+    // 오늘 기준으로 고정하면 헤더 이전/다음으로 10년 넘게 이동한 뒤 휠을 열었을 때 선택 연도가
+    // 범위 밖으로 나가 `indexOf(...).coerceAtLeast(0)`가 엉뚱한 연도(범위 맨 앞)로 조용히 폴백했다.
+    val baseYear = remember { year }
     val years = remember { (baseYear - 10..baseYear + 10).map { "${it}년" }.toTypedArray() }
     val months = remember { (1..12).map { "${it}월" }.toTypedArray() }
     val selectedTextColorArgb = LiroutiTheme.colors.labelDefault.toArgb()
