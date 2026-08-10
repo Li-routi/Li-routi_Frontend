@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.data.di.ChatContainer
 import com.li_routi.core.data.di.GroupRoutineContainer
@@ -689,9 +690,24 @@ class GroupRoutineViewModel(
             when (val result = getGroupRoutineCategoriesUseCase(groupId)) {
                 is ResultState.Success -> {
                     val categoryNames = result.data.categories.map { it.name }
+                    val categoryColors = result.data.categories
+                        .mapNotNull { category ->
+                            category.color.toCategoryColor()?.let { color -> category.name to color }
+                        }
+                        .toMap()
                     _uiState.update { state ->
                         val allLabel = state.categories.firstOrNull().orEmpty()
-                        state.copy(categories = listOf(allLabel) + categoryNames)
+                        val mergedColors = state.categoryColors + categoryColors
+                        state.copy(
+                            categories = listOf(allLabel) + categoryNames,
+                            categoryColors = mergedColors,
+                            routineOptions = state.routineOptions.map { option ->
+                                option.copy(categoryColor = mergedColors[option.category] ?: option.categoryColor)
+                            },
+                            todos = state.todos.map { todo ->
+                                todo.copy(categoryColor = mergedColors[todo.category] ?: todo.categoryColor)
+                            },
+                        )
                     }
                 }
 
@@ -1099,6 +1115,7 @@ class GroupRoutineViewModel(
                                 deadline = routine.scheduledEndTime,
                                 category = routine.categoryName,
                                 isDone = routine.status == GroupRoutineStatus.COMPLETED,
+                                categoryColor = _uiState.value.categoryColors[routine.categoryName],
                             )
                         }
                     _uiState.update { it.copy(todos = todos) }
@@ -1343,9 +1360,11 @@ class GroupRoutineViewModel(
         }
 
         if (state.screenMode == GroupRoutineScreenMode.CreateRoutineSelect) {
+            val selectedColor = state.categoryColorInput
             _uiState.update {
                 it.copy(
                     categories = it.categories + name,
+                    categoryColors = if (selectedColor == null) it.categoryColors else it.categoryColors + (name to selectedColor),
                     selectedCategory = name,
                     categoryInput = "",
                     categoryColorInput = null,
@@ -1366,9 +1385,11 @@ class GroupRoutineViewModel(
                 is ResultState.Success -> {
                     // CodeRabbit 반영: 이름뿐 아니라 서버 categoryId도 저장해야 루틴 제출 시 사용 가능
                     serverCategoryIds = serverCategoryIds + (result.data.name to result.data.categoryId)
+                    val categoryColor = result.data.color.toCategoryColor() ?: state.categoryColorInput
                     _uiState.update {
                         it.copy(
                             categories = it.categories + result.data.name,
+                            categoryColors = if (categoryColor == null) it.categoryColors else it.categoryColors + (result.data.name to categoryColor),
                             selectedCategory = result.data.name,
                             categoryInput = "",
                             categoryColorInput = null,
@@ -1415,6 +1436,61 @@ class GroupRoutineViewModel(
                 routineDraftEndTime = option.deadline,
                 routineDraftRepeatDays = option.repeatDays,
                 routineDraftCategory = option.category,
+                actionMessage = null,
+            )
+        }
+    }
+
+    fun onRoutineColorLongClick(optionId: Long) {
+        _uiState.update { state ->
+            val option = state.routineOptions.firstOrNull { it.id == optionId }
+                ?: state.todos.firstOrNull { it.id == optionId }?.let { todo ->
+                    CreateRoutineOptionUiModel(
+                        id = todo.id,
+                        title = todo.title,
+                        deadline = todo.deadline,
+                        category = todo.category,
+                        categoryColor = todo.categoryColor,
+                    )
+                }
+                ?: return@update state
+            state.copy(
+                isRoutineColorSheetVisible = true,
+                routineColorTargetId = optionId,
+                routineColorInput = option.categoryColor ?: state.categoryColors[option.category],
+                actionMessage = null,
+            )
+        }
+    }
+
+    fun onDismissRoutineColorSheet() {
+        _uiState.update {
+            it.copy(
+                isRoutineColorSheetVisible = false,
+                routineColorTargetId = null,
+                routineColorInput = null,
+            )
+        }
+    }
+
+    fun onRoutineColorSelected(color: CategoryColor) {
+        _uiState.update { state ->
+            val targetId = state.routineColorTargetId ?: return@update state
+            val categoryName = state.routineOptions.firstOrNull { it.id == targetId }?.category
+                ?: state.todos.firstOrNull { it.id == targetId }?.category
+                ?: return@update state
+            val nextColors = state.categoryColors + (categoryName to color)
+            state.copy(
+                categoryColors = nextColors,
+                routineOptions = state.routineOptions.map { option ->
+                    if (option.category == categoryName) option.copy(categoryColor = color) else option
+                },
+                todos = state.todos.map { todo ->
+                    if (todo.category == categoryName) todo.copy(categoryColor = color) else todo
+                },
+                isRoutineColorSheetVisible = false,
+                routineColorTargetId = null,
+                routineColorInput = color,
                 actionMessage = null,
             )
         }
@@ -1497,6 +1573,7 @@ class GroupRoutineViewModel(
         _uiState.update { it.copy(isSubmitting = true) }
 
         val categoryName = state.routineDraftCategory
+        val categoryColor = state.categoryColors[categoryName]
         val schedules = state.routineDraftRepeatDays.toGroupRoutineSchedules(
             startTime = state.routineDraftStartTime,
             endTime = state.routineDraftEndTime,
@@ -1546,6 +1623,7 @@ class GroupRoutineViewModel(
                             startTime = state.routineDraftStartTime,
                             repeatLabel = repeatLabel,
                             repeatDays = state.routineDraftRepeatDays,
+                            categoryColor = categoryColor,
                         )
                         _uiState.update {
                             val nextOptions = if (editingId == null) {
@@ -1584,6 +1662,7 @@ class GroupRoutineViewModel(
         val repeatLabel = repeatDaysLabel(state.routineDraftRepeatDays)
         val editingId = state.editingRoutineId
         val categoryName = state.routineDraftCategory
+        val categoryColor = state.categoryColors[categoryName]
         
         val nextOptions = if (editingId == null) {
             val newId = (state.routineOptions.maxOfOrNull { it.id } ?: 0L) + 1L
@@ -1595,6 +1674,7 @@ class GroupRoutineViewModel(
                 startTime = state.routineDraftStartTime,
                 repeatLabel = repeatLabel,
                 repeatDays = state.routineDraftRepeatDays,
+                categoryColor = categoryColor,
             )
         } else {
             state.routineOptions.map { option ->
@@ -1605,6 +1685,7 @@ class GroupRoutineViewModel(
                         startTime = state.routineDraftStartTime,
                         repeatLabel = repeatLabel,
                         repeatDays = state.routineDraftRepeatDays,
+                        categoryColor = categoryColor,
                     )
                 } else {
                     option
@@ -1627,7 +1708,13 @@ class GroupRoutineViewModel(
     }
 
     fun onRoutineDeleteClick() {
-        _uiState.update { it.copy(isDeleteRoutineDialogVisible = true) }
+        _uiState.update {
+            it.copy(
+                editingRoutineId = it.editingRoutineId ?: it.routineColorTargetId,
+                isRoutineColorSheetVisible = false,
+                isDeleteRoutineDialogVisible = true,
+            )
+        }
     }
 
     fun onDismissDeleteRoutineDialog() {
@@ -1778,6 +1865,7 @@ class GroupRoutineViewModel(
                                 deadline = option.deadline,
                                 category = option.category,
                                 isDone = false,
+                                categoryColor = option.categoryColor ?: _uiState.value.categoryColors[option.category],
                             )
                         }
                         _uiState.update {

@@ -60,3 +60,19 @@ val OutlinedMid           = Color(0xFFCDD0D5)
 // Background
 val SelectedLight = Color(0xFFFFB5B5)
 val SelectedDark = Color(0xFFFFB5B5)
+
+// category
+val CategoryBlue = Blue500
+val CategoryBlueBorder = Color(0xFF006CFF)
+val CategoryRed = Color(0xFFFF5660)
+val CategoryRedBorder = Color(0xFFFF1D37)
+val CategoryOrange = Color(0xFFFFA04A)
+val CategoryOrangeBorder = Color(0xFFFF8500)
+val CategoryYellow = Color(0xFFFFD52B)
+val CategoryYellowBorder = Color(0xFFFFC900)
+val CategoryGreen = Color(0xFF2FD571)
+val CategoryGreenBorder = Color(0xFF00C94D)
+val CategoryMagenta = Color(0xFFE954EE)
+val CategoryMagentaBorder = Color(0xFFDD22E5)
+val CategoryBlack = Neutral25
+val CategoryBlackBorder = Neutral0
