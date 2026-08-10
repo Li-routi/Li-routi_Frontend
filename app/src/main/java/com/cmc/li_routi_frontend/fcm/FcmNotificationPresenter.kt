@@ -23,6 +23,10 @@ import java.util.concurrent.atomic.AtomicInteger
 object FcmNotificationPresenter {
 
     const val ChannelId = "lirouti_default"
+    /** [message.data]에서 알림 이벤트 타입을 읽는 키. 서버 알림 목록 API의 `type` 필드와 동일한 값이 온다고 가정한다. */
+    const val ExtraNotificationType = "notification_type"
+    /** [message.data]에서 대상 id를 읽는 키. 서버 알림 목록 API의 `referenceId`와 동일하다고 가정한다. */
+    const val ExtraNotificationReferenceId = "notification_reference_id"
     private const val ChannelName = "리루티 알림"
     private val nextNotificationId = AtomicInteger(1)
 
@@ -52,7 +56,12 @@ object FcmNotificationPresenter {
             ?: return
 
         val launchIntent = Intent(context, MainActivity::class.java).apply {
-            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TOP
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or
+                Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                Intent.FLAG_ACTIVITY_SINGLE_TOP
+            // MainActivity가 어느 화면으로 이동할지 판단하는 데 쓴다. resolveNotificationNavigationTarget 참고.
+            putExtra(ExtraNotificationType, message.data["type"])
+            putExtra(ExtraNotificationReferenceId, message.data["referenceId"]?.toLongOrNull() ?: -1L)
         }
         val pendingIntent = PendingIntent.getActivity(
             context,

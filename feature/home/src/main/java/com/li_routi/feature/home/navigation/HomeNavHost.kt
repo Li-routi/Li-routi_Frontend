@@ -43,6 +43,10 @@ fun HomeNavHost(
     /** 공유 인증 플로우에서 개인/그룹 루틴 인증이 성공할 때마다 증가한다 — 홈 요약을 다시 불러온다. */
     verificationRefreshSignal: Int = 0,
     onTabSelected: (AppBottomTab) -> Unit = {},
+    /** 알림 탭에서 챌린지 관련 알림을 눌렀을 때 챌린지 탭(목록)으로 이동해 달라는 요청. */
+    onNavigateToChallengeHome: () -> Unit = {},
+    /** 알림 탭에서 챌린지 id를 특정할 수 있는 알림을 눌렀을 때 해당 상세로 이동해 달라는 요청. */
+    onNavigateToChallengeDetail: (challengeId: Long) -> Unit = {},
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -92,6 +96,13 @@ fun HomeNavHost(
                         NotificationUiEvent.NavigateToSettings -> {
                             navController.navigate(RouteNotificationSettings)
                         }
+                        NotificationUiEvent.NavigateToPersonalRoutine -> {
+                            navController.popBackStack(RouteHomeMain, inclusive = false)
+                        }
+                        NotificationUiEvent.NavigateToGroupRoutine -> onTabSelected(AppBottomTab.GroupRoutine)
+                        NotificationUiEvent.NavigateToChallengeHome -> onNavigateToChallengeHome()
+                        is NotificationUiEvent.NavigateToChallengeDetail ->
+                            onNavigateToChallengeDetail(event.challengeId)
                     }
                 },
             )
