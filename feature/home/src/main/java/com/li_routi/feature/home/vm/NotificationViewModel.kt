@@ -260,8 +260,14 @@ private fun startOfDay(calendar: Calendar): Calendar =
     }
 
 private fun daysBetween(start: Calendar, end: Calendar): Int {
-    val diff = end.timeInMillis - start.timeInMillis
-    return (diff / (24L * 60L * 60L * 1000L)).toInt()
+    // 고정 24시간이 아니라 캘린더 날짜를 하루씩 올려 DST에서도 맞게 계산한다.
+    val cursor = start.clone() as Calendar
+    var days = 0
+    while (cursor.before(end)) {
+        cursor.add(Calendar.DAY_OF_MONTH, 1)
+        days++
+    }
+    return days
 }
 
 private fun String.toEpochMillisOrNull(): Long? {

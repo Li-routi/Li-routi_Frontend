@@ -42,6 +42,7 @@ import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.toCategoryColor
+import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -114,6 +115,7 @@ fun HomeScreen(
 ) {
     var showAddMenuSheet by remember { mutableStateOf(false) }
     var showCategorySheet by remember { mutableStateOf(false) }
+    var showCategoryDeleteDialog by remember { mutableStateOf(false) }
     var editingCategoryId by remember { mutableStateOf<Long?>(null) }
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
@@ -138,6 +140,7 @@ fun HomeScreen(
                 HomeUiEvent.CategoryDeleted,
                 -> {
                     showCategorySheet = false
+                    showCategoryDeleteDialog = false
                     editingCategoryId = null
                     categoryName = ""
                     categoryColor = null
@@ -319,15 +322,17 @@ fun HomeScreen(
             modifier = Modifier.align(Alignment.BottomCenter),
         )
 
-        categoryCreateError?.let { message ->
-            LiroutiToast(
-                message = message,
-                onCloseClick = { categoryCreateError = null },
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .padding(horizontal = 16.dp)
-                    .padding(bottom = 100.dp),
-            )
+        if (!showCategorySheet) {
+            categoryCreateError?.let { message ->
+                LiroutiToast(
+                    message = message,
+                    onCloseClick = { categoryCreateError = null },
+                    modifier = Modifier
+                        .align(Alignment.BottomCenter)
+                        .padding(horizontal = 16.dp)
+                        .padding(bottom = 100.dp),
+                )
+            }
         }
     }
 
@@ -350,6 +355,7 @@ fun HomeScreen(
             selectedColor = categoryColor,
             onColorSelected = { categoryColor = it },
             placeholder = "최대 10자",
+            errorMessage = categoryCreateError,
             onConfirm = {
                 val categoryId = editingCategoryId
                 if (categoryId == null) {
@@ -364,7 +370,7 @@ fun HomeScreen(
                     showCategorySheet = false
                     categoryCreateError = null
                 } else {
-                    actions.onDeleteCategory(categoryId)
+                    showCategoryDeleteDialog = true
                 }
             },
             onDismissRequest = {
@@ -372,6 +378,20 @@ fun HomeScreen(
                 editingCategoryId = null
                 categoryCreateError = null
             },
+        )
+    }
+
+    if (showCategoryDeleteDialog && editingCategoryId != null) {
+        LiroutiConfirmDialog(
+            title = "카테고리를 삭제할까요?",
+            message = "이 카테고리에 속한 루틴이 있을 수 있어요.",
+            confirmText = "삭제",
+            onConfirm = {
+                val categoryId = editingCategoryId ?: return@LiroutiConfirmDialog
+                showCategoryDeleteDialog = false
+                actions.onDeleteCategory(categoryId)
+            },
+            onDismissRequest = { showCategoryDeleteDialog = false },
         )
     }
 }

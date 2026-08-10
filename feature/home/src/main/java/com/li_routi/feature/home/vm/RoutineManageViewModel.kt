@@ -13,6 +13,7 @@ import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.GetRoutineCategoriesUseCase
 import com.li_routi.core.domain.routine.GetRoutineTemplatesUseCase
 import com.li_routi.core.domain.routine.RoutineCategory
+import com.li_routi.core.domain.routine.RoutineCategoryName
 import com.li_routi.core.domain.routine.RoutineTemplate
 import com.li_routi.core.domain.routine.UpdateRoutineCategoryUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -189,10 +190,12 @@ class RoutineManageViewModel(
     }
 
     fun onCreateCategory(name: String, color: CategoryColor?) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) {
-            _uiState.update { it.copy(categoryNameError = "이름은 1~10자로 입력해 주세요.") }
-            return
+        val trimmed = when (val validated = RoutineCategoryName.validate(name)) {
+            is RoutineCategoryName.Result.Invalid -> {
+                _uiState.update { it.copy(categoryNameError = validated.message) }
+                return
+            }
+            is RoutineCategoryName.Result.Valid -> validated.trimmedName
         }
         viewModelScope.launch {
             _uiState.update { it.copy(categoryNameError = null, errorMessage = null) }
@@ -234,10 +237,12 @@ class RoutineManageViewModel(
     }
 
     fun onUpdateCategory(categoryId: Long, name: String, color: CategoryColor?) {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) {
-            _uiState.update { it.copy(categoryNameError = "이름은 1~10자로 입력해 주세요.") }
-            return
+        val trimmed = when (val validated = RoutineCategoryName.validate(name)) {
+            is RoutineCategoryName.Result.Invalid -> {
+                _uiState.update { it.copy(categoryNameError = validated.message) }
+                return
+            }
+            is RoutineCategoryName.Result.Valid -> validated.trimmedName
         }
         viewModelScope.launch {
             _uiState.update { it.copy(categoryNameError = null, errorMessage = null) }

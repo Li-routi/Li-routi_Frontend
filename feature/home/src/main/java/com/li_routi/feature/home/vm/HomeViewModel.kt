@@ -10,6 +10,7 @@ import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.GetRoutineCategoriesUseCase
 import com.li_routi.core.domain.routine.RoutineCategory
+import com.li_routi.core.domain.routine.RoutineCategoryName
 import com.li_routi.core.domain.routine.UpdateRoutineCategoryUseCase
 import com.li_routi.feature.home.navigation.HomeScreenActions
 import kotlinx.coroutines.async
@@ -127,75 +128,75 @@ class HomeViewModel(
     }
 
     override fun onCreateCategory(name: String, color: CategoryColor?) {
-        val trimmed = name.trim()
-        if (trimmed == "전체") {
-            emitEvent(HomeUiEvent.CategoryCreateFailed("「전체」는 사용할 수 없는 이름이에요."))
-            return
-        }
-        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) {
-            emitEvent(HomeUiEvent.CategoryCreateFailed("이름은 1~10자로 입력해 주세요."))
-            return
-        }
-        val createUseCase = createRoutineCategoryUseCase
-        if (createUseCase == null) {
-            appendMyCategoryFilter(trimmed)
-            emitEvent(HomeUiEvent.CategoryCreated)
-            return
-        }
-        viewModelScope.launch {
-            when (
-                val result = createUseCase(
-                    name = trimmed,
-                    color = color?.toApiColor(),
-                )
-            ) {
-                is ResultState.Success -> {
+        when (val validated = RoutineCategoryName.validate(name)) {
+            is RoutineCategoryName.Result.Invalid -> {
+                emitEvent(HomeUiEvent.CategoryCreateFailed(validated.message))
+                return
+            }
+            is RoutineCategoryName.Result.Valid -> {
+                val trimmed = validated.trimmedName
+                val createUseCase = createRoutineCategoryUseCase
+                if (createUseCase == null) {
                     appendMyCategoryFilter(trimmed)
-                    _uiState.update { state ->
-                        state.copy(
-                            myCategories = state.myCategories + result.data,
-                            addableCategoryCount = (state.addableCategoryCount - 1).coerceAtLeast(0),
-                        )
-                    }
                     emitEvent(HomeUiEvent.CategoryCreated)
+                    return
                 }
-                is ResultState.Error -> emitEvent(
-                    HomeUiEvent.CategoryCreateFailed(result.message),
-                )
-                ResultState.Loading -> Unit
+                viewModelScope.launch {
+                    when (
+                        val result = createUseCase(
+                            name = trimmed,
+                            color = color?.toApiColor(),
+                        )
+                    ) {
+                        is ResultState.Success -> {
+                            appendMyCategoryFilter(trimmed)
+                            _uiState.update { state ->
+                                state.copy(
+                                    myCategories = state.myCategories + result.data,
+                                    addableCategoryCount = (state.addableCategoryCount - 1).coerceAtLeast(0),
+                                )
+                            }
+                            emitEvent(HomeUiEvent.CategoryCreated)
+                        }
+                        is ResultState.Error -> emitEvent(
+                            HomeUiEvent.CategoryCreateFailed(result.message),
+                        )
+                        ResultState.Loading -> Unit
+                    }
+                }
             }
         }
     }
 
     override fun onUpdateCategory(categoryId: Long, name: String, color: CategoryColor?) {
-        val trimmed = name.trim()
-        if (trimmed == "전체") {
-            emitEvent(HomeUiEvent.CategoryUpdateFailed("「전체」는 사용할 수 없는 이름이에요."))
-            return
-        }
-        if (trimmed.isEmpty() || trimmed.length > 10 || trimmed.contains('\n')) {
-            emitEvent(HomeUiEvent.CategoryUpdateFailed("이름은 1~10자로 입력해 주세요."))
-            return
-        }
-        val updateUseCase = updateRoutineCategoryUseCase
-        if (updateUseCase == null) {
-            emitEvent(HomeUiEvent.CategoryUpdateFailed("카테고리를 수정할 수 없습니다."))
-            return
-        }
-        viewModelScope.launch {
-            when (
-                val result = updateUseCase(
-                    categoryId = categoryId,
-                    name = trimmed,
-                    color = color?.toApiColor(),
-                )
-            ) {
-                is ResultState.Success -> {
-                    refresh()
-                    emitEvent(HomeUiEvent.CategoryUpdated)
+        when (val validated = RoutineCategoryName.validate(name)) {
+            is RoutineCategoryName.Result.Invalid -> {
+                emitEvent(HomeUiEvent.CategoryUpdateFailed(validated.message))
+                return
+            }
+            is RoutineCategoryName.Result.Valid -> {
+                val trimmed = validated.trimmedName
+                val updateUseCase = updateRoutineCategoryUseCase
+                if (updateUseCase == null) {
+                    emitEvent(HomeUiEvent.CategoryUpdateFailed("카테고리를 수정할 수 없습니다."))
+                    return
                 }
-                is ResultState.Error -> emitEvent(HomeUiEvent.CategoryUpdateFailed(result.message))
-                ResultState.Loading -> Unit
+                viewModelScope.launch {
+                    when (
+                        val result = updateUseCase(
+                            categoryId = categoryId,
+                            name = trimmed,
+                            color = color?.toApiColor(),
+                        )
+                    ) {
+                        is ResultState.Success -> {
+                            refresh()
+                            emitEvent(HomeUiEvent.CategoryUpdated)
+                        }
+                        is ResultState.Error -> emitEvent(HomeUiEvent.CategoryUpdateFailed(result.message))
+                        ResultState.Loading -> Unit
+                    }
+                }
             }
         }
     }

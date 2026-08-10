@@ -89,6 +89,7 @@ fun CategoryAddBottomSheet(
     sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
     onDeleteClick: () -> Unit = onDismissRequest,
     placeholder: String = "최대 20자",
+    errorMessage: String? = null,
 ) {
     ModalBottomSheet(
         onDismissRequest = onDismissRequest,
@@ -120,6 +121,15 @@ fun CategoryAddBottomSheet(
                 showLabel = false,
                 showHelper = false,
             )
+
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    style = LiroutiTheme.typography.caption,
+                    color = LiroutiTheme.colors.dangerText,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
 
             CategoryColorSection(
                 selectedColor = selectedColor,

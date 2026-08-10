@@ -18,14 +18,12 @@ class CreateRoutineCategoryUseCase(
     private val repository: RoutineCatalogRepository,
 ) {
     suspend operator fun invoke(name: String, color: String?): ResultState<RoutineCategory> {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty() || trimmed.length > 10 || '\n' in trimmed) {
-            return ResultState.Error("카테고리 이름은 1~10자로 입력해 주세요.")
+        when (val validated = RoutineCategoryName.validate(name)) {
+            is RoutineCategoryName.Result.Invalid -> return ResultState.Error(validated.message)
+            is RoutineCategoryName.Result.Valid -> {
+                return repository.createCategory(name = validated.trimmedName, color = color)
+            }
         }
-        if (trimmed == "전체") {
-            return ResultState.Error("「전체」는 사용할 수 없는 이름이에요.")
-        }
-        return repository.createCategory(name = trimmed, color = color)
     }
 }
 
@@ -86,11 +84,16 @@ class UpdateRoutineCategoryUseCase(
         name: String,
         color: String?,
     ): ResultState<RoutineCategory> {
-        val trimmed = name.trim()
-        if (trimmed.isEmpty() || trimmed.length > 10 || '\n' in trimmed) {
-            return ResultState.Error("카테고리 이름은 1~10자로 입력해 주세요.")
+        when (val validated = RoutineCategoryName.validate(name)) {
+            is RoutineCategoryName.Result.Invalid -> return ResultState.Error(validated.message)
+            is RoutineCategoryName.Result.Valid -> {
+                return repository.updateCategory(
+                    categoryId = categoryId,
+                    name = validated.trimmedName,
+                    color = color,
+                )
+            }
         }
-        return repository.updateCategory(categoryId = categoryId, name = trimmed, color = color)
     }
 }
 

@@ -107,14 +107,18 @@ fun NotificationScreen(
             }
             else -> {
                 val listState = rememberLazyListState()
-                val shouldLoadMore by remember {
+                val itemCount = notifications.size
+                val shouldLoadMore by remember(itemCount) {
                     derivedStateOf {
                         val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-                        lastVisible != null && lastVisible >= notifications.lastIndex - 2
+                        val totalItems = listState.layoutInfo.totalItemsCount
+                        lastVisible != null &&
+                            totalItems > 0 &&
+                            lastVisible >= totalItems - 3
                     }
                 }
-                LaunchedEffect(shouldLoadMore, hasNext) {
-                    if (shouldLoadMore && hasNext) onLoadMore()
+                LaunchedEffect(shouldLoadMore, hasNext, errorMessage) {
+                    if (shouldLoadMore && hasNext && errorMessage == null) onLoadMore()
                 }
 
                 Column(
@@ -134,6 +138,17 @@ fun NotificationScreen(
                                 onClick = { actions.onNotificationClick(item.id) },
                                 onMoreClick = { actions.onMoreClick(item.id) },
                             )
+                        }
+                        if (errorMessage != null) {
+                            item(key = "load_more_error") {
+                                NotificationLoadMoreError(
+                                    message = errorMessage,
+                                    onRetryClick = onLoadMore,
+                                    modifier = Modifier
+                                        .fillMaxWidth()
+                                        .padding(horizontal = 16.dp, vertical = 12.dp),
+                                )
+                            }
                         }
                     }
                     Text(
@@ -184,6 +199,32 @@ private fun NotificationEmptyContent(
                 textAlign = TextAlign.Center,
             )
         }
+    }
+}
+
+@Composable
+private fun NotificationLoadMoreError(
+    message: String,
+    onRetryClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        Text(
+            text = message,
+            style = LiroutiTheme.typography.body3Regular,
+            color = LiroutiTheme.colors.labelInfo,
+            textAlign = TextAlign.Center,
+        )
+        Text(
+            text = "다시 시도",
+            style = LiroutiTheme.typography.body3Medium,
+            color = LiroutiTheme.colors.primaryNormal,
+            modifier = Modifier.clickable(onClick = onRetryClick),
+        )
     }
 }
 

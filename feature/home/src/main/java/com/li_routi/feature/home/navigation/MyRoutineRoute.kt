@@ -29,6 +29,7 @@ import com.li_routi.core.common.ui.routine.RoutineEditBottomSheet
 import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.designsystem.component.LiroutiClockTime
+import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.screen.MyRoutineScreen
 import com.li_routi.feature.home.vm.MyRoutineUiEvent
@@ -57,6 +58,7 @@ fun MyRoutineRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var showCategorySheet by remember { mutableStateOf(false) }
+    var showCategoryDeleteDialog by remember { mutableStateOf(false) }
     var editingCategoryId by remember { mutableStateOf<Long?>(null) }
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
@@ -89,6 +91,7 @@ fun MyRoutineRoute(
                 MyRoutineUiEvent.CategoryDeleted,
                 -> {
                     showCategorySheet = false
+                    showCategoryDeleteDialog = false
                     editingCategoryId = null
                     onRoutinesChanged()
                 }
@@ -155,7 +158,7 @@ fun MyRoutineRoute(
             )
         }
 
-        uiState.errorMessage?.let { message ->
+        uiState.errorMessage?.takeIf { !showCategorySheet }?.let { message ->
             Text(
                 text = message,
                 style = LiroutiTheme.typography.caption,
@@ -172,10 +175,14 @@ fun MyRoutineRoute(
     if (showCategorySheet) {
         CategoryAddBottomSheet(
             name = categoryName,
-            onNameChange = { categoryName = it.take(10) },
+            onNameChange = {
+                categoryName = it.take(10)
+                viewModel.clearError()
+            },
             selectedColor = categoryColor,
             onColorSelected = { categoryColor = it },
             placeholder = "최대 10자",
+            errorMessage = uiState.errorMessage,
             onConfirm = {
                 val categoryId = editingCategoryId
                 if (categoryId == null) {
@@ -189,13 +196,28 @@ fun MyRoutineRoute(
                 if (categoryId == null) {
                     showCategorySheet = false
                 } else {
-                    viewModel.onDeleteCategory(categoryId)
+                    showCategoryDeleteDialog = true
                 }
             },
             onDismissRequest = {
                 showCategorySheet = false
                 editingCategoryId = null
+                viewModel.clearError()
             },
+        )
+    }
+
+    if (showCategoryDeleteDialog && editingCategoryId != null) {
+        LiroutiConfirmDialog(
+            title = "카테고리를 삭제할까요?",
+            message = "이 카테고리에 속한 루틴이 있을 수 있어요.",
+            confirmText = "삭제",
+            onConfirm = {
+                val categoryId = editingCategoryId ?: return@LiroutiConfirmDialog
+                showCategoryDeleteDialog = false
+                viewModel.onDeleteCategory(categoryId)
+            },
+            onDismissRequest = { showCategoryDeleteDialog = false },
         )
     }
 
