@@ -2,31 +2,27 @@ package com.li_routi.feature.home.vm
 
 /**
  * 알림 목록/설정 화면 UI 상태.
- *
- * API 연동 전: 샘플 목록·로컬 토글만 사용한다.
  */
 data class NotificationUiState(
     val selectedTabIndex: Int = 0,
-    val notifications: List<NotificationItemUiModel> = SampleNotifications,
+    val notifications: List<NotificationItemUiModel> = emptyList(),
     val deleteTargetId: String? = null,
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val hasNext: Boolean = false,
+    val nextCursor: Long? = null,
+    val errorMessage: String? = null,
     val settingToggles: Map<NotificationSettingKey, Boolean> = NotificationSettingKey.entries
         .associateWith { true },
 ) {
     val tabs: List<String> = NotificationTabLabels
 
+    /** 탭별 필터는 서버 category로 처리하므로 목록을 그대로 노출한다. */
     val filteredNotifications: List<NotificationItemUiModel>
-        get() {
-            val tab = NotificationTab.entries.getOrNull(selectedTabIndex) ?: NotificationTab.All
-            return when (tab) {
-                NotificationTab.All -> notifications
-                NotificationTab.MyRoutine -> notifications.filter { it.tab == NotificationTab.MyRoutine }
-                NotificationTab.GroupRoutine -> notifications.filter { it.tab == NotificationTab.GroupRoutine }
-                NotificationTab.Challenge -> notifications.filter { it.tab == NotificationTab.Challenge }
-            }
-        }
+        get() = notifications
 
     val isEmpty: Boolean
-        get() = filteredNotifications.isEmpty()
+        get() = filteredNotifications.isEmpty() && !isLoading
 }
 
 enum class NotificationTab {

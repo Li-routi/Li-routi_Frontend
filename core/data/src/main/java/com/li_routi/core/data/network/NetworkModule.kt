@@ -8,6 +8,7 @@ import com.li_routi.core.data.network.service.ChatApiService
 import com.li_routi.core.data.network.service.GroupRoutineApiService
 import com.li_routi.core.data.network.service.HomeApiService
 import com.li_routi.core.data.network.service.MediaApiService
+import com.li_routi.core.data.network.service.NotificationApiService
 import com.li_routi.core.data.network.service.RoutineApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
 import okhttp3.OkHttpClient
@@ -33,8 +34,8 @@ object NetworkModule {
         appContext = context.applicationContext
     }
 
-    // ChatSocketClient(같은 모듈)가 소켓 핸드셰이크 헤더에 실을 액세스 토큰을 읽어야 해서 internal로 노출한다.
-    internal val authTokenPreference: AuthTokenPreference by lazy { AuthTokenPreference(appContext) }
+    // ChatSocketClient(같은 모듈)와 앱 FCM 동기화가 액세스 토큰을 읽어야 해서 공개한다.
+    val authTokenPreference: AuthTokenPreference by lazy { AuthTokenPreference(appContext) }
 
     private val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
@@ -119,5 +120,9 @@ object NetworkModule {
 
     val chatApiService: ChatApiService by lazy {
         retrofit.create(ChatApiService::class.java)
+    }
+
+    val notificationApiService: NotificationApiService by lazy {
+        retrofit.create(NotificationApiService::class.java)
     }
 }

@@ -2,7 +2,11 @@ package com.li_routi.core.data.mapper
 
 import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.data.network.dto.response.GroupCreateResultResponse
+import com.li_routi.core.data.network.dto.response.GroupDetailResponse
 import com.li_routi.core.data.network.dto.response.GroupInviteCodeResponse
+import com.li_routi.core.data.network.dto.response.GroupJoinPreviewResponse
+import com.li_routi.core.data.network.dto.response.GroupJoinResultResponse
+import com.li_routi.core.data.network.dto.response.GroupMemberActivityResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryListResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
@@ -12,7 +16,11 @@ import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultRespo
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineListResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineResponse
 import com.li_routi.core.domain.grouproutine.CreatedGroup
+import com.li_routi.core.domain.grouproutine.GroupDetail
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
+import com.li_routi.core.domain.grouproutine.GroupJoinPreview
+import com.li_routi.core.domain.grouproutine.GroupJoinResult
+import com.li_routi.core.domain.grouproutine.GroupMemberActivity
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
 import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationFeed
@@ -23,11 +31,55 @@ import com.li_routi.core.domain.grouproutine.GroupRoutineUpdateResult
 import com.li_routi.core.domain.grouproutine.RepeatDay
 import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
 
+/**
+ * Gson은 응답에 없는 숫자 필드를 0으로 채움 — 그대로 두면 0이 실제 식별자인 것처럼
+ * 도메인까지 흘러가서 엉뚱한 대상에 요청이 나감. 식별자는 0을 거부함
+ */
+private fun Long.requireId(name: String): Long {
+    if (this == 0L) throw ApiException("서버 응답에 $name 가 없습니다.")
+    return this
+}
+
 fun GroupCreateResultResponse.toDomain(): CreatedGroup = CreatedGroup(
-    groupId = groupId,
+    groupId = groupId.requireId("groupId"),
     name = name,
     routines = routines.map { it.toDomain() },
     assignmentCount = assignmentCount,
+)
+
+fun GroupDetailResponse.toDomain(): GroupDetail = GroupDetail(
+    groupId = groupId.requireId("groupId"),
+    groupName = groupName.orEmpty(),
+    inviteCode = inviteCode.orEmpty(),
+    members = members.orEmpty().map { it.toDomain() },
+)
+
+fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberActivity(
+    memberId = memberId.requireId("memberId"),
+    name = name.orEmpty(),
+    profileImageKey = profileImageKey,
+    statusMessage = statusMessage,
+    currentStreak = currentStreak,
+    totalLikeCount = totalLikeCount,
+    // 할당이 없는 구성원은 서버가 dailyProgress를 안 내려줄 수 있어서 0/0으로 채움
+    completedCount = dailyProgress?.completedCount ?: 0L,
+    totalCount = dailyProgress?.totalCount ?: 0L,
+)
+
+fun GroupJoinResultResponse.toDomain(): GroupJoinResult = GroupJoinResult(
+    groupId = groupId.requireId("groupId"),
+    name = name,
+    memberStatus = memberStatus,
+)
+
+fun GroupJoinPreviewResponse.toDomain(): GroupJoinPreview = GroupJoinPreview(
+    groupId = groupId.requireId("groupId"),
+    name = name,
+    activeMemberCount = activeMemberCount,
+    maxMemberCount = maxMemberCount,
+    totalRoutineCount = totalRoutineCount,
+    joinable = joinable,
+    unavailableReason = unavailableReason,
 )
 
 fun GroupRoutineScheduleResponse.toDomain(): GroupRoutineSchedule = GroupRoutineSchedule(
@@ -38,8 +90,9 @@ fun GroupRoutineScheduleResponse.toDomain(): GroupRoutineSchedule = GroupRoutine
     endTime = endTime,
 )
 
+// 그룹 생성 응답(CreatedRoutine)에는 groupId가 없어서 0으로 들어옴 — routineId만 검증함
 fun GroupRoutineUpdateResultResponse.toDomain(): GroupRoutineUpdateResult = GroupRoutineUpdateResult(
-    routineId = routineId,
+    routineId = routineId.requireId("routineId"),
     groupId = groupId,
     categoryId = categoryId,
     categoryName = categoryName,
@@ -51,8 +104,8 @@ fun GroupRoutineUpdateResultResponse.toDomain(): GroupRoutineUpdateResult = Grou
 
 fun TodayGroupRoutineResponse.toDomain(): TodayGroupRoutine = TodayGroupRoutine(
     assignmentId = assignmentId,
-    routineId = routineId,
-    groupId = groupId,
+    routineId = routineId.requireId("routineId"),
+    groupId = groupId.requireId("groupId"),
     groupName = groupName,
     categoryId = categoryId,
     categoryName = categoryName,
@@ -70,7 +123,6 @@ fun TodayGroupRoutineListResponse.toDomain(): List<TodayGroupRoutine> = routines
 
 fun GroupInviteCodeResponse.toDomain(): GroupInviteCode = GroupInviteCode(
     inviteCode = inviteCode,
-    expiresAt = expiresAt,
 )
 
 fun GroupRoutineCategoryListResponse.toDomain(): GroupRoutineCategoryList = GroupRoutineCategoryList(

@@ -40,8 +40,14 @@ interface HomeScreenActions {
     fun onRetryLoadClick()
 
     /**
-     * 그룹 루틴 필터 행의 `+` → 카테고리 추가 시트 확인.
-     * 성공 시 그룹 필터 chip에 새 카테고리명을 붙인다.
+     * 카테고리 필터 `+` → 카테고리 추가 시트 확인.
+     * 성공 시 개인 루틴 필터 chip에 새 카테고리명을 붙인다.
      */
     fun onCreateCategory(name: String, color: CategoryColor?)
+
+    /** 카테고리 칩 롱프레스 편집 후 확인. */
+    fun onUpdateCategory(categoryId: Long, name: String, color: CategoryColor?)
+
+    /** 카테고리 시트에서 삭제. */
+    fun onDeleteCategory(categoryId: Long)
 }
