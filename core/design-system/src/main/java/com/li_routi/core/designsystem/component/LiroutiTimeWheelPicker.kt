@@ -161,6 +161,7 @@ fun WheelNumberPicker(
     selectedTextColorArgb: Int,
     modifier: Modifier = Modifier,
     height: Dp = 90.dp,
+    wrapSelectorWheel: Boolean = true,
 ) {
     AndroidView(
         modifier = modifier.height(height),
@@ -170,7 +171,7 @@ fun WheelNumberPicker(
                 minValue = 0
                 maxValue = values.lastIndex
                 displayedValues = values
-                wrapSelectorWheel = true
+                this.wrapSelectorWheel = wrapSelectorWheel
                 descendantFocusability = NumberPicker.FOCUS_BLOCK_DESCENDANTS
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.Q) {
                     setSelectionDividerHeight(0)
@@ -198,6 +199,9 @@ fun WheelNumberPicker(
             }
             if (picker.value != selectedIndex) {
                 picker.value = selectedIndex
+            }
+            if (picker.wrapSelectorWheel != wrapSelectorWheel) {
+                picker.wrapSelectorWheel = wrapSelectorWheel
             }
             for (i in 0 until picker.childCount) {
                 val child = picker.getChildAt(i)

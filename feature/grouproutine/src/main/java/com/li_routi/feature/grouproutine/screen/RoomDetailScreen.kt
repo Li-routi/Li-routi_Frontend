@@ -19,16 +19,19 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
@@ -42,12 +45,18 @@ import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.feature.grouproutine.component.CalendarSheet
 import com.li_routi.feature.grouproutine.component.ChatBar
 import com.li_routi.feature.grouproutine.component.ChatBox
+import com.li_routi.feature.grouproutine.component.ChatDateDivider
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 import com.li_routi.feature.grouproutine.component.EmojiPannel
 import com.li_routi.feature.grouproutine.component.isGroupStart
+import com.li_routi.feature.grouproutine.component.isNewDate
+import com.li_routi.feature.grouproutine.component.toLocalDate
+import java.time.YearMonth
+import kotlinx.coroutines.launch
 
 /** 채팅바 하단에 무엇이 떠 있는지: 아무것도 없음 / 소프트 키보드 / 이모지 패널. */
 private enum class ChatInputMode { NONE, KEYBOARD, EMOJI }
@@ -76,10 +85,14 @@ fun RoomDetailScreen(
     onBackClick: () -> Unit,
     onChatMessageChange: (String) -> Unit,
     modifier: Modifier = Modifier,
+    replyTarget: ChatMessageUiModel? = null,
+    onReplySwipe: (ChatMessageUiModel) -> Unit = {},
+    onReplyCancelClick: () -> Unit = {},
     emptyChatMessage: String = "채팅을 시작해 보세요!",
     onEmojiClick: () -> Unit = {},
     onSendClick: () -> Unit = {},
     onEmojiSelected: (ChatEmoticonUiModel) -> Unit = {},
+    onCalendarClick: () -> Unit = {},
 ) {
     var chatInputMode by remember { mutableStateOf(ChatInputMode.NONE) }
     val chatFieldFocusRequester = remember { FocusRequester() }
@@ -94,34 +107,53 @@ fun RoomDetailScreen(
     // 이모지 패널에서 실제로 그려진 셀 크기 — 채팅으로 전송된 이모티콘도 같은 크기로 보여주는 데 쓴다.
     var emojiSize by remember { mutableStateOf(DefaultEmojiSize) }
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundDefault),
-    ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(vertical = 10.dp),
-            contentAlignment = Alignment.Center,
-        ) {
-            LiroutiChevronLeftIcon(
-                modifier = Modifier
-                    .align(Alignment.CenterStart)
-                    .padding(start = 16.dp)
-                    .size(24.dp)
-                    .clickable(onClick = onBackClick),
-                color = LiroutiTheme.colors.labelDefault,
-            )
-            Text(
-                text = room.name,
-                style = LiroutiTheme.typography.heading2SemiBold,
-                color = LiroutiTheme.colors.labelDefault,
-            )
-        }
+    var isCalendarSheetVisible by remember { mutableStateOf(false) }
+    var calendarYearMonth by remember { mutableStateOf(YearMonth.now()) }
+    val listState = rememberLazyListState()
+    val coroutineScope = rememberCoroutineScope()
 
-        Box(
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(LiroutiTheme.colors.backgroundDefault),
+        ) {
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .statusBarsPadding()
+                    .padding(vertical = 10.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                LiroutiChevronLeftIcon(
+                    modifier = Modifier
+                        .align(Alignment.CenterStart)
+                        .padding(start = 16.dp)
+                        .size(24.dp)
+                        .clickable(onClick = onBackClick),
+                    color = LiroutiTheme.colors.labelDefault,
+                )
+                Text(
+                    text = room.name,
+                    style = LiroutiTheme.typography.heading2SemiBold,
+                    color = LiroutiTheme.colors.labelDefault,
+                )
+                Image(
+                    painter = painterResource(id = R.drawable.calendar),
+                    contentDescription = "날짜 선택",
+                    modifier = Modifier
+                        .align(Alignment.CenterEnd)
+                        .padding(end = 16.dp)
+                        .size(24.dp)
+                        .clickable(onClick = {
+                            isCalendarSheetVisible = true
+                            onCalendarClick()
+                        }),
+                    colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelDefault),
+                )
+            }
+
+            Box(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
@@ -151,16 +183,24 @@ fun RoomDetailScreen(
                 }
             } else {
                 LazyColumn(
+                    state = listState,
                     modifier = Modifier.fillMaxSize(),
                     contentPadding = PaddingValues(vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
-                    itemsIndexed(messages) { index, message ->
-                        ChatBox(
-                            message = message,
-                            isGroupStart = message.isGroupStart(messages.getOrNull(index - 1)),
-                            emojiSize = emojiSize,
-                        )
+                    itemsIndexed(items = messages, key = { _, message -> message.id }) { index, message ->
+                        val previous = messages.getOrNull(index - 1)
+                        Column {
+                            if (message.isNewDate(previous)) {
+                                ChatDateDivider(sentAtMillis = message.sentAtMillis)
+                            }
+                            ChatBox(
+                                message = message,
+                                isGroupStart = message.isGroupStart(previous),
+                                emojiSize = emojiSize,
+                                onReplySwipe = onReplySwipe,
+                            )
+                        }
                     }
                 }
             }
@@ -177,6 +217,8 @@ fun RoomDetailScreen(
                 message = chatDraftText,
                 onMessageChange = onChatMessageChange,
                 focusRequester = chatFieldFocusRequester,
+                replyTarget = replyTarget,
+                onReplyCancelClick = onReplyCancelClick,
                 isEmojiPanelOpen = chatInputMode == ChatInputMode.EMOJI,
                 onFocusChanged = { focused -> if (focused) chatInputMode = ChatInputMode.KEYBOARD },
                 onTextFieldTap = {
@@ -209,6 +251,25 @@ fun RoomDetailScreen(
                     },
                 )
             }
+        }
+        }
+
+        if (isCalendarSheetVisible) {
+            CalendarSheet(
+                yearMonth = calendarYearMonth,
+                onConfirm = { calendarYearMonth = it },
+                onCancel = { isCalendarSheetVisible = false },
+                onDateConfirmed = { date ->
+                    isCalendarSheetVisible = false
+                    val targetIndex = messages.indexOfFirst { it.sentAtMillis.toLocalDate() == date }
+                    if (targetIndex >= 0) {
+                        coroutineScope.launch {
+                            listState.animateScrollToItem(targetIndex)
+                        }
+                    }
+                },
+                modifier = Modifier.align(Alignment.BottomCenter),
+            )
         }
     }
 }

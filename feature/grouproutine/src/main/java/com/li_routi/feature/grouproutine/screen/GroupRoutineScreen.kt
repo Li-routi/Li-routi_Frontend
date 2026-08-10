@@ -105,6 +105,7 @@ import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
+import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
 import com.li_routi.feature.grouproutine.vm.CertificationPostUiModel
 import com.li_routi.feature.grouproutine.vm.CreateRoutineOptionUiModel
@@ -208,6 +209,8 @@ fun GroupRoutineRoute(
         onChatMessageChange = viewModel::onChatMessageChange,
         onChatSendClick = viewModel::onChatSendClick,
         onChatEmojiSelected = viewModel::onChatEmojiSelected,
+        onReplySwipe = viewModel::onReplyTargetSelected,
+        onReplyCancelClick = viewModel::onReplyTargetCleared,
         onMessageEditClick = viewModel::onMessageEditClick,
         onMessageDraftChange = viewModel::onMessageDraftChange,
         onDismissMessageEditSheet = viewModel::onDismissMessageEditSheet,
@@ -283,6 +286,8 @@ private fun GroupRoutineScreen(
     onChatMessageChange: (String) -> Unit,
     onChatSendClick: () -> Unit,
     onChatEmojiSelected: (ChatEmoticonUiModel) -> Unit,
+    onReplySwipe: (ChatMessageUiModel) -> Unit,
+    onReplyCancelClick: () -> Unit,
     onMessageEditClick: () -> Unit,
     onMessageDraftChange: (String) -> Unit,
     onDismissMessageEditSheet: () -> Unit,
@@ -349,6 +354,9 @@ private fun GroupRoutineScreen(
                     onChatMessageChange = onChatMessageChange,
                     onSendClick = onChatSendClick,
                     onEmojiSelected = onChatEmojiSelected,
+                    replyTarget = uiState.replyTarget,
+                    onReplySwipe = onReplySwipe,
+                    onReplyCancelClick = onReplyCancelClick,
                 )
             }
 
@@ -4029,6 +4037,8 @@ private fun GroupRoutineListPreview() {
             onChatMessageChange = {},
             onChatSendClick = {},
             onChatEmojiSelected = {},
+            onReplySwipe = {},
+            onReplyCancelClick = {},
             onMessageEditClick = {},
             onMessageDraftChange = {},
             onDismissMessageEditSheet = {},
@@ -4104,6 +4114,8 @@ private fun CreateRoomNamePreview() {
             onChatMessageChange = {},
             onChatSendClick = {},
             onChatEmojiSelected = {},
+            onReplySwipe = {},
+            onReplyCancelClick = {},
             onMessageEditClick = {},
             onMessageDraftChange = {},
             onDismissMessageEditSheet = {},

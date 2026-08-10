@@ -125,6 +125,8 @@ data class GroupRoutineUiState(
     val messageDraft: String = "",
     val chatMessages: List<ChatMessageUiModel> = emptyList(),
     val chatDraftText: String = "",
+    /** 스와이프로 지정된 답장 대상. null이면 채팅바 윗상자를 숨긴다. */
+    val replyTarget: ChatMessageUiModel? = null,
     val chatEmoticons: List<ChatEmoticonUiModel> = emptyList(),
     val isChatLoading: Boolean = false,
     val newCertifications: List<NewCertificationUiModel> = SampleNewCertifications,

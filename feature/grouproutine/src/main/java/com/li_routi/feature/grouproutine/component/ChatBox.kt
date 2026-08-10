@@ -1,14 +1,20 @@
 package com.li_routi.feature.grouproutine.component
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -16,16 +22,26 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
+import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
+import java.time.Instant
+import java.time.LocalDate
+import java.time.ZoneId
+import kotlin.math.roundToInt
+import kotlinx.coroutines.launch
 
 private val ChatBubbleTextColor = Color(0xFF000000)
 
@@ -37,6 +53,11 @@ private val NicknameToBubbleGap = 4.dp
 
 // 왼쪽 여백(16) + 프로필(40) + 프로필-닉네임 간격(8) = 화면 왼쪽 기준 64dp 지점.
 private val BubbleStartOffset = LeftMargin + AvatarSize + AvatarToNicknameGap
+
+// 상대 말풍선을 오른쪽으로 스와이프하면 답장 대상으로 지정한다 — 최대 64dp까지만 밀리고,
+// 48dp를 넘겨야 답장이 확정된다(안 넘기고 손을 떼면 스프링으로 원위치 복귀).
+private val ReplySwipeMaxOffset = 64.dp
+private val ReplySwipeTriggerThreshold = 48.dp
 
 /**
  * 채팅 메시지 한 건. [sentAtMillis]는 그룹핑(같은 분인지 판단)에만 쓰이고 화면엔 표시하지 않는다.
@@ -67,6 +88,65 @@ fun ChatMessageUiModel.isGroupStart(previous: ChatMessageUiModel?): Boolean {
     return previous.sentAtMillis / 60_000 != sentAtMillis / 60_000
 }
 
+/** [sentAtMillis]를 기기 로컬 타임존 기준 날짜로 변환한다. */
+internal fun Long.toLocalDate(): LocalDate =
+    Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalDate()
+
+/**
+ * 이 메시지 앞에 날짜 구분선([ChatDateDivider])을 새로 보여줘야 하는지 판단한다.
+ *
+ * 이전 메시지가 없으면(=첫 채팅) true, 있으면 같은 날짜인지 비교해서 날짜가 하루라도
+ * 달라졌을 때만 true를 반환한다.
+ */
+fun ChatMessageUiModel.isNewDate(previous: ChatMessageUiModel?): Boolean {
+    if (previous == null) return true
+    return previous.sentAtMillis.toLocalDate() != sentAtMillis.toLocalDate()
+}
+
+private val ChatDateDividerShape = RoundedCornerShape(6.dp)
+private val ChatDateDividerBackground = Color(0xFF5D5D5D).copy(alpha = 0.60f)
+
+// CSS padding: 8px 8px 8px 12px (top right bottom left)
+private val ChatDateDividerPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
+
+// 위쪽은 LazyColumn의 verticalArrangement(spacedBy 10dp)가 이전 말풍선과의 간격을 이미
+// 채워주고 있어서, 그 10dp를 뺀 나머지(10dp)만 여기서 더하면 합쳐서 20dp가 된다. 아래쪽은
+// 같은 아이템(Column) 안에서 바로 다음 닉네임/말풍선이 이어지므로 spacedBy가 관여하지 않아
+// 20dp를 그대로 준다.
+private val ChatDateDividerTopPadding = 10.dp
+private val ChatDateDividerBottomPadding = 20.dp
+
+/**
+ * 채팅 목록 중간에 들어가는 날짜 구분선. [ChatMessageUiModel.isNewDate]가 true인 메시지
+ * 바로 앞에 표시한다. 이전 그룹의 마지막 말풍선 기준 20dp 아래, 다음 그룹 첫 메시지의 닉네임
+ * 기준 20dp 위에 오도록 [ChatDateDividerTopPadding]/[ChatDateDividerBottomPadding]으로 맞춘다.
+ *
+ * 배경은 반투명 회색 pill 모양이다 — 실제 CSS 시안엔 `backdrop-filter: blur(5px)`(뒤에 있는
+ * 말풍선을 블러 처리)도 있지만, Compose 기본 `blur()`는 이 컴포저블 자기 자신(글씨 포함)을
+ * 블러 처리해버려서 못 쓴다. 진짜 backdrop blur는 API 31+ 전용이거나 별도 라이브러리가 필요해서
+ * (minSdk 24라 바로 못 씀) 반투명 배경색만으로 대체했다.
+ */
+@Composable
+fun ChatDateDivider(sentAtMillis: Long, modifier: Modifier = Modifier) {
+    val date = sentAtMillis.toLocalDate()
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(top = ChatDateDividerTopPadding, bottom = ChatDateDividerBottomPadding),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일",
+            style = LiroutiTheme.typography.captionMedium,
+            color = Color.White,
+            modifier = Modifier
+                .clip(ChatDateDividerShape)
+                .background(ChatDateDividerBackground)
+                .padding(ChatDateDividerPadding),
+        )
+    }
+}
+
 /**
  * 채팅 말풍선 한 줄.
  *
@@ -85,6 +165,7 @@ fun ChatBox(
     isGroupStart: Boolean,
     modifier: Modifier = Modifier,
     emojiSize: Dp = 40.dp,
+    onReplySwipe: (ChatMessageUiModel) -> Unit = {},
 ) {
     if (message.isMine) {
         Row(
@@ -135,10 +216,44 @@ fun ChatBox(
             Spacer(modifier = Modifier.height(NicknameToBubbleGap))
         }
 
+        val density = LocalDensity.current
+        val coroutineScope = rememberCoroutineScope()
+        val maxOffsetPx = remember(density) { with(density) { ReplySwipeMaxOffset.toPx() } }
+        val thresholdPx = remember(density) { with(density) { ReplySwipeTriggerThreshold.toPx() } }
+        // message.id로 remember해야 리스트가 갱신돼도 이전 아이템의 드래그 상태가 새 메시지로 새지 않는다.
+        val offsetX = remember(message.id) { Animatable(0f) }
+
         Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(start = BubbleStartOffset),
+                .padding(start = BubbleStartOffset)
+                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+                // 이모티콘 메시지는 답장에 실을 텍스트가 없으므로 스와이프 자체를 받지 않는다.
+                .then(
+                    if (message.emojiUrl == null) {
+                        Modifier.pointerInput(message.id) {
+                            detectHorizontalDragGestures(
+                                onDragEnd = {
+                                    val triggered = offsetX.value > thresholdPx
+                                    coroutineScope.launch {
+                                        if (triggered) onReplySwipe(message)
+                                        offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                                    }
+                                },
+                                onDragCancel = {
+                                    coroutineScope.launch { offsetX.animateTo(0f) }
+                                },
+                                onHorizontalDrag = { change, dragAmount ->
+                                    change.consume()
+                                    val next = (offsetX.value + dragAmount).coerceIn(0f, maxOffsetPx)
+                                    coroutineScope.launch { offsetX.snapTo(next) }
+                                },
+                            )
+                        }
+                    } else {
+                        Modifier
+                    },
+                ),
         ) {
             if (message.emojiUrl != null) {
                 AsyncImage(
