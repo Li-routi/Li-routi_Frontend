@@ -167,7 +167,7 @@ val LiroutiDarkColorScheme = LiroutiColorScheme(
     backgroundAlternative = Neutral20,
     backgroundStrong = Neutral0,
     backgroundSelected = Red300,
-    backgroundFill = BackgroundFill,
+    backgroundFill = Neutral17,
 
     chipSelectedBackground = ChipSelectedNeutral,
 

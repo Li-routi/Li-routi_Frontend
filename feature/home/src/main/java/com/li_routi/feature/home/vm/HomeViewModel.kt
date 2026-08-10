@@ -34,10 +34,10 @@ import kotlinx.coroutines.launch
  */
 class HomeViewModel(
     private val getHomeSummaryUseCase: GetHomeSummaryUseCase,
-    private val createRoutineCategoryUseCase: CreateRoutineCategoryUseCase? = null,
-    private val getRoutineCategoriesUseCase: GetRoutineCategoriesUseCase? = null,
-    private val updateRoutineCategoryUseCase: UpdateRoutineCategoryUseCase? = null,
-    private val deleteRoutineCategoryUseCase: DeleteRoutineCategoryUseCase? = null,
+    private val createRoutineCategoryUseCase: CreateRoutineCategoryUseCase,
+    private val getRoutineCategoriesUseCase: GetRoutineCategoriesUseCase,
+    private val updateRoutineCategoryUseCase: UpdateRoutineCategoryUseCase,
+    private val deleteRoutineCategoryUseCase: DeleteRoutineCategoryUseCase,
     initialState: HomeUiState = HomeUiState(isLoading = true),
 ) : BaseViewModel(), HomeScreenActions {
 
@@ -56,9 +56,7 @@ class HomeViewModel(
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, loadError = false) }
             val summaryDeferred = async { getHomeSummaryUseCase() }
-            val categoriesDeferred = async {
-                getRoutineCategoriesUseCase?.invoke()
-            }
+            val categoriesDeferred = async { getRoutineCategoriesUseCase() }
             when (val result = summaryDeferred.await()) {
                 is ResultState.Success -> {
                     var next = result.data.toHomeUiState()
@@ -79,7 +77,7 @@ class HomeViewModel(
                                 },
                             )
                         }
-                        is ResultState.Error, ResultState.Loading, null -> Unit
+                        is ResultState.Error, ResultState.Loading -> Unit
                     }
                     _uiState.value = next
                 }
@@ -128,87 +126,63 @@ class HomeViewModel(
     }
 
     override fun onCreateCategory(name: String, color: CategoryColor?) {
-        when (val validated = RoutineCategoryName.validate(name)) {
-            is RoutineCategoryName.Result.Invalid -> {
-                emitEvent(HomeUiEvent.CategoryCreateFailed(validated.message))
-                return
-            }
-            is RoutineCategoryName.Result.Valid -> {
-                val trimmed = validated.trimmedName
-                val createUseCase = createRoutineCategoryUseCase
-                if (createUseCase == null) {
-                    appendMyCategoryFilter(trimmed)
-                    emitEvent(HomeUiEvent.CategoryCreated)
-                    return
-                }
-                viewModelScope.launch {
-                    when (
-                        val result = createUseCase(
-                            name = trimmed,
-                            color = color?.toApiColor(),
-                        )
-                    ) {
-                        is ResultState.Success -> {
-                            appendMyCategoryFilter(trimmed)
-                            _uiState.update { state ->
-                                state.copy(
-                                    myCategories = state.myCategories + result.data,
-                                    addableCategoryCount = (state.addableCategoryCount - 1).coerceAtLeast(0),
-                                )
-                            }
-                            emitEvent(HomeUiEvent.CategoryCreated)
+        val error = RoutineCategoryName.validate(name).onValid { trimmed ->
+            viewModelScope.launch {
+                when (
+                    val result = createRoutineCategoryUseCase(
+                        name = trimmed,
+                        color = color?.toApiColor(),
+                    )
+                ) {
+                    is ResultState.Success -> {
+                        appendMyCategoryFilter(trimmed)
+                        _uiState.update { state ->
+                            state.copy(
+                                myCategories = state.myCategories + result.data,
+                                addableCategoryCount = (state.addableCategoryCount - 1).coerceAtLeast(0),
+                            )
                         }
-                        is ResultState.Error -> emitEvent(
-                            HomeUiEvent.CategoryCreateFailed(result.message),
-                        )
-                        ResultState.Loading -> Unit
+                        emitEvent(HomeUiEvent.CategoryCreated)
                     }
+                    is ResultState.Error -> emitEvent(
+                        HomeUiEvent.CategoryCreateFailed(result.message),
+                    )
+                    ResultState.Loading -> Unit
                 }
             }
+        }
+        if (error != null) {
+            emitEvent(HomeUiEvent.CategoryCreateFailed(error))
         }
     }
 
     override fun onUpdateCategory(categoryId: Long, name: String, color: CategoryColor?) {
-        when (val validated = RoutineCategoryName.validate(name)) {
-            is RoutineCategoryName.Result.Invalid -> {
-                emitEvent(HomeUiEvent.CategoryUpdateFailed(validated.message))
-                return
-            }
-            is RoutineCategoryName.Result.Valid -> {
-                val trimmed = validated.trimmedName
-                val updateUseCase = updateRoutineCategoryUseCase
-                if (updateUseCase == null) {
-                    emitEvent(HomeUiEvent.CategoryUpdateFailed("카테고리를 수정할 수 없습니다."))
-                    return
-                }
-                viewModelScope.launch {
-                    when (
-                        val result = updateUseCase(
-                            categoryId = categoryId,
-                            name = trimmed,
-                            color = color?.toApiColor(),
-                        )
-                    ) {
-                        is ResultState.Success -> {
-                            refresh()
-                            emitEvent(HomeUiEvent.CategoryUpdated)
-                        }
-                        is ResultState.Error -> emitEvent(HomeUiEvent.CategoryUpdateFailed(result.message))
-                        ResultState.Loading -> Unit
+        val error = RoutineCategoryName.validate(name).onValid { trimmed ->
+            viewModelScope.launch {
+                when (
+                    val result = updateRoutineCategoryUseCase(
+                        categoryId = categoryId,
+                        name = trimmed,
+                        color = color?.toApiColor(),
+                    )
+                ) {
+                    is ResultState.Success -> {
+                        refresh()
+                        emitEvent(HomeUiEvent.CategoryUpdated)
                     }
+                    is ResultState.Error -> emitEvent(HomeUiEvent.CategoryUpdateFailed(result.message))
+                    ResultState.Loading -> Unit
                 }
             }
+        }
+        if (error != null) {
+            emitEvent(HomeUiEvent.CategoryUpdateFailed(error))
         }
     }
 
     override fun onDeleteCategory(categoryId: Long) {
-        val deleteUseCase = deleteRoutineCategoryUseCase
-        if (deleteUseCase == null) {
-            emitEvent(HomeUiEvent.CategoryDeleteFailed("카테고리를 삭제할 수 없습니다."))
-            return
-        }
         viewModelScope.launch {
-            when (val result = deleteUseCase(categoryId)) {
+            when (val result = deleteRoutineCategoryUseCase(categoryId)) {
                 is ResultState.Success -> {
                     refresh()
                     emitEvent(HomeUiEvent.CategoryDeleted)

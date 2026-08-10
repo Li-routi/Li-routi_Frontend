@@ -3,8 +3,8 @@ package com.li_routi.core.data.repository
 import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.mapper.toDomain
+import com.li_routi.core.data.network.apiCall
 import com.li_routi.core.data.network.dto.request.PresignedUrlRequest
-import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.safeDataApiCall
 import com.li_routi.core.data.network.service.MediaApiService
 import com.li_routi.core.domain.media.MediaPurpose
@@ -27,13 +27,15 @@ class MediaRepositoryImpl(
         contentType: String,
         contentLength: Long,
     ): ResultState<PresignedUpload> = safeDataApiCall {
-        api.issuePresignedUrl(
-            PresignedUrlRequest(
-                purpose = purpose.name,
-                contentType = contentType,
-                contentLength = contentLength,
-            ),
-        ).unwrap().toDomain(purpose)
+        apiCall {
+            api.issuePresignedUrl(
+                PresignedUrlRequest(
+                    purpose = purpose.name,
+                    contentType = contentType,
+                    contentLength = contentLength,
+                ),
+            )
+        }.toDomain(purpose)
     }
 
     override suspend fun uploadToPresignedUrl(
@@ -65,10 +67,4 @@ class MediaRepositoryImpl(
             }
         }
     }
-}
-
-private fun <T> ApiResponse<T>.unwrap(): T {
-    val result = result
-    if (!isSuccess || result == null) throw ApiException(message)
-    return result
 }

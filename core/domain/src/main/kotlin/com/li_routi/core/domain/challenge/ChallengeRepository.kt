@@ -23,12 +23,14 @@ interface ChallengeRepository {
     suspend fun getChallengeDetail(challengeId: Long): ResultState<ChallengeDetail>
 
     /**
-     * 챌린지의 인증 피드를 최신순으로 조회한다 (무한 스크롤 커서 방식, 커서 값 = verificationId).
+     * 챌린지의 인증 피드를 조회한다 (무한 스크롤 커서 방식, 커서 값 = verificationId, sort=LIKES면 cursorLikeCount도 같이 넘겨야 함).
      */
     suspend fun getVerifications(
         challengeId: Long,
         cursor: Long?,
+        cursorLikeCount: Long?,
         size: Int?,
+        sort: VerificationSort,
     ): ResultState<CertificationPage>
 
     /** 로그인한 회원이 챌린지에 참여한다. */
@@ -49,12 +51,14 @@ interface ChallengeRepository {
     ): ResultState<List<MyChallenge>>
 
     /**
-     * 로그인한 회원 본인이 작성한 인증 피드를 최신순으로 조회한다 (무한 스크롤 커서 방식).
+     * 로그인한 회원 본인이 작성한 인증 피드를 조회한다 (무한 스크롤 커서 방식, sort=LIKES면 cursorLikeCount도 같이 넘겨야 함).
      */
     suspend fun getMyVerifications(
         challengeId: Long,
         cursor: Long?,
+        cursorLikeCount: Long?,
         size: Int?,
+        sort: VerificationSort,
     ): ResultState<MyCertificationPage>
 
     /** 사진(mediaKey)과 코멘트로 인증 게시글을 작성한다. mediaKey는 미디어 presigned 업로드로 먼저 발급받는다. */
@@ -63,8 +67,11 @@ interface ChallengeRepository {
     /** 인증 게시글의 메모(코멘트)만 수정한다 (사진은 그대로 유지). */
     suspend fun updateVerificationMemo(challengeId: Long, verificationId: Long, content: String): ResultState<EditedVerification>
 
+    /** 인증 게시글을 삭제한다. */
+    suspend fun deleteVerification(challengeId: Long, verificationId: Long): ResultState<Unit>
+
     /** 인증 게시글을 신고한다. */
-    suspend fun reportVerification(challengeId: Long, verificationId: Long, reason: String?): ResultState<Unit>
+    suspend fun reportVerification(challengeId: Long, verificationId: Long, reportType: ReportType, reason: String?): ResultState<Unit>
 
     /** 인증 게시글에 좋아요를 누른다. */
     suspend fun likeVerification(challengeId: Long, verificationId: Long): ResultState<LikeResult>

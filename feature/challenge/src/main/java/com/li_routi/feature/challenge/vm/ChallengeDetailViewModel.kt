@@ -5,6 +5,7 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.domain.challenge.Certification
 import com.li_routi.core.domain.challenge.ChallengeDetail
+import com.li_routi.core.domain.challenge.DeleteVerificationUseCase
 import com.li_routi.core.domain.challenge.EditVerificationUseCase
 import com.li_routi.core.domain.challenge.GetChallengeDetailUseCase
 import com.li_routi.core.domain.challenge.GetMyVerificationsUseCase
@@ -14,8 +15,10 @@ import com.li_routi.core.domain.challenge.LikeResult
 import com.li_routi.core.domain.challenge.LikeVerificationUseCase
 import com.li_routi.core.domain.challenge.MyCertification
 import com.li_routi.core.domain.challenge.ParticipateChallengeUseCase
+import com.li_routi.core.domain.challenge.ReportType
 import com.li_routi.core.domain.challenge.ReportVerificationUseCase
 import com.li_routi.core.domain.challenge.UnlikeVerificationUseCase
+import com.li_routi.core.domain.challenge.VerificationSort
 import com.li_routi.feature.challenge.navigation.ChallengeDetailScreenActions
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -24,6 +27,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val VerificationPageSize = 20
+private const val MaxVerificationPageSize = 50
 
 /**
  * 챌린지 상세 화면 ViewModel. 상세 정보, "인증"(전체), "내 인증 보기" 모두 실제 API로 조회한다.
@@ -40,6 +44,7 @@ class ChallengeDetailViewModel(
     private val participateChallengeUseCase: ParticipateChallengeUseCase,
     private val leaveChallengeUseCase: LeaveChallengeUseCase,
     private val reportVerificationUseCase: ReportVerificationUseCase,
+    private val deleteVerificationUseCase: DeleteVerificationUseCase,
     private val likeVerificationUseCase: LikeVerificationUseCase,
     private val unlikeVerificationUseCase: UnlikeVerificationUseCase,
     private val editVerificationUseCase: EditVerificationUseCase,
@@ -56,8 +61,8 @@ class ChallengeDetailViewModel(
 
     init {
         loadDetail()
-        loadVerifications(cursor = null, generation = certificationGeneration)
-        loadMyVerifications(cursor = null, generation = certificationGeneration)
+        loadVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
+        loadMyVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
     }
 
     // "인증"(전체)/"내 인증 보기" 두 탭 모두 각 1페이지를 다시 조회해 id가 같은 기존 항목의 좋아요
@@ -65,12 +70,28 @@ class ChallengeDetailViewModel(
     // 지금 보고 있지 않은 탭 것도 같이 갱신해둬야 탭을 전환했을 때 곧바로 최신 값이 보인다.
     // 목록 순서·페이지네이션·스크롤 위치는 건드리지 않는다.
     private suspend fun refreshLikeCounts() {
-        val allResult = getVerificationsUseCase(challengeId, cursor = null, size = VerificationPageSize)
-        if (allResult is ResultState.Success) {
+        val generation = certificationGeneration
+        val state = _uiState.value
+        val sort = state.selectedSort
+        // 이미 불러온 만큼(최대 서버 상한 50)을 다시 조회해야 뒤쪽 페이지 항목도 패치된다 —
+        // 고정 20개(VerificationPageSize)만 조회하면 그 이후에 로드된 항목은 계속 stale로 남는다.
+        val allSize = state.allCertifications.size.coerceIn(VerificationPageSize, MaxVerificationPageSize)
+        val mySize = state.myCertifications.size.coerceIn(VerificationPageSize, MaxVerificationPageSize)
+
+        val allResult = getVerificationsUseCase(
+            challengeId,
+            cursor = null,
+            cursorLikeCount = null,
+            size = allSize,
+            sort = sort,
+        )
+        // 조회 도중 새로고침/정렬 변경 등으로 목록이 통째로 리셋됐으면(generation 변경) 이 응답은 버린다
+        // — 그렇지 않으면 새로 불러온 목록에 오래된 좋아요 값이 섞여 들어갈 수 있다.
+        if (allResult is ResultState.Success && generation == certificationGeneration) {
             val freshById = allResult.data.certifications.associateBy { it.id }
-            _uiState.update { state ->
-                state.copy(
-                    allCertifications = state.allCertifications.map { certification ->
+            _uiState.update { s ->
+                s.copy(
+                    allCertifications = s.allCertifications.map { certification ->
                         freshById[certification.id]?.let {
                             certification.copy(likeCount = it.likeCount, liked = it.liked)
                         } ?: certification
@@ -79,12 +100,18 @@ class ChallengeDetailViewModel(
             }
         }
 
-        val mineResult = getMyVerificationsUseCase(challengeId, cursor = null, size = VerificationPageSize)
-        if (mineResult is ResultState.Success) {
+        val mineResult = getMyVerificationsUseCase(
+            challengeId,
+            cursor = null,
+            cursorLikeCount = null,
+            size = mySize,
+            sort = sort,
+        )
+        if (mineResult is ResultState.Success && generation == certificationGeneration) {
             val freshById = mineResult.data.certifications.associateBy { it.id }
-            _uiState.update { state ->
-                state.copy(
-                    myCertifications = state.myCertifications.map { certification ->
+            _uiState.update { s ->
+                s.copy(
+                    myCertifications = s.myCertifications.map { certification ->
                         freshById[certification.id]?.let { certification.copy(likeCount = it.likeCount) }
                             ?: certification
                     },
@@ -103,10 +130,19 @@ class ChallengeDetailViewModel(
         }
     }
 
-    private fun loadVerifications(cursor: Long?, generation: Int) {
+    private fun loadVerifications(cursor: Long?, cursorLikeCount: Long?, generation: Int) {
         _uiState.update { it.copy(isLoadingMoreAll = true) }
+        val sort = _uiState.value.selectedSort
         viewModelScope.launch {
-            when (val result = getVerificationsUseCase(challengeId, cursor, VerificationPageSize)) {
+            when (
+                val result = getVerificationsUseCase(
+                    challengeId,
+                    cursor = cursor,
+                    cursorLikeCount = cursorLikeCount,
+                    size = VerificationPageSize,
+                    sort = sort,
+                )
+            ) {
                 is ResultState.Success -> {
                     if (generation != certificationGeneration) return@launch
                     _uiState.update { state ->
@@ -114,6 +150,7 @@ class ChallengeDetailViewModel(
                             isLoadingMoreAll = false,
                             allCertifications = state.allCertifications + result.data.certifications.map { it.toUiModel() },
                             allCursor = result.data.nextCursor,
+                            allCursorLikeCount = result.data.nextCursorLikeCount,
                             allHasNext = result.data.hasNext,
                         )
                     }
@@ -126,10 +163,19 @@ class ChallengeDetailViewModel(
         }
     }
 
-    private fun loadMyVerifications(cursor: Long?, generation: Int) {
+    private fun loadMyVerifications(cursor: Long?, cursorLikeCount: Long?, generation: Int) {
         _uiState.update { it.copy(isLoadingMoreMy = true) }
+        val sort = _uiState.value.selectedSort
         viewModelScope.launch {
-            when (val result = getMyVerificationsUseCase(challengeId, cursor, VerificationPageSize)) {
+            when (
+                val result = getMyVerificationsUseCase(
+                    challengeId,
+                    cursor = cursor,
+                    cursorLikeCount = cursorLikeCount,
+                    size = VerificationPageSize,
+                    sort = sort,
+                )
+            ) {
                 is ResultState.Success -> {
                     if (generation != certificationGeneration) return@launch
                     _uiState.update { state ->
@@ -138,6 +184,7 @@ class ChallengeDetailViewModel(
                             myLoaded = true,
                             myCertifications = state.myCertifications + result.data.certifications.map { it.toUiModel() },
                             myCursor = result.data.nextCursor,
+                            myCursorLikeCount = result.data.nextCursorLikeCount,
                             myHasNext = result.data.hasNext,
                         )
                     }
@@ -166,7 +213,7 @@ class ChallengeDetailViewModel(
         // 화면 진입 시 init에서 이미 조회를 시작하므로, 아직 안 끝났으면(isLoadingMoreMy) 여기서 또 쏘지 않는다.
         val state = _uiState.value
         if (tab == CertificationTab.Mine && !state.myLoaded && !state.isLoadingMoreMy) {
-            loadMyVerifications(cursor = null, generation = certificationGeneration)
+            loadMyVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
         }
     }
 
@@ -177,9 +224,41 @@ class ChallengeDetailViewModel(
         if (!state.hasMoreCertifications || state.isRefreshing) return
         when (state.selectedTab) {
             CertificationTab.All ->
-                if (!state.isLoadingMoreAll) loadVerifications(cursor = state.allCursor, generation = certificationGeneration)
+                if (!state.isLoadingMoreAll) {
+                    loadVerifications(cursor = state.allCursor, cursorLikeCount = state.allCursorLikeCount, generation = certificationGeneration)
+                }
             CertificationTab.Mine ->
-                if (!state.isLoadingMoreMy) loadMyVerifications(cursor = state.myCursor, generation = certificationGeneration)
+                if (!state.isLoadingMoreMy) {
+                    loadMyVerifications(cursor = state.myCursor, cursorLikeCount = state.myCursorLikeCount, generation = certificationGeneration)
+                }
+        }
+    }
+
+    // 정렬 기준이 바뀌면 두 탭 모두 처음부터 다시 불러온다 — sort별로 커서(cursorLikeCount 포함) 의미가
+    // 달라 이전 목록에 이어붙일 수 없다. onVerificationSubmitted와 동일한 "통째로 리셋" 패턴.
+    override fun onSortSelected(sort: VerificationSort) {
+        if (_uiState.value.selectedSort == sort) return
+        certificationGeneration++
+        _uiState.update {
+            it.copy(
+                selectedSort = sort,
+                allCertifications = emptyList(),
+                allCursor = null,
+                allCursorLikeCount = null,
+                allHasNext = true,
+                myCertifications = emptyList(),
+                myCursor = null,
+                myCursorLikeCount = null,
+                myHasNext = true,
+                myLoaded = false,
+            )
+        }
+        loadVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
+        // "내 인증 보기" 탭을 아직 한 번도 안 봤으면 여기서 미리 불러오지 않는다 — myLoaded=false로
+        // 남겨두면 onTabSelected가 실제로 그 탭에 들어갈 때 알아서 불러온다(onVerificationSubmitted와
+        // 동일한 패턴). "인증"(전체) 탭만 쓰는 사용자가 정렬을 바꿀 때마다 불필요한 API 호출이 나가는 걸 막는다.
+        if (_uiState.value.selectedTab == CertificationTab.Mine) {
+            loadMyVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
         }
     }
 
@@ -229,14 +308,37 @@ class ChallengeDetailViewModel(
         _uiState.update { it.copy(editCertificationError = null, editedCertificationId = null) }
     }
 
-    // 백엔드에 인증 삭제 API가 없어 버튼 UI만 우선 노출한다. API가 추가되면 여기서 호출하고
-    // 성공 시 allCertifications/myCertifications에서 해당 항목을 제거하도록 연동한다.
-    override fun onDeleteCertificationClick(certificationId: Long) = Unit
-
-    override fun onReportCertificationClick(certificationId: Long, reason: String?) {
+    override fun onDeleteCertificationClick(certificationId: Long) {
         viewModelScope.launch {
-            reportVerificationUseCase(challengeId, certificationId, reason)
+            when (val result = deleteVerificationUseCase(challengeId, certificationId)) {
+                is ResultState.Success -> _uiState.update { state ->
+                    state.copy(
+                        allCertifications = state.allCertifications.filterNot { it.id == certificationId },
+                        myCertifications = state.myCertifications.filterNot { it.id == certificationId },
+                        postCount = (state.postCount - 1).coerceAtLeast(0),
+                        // 삭제는 내 게시글에만 가능하고, 한 주기(일/주/월)당 인증은 하나뿐이라(재인증 시
+                        // 덮어쓰기) 삭제하면 그 주기는 항상 다시 "미인증" 상태가 된다(서버 스펙: 삭제 시
+                        // 해당 주기가 재인증 가능하게 다시 열림).
+                        verifiedInCurrentPeriod = false,
+                    )
+                }
+                is ResultState.Error -> _uiState.update { it.copy(actionErrorMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
         }
+    }
+
+    override fun onReportCertificationClick(certificationId: Long, reportType: ReportType, reason: String?) {
+        viewModelScope.launch {
+            when (val result = reportVerificationUseCase(challengeId, certificationId, reportType, reason)) {
+                is ResultState.Error -> _uiState.update { it.copy(actionErrorMessage = result.message) }
+                is ResultState.Success, ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    override fun onActionErrorDismissed() {
+        _uiState.update { it.copy(actionErrorMessage = null) }
     }
 
     // 새 인증 업로드는 사진 촬영이 필요해 화면(Route)에서 직접 처리하고, 성공 후 여기로 알려온다.
@@ -250,9 +352,11 @@ class ChallengeDetailViewModel(
             it.copy(
                 allCertifications = emptyList(),
                 allCursor = null,
+                allCursorLikeCount = null,
                 allHasNext = true,
                 myCertifications = emptyList(),
                 myCursor = null,
+                myCursorLikeCount = null,
                 myHasNext = true,
                 myLoaded = false,
                 // 방금 인증을 등록했으니, 아래 loadDetail()의 서버 응답이 오기 전에도 버튼이 즉시
@@ -260,9 +364,9 @@ class ChallengeDetailViewModel(
                 verifiedInCurrentPeriod = true,
             )
         }
-        loadVerifications(cursor = null, generation = certificationGeneration)
+        loadVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
         if (_uiState.value.selectedTab == CertificationTab.Mine) {
-            loadMyVerifications(cursor = null, generation = certificationGeneration)
+            loadMyVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
         }
     }
 
@@ -275,17 +379,21 @@ class ChallengeDetailViewModel(
         // 세대를 올린다.
         certificationGeneration++
         _uiState.update { it.copy(isRefreshing = true) }
+        val sort = _uiState.value.selectedSort
         viewModelScope.launch {
             when (val result = getChallengeDetailUseCase(challengeId)) {
                 is ResultState.Success -> _uiState.update { it.applyDetail(result.data) }
                 is ResultState.Error -> Unit
                 ResultState.Loading -> Unit
             }
-            when (val result = getVerificationsUseCase(challengeId, cursor = null, VerificationPageSize)) {
+            when (
+                val result = getVerificationsUseCase(challengeId, cursor = null, cursorLikeCount = null, size = VerificationPageSize, sort = sort)
+            ) {
                 is ResultState.Success -> _uiState.update { state ->
                     state.copy(
                         allCertifications = result.data.certifications.map { it.toUiModel() },
                         allCursor = result.data.nextCursor,
+                        allCursorLikeCount = result.data.nextCursorLikeCount,
                         allHasNext = result.data.hasNext,
                     )
                 }
@@ -293,11 +401,14 @@ class ChallengeDetailViewModel(
                 ResultState.Loading -> Unit
             }
             if (_uiState.value.selectedTab == CertificationTab.Mine) {
-                when (val result = getMyVerificationsUseCase(challengeId, cursor = null, VerificationPageSize)) {
+                when (
+                    val result = getMyVerificationsUseCase(challengeId, cursor = null, cursorLikeCount = null, size = VerificationPageSize, sort = sort)
+                ) {
                     is ResultState.Success -> _uiState.update { state ->
                         state.copy(
                             myCertifications = result.data.certifications.map { it.toUiModel() },
                             myCursor = result.data.nextCursor,
+                            myCursorLikeCount = result.data.nextCursorLikeCount,
                             myHasNext = result.data.hasNext,
                             myLoaded = true,
                         )
@@ -321,7 +432,15 @@ class ChallengeDetailViewModel(
             }
             if (result is ResultState.Success) {
                 _uiState.update { state ->
-                    state.copy(allCertifications = state.allCertifications.withLikeResult(result.data))
+                    state.copy(
+                        allCertifications = state.allCertifications.withLikeResult(result.data),
+                        // "내 인증 보기"엔 liked 개념이 없어 likeCount만 같은 verificationId 기준으로
+                        // 즉시 맞춰준다 — 이후 refreshLikeCounts()가 실패해도 내가 방금 누른 결과 자체는
+                        // 이미 반영돼 있다.
+                        myCertifications = state.myCertifications.map {
+                            if (it.id == result.data.verificationId) it.copy(likeCount = result.data.likeCount) else it
+                        },
+                    )
                 }
                 // 내가 누른 항목은 위에서 이미 갱신했지만, 그 사이 다른 사람이 누른 좋아요도 같이
                 // 반영되도록 15초를 기다리지 않고 바로 한 번 더 조용히 새로고침한다.

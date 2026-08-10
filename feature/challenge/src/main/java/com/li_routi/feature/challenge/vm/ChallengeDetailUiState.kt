@@ -1,5 +1,7 @@
 package com.li_routi.feature.challenge.vm
 
+import com.li_routi.core.domain.challenge.VerificationSort
+
 /** "인증"/"내 인증 보기" 탭 구분. */
 enum class CertificationTab {
     All,
@@ -48,12 +50,15 @@ data class ChallengeDetailUiState(
      */
     val verifiedInCurrentPeriod: Boolean = false,
     val selectedTab: CertificationTab = CertificationTab.All,
+    val selectedSort: VerificationSort = VerificationSort.LATEST,
     val allCertifications: List<CertificationUiModel> = emptyList(),
     val allCursor: Long? = null,
+    val allCursorLikeCount: Long? = null,
     val allHasNext: Boolean = true,
     val isLoadingMoreAll: Boolean = false,
     val myCertifications: List<CertificationUiModel> = emptyList(),
     val myCursor: Long? = null,
+    val myCursorLikeCount: Long? = null,
     val myHasNext: Boolean = true,
     val isLoadingMoreMy: Boolean = false,
     val myLoaded: Boolean = false,
@@ -69,6 +74,8 @@ data class ChallengeDetailUiState(
     val editedCertificationId: Long? = null,
     /** 당겨서 새로고침 진행 여부. */
     val isRefreshing: Boolean = false,
+    /** 삭제/신고 실패 메시지. 토스트로 보여주고 닫으면 지워진다. */
+    val actionErrorMessage: String? = null,
 ) {
     val visibleCertifications: List<CertificationUiModel>
         get() = when (selectedTab) {

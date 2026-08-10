@@ -20,7 +20,10 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.li_routi.core.designsystem.theme.LiroutiTheme
 
+// Figma 변수 "outlined/outlined" (#121416). 아직 시맨틱 컬러 스킴에 승격되지 않아 로컬 상수로 둔다.
+private val OutlinedStrong = Color(0xFF121416)
 
 @Composable
 fun HorizontalDoubleButton(
@@ -33,11 +36,11 @@ fun HorizontalDoubleButton(
     spacing: Dp = 6.dp,
     cornerRadius: Dp = 8.dp,
 
-    leftBackgroundColor: Color = Color(0xFFF7F7F8),
-    leftTextColor: Color = Color(0xFF121416),
+    leftBackgroundColor: Color = LiroutiTheme.colors.backgroundAlternative,
+    leftTextColor: Color = OutlinedStrong,
 
-    rightBackgroundColor: Color = Color(0xFF338AFF),
-    rightTextColor: Color = Color(0xFFF7F7F8),
+    rightBackgroundColor: Color = LiroutiTheme.colors.primaryNormal,
+    rightTextColor: Color = LiroutiTheme.colors.backgroundAlternative,
 
     fontSize: TextUnit = 14.sp,
     fontWeight: FontWeight = FontWeight(500),
@@ -97,7 +100,7 @@ fun HorizontalDoubleButton(
 
 
 @Composable
-fun Horizontal_FlexibleAsymmetric(
+fun HorizontalFlexibleAsymmetric(
     modifier: Modifier = Modifier,
     leftLabel: String = "Label",
     rightLabel: String = "Label",
@@ -115,7 +118,7 @@ fun Horizontal_FlexibleAsymmetric(
 }
 
 @Composable
-fun Horizontal_Sgment(
+fun HorizontalSegment(
     modifier: Modifier = Modifier,
     leftLabel: String = "Label",
     rightLabel: String = "Label",
@@ -136,12 +139,12 @@ fun Horizontal_Sgment(
 
 @Preview(showBackground = false, name = "Asymmetric (Left Fixed 100dp)")
 @Composable
-private fun Horizontal_FlexibleAsymmetricPreview() {
-    Horizontal_FlexibleAsymmetric()
+private fun HorizontalFlexibleAsymmetricPreview() {
+    HorizontalFlexibleAsymmetric()
 }
 
 @Preview(showBackground = false, name = "Segment (1:1 Equal Ratio)")
 @Composable
-private fun Horizontal_SgmentPreview() {
-    Horizontal_Sgment()
+private fun HorizontalSegmentPreview() {
+    HorizontalSegment()
 }

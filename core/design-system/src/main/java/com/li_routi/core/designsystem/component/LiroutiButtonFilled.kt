@@ -1,4 +1,4 @@
-package com.example.ri_routi
+package com.li_routi.core.designsystem.component
 
 import com.li_routi.core.designsystem.R
 import androidx.compose.foundation.Image

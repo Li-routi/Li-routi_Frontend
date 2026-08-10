@@ -12,10 +12,7 @@ import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 /**
- * 계정 관리 화면 ViewModel.
- *
- * `POST /api/members/logout` 연동만 담당한다 — "회원 탈퇴"는 API 명세가 아직 없어 범위 밖이다
- * ([com.li_routi.feature.mypage.screen.AccountManageScreen]의 `onWithdrawClick`은 여전히 UI만).
+ * 계정 관리 화면 ViewModel. 로그아웃(`POST /api/members/logout`)과 회원 탈퇴 둘 다 연동한다.
  */
 class AccountManageViewModel(
     private val logoutUseCase: LogoutUseCase = AuthContainer.logoutUseCase,

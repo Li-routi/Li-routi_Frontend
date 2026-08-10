@@ -54,7 +54,12 @@ class MyPageViewModel(
                         isProfileLoaded = true,
                     )
                 }
-                is ResultState.Error -> _uiState.update { it.copy(isProfileLoaded = true) }
+                is ResultState.Error -> {
+                    // isProfileLoaded는 true로 둔다(그렇지 않으면 onEditProfileClick이 영영 막힘) — 대신
+                    // 실패 사실 자체는 조용히 삼키지 않고 토스트로 알린다.
+                    _uiState.update { it.copy(isProfileLoaded = true) }
+                    _uiEvent.emit(MyPageUiEvent.ShowError(result.message))
+                }
                 ResultState.Loading -> Unit
             }
         }

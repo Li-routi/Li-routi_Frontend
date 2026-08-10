@@ -38,12 +38,17 @@ import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.core.domain.challenge.ReportType
+
+/** 화면에 보여줄 라벨과 서버로 보낼 [ReportType]을 한 쌍으로 묶어서, 둘이 따로국밥인 두 리스트를
+ * 인덱스로만 짝지을 때 생기는 밀림 위험(하나만 수정/재배열해도 라벨-타입이 어긋남)을 없앤다. */
+private data class PresetReportReason(val label: String, val type: ReportType)
 
 private val PresetReportReasons = listOf(
-    "실제 루틴 수행과 무관한 사진이에요",
-    "예전에 인증했던 사진을 재사용했어요",
-    "타인의 사진을 도용한 것 같아요",
-    "스팸 또는 광고성 콘텐츠예요",
+    PresetReportReason("실제 루틴 수행과 무관한 사진이에요", ReportType.IRRELEVANT),
+    PresetReportReason("예전에 인증했던 사진을 재사용했어요", ReportType.REUSED),
+    PresetReportReason("타인의 사진을 도용한 것 같아요", ReportType.STOLEN),
+    PresetReportReason("스팸 또는 광고성 콘텐츠예요", ReportType.SPAM),
 )
 private const val OtherReasonLabel = "기타"
 private const val OtherReasonMaxLength = 100
@@ -54,7 +59,7 @@ private const val OtherReasonMaxLength = 100
 @Composable
 fun ReportReasonScreen(
     onClose: () -> Unit,
-    onSubmit: (reason: String?) -> Unit,
+    onSubmit: (reportType: ReportType, reason: String?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     var selectedIndex by remember { mutableStateOf<Int?>(null) }
@@ -62,13 +67,12 @@ fun ReportReasonScreen(
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
 
-    val reason = selectedIndex?.let { index ->
-        if (index == PresetReportReasons.size) {
-            otherReason.trim().ifBlank { null }
-        } else {
-            PresetReportReasons.getOrNull(index)
-        }
+    val isOtherSelected = selectedIndex == PresetReportReasons.size
+    // 서버는 ETC일 때만 reason을 요구한다 — 프리셋은 reportType만으로 충분하다.
+    val reportType = selectedIndex?.let { index ->
+        if (isOtherSelected) ReportType.ETC else PresetReportReasons.getOrNull(index)?.type
     }
+    val canSubmit = reportType != null && (!isOtherSelected || otherReason.isNotBlank())
 
     Column(
         modifier = modifier
@@ -116,9 +120,9 @@ fun ReportReasonScreen(
                 color = LiroutiTheme.colors.labelDefault,
                 modifier = Modifier.padding(top = 25.dp, bottom = 20.dp),
             )
-            PresetReportReasons.forEachIndexed { index, label ->
+            PresetReportReasons.forEachIndexed { index, reason ->
                 ReportReasonRow(
-                    label = label,
+                    label = reason.label,
                     selected = selectedIndex == index,
                     onClick = { selectedIndex = index },
                 )
@@ -137,8 +141,11 @@ fun ReportReasonScreen(
 
         LiroutiPrimaryButton(
             text = "완료",
-            enabled = reason != null,
-            onClick = { onSubmit(reason) },
+            enabled = canSubmit,
+            onClick = {
+                val type = reportType ?: return@LiroutiPrimaryButton
+                onSubmit(type, if (type == ReportType.ETC) otherReason.trim() else null)
+            },
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(horizontal = 16.dp)
@@ -213,6 +220,6 @@ private fun OtherReasonField(
 @Composable
 private fun ReportReasonScreenPreview() {
     LiroutiFrontendTheme {
-        ReportReasonScreen(onClose = {}, onSubmit = {})
+        ReportReasonScreen(onClose = {}, onSubmit = { _, _ -> })
     }
 }

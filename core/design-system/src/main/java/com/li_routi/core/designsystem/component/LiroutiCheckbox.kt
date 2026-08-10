@@ -38,6 +38,7 @@ enum class CheckBoxState {
 fun CustomCheckBox(
     state: CheckBoxState,
     isCircle: Boolean = false,
+    enabled: Boolean = true,
     onClick: () -> Unit = {},
     modifier: Modifier = Modifier
 ) {
@@ -80,7 +81,7 @@ fun CustomCheckBox(
                 color = borderColor,
                 shape = shape
             )
-            .clickable { onClick() }
+            .clickable(enabled = enabled, onClick = onClick)
     ) {
         if (hasCheckmark) {
             Image(

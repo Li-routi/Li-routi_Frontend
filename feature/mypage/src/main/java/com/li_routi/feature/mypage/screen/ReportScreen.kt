@@ -16,7 +16,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.component.LiroutiDivider
@@ -29,6 +28,7 @@ import com.li_routi.feature.mypage.component.EditProfileTopBar
 import com.li_routi.feature.mypage.component.MonthlyDayUiModel
 import com.li_routi.feature.mypage.component.MonthlyReportCard
 import com.li_routi.feature.mypage.component.ReportPeriodTabs
+import com.li_routi.feature.mypage.component.SampleMonthlyDays
 import com.li_routi.feature.mypage.component.WeeklyBarUiModel
 import com.li_routi.feature.mypage.component.WeeklyReportCard
 
@@ -114,26 +114,6 @@ private val SampleWeeklyBars = listOf(
     WeeklyBarUiModel(0f),
     WeeklyBarUiModel(0f),
 )
-
-private val RedDay = Color(0xFFFF4242)
-private val BlueDay = Color(0xFF338AFF)
-private val BlackDay = Color(0xFF171719)
-
-/** Figma 목업(2026년 9월, 1일=화요일)을 그대로 옮긴 샘플 데이터. */
-private val SampleMonthlyDays = listOf(
-    null to 0f, null to 0f, 1 to 1f, 2 to 0f, 3 to 0f, 4 to 0f, 5 to (12f / 28f),
-    6 to 0f, 7 to 0f, 8 to (19f / 28f), 9 to 0f, 10 to 0f, 11 to 0f, 12 to 0f,
-    13 to 0f, 14 to 0f, 15 to 0f, 16 to 0f, 17 to 0f, 18 to 0f, 19 to 0f,
-    20 to 0f, 21 to 0f, 22 to 0f, 23 to 0f, 24 to 0f, 25 to 0f, 26 to 0f,
-    27 to 0f, 28 to 0f, 29 to 0f, 30 to 0f, null to 0f, null to 0f, null to 0f,
-).mapIndexed { index, (day, ratio) ->
-    val dayColor = when (index % 7) {
-        0 -> RedDay
-        6 -> BlueDay
-        else -> BlackDay
-    }
-    MonthlyDayUiModel(day = day, dayColor = dayColor, ratio = ratio)
-}
 
 private val SampleActivityStats = listOf(
     ActivityStatUiModel("이번 달 완료 루틴", "100"),

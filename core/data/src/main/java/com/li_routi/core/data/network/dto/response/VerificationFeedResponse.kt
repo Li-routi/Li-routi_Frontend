@@ -4,5 +4,6 @@ package com.li_routi.core.data.network.dto.response
 data class VerificationFeedResponse(
     val verifications: List<VerificationResponse>,
     val nextCursor: Long?,
+    val nextCursorLikeCount: Long?,
     val hasNext: Boolean,
 )
