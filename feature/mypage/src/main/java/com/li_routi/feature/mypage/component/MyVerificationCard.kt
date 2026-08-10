@@ -26,7 +26,7 @@ import com.li_routi.core.designsystem.component.LiroutiBadgeSize
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-private val CardImageHeight = 144.dp
+private val CardImageHeight = 180.dp
 private val PendingScrimColor = Color.Black.copy(alpha = 0.5f)
 
 /** "내 인증" 목록 한 건. */
@@ -39,7 +39,7 @@ data class MyVerificationCardUiModel(
 
 /**
  * "내 인증" 카드 한 줄. Figma node `4224:46549`/`4421:51518`("Certification_IMG") 기준 —
- * 루틴명(+대기중 배지) + 메모 + 인증 이미지(144dp)로 구성된다.
+ * 루틴명(+대기중 배지) + 메모 + 인증 이미지(180dp, Figma node `3610:30142` 인증 피드 사진 크기 기준)로 구성된다.
  *
  * [MyVerificationCardUiModel.isPending]인 카드는 승인 대기 중이라 이미지 위에 어두운 스크림을 덮는다
  * — Figma는 `backdrop-blur`도 함께 쓰지만 이 앱 minSdk(24)에서는 배경 블러를 구현할 방법이 마땅치
