@@ -77,15 +77,17 @@ fun MyPageRoute(
             onTabSelected = onTabSelected,
             nickname = uiState.nickname,
             email = uiState.email,
+            profileImageUrl = uiState.profileImageUrl,
             modifier = modifier,
         )
 
         MyPageDestination.EditProfile -> EditProfileScreen(
             initialNickname = uiState.nickname,
+            profileImageUrl = uiState.profileImageUrl,
             isSaving = uiState.isSavingProfile,
             onBackClick = { destination = MyPageDestination.MyPage },
             onCancelClick = { destination = MyPageDestination.MyPage },
-            onSaveClick = viewModel::onSaveNickname,
+            onSaveClick = { nickname, imageUri -> viewModel.onSaveProfile(context, nickname, imageUri) },
             modifier = modifier,
         )
 

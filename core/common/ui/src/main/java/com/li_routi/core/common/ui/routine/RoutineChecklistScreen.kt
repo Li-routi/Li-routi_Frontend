@@ -88,6 +88,7 @@ fun RoutineChecklistScreen(
     description: String? = null,
     addCategoryEnabled: Boolean = true,
     primaryButtonEnabled: Boolean = true,
+    onCategoryLongClick: (String) -> Unit = {},
 ) {
     Column(
         modifier = modifier
@@ -154,6 +155,7 @@ fun RoutineChecklistScreen(
                     onCategorySelected = onCategorySelected,
                     onAddCategoryClick = onAddCategoryClick,
                     addCategoryEnabled = addCategoryEnabled,
+                    onCategoryLongClick = onCategoryLongClick,
                 )
 
                 RoutineSelectAllRow(
@@ -229,6 +231,7 @@ fun RoutineCategoryChipRow(
     onAddCategoryClick: () -> Unit,
     modifier: Modifier = Modifier,
     addCategoryEnabled: Boolean = true,
+    onCategoryLongClick: (String) -> Unit = {},
 ) {
     Row(
         modifier = modifier
@@ -238,10 +241,14 @@ fun RoutineCategoryChipRow(
         verticalAlignment = Alignment.CenterVertically,
     ) {
         categories.forEach { category ->
+            val canEdit = category != "전체"
             LiroutiLabel(
                 text = category,
                 selected = category == selectedCategory,
                 onClick = { onCategorySelected(category) },
+                modifier = Modifier.detectLabelLongClick(enabled = canEdit) {
+                    onCategoryLongClick(category)
+                },
             )
         }
         AddCategoryChip(

@@ -30,6 +30,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -88,6 +89,7 @@ fun LiroutiBottomSheet(
     ),
     title: String? = null,
     contentPadding: PaddingValues = DefaultContentPadding,
+    shape: Shape = SheetShape,
     primaryButtonText: String? = null,
     onPrimaryButtonClick: () -> Unit = {},
     secondaryButtonText: String? = null,
@@ -98,7 +100,7 @@ fun LiroutiBottomSheet(
         onDismissRequest = onDismissRequest,
         modifier = modifier,
         sheetState = sheetState,
-        shape = SheetShape,
+        shape = shape,
         containerColor = LiroutiTheme.colors.backgroundDefault,
         dragHandle = null,
     ) {

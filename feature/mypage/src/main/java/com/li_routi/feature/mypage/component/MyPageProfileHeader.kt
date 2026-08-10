@@ -10,27 +10,29 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.component.LiroutiAvatar
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-/**
- * 마이페이지 프로필 영역. Figma node `205:18081` 기준.
- *
- * 아바타는 실제 프로필 사진 연동 전까지 [LiroutiAvatar]의 기본 placeholder를 그대로 쓴다.
- */
+private val ProfileHeaderAvatarSize = 52.dp
+
+/** 마이페이지 프로필 영역. Figma node `205:18081` 기준. */
 @Composable
 fun MyPageProfileHeader(
     nickname: String,
     email: String,
+    profileImageUrl: String?,
     onEditProfileClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -41,7 +43,16 @@ fun MyPageProfileHeader(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            LiroutiAvatar(size = 52.dp)
+            LiroutiAvatar(size = ProfileHeaderAvatarSize) {
+                if (profileImageUrl != null) {
+                    AsyncImage(
+                        model = profileImageUrl,
+                        contentDescription = "프로필 사진",
+                        modifier = Modifier.size(ProfileHeaderAvatarSize),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            }
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = nickname,
@@ -93,6 +104,7 @@ private fun MyPageProfileHeaderPreview() {
         MyPageProfileHeader(
             nickname = "잠자는개구리",
             email = "example@gamil.com",
+            profileImageUrl = null,
             onEditProfileClick = {},
         )
     }

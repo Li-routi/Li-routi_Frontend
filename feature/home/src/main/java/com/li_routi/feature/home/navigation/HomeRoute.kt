@@ -36,6 +36,9 @@ fun HomeRoute(
         HomeViewModel(
             getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase,
             createRoutineCategoryUseCase = RoutineContainer.createRoutineCategoryUseCase,
+            getRoutineCategoriesUseCase = RoutineContainer.getRoutineCategoriesUseCase,
+            updateRoutineCategoryUseCase = RoutineContainer.updateRoutineCategoryUseCase,
+            deleteRoutineCategoryUseCase = RoutineContainer.deleteRoutineCategoryUseCase,
         )
     },
 ) {
@@ -50,9 +53,16 @@ fun HomeRoute(
 
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
-            // 카테고리 생성 결과는 HomeScreen이 직접 collect한다.
-            if (event !is HomeUiEvent.CategoryCreated && event !is HomeUiEvent.CategoryCreateFailed) {
-                onEvent(event)
+            // 카테고리 CRUD 결과는 HomeScreen이 직접 collect한다.
+            when (event) {
+                HomeUiEvent.CategoryCreated,
+                is HomeUiEvent.CategoryCreateFailed,
+                HomeUiEvent.CategoryUpdated,
+                is HomeUiEvent.CategoryUpdateFailed,
+                HomeUiEvent.CategoryDeleted,
+                is HomeUiEvent.CategoryDeleteFailed,
+                -> Unit
+                else -> onEvent(event)
             }
         }
     }
@@ -86,6 +96,8 @@ private fun HomeScreenContent(
         isLoading = uiState.isLoading,
         loadError = uiState.loadError,
         uiEvent = viewModel.uiEvent,
+        findEditableCategory = viewModel::editableCategoryByName,
+        addCategoryEnabled = uiState.addCategoryEnabled,
         modifier = modifier,
     )
 }

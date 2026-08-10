@@ -1,5 +1,7 @@
 package com.li_routi.feature.grouproutine.vm
 
+import com.li_routi.core.common.ui.routine.CategoryColor
+
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 
@@ -51,6 +53,7 @@ data class GroupTodoUiModel(
 
 data class CertificationPostUiModel(
     val id: Long,
+    val memberId: Long,
     val userName: String,
     val body: String,
     val likeCount: Int,
@@ -85,13 +88,19 @@ data class GroupRoutineUiState(
     val actionMessage: String? = null,
     val isRoomLocked: Boolean = false,
     val isCurrentUserLeader: Boolean = true,
+    // 서버가 그룹 상세에 OWNER 여부를 안 내려줌. isCurrentUserLeader는 기본값이 true라
+    // 실제 권한 판단에 쓸 수 없어서, 방장인 게 증명된 경우에만 켜지는 플래그를 따로 둠
+    // (방을 직접 만들었거나 / 나가기가 GROUP409_1로 막혔거나)
+    val isConfirmedOwner: Boolean = false,
     val showOnlyMyCertifications: Boolean = false,
+    val selectedCertificationMemberId: Long? = null,
     val isNewCertificationDialogVisible: Boolean = false,
     val isEmptyState: Boolean = false,
     val searchInput: String = "",
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",
     val groupInviteCode: String? = null,
+    val unreadChatCount: Int = 0,
     val selectedCategory: String = "전체",
     // PR 반영: 백엔드 카테고리와 일치시킴 ("공부" 제거 및 항목 추가)
     val categories: List<String> = listOf("전체", "운동", "건강", "자기계발", "생활정리", "마음관리", "취미"),
@@ -102,9 +111,16 @@ data class GroupRoutineUiState(
     val routineDraftStartTime: String = "08:00",
     val routineDraftEndTime: String = "20:00",
     val routineDraftRepeatDays: Set<String> = emptySet(),
+    // 상단 카테고리 칩은 목록 필터 전용이라, 루틴에 붙일 카테고리는 따로 들고 있어야 함
+    val routineDraftCategory: String = "",
     val isDeleteRoutineDialogVisible: Boolean = false,
+    val isLeaveRoomDialogVisible: Boolean = false,
+    // 방장이라 나갈 수 없을 때(GROUP409_1) 삭제로 유도하는 다이얼로그
+    val isDeleteRoomDialogVisible: Boolean = false,
+    val isKickMemberDialogVisible: Boolean = false,
     val isCategorySheetVisible: Boolean = false,
     val categoryInput: String = "",
+    val categoryColorInput: CategoryColor? = null,
     val isMessageEditSheetVisible: Boolean = false,
     val messageDraft: String = "",
     val chatMessages: List<ChatMessageUiModel> = emptyList(),
@@ -149,6 +165,11 @@ data class GroupRoutineUiState(
     val allVisibleRoutineOptionsSelected: Boolean
         get() = visibleRoutineOptions.isNotEmpty() && visibleRoutineOptions.all { it.isSelected }
 
+    val visibleCertificationPosts: List<CertificationPostUiModel>
+        get() = selectedCertificationMemberId?.let { memberId ->
+            posts.filter { it.memberId == memberId }
+        } ?: posts
+
     val todoProgressLabel: String
         get() = "${todos.count { it.isDone }}/${todos.size} 완료"
 }
@@ -189,6 +210,7 @@ private val SampleGroupTodos = listOf(
 private val SampleCertificationPosts = listOf(
     CertificationPostUiModel(
         id = 1L,
+        memberId = 1L,
         userName = "민지",
         body = "물 마시기 1일차 인증! 오늘도 잊지 않고 해냈어요.",
         likeCount = 1,
@@ -197,6 +219,7 @@ private val SampleCertificationPosts = listOf(
     ),
     CertificationPostUiModel(
         id = 2L,
+        memberId = 2L,
         userName = "서현",
         body = "스트레칭 완료. 내일도 같이 이어가요.",
         likeCount = 3,
@@ -225,3 +248,7 @@ private val SampleCreateRoutineOptions = listOf(
 )
 
 val DefaultCreateRoutineOptions = SampleCreateRoutineOptions
+
+// mock 방으로 돌아갈 때 이전 서버 방 데이터를 지우고 되돌릴 기본값
+val DefaultGroupMembers = SampleGroupMembers
+val DefaultGroupTodos = SampleGroupTodos
