@@ -1,4 +1,4 @@
-package com.li_routi.feature.shopping.navigation
+package com.li_routi.feature.home.shop.navigation
 
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -6,10 +6,10 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import com.li_routi.feature.shopping.screen.ShopScreen
-import com.li_routi.feature.shopping.vm.ShopUiEvent
-import com.li_routi.feature.shopping.vm.ShopUiState
-import com.li_routi.feature.shopping.vm.ShopViewModel
+import com.li_routi.feature.home.shop.screen.ShopScreen
+import com.li_routi.feature.home.shop.vm.ShopUiEvent
+import com.li_routi.feature.home.shop.vm.ShopUiState
+import com.li_routi.feature.home.shop.vm.ShopViewModel
 
 /**
  * 아이템 상점 화면 진입점. [ShopViewModel]과 [ShopScreen]을 연결한다.

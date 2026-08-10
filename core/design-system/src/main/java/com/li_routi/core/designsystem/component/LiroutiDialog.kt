@@ -185,7 +185,7 @@ fun LiroutiCardDialog(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Horizontal_Sgment(
+            HorizontalSegment(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
                     .fillMaxWidth(),
@@ -288,7 +288,7 @@ fun LiroutiDefaultDialog(
 
                 Spacer(modifier = Modifier.height(24.dp))
 
-                Horizontal_Sgment(
+                HorizontalSegment(
                     modifier = Modifier.fillMaxWidth(),
                     onLeftClick = onLeftClick,
                     onRightClick = onRightClick
@@ -449,7 +449,7 @@ fun LiroutiJoinDialog(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Horizontal_Sgment(
+            HorizontalSegment(
                 modifier = Modifier.fillMaxWidth(),
                 onLeftClick = onLeftButtonClick,
                 onRightClick = onRightButtonClick
@@ -564,7 +564,7 @@ fun LiroutiPaymentDialog(
 
             Spacer(modifier = Modifier.height(24.dp))
 
-            Horizontal_Sgment(
+            HorizontalSegment(
                 modifier = Modifier
                     .padding(horizontal = 24.dp)
                     .fillMaxWidth(),

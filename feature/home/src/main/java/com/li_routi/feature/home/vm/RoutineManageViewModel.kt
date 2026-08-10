@@ -31,10 +31,17 @@ private const val CustomIdPrefix = "custom_"
 data class RoutineManageUiState(
     val isLoading: Boolean = true,
     val isSubmitting: Boolean = false,
+    val isMutatingCategory: Boolean = false,
     val categories: List<RoutineCategory> = emptyList(),
     val addableCount: Int = 0,
     val selectedCategoryName: String = AllCategoryLabel,
     val templates: List<RoutineTemplate> = emptyList(),
+    /**
+     * 지금까지 로드된 모든 템플릿(카테고리 전환으로 [templates]가 통째로 바뀌어도 유지되는 캐시).
+     * templateId → RoutineTemplate. 최종 제출 payload는 (화면에 보이는 현재 카테고리뿐 아니라)
+     * 다른 카테고리를 보다가 선택해둔 항목까지 포함해야 하므로 여기서 데이터를 가져온다.
+     */
+    val templateCache: Map<Long, RoutineTemplate> = emptyMap(),
     /** templateId / custom id → 선택 여부 */
     val selectedIds: Set<String> = emptySet(),
     val customItems: List<CreateRoutineItem> = emptyList(),
@@ -139,6 +146,11 @@ class RoutineManageViewModel(
     private val _uiEvent = MutableSharedFlow<RoutineManageUiEvent>(extraBufferCapacity = 1)
     val uiEvent: SharedFlow<RoutineManageUiEvent> = _uiEvent.asSharedFlow()
 
+    // loadTemplates가 새로 시작될 때마다 올라간다. 응답이 왔을 때 이 값이 그대로면(그 사이 더 최신
+    // 요청이 시작되지 않았으면)만 결과를 반영한다 — 그렇지 않으면 카테고리를 빠르게 연달아 전환할 때
+    // 먼저 쏜(느린) 요청의 응답이 나중에 도착해 최신 카테고리의 templates를 덮어쓸 수 있다.
+    private var templatesGeneration = 0
+
     init {
         refresh()
     }
@@ -190,112 +202,119 @@ class RoutineManageViewModel(
     }
 
     fun onCreateCategory(name: String, color: CategoryColor?) {
-        val trimmed = when (val validated = RoutineCategoryName.validate(name)) {
-            is RoutineCategoryName.Result.Invalid -> {
-                _uiState.update { it.copy(categoryNameError = validated.message) }
-                return
-            }
-            is RoutineCategoryName.Result.Valid -> validated.trimmedName
-        }
-        viewModelScope.launch {
-            _uiState.update { it.copy(categoryNameError = null, errorMessage = null) }
-            when (
-                val result = createRoutineCategoryUseCase(
-                    name = trimmed,
-                    color = color?.toApiColor(),
-                )
-            ) {
-                is ResultState.Success -> {
-                    val created = result.data
-                    when (val categories = getRoutineCategoriesUseCase()) {
-                        is ResultState.Success -> {
-                            _uiState.update {
-                                it.copy(
-                                    categories = categories.data.categories,
-                                    addableCount = categories.data.addableCount,
-                                    selectedCategoryName = created.name,
-                                )
-                            }
-                            loadTemplates(categoryId = created.categoryId)
-                            _uiEvent.emit(RoutineManageUiEvent.CategorySaved)
-                        }
-                        is ResultState.Error -> _uiState.update {
-                            it.copy(errorMessage = categories.message)
-                        }
-                        ResultState.Loading -> Unit
-                    }
-                }
-                is ResultState.Error -> _uiState.update {
-                    it.copy(
-                        categoryNameError = result.message,
-                        errorMessage = result.message,
+        if (_uiState.value.isMutatingCategory) return
+        val error = RoutineCategoryName.validate(name).onValid { trimmed ->
+            viewModelScope.launch {
+                _uiState.update { it.copy(isMutatingCategory = true, categoryNameError = null, errorMessage = null) }
+                when (
+                    val result = createRoutineCategoryUseCase(
+                        name = trimmed,
+                        color = color?.toApiColor(),
                     )
+                ) {
+                    is ResultState.Success -> {
+                        val created = result.data
+                        when (val categories = getRoutineCategoriesUseCase()) {
+                            is ResultState.Success -> {
+                                _uiState.update {
+                                    it.copy(
+                                        isMutatingCategory = false,
+                                        categories = categories.data.categories,
+                                        addableCount = categories.data.addableCount,
+                                        selectedCategoryName = created.name,
+                                    )
+                                }
+                                loadTemplates(categoryId = created.categoryId)
+                                _uiEvent.emit(RoutineManageUiEvent.CategorySaved)
+                            }
+                            is ResultState.Error -> _uiState.update {
+                                it.copy(isMutatingCategory = false, errorMessage = categories.message)
+                            }
+                            ResultState.Loading -> Unit
+                        }
+                    }
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(
+                            isMutatingCategory = false,
+                            categoryNameError = result.message,
+                            errorMessage = result.message,
+                        )
+                    }
+                    ResultState.Loading -> Unit
                 }
-                ResultState.Loading -> Unit
             }
+        }
+        if (error != null) {
+            _uiState.update { it.copy(categoryNameError = error) }
         }
     }
 
     fun onUpdateCategory(categoryId: Long, name: String, color: CategoryColor?) {
-        val trimmed = when (val validated = RoutineCategoryName.validate(name)) {
-            is RoutineCategoryName.Result.Invalid -> {
-                _uiState.update { it.copy(categoryNameError = validated.message) }
-                return
-            }
-            is RoutineCategoryName.Result.Valid -> validated.trimmedName
-        }
-        viewModelScope.launch {
-            _uiState.update { it.copy(categoryNameError = null, errorMessage = null) }
-            when (
-                val result = updateRoutineCategoryUseCase(
-                    categoryId = categoryId,
-                    name = trimmed,
-                    color = color?.toApiColor(),
-                )
-            ) {
-                is ResultState.Success -> {
-                    val updated = result.data
-                    when (val categories = getRoutineCategoriesUseCase()) {
-                        is ResultState.Success -> {
-                            _uiState.update { state ->
-                                state.copy(
-                                    categories = categories.data.categories,
-                                    addableCount = categories.data.addableCount,
-                                    selectedCategoryName = if (
-                                        state.categories.any {
-                                            it.categoryId == categoryId &&
-                                                it.name == state.selectedCategoryName
-                                        }
-                                    ) {
-                                        updated.name
-                                    } else {
-                                        state.selectedCategoryName
-                                    },
-                                )
-                            }
-                            loadTemplates(categoryId = _uiState.value.selectedCategoryId)
-                            _uiEvent.emit(RoutineManageUiEvent.CategorySaved)
-                        }
-                        is ResultState.Error -> _uiState.update {
-                            it.copy(errorMessage = categories.message)
-                        }
-                        ResultState.Loading -> Unit
-                    }
+        if (_uiState.value.isMutatingCategory) return
+        val error = RoutineCategoryName.validate(name).onValid { trimmed ->
+            viewModelScope.launch {
+                _uiState.update {
+                    it.copy(isMutatingCategory = true, categoryNameError = null, errorMessage = null)
                 }
-                is ResultState.Error -> _uiState.update {
-                    it.copy(
-                        categoryNameError = result.message,
-                        errorMessage = result.message,
+                when (
+                    val result = updateRoutineCategoryUseCase(
+                        categoryId = categoryId,
+                        name = trimmed,
+                        color = color?.toApiColor(),
                     )
+                ) {
+                    is ResultState.Success -> {
+                        val updated = result.data
+                        when (val categories = getRoutineCategoriesUseCase()) {
+                            is ResultState.Success -> {
+                                _uiState.update { state ->
+                                    state.copy(
+                                        isMutatingCategory = false,
+                                        categories = categories.data.categories,
+                                        addableCount = categories.data.addableCount,
+                                        selectedCategoryName = if (
+                                            state.categories.any {
+                                                it.categoryId == categoryId &&
+                                                    it.name == state.selectedCategoryName
+                                            }
+                                        ) {
+                                            updated.name
+                                        } else {
+                                            state.selectedCategoryName
+                                        },
+                                    )
+                                }
+                                loadTemplates(categoryId = _uiState.value.selectedCategoryId)
+                                _uiEvent.emit(RoutineManageUiEvent.CategorySaved)
+                            }
+                            is ResultState.Error -> _uiState.update {
+                                it.copy(isMutatingCategory = false, errorMessage = categories.message)
+                            }
+                            ResultState.Loading -> Unit
+                        }
+                    }
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(
+                            isMutatingCategory = false,
+                            categoryNameError = result.message,
+                            errorMessage = result.message,
+                        )
+                    }
+                    ResultState.Loading -> Unit
                 }
-                ResultState.Loading -> Unit
             }
+        }
+        if (error != null) {
+            _uiState.update { it.copy(categoryNameError = error) }
         }
     }
 
     fun onDeleteCategory(categoryId: Long) {
+        if (_uiState.value.isMutatingCategory) return
         viewModelScope.launch {
-            _uiState.update { it.copy(errorMessage = null, categoryNameError = null) }
+            _uiState.update {
+                it.copy(isMutatingCategory = true, errorMessage = null, categoryNameError = null)
+            }
             when (val result = deleteRoutineCategoryUseCase(categoryId)) {
                 is ResultState.Success -> {
                     val wasSelected = _uiState.value.categories
@@ -305,6 +324,7 @@ class RoutineManageViewModel(
                         is ResultState.Success -> {
                             _uiState.update {
                                 it.copy(
+                                    isMutatingCategory = false,
                                     categories = categories.data.categories,
                                     addableCount = categories.data.addableCount,
                                     selectedCategoryName = if (wasSelected) {
@@ -312,19 +332,19 @@ class RoutineManageViewModel(
                                     } else {
                                         it.selectedCategoryName
                                     },
-                                )
+                                ).withCategoryRemoved(categoryId)
                             }
                             loadTemplates(categoryId = _uiState.value.selectedCategoryId)
                             _uiEvent.emit(RoutineManageUiEvent.CategoryDeleted)
                         }
                         is ResultState.Error -> _uiState.update {
-                            it.copy(errorMessage = categories.message)
+                            it.copy(isMutatingCategory = false, errorMessage = categories.message)
                         }
                         ResultState.Loading -> Unit
                     }
                 }
                 is ResultState.Error -> _uiState.update {
-                    it.copy(errorMessage = result.message)
+                    it.copy(isMutatingCategory = false, errorMessage = result.message)
                 }
                 ResultState.Loading -> Unit
             }
@@ -402,9 +422,12 @@ class RoutineManageViewModel(
     }
 
     private suspend fun loadTemplates(categoryId: Long?) {
+        templatesGeneration++
+        val generation = templatesGeneration
         _uiState.update { it.copy(isLoading = true, errorMessage = null) }
         when (val result = getRoutineTemplatesUseCase(categoryId)) {
             is ResultState.Success -> {
+                if (generation != templatesGeneration) return
                 val lockedIds = result.data
                     .filter { it.alreadyAdded }
                     .map { it.templateId.toString() }
@@ -413,19 +436,27 @@ class RoutineManageViewModel(
                     state.copy(
                         isLoading = false,
                         templates = result.data,
+                        // 카테고리 전환으로 templates가 통째로 바뀌어도, 이전에 로드했던 템플릿(다른
+                        // 카테고리 것 포함)은 캐시에 남겨 선택 상태/최종 payload가 유지되게 한다.
+                        templateCache = state.templateCache + result.data.associateBy { it.templateId },
                         selectedIds = state.selectedIds + lockedIds,
                     )
                 }
             }
-            is ResultState.Error -> _uiState.update {
-                it.copy(isLoading = false, errorMessage = result.message, templates = emptyList())
+            is ResultState.Error -> {
+                if (generation != templatesGeneration) return
+                _uiState.update {
+                    it.copy(isLoading = false, errorMessage = result.message, templates = emptyList())
+                }
             }
             ResultState.Loading -> Unit
         }
     }
 
     private fun buildCreatePayload(state: RoutineManageUiState): List<CreateRoutineItem> {
-        val fromTemplates = state.templates
+        // 현재 화면에 보이는 카테고리(state.templates)가 아니라 templateCache에서 가져온다 —
+        // 그래야 다른 카테고리를 보던 중 선택해둔 템플릿도 최종 payload에서 빠지지 않는다.
+        val fromTemplates = state.templateCache.values
             .filter { template ->
                 val id = template.templateId.toString()
                 !template.alreadyAdded && id in state.selectedIds
@@ -445,3 +476,29 @@ class RoutineManageViewModel(
     }
 }
 
+/**
+ * 삭제된 카테고리를 참조하는, 아직 제출하지 않은 커스텀 루틴을 정리한다.
+ * 커스텀 id(`custom_N`)가 리스트 인덱스 기반이라, 남은 항목의 selectedIds도 새 인덱스에
+ * 맞춰 다시 계산해야 한다(그대로 두면 삭제 후 인덱스가 밀리면서 엉뚱한 항목이 선택된 것처럼 보일
+ * 수 있다).
+ */
+private fun RoutineManageUiState.withCategoryRemoved(deletedCategoryId: Long): RoutineManageUiState {
+    val removedTemplateIds = templateCache.values
+        .filter { it.categoryId == deletedCategoryId }
+        .map { it.templateId.toString() }
+        .toSet()
+    val survivingIndexed = customItems.withIndex()
+        .filter { it.value.categoryId != deletedCategoryId }
+    val newCustomItems = survivingIndexed.map { it.value }
+    val nonCustomSelectedIds = selectedIds.filterNot {
+        it.startsWith(CustomIdPrefix) || it in removedTemplateIds
+    }
+    val newCustomSelectedIds = survivingIndexed.mapIndexedNotNull { newIndex, indexed ->
+        "$CustomIdPrefix$newIndex".takeIf { "$CustomIdPrefix${indexed.index}" in selectedIds }
+    }
+    return copy(
+        templateCache = templateCache.filterValues { it.categoryId != deletedCategoryId },
+        customItems = newCustomItems,
+        selectedIds = (nonCustomSelectedIds + newCustomSelectedIds).toSet(),
+    )
+}

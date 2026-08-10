@@ -1,4 +1,4 @@
-package com.li_routi.feature.shopping.component
+package com.li_routi.feature.home.shop.component
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement

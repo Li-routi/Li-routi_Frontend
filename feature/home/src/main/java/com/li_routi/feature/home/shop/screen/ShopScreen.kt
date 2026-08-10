@@ -1,4 +1,4 @@
-package com.li_routi.feature.shopping.screen
+package com.li_routi.feature.home.shop.screen
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -39,11 +39,11 @@ import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.component.LiroutiSwitch
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
-import com.li_routi.feature.shopping.component.SampleShopItems
-import com.li_routi.feature.shopping.component.ShopItemGrid
-import com.li_routi.feature.shopping.component.ShopItemUiModel
-import com.li_routi.feature.shopping.component.ShopTopBar
-import com.li_routi.feature.shopping.navigation.ShopScreenActions
+import com.li_routi.feature.home.shop.component.SampleShopItems
+import com.li_routi.feature.home.shop.component.ShopItemGrid
+import com.li_routi.feature.home.shop.component.ShopItemUiModel
+import com.li_routi.feature.home.shop.component.ShopTopBar
+import com.li_routi.feature.home.shop.navigation.ShopScreenActions
 
 private val ShopCategoryTabLabels = listOf("전체", "카테고리", "카테고리")
 

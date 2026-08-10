@@ -97,12 +97,12 @@ private fun MonthlyDayCell(cell: MonthlyDayUiModel) {
     }
 }
 
-private val RedDay = Color(0xFFFF4242)
-private val BlueDay = Color(0xFF338AFF)
-private val BlackDay = Color(0xFF171719)
+internal val RedDay = Color(0xFFFF4242)
+internal val BlueDay = Color(0xFF338AFF)
+internal val BlackDay = Color(0xFF171719)
 
-/** Figma 목업(2026년 9월, 1일=화요일)을 그대로 옮긴 샘플 데이터. */
-private val SampleMonthlyDays = listOf(
+/** Figma 목업(2026년 9월, 1일=화요일)을 그대로 옮긴 샘플 데이터. [ReportScreen]의 기본값으로도 재사용된다. */
+internal val SampleMonthlyDays = listOf(
     null to 0f, null to 0f, 1 to 1f, 2 to 0f, 3 to 0f, 4 to 0f, 5 to (12f / 28f),
     6 to 0f, 7 to 0f, 8 to (19f / 28f), 9 to 0f, 10 to 0f, 11 to 0f, 12 to 0f,
     13 to 0f, 14 to 0f, 15 to 0f, 16 to 0f, 17 to 0f, 18 to 0f, 19 to 0f,

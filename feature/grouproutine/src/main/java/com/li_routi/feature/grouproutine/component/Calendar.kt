@@ -26,7 +26,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.Horizontal_Sgment
+import com.li_routi.core.designsystem.component.HorizontalSegment
 import com.li_routi.core.designsystem.component.LiroutiYearMonth
 import com.li_routi.core.designsystem.component.LiroutiYearMonthWheelPicker
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -118,7 +118,7 @@ fun CalendarSheet(
                 // HorizontalDoubleButton 내부의 기본 너비(containerWidth = 345.dp)는 Modifier.size()로
                 // 적용되는데, size()는 required가 아니라서 바깥에서 들어오는 제약(fillMaxWidth -> padding)에
                 // 맞춰 그대로 줄어든다 — 그래서 fillMaxWidth() + padding만으로 원하는 너비를 만들 수 있다.
-                Horizontal_Sgment(
+                HorizontalSegment(
                     leftLabel = "취소",
                     rightLabel = "확인",
                     onLeftClick = {

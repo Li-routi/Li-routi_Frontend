@@ -96,6 +96,7 @@ fun ChallengeNavHost(
                     participateChallengeUseCase = ChallengeContainer.participateChallengeUseCase,
                     leaveChallengeUseCase = ChallengeContainer.leaveChallengeUseCase,
                     reportVerificationUseCase = ChallengeContainer.reportVerificationUseCase,
+                    deleteVerificationUseCase = ChallengeContainer.deleteVerificationUseCase,
                     likeVerificationUseCase = ChallengeContainer.likeVerificationUseCase,
                     unlikeVerificationUseCase = ChallengeContainer.unlikeVerificationUseCase,
                     editVerificationUseCase = ChallengeContainer.editVerificationUseCase,

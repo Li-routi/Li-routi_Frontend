@@ -1,4 +1,4 @@
-package com.li_routi.feature.shopping.navigation
+package com.li_routi.feature.home.shop.navigation
 
 import androidx.activity.compose.BackHandler
 import androidx.compose.runtime.Composable
@@ -8,8 +8,8 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
-import com.li_routi.feature.shopping.vm.CurrencyShopUiEvent
-import com.li_routi.feature.shopping.vm.ShopUiEvent
+import com.li_routi.feature.home.shop.vm.CurrencyShopUiEvent
+import com.li_routi.feature.home.shop.vm.ShopUiEvent
 
 /**
  * 쇼핑 feature 진입점. 아이템 상점 ↔ 재화 구매를 feature 내부에서 연결한다.

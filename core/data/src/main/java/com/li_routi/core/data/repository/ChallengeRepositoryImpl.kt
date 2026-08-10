@@ -20,6 +20,8 @@ import com.li_routi.core.domain.challenge.LikeResult
 import com.li_routi.core.domain.challenge.MyCertificationPage
 import com.li_routi.core.domain.challenge.MyChallenge
 import com.li_routi.core.domain.challenge.Participation
+import com.li_routi.core.domain.challenge.ReportType
+import com.li_routi.core.domain.challenge.VerificationSort
 
 class ChallengeRepositoryImpl(
     private val api: ChallengeApiService,
@@ -48,9 +50,19 @@ class ChallengeRepositoryImpl(
     override suspend fun getVerifications(
         challengeId: Long,
         cursor: Long?,
+        cursorLikeCount: Long?,
         size: Int?,
+        sort: VerificationSort,
     ): ResultState<CertificationPage> = safeApiCall {
-        apiCall { api.getVerifications(challengeId = challengeId, cursor = cursor, size = size) }.toDomain()
+        apiCall {
+            api.getVerifications(
+                challengeId = challengeId,
+                cursor = cursor,
+                cursorLikeCount = cursorLikeCount,
+                size = size,
+                sort = sort.name,
+            )
+        }.toDomain()
     }
 
     override suspend fun participate(challengeId: Long): ResultState<Participation> = safeApiCall {
@@ -73,13 +85,29 @@ class ChallengeRepositoryImpl(
     override suspend fun getMyVerifications(
         challengeId: Long,
         cursor: Long?,
+        cursorLikeCount: Long?,
         size: Int?,
+        sort: VerificationSort,
     ): ResultState<MyCertificationPage> = safeApiCall {
         try {
-            apiCall { api.getMyVerifications(challengeId = challengeId, cursor = cursor, size = size) }.toDomain()
+            apiCall {
+                api.getMyVerifications(
+                    challengeId = challengeId,
+                    cursor = cursor,
+                    cursorLikeCount = cursorLikeCount,
+                    size = size,
+                    sort = sort.name,
+                )
+            }.toDomain()
         } catch (e: ApiException) {
             if (e.statusCode == 409) {
-                MyCertificationPage(certifications = emptyList(), currentStreak = 0, nextCursor = null, hasNext = false)
+                MyCertificationPage(
+                    certifications = emptyList(),
+                    currentStreak = 0,
+                    nextCursor = null,
+                    nextCursorLikeCount = null,
+                    hasNext = false,
+                )
             } else {
                 throw e
             }
@@ -104,12 +132,18 @@ class ChallengeRepositoryImpl(
         }.toDomain()
     }
 
+    override suspend fun deleteVerification(challengeId: Long, verificationId: Long): ResultState<Unit> = safeApiCall {
+        apiCall { api.deleteVerification(challengeId, verificationId) }
+        Unit
+    }
+
     override suspend fun reportVerification(
         challengeId: Long,
         verificationId: Long,
+        reportType: ReportType,
         reason: String?,
     ): ResultState<Unit> = safeApiCall {
-        apiCall { api.reportVerification(challengeId, verificationId, ReportRequest(reason)) }
+        apiCall { api.reportVerification(challengeId, verificationId, ReportRequest(reportType.name, reason)) }
         Unit
     }
 

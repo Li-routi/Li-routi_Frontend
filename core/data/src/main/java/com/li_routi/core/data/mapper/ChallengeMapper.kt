@@ -33,8 +33,8 @@ fun ChallengeSummaryResponse.toDomain(): Challenge = Challenge(
     name = name,
     description = description,
     imageUrl = imageUrl.orEmpty(),
-    category = ChallengeCategory.valueOf(category),
-    routineCycle = RoutineCycle.valueOf(routineCycle),
+    category = category.toChallengeCategory(),
+    routineCycle = routineCycle.toRoutineCycle(),
     reward = reward,
     participantCount = participantCount,
     verificationPostCount = verificationPostCount,
@@ -51,13 +51,12 @@ fun ChallengeDetailResponse.toDomain(): ChallengeDetail = ChallengeDetail(
     name = name,
     description = description,
     imageUrl = imageUrl.orEmpty(),
-    category = ChallengeCategory.valueOf(category),
-    routineCycle = RoutineCycle.valueOf(routineCycle),
+    category = category.toChallengeCategory(),
+    routineCycle = routineCycle.toRoutineCycle(),
     reward = reward,
     participating = participating,
     participantCount = participantCount,
     verificationPostCount = verificationPostCount,
-    todayCompletionCount = todayCompletionCount,
     verifiedInCurrentPeriod = verifiedInCurrentPeriod,
 )
 
@@ -75,6 +74,7 @@ fun VerificationResponse.toDomain(): Certification = Certification(
 fun VerificationFeedResponse.toDomain(): CertificationPage = CertificationPage(
     certifications = verifications.map { it.toDomain() },
     nextCursor = nextCursor,
+    nextCursorLikeCount = nextCursorLikeCount,
     hasNext = hasNext,
 )
 
@@ -91,6 +91,7 @@ fun MyVerificationFeedResponse.toDomain(): MyCertificationPage = MyCertification
     certifications = verifications.map { it.toDomain() },
     currentStreak = currentStreak,
     nextCursor = nextCursor,
+    nextCursorLikeCount = nextCursorLikeCount,
     hasNext = hasNext,
 )
 
@@ -124,7 +125,22 @@ fun MyChallengeSummaryResponse.toDomain(): MyChallenge = MyChallenge(
     name = name,
     description = description,
     imageUrl = imageUrl.orEmpty(),
-    category = ChallengeCategory.valueOf(category),
+    category = category.toChallengeCategory(),
 )
 
 fun MyChallengeListingResponse.toDomain(): List<MyChallenge> = challenges.map { it.toDomain() }
+
+/**
+ * 서버가 새 카테고리를 추가했는데 앱이 아직 대응하지 못한 경우를 대비한 방어 코드.
+ * 임의의 기존 값으로 대체하지 않고 [ChallengeCategory.UNKNOWN]으로 명시적으로 남겨서, "정말 그
+ * 카테고리"와 "매핑 실패"를 화면에서 구분할 수 있게 한다([ChallengeLabelMapper] 참고).
+ */
+private fun String.toChallengeCategory(): ChallengeCategory =
+    runCatching { ChallengeCategory.valueOf(this) }.getOrDefault(ChallengeCategory.UNKNOWN)
+
+/**
+ * 서버가 새 인증 주기를 추가했는데 앱이 아직 대응하지 못한 경우를 대비한 방어 코드.
+ * [RoutineCycle.UNKNOWN] 참고 — [toChallengeCategory]와 같은 이유다.
+ */
+private fun String.toRoutineCycle(): RoutineCycle =
+    runCatching { RoutineCycle.valueOf(this) }.getOrDefault(RoutineCycle.UNKNOWN)

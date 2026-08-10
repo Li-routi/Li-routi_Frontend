@@ -7,6 +7,7 @@ import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.ChallengeDetailResponse
 import com.li_routi.core.data.network.dto.response.ChallengeListingResponse
 import com.li_routi.core.data.network.dto.response.CreateVerificationResponse
+import com.li_routi.core.data.network.dto.response.DeleteVerificationResponse
 import com.li_routi.core.data.network.dto.response.LikeResponse
 import com.li_routi.core.data.network.dto.response.MyChallengeListingResponse
 import com.li_routi.core.data.network.dto.response.MyVerificationFeedResponse
@@ -41,14 +42,18 @@ interface ChallengeApiService {
     suspend fun getVerifications(
         @Path("challengeId") challengeId: Long,
         @Query("cursor") cursor: Long?,
+        @Query("cursorLikeCount") cursorLikeCount: Long?,
         @Query("size") size: Int?,
+        @Query("sort") sort: String,
     ): ApiResponse<VerificationFeedResponse>
 
     @GET("api/challenges/{challengeId}/verifications/me")
     suspend fun getMyVerifications(
         @Path("challengeId") challengeId: Long,
         @Query("cursor") cursor: Long?,
+        @Query("cursorLikeCount") cursorLikeCount: Long?,
         @Query("size") size: Int?,
+        @Query("sort") sort: String,
     ): ApiResponse<MyVerificationFeedResponse>
 
     /** 사진(presigned 업로드로 받은 mediaKey)과 코멘트로 인증 게시글을 작성한다. */
@@ -65,6 +70,12 @@ interface ChallengeApiService {
         @Path("verificationId") verificationId: Long,
         @Body request: UpdateVerificationMemoRequest,
     ): ApiResponse<UpdateVerificationMemoResponse>
+
+    @DELETE("api/challenges/{challengeId}/verifications/{verificationId}")
+    suspend fun deleteVerification(
+        @Path("challengeId") challengeId: Long,
+        @Path("verificationId") verificationId: Long,
+    ): ApiResponse<DeleteVerificationResponse>
 
     @POST("api/challenges/{challengeId}/verifications/{verificationId}/reports")
     suspend fun reportVerification(

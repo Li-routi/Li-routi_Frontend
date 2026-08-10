@@ -1,8 +1,8 @@
-package com.li_routi.feature.shopping.vm
+package com.li_routi.feature.home.shop.vm
 
-import com.li_routi.feature.shopping.component.CurrencyProductUiModel
-import com.li_routi.feature.shopping.component.SampleBlueGemProducts
-import com.li_routi.feature.shopping.component.SampleOrangeGemProducts
+import com.li_routi.feature.home.shop.component.CurrencyProductUiModel
+import com.li_routi.feature.home.shop.component.SampleBlueGemProducts
+import com.li_routi.feature.home.shop.component.SampleOrangeGemProducts
 
 /**
  * 재화 구매 화면 UI 상태.

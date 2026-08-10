@@ -8,7 +8,7 @@ import com.li_routi.core.data.network.dto.request.CreateRoutineCategoryRequest
 import com.li_routi.core.data.network.dto.request.CreateRoutinesRequest
 import com.li_routi.core.data.network.dto.request.UpdateMemberRoutineRequest
 import com.li_routi.core.data.network.dto.request.UpdateRoutineCategoryRequest
-import com.li_routi.core.data.network.dto.response.ApiResponse
+import com.li_routi.core.data.network.apiCall
 import com.li_routi.core.data.network.safeDataApiCall
 import com.li_routi.core.data.network.service.RoutineApiService
 import com.li_routi.core.domain.routine.CreateRoutineItem
@@ -26,22 +26,24 @@ class RoutineCatalogRepositoryImpl(
 ) : RoutineCatalogRepository {
 
     override suspend fun getRoutines(): ResultState<MemberRoutineList> = safeDataApiCall {
-        api.getRoutines().unwrap().toDomain()
+        apiCall { api.getRoutines() }.toDomain()
     }
 
     override suspend fun updateRoutine(
         routineId: Long,
         update: UpdateMemberRoutine,
     ): ResultState<CreatedRoutine> = safeDataApiCall {
-        api.updateRoutine(
-            routineId = routineId,
-            body = UpdateMemberRoutineRequest(
-                name = update.name,
-                endTime = update.endTime,
-                repeatDays = update.repeatDays,
-                alarmTime = update.alarmTime,
-            ),
-        ).unwrap().toDomain()
+        apiCall {
+            api.updateRoutine(
+                routineId = routineId,
+                body = UpdateMemberRoutineRequest(
+                    name = update.name,
+                    endTime = update.endTime,
+                    repeatDays = update.repeatDays,
+                    alarmTime = update.alarmTime,
+                ),
+            )
+        }.toDomain()
     }
 
     override suspend fun deleteRoutine(routineId: Long): ResultState<Unit> = safeDataApiCall {
@@ -50,19 +52,21 @@ class RoutineCatalogRepositoryImpl(
     }
 
     override suspend fun getCategories(): ResultState<RoutineCategoryList> = safeDataApiCall {
-        api.getCategories().unwrap().toDomain()
+        apiCall { api.getCategories() }.toDomain()
     }
 
     override suspend fun createCategory(
         name: String,
         color: String?,
     ): ResultState<RoutineCategory> = safeDataApiCall {
-        api.createCategory(
-            CreateRoutineCategoryRequest(
-                name = name.trim(),
-                color = color,
-            ),
-        ).unwrap().toDomain()
+        apiCall {
+            api.createCategory(
+                CreateRoutineCategoryRequest(
+                    name = name.trim(),
+                    color = color,
+                ),
+            )
+        }.toDomain()
     }
 
     override suspend fun updateCategory(
@@ -70,10 +74,12 @@ class RoutineCatalogRepositoryImpl(
         name: String,
         color: String?,
     ): ResultState<RoutineCategory> = safeDataApiCall {
-        api.updateCategory(
-            categoryId = categoryId,
-            body = UpdateRoutineCategoryRequest(name = name.trim(), color = color),
-        ).unwrap().toDomain()
+        apiCall {
+            api.updateCategory(
+                categoryId = categoryId,
+                body = UpdateRoutineCategoryRequest(name = name.trim(), color = color),
+            )
+        }.toDomain()
     }
 
     override suspend fun deleteCategory(categoryId: Long): ResultState<Unit> = safeDataApiCall {
@@ -83,20 +89,16 @@ class RoutineCatalogRepositoryImpl(
 
     override suspend fun getTemplates(categoryId: Long?): ResultState<List<RoutineTemplate>> =
         safeDataApiCall {
-            api.getTemplates(categoryId = categoryId).unwrap().toDomain()
+            apiCall { api.getTemplates(categoryId = categoryId) }.toDomain()
         }
 
     override suspend fun createRoutines(
         routines: List<CreateRoutineItem>,
     ): ResultState<CreateRoutinesResult> = safeDataApiCall {
-        api.createRoutines(
-            CreateRoutinesRequest(routines = routines.map { it.toRequest() }),
-        ).unwrap().toDomain()
+        apiCall {
+            api.createRoutines(
+                CreateRoutinesRequest(routines = routines.map { it.toRequest() }),
+            )
+        }.toDomain()
     }
-}
-
-private fun <T> ApiResponse<T>.unwrap(): T {
-    val result = result
-    if (!isSuccess || result == null) throw ApiException(message)
-    return result
 }

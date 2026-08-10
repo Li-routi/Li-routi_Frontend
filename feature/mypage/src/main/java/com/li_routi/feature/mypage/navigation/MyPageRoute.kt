@@ -71,6 +71,14 @@ fun MyPageRoute(
         }
     }
 
+    // 최초 프로필 조회 실패는 uiEvent가 아니라 상태로 온다(MyPageUiState.profileLoadError 문서 참고) —
+    // 구독 시작 전에 실패가 끝나도 놓치지 않게 하기 위함이다. 보여준 뒤 바로 지운다.
+    LaunchedEffect(uiState.profileLoadError) {
+        val message = uiState.profileLoadError ?: return@LaunchedEffect
+        Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        viewModel.onProfileLoadErrorShown()
+    }
+
     when (destination) {
         MyPageDestination.MyPage -> MyPageScreen(
             actions = viewModel,

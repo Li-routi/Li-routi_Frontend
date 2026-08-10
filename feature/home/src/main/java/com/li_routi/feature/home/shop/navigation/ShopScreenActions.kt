@@ -1,4 +1,4 @@
-package com.li_routi.feature.shopping.navigation
+package com.li_routi.feature.home.shop.navigation
 
 /**
  * `ShopScreen`(아이템 상점)에서 발생하는 사용자 이벤트에 대한 콜백 계약(contract).

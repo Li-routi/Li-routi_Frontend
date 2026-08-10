@@ -4,6 +4,7 @@ import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.repository.ChallengeRepositoryImpl
 import com.li_routi.core.domain.challenge.ChallengeRepository
 import com.li_routi.core.domain.challenge.CreateVerificationUseCase
+import com.li_routi.core.domain.challenge.DeleteVerificationUseCase
 import com.li_routi.core.domain.challenge.EditVerificationUseCase
 import com.li_routi.core.domain.challenge.GetChallengeDetailUseCase
 import com.li_routi.core.domain.challenge.GetChallengesUseCase
@@ -56,6 +57,10 @@ object ChallengeContainer {
 
     val reportVerificationUseCase: ReportVerificationUseCase by lazy {
         ReportVerificationUseCase(repository)
+    }
+
+    val deleteVerificationUseCase: DeleteVerificationUseCase by lazy {
+        DeleteVerificationUseCase(repository)
     }
 
     val likeVerificationUseCase: LikeVerificationUseCase by lazy {
