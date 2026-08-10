@@ -39,6 +39,17 @@ private data class RegisteredRoutineRef(
     val name: String,
 )
 
+/** 체크 해제된 템플릿 → 삭제할 member routineId. */
+private data class DeleteTarget(
+    val templateId: Long,
+    val routineId: Long,
+)
+
+private sealed interface RegisteredLoadResult {
+    data class Ok(val refs: List<RegisteredRoutineRef>) : RegisteredLoadResult
+    data class Failed(val message: String) : RegisteredLoadResult
+}
+
 data class RoutineManageUiState(
     val isLoading: Boolean = true,
     val isSubmitting: Boolean = false,
@@ -178,7 +189,10 @@ class RoutineManageViewModel(
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            registeredRoutineRefs = loadRegisteredRoutineRefs()
+            registeredRoutineRefs = when (val load = loadRegisteredRoutineRefs()) {
+                is RegisteredLoadResult.Ok -> load.refs
+                is RegisteredLoadResult.Failed -> emptyList()
+            }
             when (val categories = getRoutineCategoriesUseCase()) {
                 is ResultState.Success -> {
                     _uiState.update {
@@ -429,15 +443,25 @@ class RoutineManageViewModel(
 
         viewModelScope.launch {
             // 삭제 매핑은 제출 직전 최신 등록 목록으로 다시 잡는다(/routines + /home).
-            val registered = loadRegisteredRoutineRefs()
-            registeredRoutineRefs = registered
+            when (val load = loadRegisteredRoutineRefs()) {
+                is RegisteredLoadResult.Failed -> {
+                    _uiState.update {
+                        it.copy(isSubmitting = false, errorMessage = load.message)
+                    }
+                    return@launch
+                }
+                is RegisteredLoadResult.Ok -> {
+                    registeredRoutineRefs = load.refs
+                }
+            }
+            val registered = registeredRoutineRefs
             val latest = _uiState.value
 
             val toCreate = buildCreatePayload(latest)
             val uncheckedAdded = latest.knownAddedTemplateIds
                 .map { it.toString() }
                 .filter { it !in latest.selectedIds }
-            val toDelete = buildDeleteRoutineIds(latest, registered)
+            val toDelete = buildDeleteTargets(latest, registered)
 
             if (uncheckedAdded.isNotEmpty() && toDelete.isEmpty()) {
                 _uiState.update {
@@ -455,9 +479,19 @@ class RoutineManageViewModel(
                 return@launch
             }
 
-            for (routineId in toDelete) {
-                when (val result = deleteMemberRoutineUseCase(routineId)) {
-                    is ResultState.Success -> Unit
+            for (target in toDelete) {
+                when (val result = deleteMemberRoutineUseCase(target.routineId)) {
+                    is ResultState.Success -> {
+                        // 일부만 성공하고 이후 실패해도, 이미 지운 템플릿은 추적 집합에서 빼
+                        // 재제출 시 "삭제할 루틴을 찾지 못함"으로 막히지 않게 한다.
+                        _uiState.update { state ->
+                            val tid = target.templateId.toString()
+                            state.copy(
+                                knownAddedTemplateIds = state.knownAddedTemplateIds - target.templateId,
+                                userUncheckedIds = state.userUncheckedIds - tid,
+                            )
+                        }
+                    }
                     is ResultState.Error -> {
                         _uiState.update {
                             it.copy(isSubmitting = false, errorMessage = result.message)
@@ -529,9 +563,12 @@ class RoutineManageViewModel(
     }
 
     /** /api/routines + /api/home 의 내 루틴을 합쳐 삭제 매핑에 쓴다. */
-    private suspend fun loadRegisteredRoutineRefs(): List<RegisteredRoutineRef> {
-        val fromMember = when (val result = getMemberRoutinesUseCase()) {
-            is ResultState.Success -> result.data.routines.map {
+    private suspend fun loadRegisteredRoutineRefs(): RegisteredLoadResult {
+        val memberResult = getMemberRoutinesUseCase()
+        val homeResult = getHomeSummaryUseCase()
+
+        val fromMember = when (memberResult) {
+            is ResultState.Success -> memberResult.data.routines.map {
                 RegisteredRoutineRef(
                     routineId = it.routineId,
                     templateId = it.templateId,
@@ -539,10 +576,10 @@ class RoutineManageViewModel(
                     name = it.name,
                 )
             }
-            else -> emptyList()
+            else -> null
         }
-        val fromHome = when (val result = getHomeSummaryUseCase()) {
-            is ResultState.Success -> result.data.myRoutines.map {
+        val fromHome = when (homeResult) {
+            is ResultState.Success -> homeResult.data.myRoutines.map {
                 RegisteredRoutineRef(
                     routineId = it.routineId,
                     templateId = it.templateId,
@@ -550,10 +587,19 @@ class RoutineManageViewModel(
                     name = it.name,
                 )
             }
-            else -> emptyList()
+            else -> null
         }
-        return (fromMember + fromHome)
-            .distinctBy { it.routineId }
+
+        if (fromMember == null && fromHome == null) {
+            val message = (memberResult as? ResultState.Error)?.message
+                ?: (homeResult as? ResultState.Error)?.message
+                ?: "루틴 목록을 불러오지 못했습니다. 다시 시도해 주세요."
+            return RegisteredLoadResult.Failed(message)
+        }
+
+        return RegisteredLoadResult.Ok(
+            (fromMember.orEmpty() + fromHome.orEmpty()).distinctBy { it.routineId },
+        )
     }
 
     private fun buildCreatePayload(state: RoutineManageUiState): List<CreateRoutineItem> {
@@ -579,26 +625,45 @@ class RoutineManageViewModel(
     }
 
     /**
-     * 이미 등록돼 있던 템플릿을 체크 해제한 항목의 routineId 목록.
+     * 이미 등록돼 있던 템플릿을 체크 해제한 항목의 삭제 대상.
      * templateId 우선, 없으면 name+categoryId로 /routines·/home 스냅샷에서 찾는다.
+     * 이름 fallback은 아직 선택된 템플릿이 소유한 routine / 이미 다른 삭제에 쓰인 routine을 쓰지 않는다.
      */
-    private fun buildDeleteRoutineIds(
+    private fun buildDeleteTargets(
         state: RoutineManageUiState,
         registered: List<RegisteredRoutineRef>,
-    ): List<Long> {
+    ): List<DeleteTarget> {
+        val selectedTemplateIds = state.selectedIds.mapNotNull { it.toLongOrNull() }.toSet()
+        val protectedRoutineIds = registered
+            .asSequence()
+            .filter { ref -> ref.templateId != null && ref.templateId in selectedTemplateIds }
+            .map { it.routineId }
+            .toSet()
+        val claimedRoutineIds = mutableSetOf<Long>()
+
         return state.knownAddedTemplateIds
             .asSequence()
             .filter { templateId -> templateId.toString() !in state.selectedIds }
             .mapNotNull { templateId ->
                 val template = state.templateCache[templateId]
-                registered.firstOrNull { it.templateId == templateId }?.routineId
-                    ?: template?.let { t ->
-                        registered.firstOrNull {
-                            it.name == t.name && it.categoryId == t.categoryId
+                val byTemplateId = registered.firstOrNull { it.templateId == templateId }?.routineId
+                val byNameFallback = if (byTemplateId == null) {
+                    template?.let { t ->
+                        registered.firstOrNull { ref ->
+                            ref.name == t.name &&
+                                ref.categoryId == t.categoryId &&
+                                ref.routineId !in protectedRoutineIds &&
+                                ref.routineId !in claimedRoutineIds &&
+                                (ref.templateId == null || ref.templateId !in selectedTemplateIds)
                         }?.routineId
                     }
+                } else {
+                    null
+                }
+                val routineId = byTemplateId ?: byNameFallback ?: return@mapNotNull null
+                if (!claimedRoutineIds.add(routineId)) return@mapNotNull null
+                DeleteTarget(templateId = templateId, routineId = routineId)
             }
-            .distinct()
             .toList()
     }
 }

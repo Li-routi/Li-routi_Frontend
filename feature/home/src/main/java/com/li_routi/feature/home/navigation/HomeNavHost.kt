@@ -1,11 +1,7 @@
 package com.li_routi.feature.home.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -59,13 +55,8 @@ fun HomeNavHost(
             val refreshHomeTick by entry.savedStateHandle
                 .getStateFlow(KeyRefreshHome, 0)
                 .collectAsStateWithLifecycle()
-            var refreshFromVerificationTick by remember { mutableStateOf(0) }
-            LaunchedEffect(verificationRefreshSignal) {
-                if (verificationRefreshSignal > 0) {
-                    refreshFromVerificationTick = verificationRefreshSignal
-                }
-            }
-            val requestRefreshTick = maxOf(refreshHomeTick, refreshFromVerificationTick)
+            // 두 카운터를 더해야 한쪽만 증가해도 LaunchedEffect 키가 바뀐다(maxOf는 유실 가능).
+            val requestRefreshTick = refreshHomeTick + verificationRefreshSignal
 
             HomeRoute(
                 onEvent = { event ->

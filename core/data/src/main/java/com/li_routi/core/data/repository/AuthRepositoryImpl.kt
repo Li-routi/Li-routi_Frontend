@@ -12,6 +12,7 @@ import com.li_routi.core.data.network.dto.request.UpdateProfileRequest
 import com.li_routi.core.data.network.dto.request.WithdrawRequest
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.NotificationApiService
+import com.li_routi.core.data.notification.FcmDeviceSyncGate
 import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.data.preference.FcmTokenPreference
 import com.li_routi.core.domain.auth.AuthRepository
@@ -54,13 +55,16 @@ class AuthRepositoryImpl(
     // 로그아웃 응답은 성공해도 result가 null이라 non-null 결과를 요구하는 apiCall()을 못 쓰고,
     // isSuccess만 직접 확인한다.
     // FCM 해제는 인증 헤더가 유효한 상태에서 먼저 시도한다(실패해도 로그아웃은 진행).
+    // 등록과 같은 게이트로 직렬화해, 진행 중 등록이 로그아웃 이후에 토큰을 다시 심지 못하게 한다.
     override suspend fun logout(): ResultState<Unit> = safeApiCall {
-        unregisterFcmDeviceQuietly()
-        val accessToken = tokenPreference.accessTokenFlow.first().orEmpty()
-        val response = api.logout(LogoutRequest(accessToken = accessToken))
-        if (!response.isSuccess) throw ApiException(response.message)
-        fcmTokenPreference.clear()
-        tokenPreference.clear()
+        FcmDeviceSyncGate.withExclusive {
+            unregisterFcmDeviceQuietly()
+            val accessToken = tokenPreference.accessTokenFlow.first().orEmpty()
+            val response = api.logout(LogoutRequest(accessToken = accessToken))
+            if (!response.isSuccess) throw ApiException(response.message)
+            fcmTokenPreference.clear()
+            tokenPreference.clear()
+        }
     }
 
     override suspend fun getMyInfo(): ResultState<MyInfo> = safeApiCall {
@@ -85,11 +89,13 @@ class AuthRepositoryImpl(
 
     // 탈퇴 응답도 로그아웃과 동일하게 non-null 결과를 요구하는 apiCall()을 못 써서 isSuccess만 직접 확인한다.
     override suspend fun withdraw(): ResultState<Unit> = safeApiCall {
-        unregisterFcmDeviceQuietly()
-        val response = api.withdraw(WithdrawRequest(confirmation = WithdrawConfirmation))
-        if (!response.isSuccess) throw ApiException(response.message)
-        fcmTokenPreference.clear()
-        tokenPreference.clear()
+        FcmDeviceSyncGate.withExclusive {
+            unregisterFcmDeviceQuietly()
+            val response = api.withdraw(WithdrawRequest(confirmation = WithdrawConfirmation))
+            if (!response.isSuccess) throw ApiException(response.message)
+            fcmTokenPreference.clear()
+            tokenPreference.clear()
+        }
     }
 
     private suspend fun unregisterFcmDeviceQuietly() {

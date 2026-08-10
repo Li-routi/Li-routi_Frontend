@@ -14,6 +14,7 @@ import androidx.core.content.ContextCompat
 import com.cmc.li_routi_frontend.MainActivity
 import com.cmc.li_routi_frontend.R
 import com.google.firebase.messaging.RemoteMessage
+import java.util.concurrent.atomic.AtomicInteger
 
 /**
  * FCM 포그라운드 메시지를 시스템 트레이에 표시한다.
@@ -23,6 +24,7 @@ object FcmNotificationPresenter {
 
     const val ChannelId = "lirouti_default"
     private const val ChannelName = "리루티 알림"
+    private val nextNotificationId = AtomicInteger(1)
 
     fun ensureChannel(context: Context) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.O) return
@@ -69,9 +71,10 @@ object FcmNotificationPresenter {
             .setPriority(NotificationCompat.PRIORITY_DEFAULT)
             .build()
 
-        val id = (System.currentTimeMillis() % Int.MAX_VALUE).toInt()
+        val id = nextNotificationId.getAndIncrement()
+        val tag = message.messageId?.takeIf { it.isNotEmpty() } ?: "fcm"
         runCatching {
-            NotificationManagerCompat.from(context).notify(id, notification)
+            NotificationManagerCompat.from(context).notify(tag, id, notification)
         }
     }
 
