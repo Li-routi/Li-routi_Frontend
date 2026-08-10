@@ -5,109 +5,105 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.material3.Text
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.shadow
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
-import com.li_routi.core.designsystem.component.LiroutiDivider
-import com.li_routi.core.designsystem.component.LiroutiDividerThickness
+import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.component.LiroutiLabel
+import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
-import com.li_routi.feature.mypage.component.AchievementBarcodeIcon
-import com.li_routi.feature.mypage.component.AchievementCouponIcon
+import com.li_routi.feature.mypage.component.AchievementBadgeGrid
+import com.li_routi.feature.mypage.component.AchievementBadgeUiModel
 import com.li_routi.feature.mypage.component.AchievementListItem
-import com.li_routi.feature.mypage.component.AchievementStatUiModel
-import com.li_routi.feature.mypage.component.AchievementSummaryCard
+import com.li_routi.feature.mypage.component.AchievementRarity
 import com.li_routi.feature.mypage.component.AchievementUiModel
-import com.li_routi.feature.mypage.component.AchievementWalletIcon
 import com.li_routi.feature.mypage.component.EditProfileTopBar
 
-/** 업적 필터("전체"/"시작"/"달성"/"스페셜"). Figma node `205:18265`("Filter") 기준. */
-enum class AchievementFilter(val label: String) {
+/** 업적 상태 탭("전체"/"진행중"/"달성"). Figma node `4714:40612`("Tab") 기준. */
+enum class AchievementStatusTab(val label: String) {
     All("전체"),
-    InProgress("시작"),
+    InProgress("진행중"),
     Achieved("달성"),
-    Special("스페셜"),
 }
 
+private val CountTextStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
+
 /**
- * 업적 화면. Figma node `205:18214`("logged in") 기준 — 마이페이지 "업적" 메뉴로 진입한다.
+ * 업적 화면. Figma node `4201:34400`(전체/진행중)·`4869:37738`(달성) 기준 — 마이페이지 "업적" 메뉴로
+ * 진입한다.
  *
- * 요약 카드(대표 배지/캐릭터/통계) + 필터 칩 + 진행 중 업적 목록으로 구성된다.
+ * 상태 탭(전체/진행중/달성) + 등급 필터 칩(전체/레어/에픽/유니크)으로 구성되고, "달성" 탭만 진행률 카드
+ * 목록 대신 3열 배지 그리드를 보여준다. 필터링은 아직 순수 UI 상태일 뿐 — 실제 데이터 연동 전이라
+ * 탭/칩을 눌러도 목록 내용은 그대로다.
  */
 @Composable
 fun AchievementScreen(
     onBackClick: () -> Unit,
     modifier: Modifier = Modifier,
     achievements: List<AchievementUiModel> = SampleAchievements,
-    acquiredCount: String = "8/36",
-    inProgressCount: String = "12",
-    specialCount: String = "1/4",
+    achievedBadges: List<AchievementBadgeUiModel> = SampleAchievedBadges,
 ) {
-    var selectedFilter by remember { mutableStateOf(AchievementFilter.InProgress) }
+    var selectedTab by remember { mutableStateOf(AchievementStatusTab.All) }
+    var selectedRarity by remember { mutableStateOf<AchievementRarity?>(null) }
 
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundSecondary),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
-        EditProfileTopBar(
-            title = "업적",
-            onBackClick = onBackClick,
-            modifier = Modifier.background(LiroutiTheme.colors.backgroundDefault),
+        EditProfileTopBar(title = "업적", onBackClick = onBackClick)
+        LiroutiLineTab(
+            tabs = AchievementStatusTab.entries.map { it.label },
+            selectedIndex = selectedTab.ordinal,
+            onTabSelected = { index -> selectedTab = AchievementStatusTab.entries[index] },
+            equalWidth = true,
         )
         Column(
             modifier = Modifier
                 .weight(1f)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(28.dp),
+                .verticalScroll(rememberScrollState())
+                .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            Column(modifier = Modifier.padding(top = 25.dp, start = 16.dp, end = 16.dp)) {
-                AchievementSummaryCard(
-                    representativeBadges = listOf("대표 배지", "대표 배지"),
-                    highlightText = "첫 인증!",
-                    stats = listOf(
-                        AchievementStatUiModel("획득", acquiredCount) { AchievementWalletIcon() },
-                        AchievementStatUiModel("진행 중", inProgressCount) { AchievementCouponIcon() },
-                        AchievementStatUiModel("스페셜", specialCount) { AchievementBarcodeIcon() },
-                    ),
-                )
-            }
-            LiroutiDivider(thickness = LiroutiDividerThickness.ExtraBold, color = LiroutiTheme.colors.borderSub)
-            Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
-            ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    AchievementFilter.entries.forEach { filter ->
-                        LiroutiLabel(
-                            text = filter.label,
-                            selected = filter == selectedFilter,
-                            onClick = { selectedFilter = filter },
-                        )
-                    }
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                LiroutiLabel(text = "전체", selected = selectedRarity == null, onClick = { selectedRarity = null })
+                AchievementRarity.entries.forEach { rarity ->
+                    LiroutiLabel(
+                        text = rarity.label,
+                        selected = selectedRarity == rarity,
+                        onClick = { selectedRarity = rarity },
+                    )
                 }
-                Column(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .shadow(elevation = 2.dp, shape = RoundedCornerShape(6.dp))
-                        .background(LiroutiTheme.colors.backgroundDefault, RoundedCornerShape(6.dp))
-                        .padding(20.dp),
-                    verticalArrangement = Arrangement.spacedBy(20.dp),
-                ) {
-                    achievements.forEach { item ->
-                        AchievementListItem(item = item)
+            }
+            if (selectedTab == AchievementStatusTab.Achieved) {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "총 ${achievedBadges.size}개 달성",
+                        style = CountTextStyle,
+                        color = LiroutiTheme.colors.labelSub,
+                    )
+                    AchievementBadgeGrid(badges = achievedBadges)
+                }
+            } else {
+                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    Text(
+                        text = "총 ${achievements.size}개의 업적이 있어요",
+                        style = CountTextStyle,
+                        color = LiroutiTheme.colors.labelSub,
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        achievements.forEach { item -> AchievementListItem(item = item) }
                     }
                 }
             }
@@ -116,9 +112,35 @@ fun AchievementScreen(
 }
 
 private val SampleAchievements = listOf(
-    AchievementUiModel(title = "친구 부자", rewardBadges = listOf("50코인", "배지"), progressLabel = "5/7", progress = 5f / 7f),
-    AchievementUiModel(title = "꾸준한 루티너", rewardBadges = emptyList(), progressLabel = "50코인", progress = 0.6f),
-    AchievementUiModel(title = "소셜 스타", rewardBadges = emptyList(), progressLabel = "50코인", progress = 0.6f),
+    AchievementUiModel(
+        title = "불꽃연속",
+        rarity = AchievementRarity.Rare,
+        description = "30일 연속 루틴을 달성하세요",
+        progressLabel = "27/30",
+        progress = 27f / 30f,
+        rewardText = "+50코인",
+    ),
+    AchievementUiModel(
+        title = "불꽃연속",
+        rarity = AchievementRarity.Epic,
+        description = "30일 연속 루틴을 달성하세요",
+        progressLabel = "27/30",
+        progress = 27f / 30f,
+    ),
+    AchievementUiModel(
+        title = "친구 부자",
+        rarity = AchievementRarity.Unique,
+        description = "친구 7명을 초대하세요",
+        progressLabel = "5/7",
+        progress = 5f / 7f,
+    ),
+)
+
+private val SampleAchievedBadges = listOf(
+    AchievementBadgeUiModel("불꽃 연속"),
+    AchievementBadgeUiModel("친구 부자"),
+    AchievementBadgeUiModel("소셜 스타"),
+    AchievementBadgeUiModel("꾸준한 루티너"),
 )
 
 @Preview(showBackground = true, heightDp = 900)
