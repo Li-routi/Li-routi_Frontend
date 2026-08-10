@@ -3,6 +3,7 @@ import java.util.Properties
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
+    alias(libs.plugins.google.services)
 }
 
 val localProperties = Properties().apply {
@@ -108,4 +109,8 @@ dependencies {
 
     // Kakao SDK (Application에서 KakaoSdk.init 호출용)
     implementation(libs.kakao.sdk.user)
+
+    // Firebase (FCM)
+    implementation(platform(libs.firebase.bom))
+    implementation(libs.firebase.messaging.ktx)
 }

@@ -6,6 +6,7 @@ import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +16,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -48,10 +50,13 @@ import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.SheetState
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -63,9 +68,11 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
@@ -180,6 +187,7 @@ fun GroupRoutineRoute(
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
         onTodoCheckedChange = viewModel::onTodoCheckedChange,
         onCertificationTabClick = viewModel::onCertificationTabClick,
+        onCertificationMemberClick = viewModel::onCertificationMemberClick,
         onCertificationSummaryClick = viewModel::onCertificationSummaryClick,
         onDismissNewCertificationDialog = viewModel::onDismissNewCertificationDialog,
         onMemberClick = viewModel::onMemberClick,
@@ -243,6 +251,7 @@ private fun GroupRoutineScreen(
     onCreateRoomDoneClick: () -> Unit,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
+    onCertificationMemberClick: (Long?) -> Unit,
     onCertificationSummaryClick: () -> Unit,
     onDismissNewCertificationDialog: () -> Unit,
     onMemberClick: (Long) -> Unit,
@@ -297,7 +306,7 @@ private fun GroupRoutineScreen(
             GroupRoutineScreenMode.CertificationCollection -> CertificationCollectionScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
-                onCertificationTabClick = onCertificationTabClick,
+                onCertificationMemberClick = onCertificationMemberClick,
                 onTabSelected = onTabSelected,
             )
 
@@ -1909,8 +1918,8 @@ private fun GroupRoutineDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val routine = uiState.selectedRoutine ?: return
+    var isRoutineSheetExpanded by remember(routine.id) { mutableStateOf(false) }
 
-    // GroupRoutineListScreen과 동일한 이유로 헤더/GNB를 오버레이가 아닌 Column의 고정 영역으로 분리한다.
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -1920,25 +1929,30 @@ private fun GroupRoutineDetailScreen(
             title = routine.title,
             showBack = true,
             showActions = true,
+            chatBadgeCount = uiState.unreadChatCount,
             onBackClick = onBackClick,
             onChatClick = onChatClick,
             onSettingsClick = onSettingsClick,
         )
 
         Column(modifier = Modifier.weight(1f)) {
-            DetailMemberSection(
-                title = routine.title,
-                members = uiState.members,
-                onCertificationClick = onCertificationSummaryClick,
-                onMessageEditClick = onMessageEditClick,
-                onInviteCodeClick = onInviteCodeClick,
-                onMemberClick = onMemberClick,
-            )
+            if (!isRoutineSheetExpanded) {
+                DetailMemberSection(
+                    title = routine.title,
+                    members = uiState.members,
+                    onCertificationClick = onCertificationSummaryClick,
+                    onMessageEditClick = onMessageEditClick,
+                    onInviteCodeClick = onInviteCodeClick,
+                    onMemberClick = onMemberClick,
+                )
+            }
             DetailRoutineTabSheet(
                 title = "${routine.title}의 루틴",
                 todos = uiState.todos,
                 progressLabel = uiState.todoProgressLabel,
                 onTodoCheckedChange = onTodoCheckedChange,
+                expanded = isRoutineSheetExpanded,
+                onExpandedChange = { isRoutineSheetExpanded = it },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -2057,20 +2071,39 @@ private fun DetailRoutineTabSheet(
     todos: List<GroupTodoUiModel>,
     progressLabel: String,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
+    expanded: Boolean,
+    onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val dragThresholdPx = with(LocalDensity.current) { 24.dp.toPx() }
+
     Column(
         modifier = modifier
             .fillMaxWidth()
             .fillMaxHeight()
-            .clip(RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
+            .clip(if (expanded) RoundedCornerShape(0.dp) else RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
             .background(Color.White),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(20.dp),
+                .height(20.dp)
+                .pointerInput(expanded) {
+                    var dragAmountSum = 0f
+                    detectVerticalDragGestures(
+                        onDragStart = { dragAmountSum = 0f },
+                        onVerticalDrag = { _, dragAmount ->
+                            dragAmountSum += dragAmount
+                        },
+                        onDragEnd = {
+                            when {
+                                dragAmountSum < -dragThresholdPx -> onExpandedChange(true)
+                                dragAmountSum > dragThresholdPx -> onExpandedChange(false)
+                            }
+                        },
+                    )
+                },
             contentAlignment = Alignment.Center,
         ) {
             Box(
@@ -2084,7 +2117,7 @@ private fun DetailRoutineTabSheet(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                .padding(start = 16.dp, end = 16.dp, bottom = if (expanded) 12.dp else 16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
@@ -2231,7 +2264,7 @@ private fun DetailRoutineTodoRow(
 private fun CertificationCollectionScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
-    onCertificationTabClick: (Boolean) -> Unit,
+    onCertificationMemberClick: (Long?) -> Unit,
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -2254,9 +2287,10 @@ private fun CertificationCollectionScreen(
             ) {
                 item {
                     CertificationFeedCard(
-                        posts = if (uiState.showOnlyMyCertifications) uiState.posts.filter { it.isMine } else uiState.posts,
-                        showOnlyMine = uiState.showOnlyMyCertifications,
-                        onTabClick = onCertificationTabClick,
+                        posts = uiState.visibleCertificationPosts,
+                        members = uiState.members,
+                        selectedMemberId = uiState.selectedCertificationMemberId,
+                        onMemberClick = onCertificationMemberClick,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
@@ -3409,24 +3443,58 @@ private fun TodoRow(
 @Composable
 private fun CertificationFeedCard(
     posts: List<CertificationPostUiModel>,
-    showOnlyMine: Boolean,
-    onTabClick: (Boolean) -> Unit,
+    members: List<GroupMemberUiModel>,
+    selectedMemberId: Long?,
+    onMemberClick: (Long?) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
         modifier = modifier
-            .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
-            .padding(16.dp),
+            .fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            FeedTab(text = "인증", selected = !showOnlyMine, onClick = { onTabClick(false) })
-            FeedTab(text = "내 인증 보기", selected = showOnlyMine, onClick = { onTabClick(true) })
+        LazyRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            item {
+                CertificationMemberChip(
+                    text = "전체",
+                    selected = selectedMemberId == null,
+                    onClick = { onMemberClick(null) },
+                )
+            }
+            items(members, key = { member -> member.id }) { member ->
+                CertificationMemberChip(
+                    text = member.name,
+                    selected = selectedMemberId == member.id,
+                    onClick = { onMemberClick(member.id) },
+                )
+            }
         }
         posts.forEach { post -> CertificationPostItem(post = post) }
     }
+}
+
+@Composable
+private fun CertificationMemberChip(
+    text: String,
+    selected: Boolean,
+    onClick: () -> Unit,
+) {
+    Text(
+        text = if (selected) "✓ $text" else text,
+        color = if (selected) Color.White else LabelDefault,
+        style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+        modifier = Modifier
+            .height(32.dp)
+            .clip(RoundedCornerShape(40.dp))
+            .background(if (selected) PrimaryNormal else Color.White)
+            .border(
+                width = 1.dp,
+                color = if (selected) PrimaryNormal else BorderDefault,
+                shape = RoundedCornerShape(40.dp),
+            )
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 7.dp),
+    )
 }
 
 @Composable
@@ -3556,6 +3624,7 @@ private fun GroupRoutineTopBar(
     showAdd: Boolean = false,
     showClose: Boolean = false,
     showActions: Boolean = false,
+    chatBadgeCount: Int = 0,
     onBackClick: () -> Unit = {},
     onAddClick: () -> Unit = {},
     onCloseClick: () -> Unit = {},
@@ -3621,7 +3690,7 @@ private fun GroupRoutineTopBar(
                   ) {
                       TopBarActionButton(
                           iconRes = DesignSystemR.drawable.chat,
-                          badgeCount = 3,
+                          badgeCount = chatBadgeCount,
                           onClick = onChatClick,
                       )
                       TopBarActionButton(
@@ -3681,44 +3750,110 @@ private fun TopBarActionButton(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun GroupRoutineActionSheet(
+private fun GroupRoutineActionSheetContent(
     onDismissRequest: () -> Unit,
     onCreateRoomClick: () -> Unit,
     onJoinByCodeClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
 ) {
-    LiroutiBottomSheet(
+    ModalBottomSheet(
         onDismissRequest = onDismissRequest,
-        contentPadding = PaddingValues(24.dp),
+        modifier = modifier,
+        sheetState = sheetState,
+        shape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+        containerColor = LiroutiTheme.colors.backgroundDefault,
+        contentWindowInsets = { WindowInsets(0, 0, 0, 0) },
+        dragHandle = {
+            Box(
+                modifier = Modifier
+                    .padding(top = 8.dp)
+                    .width(44.dp)
+                    .height(4.dp)
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(Color(0xFFDEDEDE)),
+            )
+        },
     ) {
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            BottomSheetActionRow(label = "방 만들기", onClick = onCreateRoomClick)
-            BottomSheetActionRow(label = "초대코드로 참여", onClick = onJoinByCodeClick)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(start = 24.dp, end = 24.dp, top = 14.dp, bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp),
+        ) {
+            GroupRoutineActionSheetItem(
+                label = "방 만들기",
+                description = "친구들과 함께할 방을 새로 만들어요",
+                onClick = {
+                    onCreateRoomClick()
+                    onDismissRequest()
+                },
+            )
+            GroupRoutineActionSheetItem(
+                label = "초대코드로 참여",
+                description = "받은 코드로 방에 바로 들어가요",
+                onClick = {
+                    onJoinByCodeClick()
+                    onDismissRequest()
+                },
+            )
         }
     }
 }
 
 @Composable
-private fun BottomSheetActionRow(
+private fun GroupRoutineActionSheetItem(
     label: String,
+    description: String,
     onClick: () -> Unit,
+    modifier: Modifier = Modifier,
 ) {
     Row(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
-            .height(44.dp)
-            .clickable(onClick = onClick),
+            .clip(RoundedCornerShape(6.dp))
+            .background(LiroutiTheme.colors.backgroundFill)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 12.dp, vertical = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Text(
-            text = label,
-            color = LabelDefault,
-            style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Medium),
-            modifier = Modifier.weight(1f),
+        Column(modifier = Modifier.weight(1f)) {
+            Text(
+                text = label,
+                style = LiroutiTheme.typography.body2LongSemiBold.copy(fontWeight = FontWeight.Bold),
+                color = LiroutiTheme.colors.labelDefault,
+            )
+            Text(
+                text = description,
+                style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
+                color = LiroutiTheme.colors.labelInfo,
+            )
+        }
+        Image(
+            painter = painterResource(id = DesignSystemR.drawable.chevron__right),
+            contentDescription = null,
+            modifier = Modifier.size(20.dp),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelDefault),
         )
-        Text(text = ">", color = LabelDefault, fontSize = 20.sp)
     }
 }
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun GroupRoutineActionSheet(
+    onDismissRequest: () -> Unit,
+    onCreateRoomClick: () -> Unit,
+    onJoinByCodeClick: () -> Unit,
+) {
+    GroupRoutineActionSheetContent(
+        onDismissRequest = onDismissRequest,
+        onCreateRoomClick = onCreateRoomClick,
+        onJoinByCodeClick = onJoinByCodeClick,
+    )
+}
+
 
 @Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
@@ -3758,6 +3893,7 @@ private fun GroupRoutineListPreview() {
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
+            onCertificationMemberClick = {},
             onCertificationSummaryClick = {},
             onDismissNewCertificationDialog = {},
             onMemberClick = {},
@@ -3822,6 +3958,7 @@ private fun CreateRoomNamePreview() {
               onCreateRoomDoneClick = {},
             onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
+            onCertificationMemberClick = {},
             onCertificationSummaryClick = {},
             onDismissNewCertificationDialog = {},
             onMemberClick = {},

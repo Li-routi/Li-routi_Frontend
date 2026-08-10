@@ -2,6 +2,7 @@ package com.li_routi.feature.mypage.util
 
 import android.content.Context
 import android.graphics.Bitmap
+import android.graphics.BitmapFactory
 import android.graphics.ImageDecoder
 import android.graphics.Matrix
 import android.media.ExifInterface
@@ -36,12 +37,15 @@ internal fun readProfileImageUpload(context: Context, uri: Uri): ProfileImageUpl
 
     bitmap = bitmap.scaleDownTo(PROFILE_IMAGE_MAX_DIMENSION)
 
-    val orientation = runCatching {
-        resolver.openInputStream(uri)?.use {
-            ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-        }
-    }.getOrNull() ?: ExifInterface.ORIENTATION_NORMAL
-    bitmap = bitmap.rotateForExifOrientation(orientation)
+    // ImageDecoder(API 28+)는 EXIF 방향을 이미 반영해 디코딩하므로, 그 이하에서만 수동 회전한다.
+    if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
+        val orientation = runCatching {
+            resolver.openInputStream(uri)?.use {
+                ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
+            }
+        }.getOrNull() ?: ExifInterface.ORIENTATION_NORMAL
+        bitmap = bitmap.rotateForExifOrientation(orientation)
+    }
 
     val bytes = ByteArrayOutputStream().use { output ->
         bitmap.compress(Bitmap.CompressFormat.JPEG, PROFILE_IMAGE_JPEG_QUALITY, output)
@@ -67,10 +71,32 @@ private fun decodeBitmap(context: Context, uri: Uri, maxDimension: Int): Bitmap?
             }
         }
     } else {
-        @Suppress("DEPRECATION")
-        MediaStore.Images.Media.getBitmap(context.contentResolver, uri)
+        decodeDownsampledBitmap(context, uri, maxDimension)
     }
 }.getOrNull()
+
+/** API 28 미만에서 전체 해상도 디코딩으로 인한 메모리 초과를 피하기 위해 경계만 먼저 읽어 inSampleSize를 계산한 뒤 다운샘플링해 디코딩한다. */
+private fun decodeDownsampledBitmap(context: Context, uri: Uri, maxDimension: Int): Bitmap? {
+    val resolver = context.contentResolver
+
+    val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+    val hasBounds = resolver.openInputStream(uri)?.use {
+        BitmapFactory.decodeStream(it, null, bounds)
+        true
+    } ?: false
+
+    @Suppress("DEPRECATION")
+    if (!hasBounds) return MediaStore.Images.Media.getBitmap(resolver, uri)
+
+    val longerSide = max(bounds.outWidth, bounds.outHeight)
+    var inSampleSize = 1
+    while (longerSide / (inSampleSize * 2) >= maxDimension) {
+        inSampleSize *= 2
+    }
+
+    val options = BitmapFactory.Options().apply { this.inSampleSize = inSampleSize }
+    return resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, options) }
+}
 
 private fun Bitmap.scaleDownTo(maxDimension: Int): Bitmap {
     val longerSide = max(width, height)

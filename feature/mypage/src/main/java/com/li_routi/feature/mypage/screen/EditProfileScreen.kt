@@ -27,6 +27,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -65,7 +66,7 @@ fun EditProfileScreen(
     modifier: Modifier = Modifier,
 ) {
     var nickname by remember(initialNickname) { mutableStateOf(initialNickname) }
-    var selectedImageUri by remember { mutableStateOf<Uri?>(null) }
+    var selectedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val galleryLauncher = rememberLauncherForActivityResult(
