@@ -34,6 +34,20 @@ import com.li_routi.core.designsystem.component.LiroutiBottomSheetCloseButton
 import com.li_routi.core.designsystem.component.LiroutiBottomSheetDeleteButton
 import com.li_routi.core.designsystem.component.LiroutiDivider
 import com.li_routi.core.designsystem.component.LiroutiTextField
+import com.li_routi.core.designsystem.foundation.color.CategoryBlack
+import com.li_routi.core.designsystem.foundation.color.CategoryBlackBorder
+import com.li_routi.core.designsystem.foundation.color.CategoryBlue
+import com.li_routi.core.designsystem.foundation.color.CategoryBlueBorder
+import com.li_routi.core.designsystem.foundation.color.CategoryGreen
+import com.li_routi.core.designsystem.foundation.color.CategoryGreenBorder
+import com.li_routi.core.designsystem.foundation.color.CategoryMagenta
+import com.li_routi.core.designsystem.foundation.color.CategoryMagentaBorder
+import com.li_routi.core.designsystem.foundation.color.CategoryOrange
+import com.li_routi.core.designsystem.foundation.color.CategoryOrangeBorder
+import com.li_routi.core.designsystem.foundation.color.CategoryRed
+import com.li_routi.core.designsystem.foundation.color.CategoryRedBorder
+import com.li_routi.core.designsystem.foundation.color.CategoryYellow
+import com.li_routi.core.designsystem.foundation.color.CategoryYellowBorder
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -51,13 +65,13 @@ enum class CategoryColor(
     val swatch: Color,
     val border: Color,
 ) {
-    Red("빨강", Color(0xFFFF5660), Color(0xFFFF1D37)),
-    Orange("주황", Color(0xFFFFA04A), Color(0xFFFF8500)),
-    Yellow("노랑", Color(0xFFFFD52B), Color(0xFFFFC900)),
-    Green("초록", Color(0xFF2FD571), Color(0xFF00C94D)),
-    Blue("파랑", Color(0xFF19A2FF), Color(0xFF008DFF)),
-    Magenta("마젠타", Color(0xFFE954EE), Color(0xFFDD22E5)),
-    Black("검정", Color(0xFF37383C), Color(0xFF000000)),
+    Blue("파랑", CategoryBlue, CategoryBlueBorder),
+    Red("빨강", CategoryRed, CategoryRedBorder),
+    Orange("주황", CategoryOrange, CategoryOrangeBorder),
+    Yellow("노랑", CategoryYellow, CategoryYellowBorder),
+    Green("초록", CategoryGreen, CategoryGreenBorder),
+    Magenta("마젠타", CategoryMagenta, CategoryMagentaBorder),
+    Black("검정", CategoryBlack, CategoryBlackBorder),
 }
 
 /** API `color` 필드용 (RED, ORANGE, …). */
