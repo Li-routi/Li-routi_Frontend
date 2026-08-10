@@ -16,9 +16,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.rememberNavController
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
+import com.li_routi.feature.home.shop.navigation.ShoppingRoute
 import com.li_routi.feature.home.vm.HomeUiEvent
 import com.li_routi.feature.home.vm.NotificationUiEvent
-import com.li_routi.feature.shopping.navigation.ShoppingRoute
 
 private const val RouteHomeMain = "home_main"
 private const val RouteMyRoutine = "myRoutine"

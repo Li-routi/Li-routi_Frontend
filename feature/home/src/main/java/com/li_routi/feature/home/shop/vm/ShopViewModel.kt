@@ -1,8 +1,8 @@
-package com.li_routi.feature.shopping.vm
+package com.li_routi.feature.home.shop.vm
 
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
-import com.li_routi.feature.shopping.navigation.ShopScreenActions
+import com.li_routi.feature.home.shop.navigation.ShopScreenActions
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow

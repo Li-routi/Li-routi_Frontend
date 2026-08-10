@@ -1,7 +1,7 @@
-package com.li_routi.feature.shopping.vm
+package com.li_routi.feature.home.shop.vm
 
-import com.li_routi.feature.shopping.component.SampleShopItems
-import com.li_routi.feature.shopping.component.ShopItemUiModel
+import com.li_routi.feature.home.shop.component.SampleShopItems
+import com.li_routi.feature.home.shop.component.ShopItemUiModel
 
 /**
  * 아이템 상점 화면 UI 상태.
@@ -23,7 +23,7 @@ data class ShopUiState(
 /**
  * 아이템 상점 화면의 일회성 UI 이벤트.
  *
- * Navigation은 [com.li_routi.feature.shopping.navigation.ShoppingRoute] / AppNavHost에서 처리한다.
+ * Navigation은 [com.li_routi.feature.home.shop.navigation.ShoppingRoute] / AppNavHost에서 처리한다.
  */
 sealed interface ShopUiEvent {
     data object NavigateBack : ShopUiEvent

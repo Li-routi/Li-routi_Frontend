@@ -1,4 +1,4 @@
-package com.li_routi.feature.shopping.screen
+package com.li_routi.feature.home.shop.screen
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
@@ -20,15 +20,15 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
-import com.li_routi.feature.shopping.component.CurrencyChargeDialog
-import com.li_routi.feature.shopping.component.CurrencyChargeDialogContent
-import com.li_routi.feature.shopping.component.CurrencyProductList
-import com.li_routi.feature.shopping.component.CurrencyProductUiModel
-import com.li_routi.feature.shopping.component.CurrencyShopLineTab
-import com.li_routi.feature.shopping.component.SampleBlueGemProducts
-import com.li_routi.feature.shopping.component.SampleOrangeGemProducts
-import com.li_routi.feature.shopping.component.ShopTopBar
-import com.li_routi.feature.shopping.navigation.CurrencyShopScreenActions
+import com.li_routi.feature.home.shop.component.CurrencyChargeDialog
+import com.li_routi.feature.home.shop.component.CurrencyChargeDialogContent
+import com.li_routi.feature.home.shop.component.CurrencyProductList
+import com.li_routi.feature.home.shop.component.CurrencyProductUiModel
+import com.li_routi.feature.home.shop.component.CurrencyShopLineTab
+import com.li_routi.feature.home.shop.component.SampleBlueGemProducts
+import com.li_routi.feature.home.shop.component.SampleOrangeGemProducts
+import com.li_routi.feature.home.shop.component.ShopTopBar
+import com.li_routi.feature.home.shop.navigation.CurrencyShopScreenActions
 
 /** Figma node `2305:14471` 탭 라벨. index 0 = 주황, 1 = 파란. */
 private val CurrencyTabLabels = listOf("주황보석", "파란보석")
