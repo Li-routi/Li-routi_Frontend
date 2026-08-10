@@ -1,5 +1,9 @@
 package com.li_routi.core.data.network.dto.response
 
+data class FcmDeviceActiveResponse(
+    val active: Boolean,
+)
+
 data class NotificationReadAllResponse(
     val updatedCount: Int,
 )

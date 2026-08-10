@@ -75,6 +75,9 @@ class HomeViewModel(
                                 myRoutineItems = next.myRoutineItems.map { item ->
                                     item.withCategoryColor(colorById)
                                 },
+                                groupRoomItems = next.groupRoomItems.map { item ->
+                                    item.withCategoryColor(colorById)
+                                },
                             )
                         }
                         is ResultState.Error, ResultState.Loading -> Unit

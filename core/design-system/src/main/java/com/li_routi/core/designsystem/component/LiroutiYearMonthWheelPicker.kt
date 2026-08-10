@@ -15,9 +15,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.foundation.color.Neutral98
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
-import com.li_routi.core.designsystem.theme.LiroutiTheme
 import java.util.Calendar
 
 data class LiroutiYearMonth(
@@ -31,6 +31,8 @@ data class LiroutiYearMonth(
  *
  * 연도는 [yearRange] 끝에서 순환하지 않고, 월(1~12)은 순환한다. [yearRange]의 기본값 상한은
  * 오늘 연도([Calendar]에서 읽음)라 해가 바뀌면 코드 수정 없이 자동으로 최신 연도까지 늘어난다.
+ *
+ * 글자색은 시간 휠과 동일하게 [Neutral10] 고정(밝은 배경 위 가독성).
  */
 @Composable
 fun LiroutiYearMonthWheelPicker(
@@ -41,7 +43,7 @@ fun LiroutiYearMonthWheelPicker(
 ) {
     val years = yearRange.map { "${it}년도" }.toTypedArray()
     val months = (1..12).map { "${it}월" }.toTypedArray()
-    val selectedTextColorArgb = LiroutiTheme.colors.labelDefault.toArgb()
+    val wheelTextColorArgb = Neutral10.toArgb()
 
     Box(
         modifier = modifier
@@ -67,7 +69,7 @@ fun LiroutiYearMonthWheelPicker(
                 onSelectedIndexChange = { index ->
                     onValueChange(value.copy(year = yearRange.first + index))
                 },
-                selectedTextColorArgb = selectedTextColorArgb,
+                selectedTextColorArgb = wheelTextColorArgb,
                 modifier = Modifier.weight(1f),
                 wrapSelectorWheel = false,
             )
@@ -77,7 +79,7 @@ fun LiroutiYearMonthWheelPicker(
                 onSelectedIndexChange = { index ->
                     onValueChange(value.copy(month = index + 1))
                 },
-                selectedTextColorArgb = selectedTextColorArgb,
+                selectedTextColorArgb = wheelTextColorArgb,
                 modifier = Modifier.weight(1f),
             )
         }
