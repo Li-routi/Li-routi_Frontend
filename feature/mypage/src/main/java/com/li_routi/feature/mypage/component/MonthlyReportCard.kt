@@ -122,7 +122,7 @@ internal val SampleMonthlyDays = listOf(
 private fun MonthlyReportCardPreview() {
     LiroutiFrontendTheme {
         MonthlyReportCard(
-            monthLabel = "2026.09",
+            monthLabel = "2026년 09월",
             days = SampleMonthlyDays,
             onPreviousMonthClick = {},
             onNextMonthClick = {},
