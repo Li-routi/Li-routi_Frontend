@@ -1,21 +1,33 @@
 package com.li_routi.core.domain.routine
 
-/** 루틴 카테고리 이름 생성/수정 시 공통 검증 (카테고리 생성·수정 UseCase, 관련 ViewModel에서 공용으로 쓴다). */
+/**
+ * 루틴 카테고리 이름 공통 검증.
+ *
+ * 규칙: trim 후 1~10자, 줄바꿈 불가, 「전체」 예약어 금지.
+ */
 object RoutineCategoryName {
+    const val MaxLength: Int = 10
+    const val ReservedAllLabel: String = "전체"
 
-    private const val MaxLength = 20
+    const val InvalidLengthMessage: String = "카테고리 이름은 1~10자로 입력해 주세요."
+    const val ReservedNameMessage: String = "「전체」는 사용할 수 없는 이름이에요."
 
-    sealed class Result {
-        data class Valid(val trimmedName: String) : Result()
-        data class Invalid(val message: String) : Result()
-    }
-
+    /**
+     * @return 성공 시 trim된 이름, 실패 시 사용자용 에러 메시지.
+     */
     fun validate(name: String): Result {
         val trimmed = name.trim()
-        return if (trimmed.isEmpty() || trimmed.length > MaxLength || '\n' in trimmed) {
-            Result.Invalid("카테고리 이름은 1~${MaxLength}자로 입력해 주세요.")
-        } else {
-            Result.Valid(trimmed)
+        if (trimmed.isEmpty() || trimmed.length > MaxLength || '\n' in trimmed) {
+            return Result.Invalid(InvalidLengthMessage)
         }
+        if (trimmed == ReservedAllLabel) {
+            return Result.Invalid(ReservedNameMessage)
+        }
+        return Result.Valid(trimmed)
+    }
+
+    sealed interface Result {
+        data class Valid(val trimmedName: String) : Result
+        data class Invalid(val message: String) : Result
     }
 }
