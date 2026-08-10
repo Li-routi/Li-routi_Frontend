@@ -9,20 +9,31 @@ import com.li_routi.core.data.network.dto.request.CreateGroupRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineCategoryRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.request.GroupRoutineScheduleRequest
+import com.li_routi.core.data.network.dto.request.JoinGroupRequest
+import com.li_routi.core.data.network.dto.request.TransferGroupOwnerRequest
+import com.li_routi.core.data.network.dto.request.UpdateGroupNameRequest
+import com.li_routi.core.data.network.dto.request.UpdateStatusMessageRequest
 import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.service.GroupRoutineApiService
 import com.li_routi.core.domain.grouproutine.CreatedGroup
+import com.li_routi.core.domain.grouproutine.GroupDetail
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
+import com.li_routi.core.domain.grouproutine.GroupJoinPreview
+import com.li_routi.core.domain.grouproutine.GroupJoinResult
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.GroupRoutineUpdateResult
 import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationFeed
+import com.li_routi.core.domain.grouproutine.LeaveGroupResult
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
+import com.google.gson.Gson
+import com.google.gson.JsonObject
+import retrofit2.HttpException
 
 class GroupRoutineRepositoryImpl(
     private val api: GroupRoutineApiService,
@@ -105,12 +116,66 @@ class GroupRoutineRepositoryImpl(
         },
     )
 
-    override suspend fun getTodayGroupRoutines(): ResultState<List<TodayGroupRoutine>> = safeApiCall {
-        api.getTodayRoutines().unwrap().toDomain()
+    override suspend fun getGroupDetail(groupId: Long): ResultState<GroupDetail> = safeApiCall {
+        api.getGroupDetail(groupId).unwrap().toDomain()
     }
 
-    override suspend fun issueInviteCode(groupId: Long): ResultState<GroupInviteCode> = safeApiCall {
-        api.issueInviteCode(groupId).unwrap().toDomain()
+    override suspend fun deleteGroup(groupId: Long): ResultState<Unit> = safeApiCall {
+        api.deleteGroup(groupId).ensureSuccess()
+    }
+
+    override suspend fun leaveGroup(groupId: Long): ResultState<LeaveGroupResult> = safeApiCall {
+        try {
+            api.leaveGroup(groupId).ensureSuccess()
+            LeaveGroupResult.Left
+        } catch (e: HttpException) {
+            // OWNER라 못 나가는 경우(GROUP409_1)만 결과로 바꿔서 삭제로 유도함.
+            // 409를 상태코드만 보고 판단하면 나중에 다른 사유가 409로 묶였을 때 엉뚱하게 삭제를 권하게 됨
+            if (e.errorCode() == OwnerCannotLeaveCode) LeaveGroupResult.OwnerMustDelete else throw e
+        }
+    }
+
+    override suspend fun joinGroup(inviteCode: String): ResultState<GroupJoinResult> = safeApiCall {
+        api.joinGroup(JoinGroupRequest(inviteCode = inviteCode)).unwrap().toDomain()
+    }
+
+    override suspend fun getGroupJoinPreview(inviteCode: String): ResultState<GroupJoinPreview> = safeApiCall {
+        api.getJoinPreview(inviteCode).unwrap().toDomain()
+    }
+
+    override suspend fun setGroupLock(groupId: Long, locked: Boolean): ResultState<Boolean> = safeApiCall {
+        val response = if (locked) api.lockGroup(groupId) else api.unlockGroup(groupId)
+        response.unwrap().isLocked
+    }
+
+    override suspend fun updateMyStatusMessage(groupId: Long, statusMessage: String): ResultState<String> = safeApiCall {
+        api.updateStatusMessage(
+            groupId = groupId,
+            request = UpdateStatusMessageRequest(statusMessage = statusMessage),
+        ).unwrap().statusMessage.orEmpty()
+    }
+
+    override suspend fun updateGroupName(groupId: Long, name: String): ResultState<Unit> = safeApiCall {
+        api.updateGroupName(groupId = groupId, request = UpdateGroupNameRequest(name = name)).ensureSuccess()
+    }
+
+    override suspend fun transferGroupOwner(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {
+        api.transferOwner(
+            groupId = groupId,
+            request = TransferGroupOwnerRequest(targetMemberId = targetMemberId),
+        ).ensureSuccess()
+    }
+
+    override suspend fun kickGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {
+        api.kickMember(groupId = groupId, targetMemberId = targetMemberId).ensureSuccess()
+    }
+
+    override suspend fun deleteGroupRoutine(groupId: Long, routineId: Long): ResultState<Unit> = safeApiCall {
+        api.deleteRoutine(groupId = groupId, routineId = routineId).ensureSuccess()
+    }
+
+    override suspend fun getTodayGroupRoutines(): ResultState<List<TodayGroupRoutine>> = safeApiCall {
+        api.getTodayRoutines().unwrap().toDomain()
     }
 
     override suspend fun getInviteCode(groupId: Long): ResultState<GroupInviteCode> = safeApiCall {
@@ -150,8 +215,23 @@ class GroupRoutineRepositoryImpl(
     }
 }
 
+/** OWNER는 그룹을 나갈 수 없음 */
+private const val OwnerCannotLeaveCode = "GROUP409_1"
+
+/** 에러 응답 바디에서 서버가 준 code를 꺼냄. 못 읽으면 null */
+private fun HttpException.errorCode(): String? = runCatching {
+    response()?.errorBody()?.string()?.let { body ->
+        Gson().fromJson(body, JsonObject::class.java)?.get("code")?.asString
+    }
+}.getOrNull()
+
 private fun <T> ApiResponse<T>.unwrap(): T {
     val result = result
     if (!isSuccess || result == null) throw ApiException(message)
     return result
+}
+
+/** result가 비어 오는(Void) 응답용 — 성공 여부만 확인함 */
+private fun ApiResponse<*>.ensureSuccess() {
+    if (!isSuccess) throw ApiException(message)
 }
