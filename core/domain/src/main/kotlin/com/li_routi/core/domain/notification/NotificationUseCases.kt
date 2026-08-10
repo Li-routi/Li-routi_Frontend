@@ -2,6 +2,20 @@ package com.li_routi.core.domain.notification
 
 import com.li_routi.core.common.kotlin.util.ResultState
 
+class RegisterFcmDeviceUseCase(
+    private val repository: NotificationRepository,
+) {
+    suspend operator fun invoke(token: String): ResultState<FcmDeviceActive> =
+        repository.registerDevice(token)
+}
+
+class UnregisterFcmDeviceUseCase(
+    private val repository: NotificationRepository,
+) {
+    suspend operator fun invoke(token: String): ResultState<FcmDeviceActive> =
+        repository.unregisterDevice(token)
+}
+
 class GetNotificationsUseCase(
     private val repository: NotificationRepository,
 ) {

@@ -68,6 +68,8 @@ fun LiroutiLabel(
     focusRequester: FocusRequester? = null,
     onValueChange: (String) -> Unit = {},
     onImeDone: () -> Unit = {},
+    /** 선택 상태 배경색. null이면 primaryNormal. 카테고리별 색 칩에 사용. */
+    selectedContainerColor: Color? = null,
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
@@ -77,7 +79,7 @@ fun LiroutiLabel(
     val textColor: Color
     when {
         selected -> {
-            backgroundColor = LiroutiTheme.colors.primaryNormal
+            backgroundColor = selectedContainerColor ?: LiroutiTheme.colors.primaryNormal
             border = null
             textColor = LiroutiTheme.colors.labelReverse
         }

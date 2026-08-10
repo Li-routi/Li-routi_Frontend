@@ -7,6 +7,7 @@ import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.HomeContainer
 import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.feature.home.screen.HomeScreen
@@ -28,9 +29,11 @@ import com.li_routi.feature.home.vm.HomeViewModel
 fun HomeRoute(
     onEvent: (HomeUiEvent) -> Unit = {},
     onTabSelected: (AppBottomTab) -> Unit = {},
-    /** 루틴 관리 완료 등 외부에서 홈 요약을 다시 불러오라는 신호. */
-    requestRefresh: Boolean = false,
-    onRefreshHandled: () -> Unit = {},
+    /**
+     * 루틴 관리/인증 완료 등 외부에서 홈 요약을 다시 불러오라는 신호.
+     * 값이 증가할 때마다 재조회한다(boolean보다 연속 갱신에 안전).
+     */
+    requestRefreshTick: Int = 0,
     modifier: Modifier = Modifier,
     viewModel: HomeViewModel = viewModel {
         HomeViewModel(
@@ -44,10 +47,9 @@ fun HomeRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
 
-    LaunchedEffect(requestRefresh) {
-        if (requestRefresh) {
+    LaunchedEffect(requestRefreshTick) {
+        if (requestRefreshTick > 0) {
             viewModel.refresh()
-            onRefreshHandled()
         }
     }
 
@@ -98,6 +100,10 @@ private fun HomeScreenContent(
         uiEvent = viewModel.uiEvent,
         findEditableCategory = viewModel::editableCategoryByName,
         addCategoryEnabled = uiState.addCategoryEnabled,
+        categoryColors = uiState.myCategories.mapNotNull { category ->
+            val color = category.color.toCategoryColor() ?: return@mapNotNull null
+            category.name to color
+        }.toMap(),
         modifier = modifier,
     )
 }

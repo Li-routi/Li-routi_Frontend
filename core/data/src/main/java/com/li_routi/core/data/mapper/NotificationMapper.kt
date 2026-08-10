@@ -1,12 +1,16 @@
 package com.li_routi.core.data.mapper
 
+import com.li_routi.core.data.network.dto.response.FcmDeviceActiveResponse
 import com.li_routi.core.data.network.dto.response.NotificationItemResponse
 import com.li_routi.core.data.network.dto.response.NotificationListResponse
 import com.li_routi.core.data.network.dto.response.NotificationReadAllResponse
 import com.li_routi.core.domain.notification.AppNotification
+import com.li_routi.core.domain.notification.FcmDeviceActive
 import com.li_routi.core.domain.notification.NotificationCategory
 import com.li_routi.core.domain.notification.NotificationPage
 import com.li_routi.core.domain.notification.NotificationReadAllResult
+
+fun FcmDeviceActiveResponse.toDomain(): FcmDeviceActive = FcmDeviceActive(active = active)
 
 fun NotificationReadAllResponse.toDomain(): NotificationReadAllResult =
     NotificationReadAllResult(updatedCount = updatedCount)

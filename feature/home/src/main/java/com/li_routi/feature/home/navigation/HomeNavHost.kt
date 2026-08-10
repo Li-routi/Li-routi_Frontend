@@ -1,11 +1,7 @@
 package com.li_routi.feature.home.navigation
 
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -27,8 +23,8 @@ private const val RouteNotification = "notification"
 private const val RouteNotificationSettings = "notification_settings"
 private const val RouteShop = "shop"
 
-/** 루틴 관리 완료 후 홈 요약 재조회 요청 플래그 (SavedStateHandle). */
-private const val KeyRefreshHome = "refresh_home"
+/** 루틴 관리 완료 후 홈 요약 재조회 요청 카운터 (SavedStateHandle). */
+private const val KeyRefreshHome = "refresh_home_tick"
 
 /**
  * 홈 피처 내비게이션 그래프.
@@ -56,14 +52,11 @@ fun HomeNavHost(
         modifier = modifier,
     ) {
         composable(RouteHomeMain) { entry ->
-            val refreshHomeFromNav by entry.savedStateHandle
-                .getStateFlow(KeyRefreshHome, false)
+            val refreshHomeTick by entry.savedStateHandle
+                .getStateFlow(KeyRefreshHome, 0)
                 .collectAsStateWithLifecycle()
-            var refreshHomeFromVerification by remember { mutableStateOf(false) }
-            LaunchedEffect(verificationRefreshSignal) {
-                if (verificationRefreshSignal > 0) refreshHomeFromVerification = true
-            }
-            val refreshHome = refreshHomeFromNav || refreshHomeFromVerification
+            // 두 카운터를 더해야 한쪽만 증가해도 LaunchedEffect 키가 바뀐다(maxOf는 유실 가능).
+            val requestRefreshTick = refreshHomeTick + verificationRefreshSignal
 
             HomeRoute(
                 onEvent = { event ->
@@ -87,11 +80,7 @@ fun HomeNavHost(
                     }
                 },
                 onTabSelected = onTabSelected,
-                requestRefresh = refreshHome,
-                onRefreshHandled = {
-                    entry.savedStateHandle[KeyRefreshHome] = false
-                    refreshHomeFromVerification = false
-                },
+                requestRefreshTick = requestRefreshTick,
             )
         }
 
@@ -119,8 +108,8 @@ fun HomeNavHost(
                 onNavigateBack = { navController.popBackStack() },
                 onNavigateToAddRoutine = { navController.navigate(RouteRoutineManage) },
                 onRoutinesChanged = {
-                    navController.getBackStackEntry(RouteHomeMain)
-                        .savedStateHandle[KeyRefreshHome] = true
+                    val handle = navController.getBackStackEntry(RouteHomeMain).savedStateHandle
+                    handle[KeyRefreshHome] = (handle.get<Int>(KeyRefreshHome) ?: 0) + 1
                 },
             )
         }
@@ -129,8 +118,8 @@ fun HomeNavHost(
             RoutineManageRoute(
                 onNavigateBack = { navController.popBackStack() },
                 onSubmitSuccess = {
-                    navController.getBackStackEntry(RouteHomeMain)
-                        .savedStateHandle[KeyRefreshHome] = true
+                    val handle = navController.getBackStackEntry(RouteHomeMain).savedStateHandle
+                    handle[KeyRefreshHome] = (handle.get<Int>(KeyRefreshHome) ?: 0) + 1
                     navController.popBackStack()
                 },
             )

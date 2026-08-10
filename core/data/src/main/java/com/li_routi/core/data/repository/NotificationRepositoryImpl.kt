@@ -5,8 +5,10 @@ import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.mapper.toApiValue
 import com.li_routi.core.data.mapper.toDomain
 import com.li_routi.core.data.network.apiCall
+import com.li_routi.core.data.network.dto.request.FcmDeviceTokenRequest
 import com.li_routi.core.data.network.safeDataApiCall
 import com.li_routi.core.data.network.service.NotificationApiService
+import com.li_routi.core.domain.notification.FcmDeviceActive
 import com.li_routi.core.domain.notification.NotificationCategory
 import com.li_routi.core.domain.notification.NotificationPage
 import com.li_routi.core.domain.notification.NotificationReadAllResult
@@ -15,6 +17,14 @@ import com.li_routi.core.domain.notification.NotificationRepository
 class NotificationRepositoryImpl(
     private val api: NotificationApiService,
 ) : NotificationRepository {
+
+    override suspend fun registerDevice(token: String): ResultState<FcmDeviceActive> = safeDataApiCall {
+        apiCall { api.registerDevice(FcmDeviceTokenRequest(token)) }.toDomain()
+    }
+
+    override suspend fun unregisterDevice(token: String): ResultState<FcmDeviceActive> = safeDataApiCall {
+        apiCall { api.unregisterDevice(FcmDeviceTokenRequest(token)) }.toDomain()
+    }
 
     override suspend fun getNotifications(
         category: NotificationCategory?,

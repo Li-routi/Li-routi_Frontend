@@ -1,7 +1,9 @@
 package com.li_routi.core.designsystem.component
 
+import android.graphics.Paint
 import android.os.Build
 import android.view.ContextThemeWrapper
+import android.widget.EditText
 import android.widget.NumberPicker
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -21,9 +23,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.foundation.color.Neutral98
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
-import com.li_routi.core.designsystem.theme.LiroutiTheme
 import java.util.Locale
 
 data class LiroutiClockTime(
@@ -77,6 +79,9 @@ data class LiroutiClockTime(
 /**
  * Figma DS `시작시간`/`마감시간` 펼침 컴포넌트용 3열 텀블러 (오전/오후 · 시 · 분).
  * 분은 10분 단위. 선택 행 하이라이트는 Neutral98 + radius 6.
+ *
+ * 글자색은 Compose 다크 모드와 무관하게 [Neutral10](#171719)으로 고정한다.
+ * 밝은 시트 위에서 흰 글씨가 되는 문제를 막기 위함이다.
  */
 @Composable
 fun LiroutiTimeWheelPicker(
@@ -87,7 +92,8 @@ fun LiroutiTimeWheelPicker(
     val periods = arrayOf("오전", "오후")
     val hours = (1..12).map { it.toString() }.toTypedArray()
     val minutes = arrayOf("00", "10", "20", "30", "40", "50")
-    val selectedTextColorArgb = LiroutiTheme.colors.labelDefault.toArgb()
+    // 다크 모드 labelDefault(밝은색)를 쓰지 않고 라이트 라벨색으로 고정
+    val wheelTextColorArgb = Neutral10.toArgb()
 
     Box(
         modifier = modifier
@@ -113,7 +119,7 @@ fun LiroutiTimeWheelPicker(
                 onSelectedIndexChange = { index ->
                     onValueChange(value.copy(periodIndex = index))
                 },
-                selectedTextColorArgb = selectedTextColorArgb,
+                selectedTextColorArgb = wheelTextColorArgb,
                 modifier = Modifier.weight(1f),
             )
             WheelNumberPicker(
@@ -122,7 +128,7 @@ fun LiroutiTimeWheelPicker(
                 onSelectedIndexChange = { index ->
                     onValueChange(value.copy(hour12 = index + 1))
                 },
-                selectedTextColorArgb = selectedTextColorArgb,
+                selectedTextColorArgb = wheelTextColorArgb,
                 modifier = Modifier.weight(1f),
             )
             WheelNumberPicker(
@@ -131,7 +137,7 @@ fun LiroutiTimeWheelPicker(
                 onSelectedIndexChange = { index ->
                     onValueChange(value.copy(minute = index * 10))
                 },
-                selectedTextColorArgb = selectedTextColorArgb,
+                selectedTextColorArgb = wheelTextColorArgb,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -144,14 +150,11 @@ fun LiroutiTimeWheelPicker(
  *
  * NumberPicker는 가운데 선택 값(EditText) 바깥의 휠 프리뷰 값들을 내부 Paint로 그리는데, 이 Paint의
  * 색은 NumberPicker 생성 시점에 EditText의 기본 텍스트 색(테마의 `android:textColorPrimary`)에서
- * 복사된다 — 그래서 이전엔 그 Paint 필드를 리플렉션으로 직접 바꿨는데, Android 버전에 따라 필드명이
- * 달라지거나 아예 없어져(`NoSuchFieldException`) 조용히 실패하고 프리뷰 값이 시스템 기본 옅은 회색으로
- * 남는 문제가 있었다. 리플렉션 대신 `[R.style.LiroutiNumberPicker]`로 감싼 [ContextThemeWrapper]를
- * NumberPicker 생성에 써서, 생성 시점부터 올바른 색이 적용되게 한다.
+ * 복사된다 — 그래서 [R.style.LiroutiNumberPicker]로 감싼 [ContextThemeWrapper]를 쓰고,
+ * 추가로 EditText/`mSelectorWheelPaint`에도 동일 색을 강제한다.
  *
- * 선택 값 위/아래의 기본 구분선(selection divider)도 같은 이유로 리플렉션(`mSelectionDividerHeight`)이
- * 조용히 실패해 안 지워지는 문제가 있었다. API 29(Q)부터는 공개 메서드 `setSelectionDividerHeight()`가
- * 있어 그걸 우선 쓰고, 그 미만 버전에서만 기존 리플렉션으로 폴백한다.
+ * 선택 값 위/아래의 기본 구분선(selection divider)도 API 29(Q)부터는 공개 메서드
+ * `setSelectionDividerHeight()`를 우선 쓰고, 그 미만 버전에서만 리플렉션으로 폴백한다.
  */
 @Composable
 fun WheelNumberPicker(
@@ -185,6 +188,7 @@ fun WheelNumberPicker(
                     }
                 }
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
+                applyWheelTextColor(selectedTextColorArgb)
                 setOnValueChangedListener { _, _, newVal ->
                     onSelectedIndexChange(newVal)
                 }
@@ -203,15 +207,28 @@ fun WheelNumberPicker(
             if (picker.wrapSelectorWheel != wrapSelectorWheel) {
                 picker.wrapSelectorWheel = wrapSelectorWheel
             }
-            for (i in 0 until picker.childCount) {
-                val child = picker.getChildAt(i)
-                if (child is android.widget.EditText) {
-                    child.setTextColor(selectedTextColorArgb)
-                    child.textSize = 14f
-                }
-            }
+            picker.applyWheelTextColor(selectedTextColorArgb)
         },
     )
+}
+
+/** 선택 EditText + 휠 프리뷰 Paint 색을 동일하게 맞춘다. */
+private fun NumberPicker.applyWheelTextColor(colorArgb: Int) {
+    for (i in 0 until childCount) {
+        val child = getChildAt(i)
+        if (child is EditText) {
+            child.setTextColor(colorArgb)
+            child.textSize = 14f
+        }
+    }
+    try {
+        val field = NumberPicker::class.java.getDeclaredField("mSelectorWheelPaint")
+        field.isAccessible = true
+        (field.get(this) as? Paint)?.color = colorArgb
+        invalidate()
+    } catch (_: Exception) {
+        // OEM/API 차이 — 테마 textColorPrimary로 이미 맞춰 둔 상태
+    }
 }
 
 @Preview(showBackground = true)

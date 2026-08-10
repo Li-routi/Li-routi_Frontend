@@ -7,14 +7,16 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.itemsIndexed
-import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -31,6 +33,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -75,9 +78,8 @@ data class RoutineChecklistItemUiModel(
     /** 카메라/업로드 선택 가능 여부. 완료·MISSED 등은 false. */
     val canVerify: Boolean = !isDone,
     /**
-     * 카테고리 색. Figma 카테고리 추가 시트 스와치와 동일 hex로 그린다
-     * ([CategoryColor.toFigmaDotColor]).
-     * null이면 제목 앞 category-dot를 그리지 않는다.
+     * 카테고리 색. 도메인 매핑용으로 유지한다.
+     * 홈 체크리스트 List UI(Figma `3962:11700`)에는 색 닷을 그리지 않는다.
      */
     val categoryColor: CategoryColor? = null,
 )
@@ -238,6 +240,11 @@ internal fun List<RoutineChecklistItemUiModel>.filteredByRoom(
  */
 internal fun CategoryColor.toFigmaDotColor(): Color = swatch
 
+/** Figma List (`3962:11700`) 카드 radius. */
+private val ChecklistItemShape = RoundedCornerShape(4.dp)
+
+/** Figma List 미완료 좌측 액센트 바 (`5238:31301`, w=4). */
+private val ChecklistAccentWidth = 4.dp
 
 private val HomeMainTabLabels = listOf("오늘의 루틴", "그룹 루틴")
 
@@ -260,6 +267,8 @@ fun RoutineChecklistSection(
     myRoutineFilters: List<String> = emptyList(),
     groupRoomFilters: List<String> = SampleGroupRoomFilters,
     groupRoomItems: List<RoutineChecklistItemUiModel> = SampleGroupRoomItems,
+    /** 카테고리명 → 색. 필터 칩·목록에 없는 빈 카테고리 색도 표시할 때 사용. */
+    categoryColors: Map<String, CategoryColor> = emptyMap(),
     onAddCategoryClick: () -> Unit = {},
     onCategoryLongClick: (String) -> Unit = {},
     addCategoryEnabled: Boolean = true,
@@ -279,6 +288,16 @@ fun RoutineChecklistSection(
     }
 
     val showFilters = currentFilters.isNotEmpty()
+    val categoryColorByName = remember(myRoutineItems, categoryColors) {
+        buildMap {
+            putAll(categoryColors)
+            myRoutineItems.forEach { item ->
+                val color = item.categoryColor ?: return@forEach
+                val key = item.categoryLabel.trim()
+                if (key.isNotEmpty()) putIfAbsent(key, color)
+            }
+        }
+    }
     val displayedItems = remember(
         isGroupTab,
         hasGroupRoom,
@@ -315,17 +334,24 @@ fun RoutineChecklistSection(
         )
 
         if (showFilters) {
+            // Figma Bottom Sheet: 오늘의 루틴 필터 행은 좌우 20dp(320폭), 그룹 탭은 16dp.
             LazyRow(
-                modifier = Modifier.padding(horizontal = 16.dp),
+                modifier = Modifier.padding(horizontal = if (isGroupTab) 16.dp else 20.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {
                 itemsIndexed(currentFilters) { _, label ->
                     val canEdit = !isGroupTab && label != AllCategoryFilterLabel
+                    val selectedColor = if (!isGroupTab && label != AllCategoryFilterLabel) {
+                        categoryColorByName[label]?.swatch
+                    } else {
+                        null
+                    }
                     LiroutiLabel(
                         text = label,
                         selected = label == selectedFilterName,
                         onClick = { selectedFilterName = label },
+                        selectedContainerColor = selectedColor,
                         modifier = Modifier.detectLabelLongClick(enabled = canEdit) {
                             onCategoryLongClick(label)
                         },
@@ -389,39 +415,61 @@ fun RoutineChecklistSection(
     }
 }
 
+/**
+ * Figma List (`3962:11700` 미완료 / `3962:11702` 완료).
+ * 미완료는 좌측 4dp 액센트 바(카테고리 색) + 메타(카테고리 | 마감), 완료는 제목·완료 배지만.
+ *
+ * 액센트 높이는 [IntrinsicSize.Min] + [fillMaxHeight]로 콘텐츠에 맞춘다.
+ * Box 안에서 단독 `fillMaxHeight()`를 쓰면 부모(바텀시트) maxHeight를 통째로 받아
+ * 한 줄이 화면을 밀어버리는 버그가 난다.
+ */
 @Composable
 private fun RoutineChecklistItemRow(
     item: RoutineChecklistItemUiModel,
     onCameraClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val accentColor = item.categoryColor?.swatch
+        ?: LiroutiTheme.colors.primaryNormal
+
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(6.dp))
+            .height(IntrinsicSize.Min)
+            .clip(ChecklistItemShape)
             .background(LiroutiTheme.colors.backgroundDefault)
-            .border(1.dp, LiroutiTheme.colors.borderAlternative, RoundedCornerShape(6.dp))
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
+            .border(1.dp, LiroutiTheme.colors.borderAlternative, ChecklistItemShape),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        CustomCheckBox(
-            state = if (item.isDone) CheckBoxState.B else CheckBoxState.A,
-        )
-        Column(modifier = Modifier.weight(1f)) {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                // Figma List `category-dot` — 카테고리 추가 시트 스와치 hex
-                item.categoryColor?.let { color ->
-                    Box(
-                        modifier = Modifier
-                            .size(6.dp)
-                            .clip(CircleShape)
-                            .background(color.toFigmaDotColor()),
-                    )
-                }
+        // 미완료만 좌측 액센트 — 카테고리별 스와치 색(없으면 primary)
+        if (!item.isDone) {
+            Box(
+                modifier = Modifier
+                    .width(ChecklistAccentWidth)
+                    .fillMaxHeight()
+                    .background(
+                        color = accentColor,
+                        shape = RoundedCornerShape(topStart = 6.dp, bottomStart = 6.dp),
+                    ),
+            )
+        }
+        Row(
+            modifier = Modifier
+                .weight(1f)
+                .padding(
+                    // 액센트(4dp)가 차지한 만큼 시작 패딩을 줄여 Figma의 좌측 14dp를 유지
+                    start = if (item.isDone) 14.dp else (14.dp - ChecklistAccentWidth),
+                    end = 14.dp,
+                    top = if (item.isDone) 14.dp else 10.dp,
+                    bottom = if (item.isDone) 14.dp else 10.dp,
+                ),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            CustomCheckBox(
+                state = if (item.isDone) CheckBoxState.B else CheckBoxState.A,
+            )
+            Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.title,
                     // Figma List title: Body3/Medium 14/22
@@ -429,51 +477,54 @@ private fun RoutineChecklistItemRow(
                     color = if (item.isDone) {
                         LiroutiTheme.colors.labelInfo
                     } else {
-                        LiroutiTheme.colors.labelStrong
+                        LiroutiTheme.colors.labelDefault
                     },
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
                 )
-            }
-            if (!item.isDone) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    // Design Page [1.1]: "카테고리 | 마감 HH:mm" — Caption/s 11/14
-                    val metaStyle = LiroutiTheme.typography.captionRegular.copy(
-                        fontSize = 11.sp,
-                        lineHeight = 14.sp,
-                    )
-                    Text(
-                        text = item.categoryLabel,
-                        style = metaStyle,
-                        color = LiroutiTheme.colors.labelInfo,
-                    )
-                    LiroutiDivider(
-                        orientation = LiroutiDividerOrientation.Vertical,
-                        color = LiroutiTheme.colors.borderStrong,
-                        modifier = Modifier.height(10.dp),
-                    )
-                    Text(
-                        text = item.dueLabel,
-                        style = metaStyle,
-                        color = LiroutiTheme.colors.labelInfo,
-                    )
+                if (!item.isDone) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        // Design Page [1.1]: "카테고리 | 마감 HH:mm" — Caption/s 11/14
+                        val metaStyle = LiroutiTheme.typography.captionRegular.copy(
+                            fontSize = 11.sp,
+                            lineHeight = 14.sp,
+                        )
+                        Text(
+                            text = item.categoryLabel,
+                            style = metaStyle,
+                            // 카테고리 색은 좌측 액센트에만 쓰고, 메타 라벨은 가독성 위해 검정(labelDefault)
+                            color = LiroutiTheme.colors.labelDefault,
+                        )
+                        LiroutiDivider(
+                            orientation = LiroutiDividerOrientation.Vertical,
+                            color = LiroutiTheme.colors.borderStrong,
+                            modifier = Modifier.height(10.dp),
+                        )
+                        Text(
+                            text = item.dueLabel,
+                            style = metaStyle,
+                            color = LiroutiTheme.colors.labelInfo,
+                        )
+                    }
                 }
             }
-        }
-        if (item.isDone) {
-            LiroutiBadge(text = "완료", color = LiroutiBadgeColor.Neutral)
-        } else if (!item.canVerify) {
-            LiroutiBadge(text = "기간 만료", color = LiroutiBadgeColor.Neutral)
-        } else {
-            Image(
-                painter = painterResource(id = R.drawable.camera),
-                contentDescription = "루틴 인증 촬영",
-                modifier = Modifier
-                    .size(20.dp)
-                    .clickable(onClick = onCameraClick),
-                colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelInfo),
-            )
+            if (item.isDone) {
+                LiroutiBadge(text = "완료", color = LiroutiBadgeColor.Neutral)
+            } else if (!item.canVerify) {
+                LiroutiBadge(text = "기간 만료", color = LiroutiBadgeColor.Neutral)
+            } else {
+                Image(
+                    painter = painterResource(id = R.drawable.camera),
+                    contentDescription = "루틴 인증 촬영",
+                    modifier = Modifier
+                        .size(20.dp)
+                        .clickable(onClick = onCameraClick),
+                    colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelInfo),
+                )
+            }
         }
     }
 }

@@ -26,6 +26,7 @@ import com.li_routi.core.common.ui.routine.RoutineChecklistScreen
 import com.li_routi.core.common.ui.routine.RoutineDeleteDialog
 import com.li_routi.core.common.ui.routine.RoutineEditBottomSheet
 import com.li_routi.core.common.ui.routine.toCategoryColor
+import com.li_routi.core.data.di.HomeContainer
 import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.designsystem.component.LiroutiClockTime
 import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
@@ -58,7 +59,10 @@ fun RoutineManageRoute(
             updateRoutineCategoryUseCase = RoutineContainer.updateRoutineCategoryUseCase,
             deleteRoutineCategoryUseCase = RoutineContainer.deleteRoutineCategoryUseCase,
             getRoutineTemplatesUseCase = RoutineContainer.getRoutineTemplatesUseCase,
+            getMemberRoutinesUseCase = RoutineContainer.getMemberRoutinesUseCase,
+            getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase,
             createMemberRoutinesUseCase = RoutineContainer.createMemberRoutinesUseCase,
+            deleteMemberRoutineUseCase = RoutineContainer.deleteMemberRoutineUseCase,
         )
     },
 ) {
