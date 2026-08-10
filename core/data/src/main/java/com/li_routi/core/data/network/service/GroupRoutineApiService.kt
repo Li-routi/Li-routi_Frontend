@@ -2,6 +2,7 @@ package com.li_routi.core.data.network.service
 
 import com.li_routi.core.data.network.dto.request.CreateGroupRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineCategoryRequest
+import com.li_routi.core.data.network.dto.request.GroupRoutineVerificationReadRequest
 import com.li_routi.core.data.network.dto.request.JoinGroupRequest
 import com.li_routi.core.data.network.dto.request.TransferGroupOwnerRequest
 import com.li_routi.core.data.network.dto.request.UpdateGroupNameRequest
@@ -10,16 +11,20 @@ import com.li_routi.core.data.network.dto.request.UpdateGroupRoutineRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.GroupCreateResultResponse
 import com.li_routi.core.data.network.dto.response.GroupDetailResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineDisappointmentResponse
 import com.li_routi.core.data.network.dto.response.GroupInviteCodeResponse
 import com.li_routi.core.data.network.dto.response.GroupJoinPreviewResponse
 import com.li_routi.core.data.network.dto.response.GroupJoinResultResponse
 import com.li_routi.core.data.network.dto.response.GroupLockStateResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineLikeResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryListResponse
 import com.li_routi.core.data.network.dto.response.GroupStatusMessageResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineVerificationReadResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineListResponse
+import com.li_routi.core.data.network.dto.response.UnreadGroupRoutineVerificationListResponse
 import retrofit2.http.Body
 import retrofit2.http.DELETE
 import retrofit2.http.GET
@@ -142,4 +147,41 @@ interface GroupRoutineApiService {
         @Query("cursor") cursor: Long?,
         @Query("size") size: Int?,
     ): ApiResponse<GroupRoutineFeedResponse>
+
+    @GET("api/groups/{groupId}/routine-verifications/unread")
+    suspend fun getUnreadRoutineVerifications(
+        @Path("groupId") groupId: Long,
+        @Query("cursor") cursor: Long?,
+        @Query("size") size: Int?,
+    ): ApiResponse<UnreadGroupRoutineVerificationListResponse>
+
+    @POST("api/groups/{groupId}/routine-verifications/read")
+    suspend fun markRoutineVerificationsRead(
+        @Path("groupId") groupId: Long,
+        @Body request: GroupRoutineVerificationReadRequest,
+    ): ApiResponse<GroupRoutineVerificationReadResponse>
+
+    @POST("api/groups/{groupId}/verifications/{verificationId}/likes")
+    suspend fun likeRoutineVerification(
+        @Path("groupId") groupId: Long,
+        @Path("verificationId") verificationId: Long,
+    ): ApiResponse<GroupRoutineLikeResponse>
+
+    @DELETE("api/groups/{groupId}/verifications/{verificationId}/likes")
+    suspend fun unlikeRoutineVerification(
+        @Path("groupId") groupId: Long,
+        @Path("verificationId") verificationId: Long,
+    ): ApiResponse<GroupRoutineLikeResponse>
+
+    @POST("api/groups/{groupId}/verifications/{verificationId}/disappointments")
+    suspend fun disappointRoutineVerification(
+        @Path("groupId") groupId: Long,
+        @Path("verificationId") verificationId: Long,
+    ): ApiResponse<GroupRoutineDisappointmentResponse>
+
+    @DELETE("api/groups/{groupId}/verifications/{verificationId}/disappointments")
+    suspend fun undisappointRoutineVerification(
+        @Path("groupId") groupId: Long,
+        @Path("verificationId") verificationId: Long,
+    ): ApiResponse<GroupRoutineDisappointmentResponse>
 }

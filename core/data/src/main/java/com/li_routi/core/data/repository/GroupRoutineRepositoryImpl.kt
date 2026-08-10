@@ -8,6 +8,7 @@ import com.li_routi.core.data.network.dto.request.CreateGroupCategoryRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineCategoryRequest
 import com.li_routi.core.data.network.dto.request.CreateGroupRoutineRequest
+import com.li_routi.core.data.network.dto.request.GroupRoutineVerificationReadRequest
 import com.li_routi.core.data.network.dto.request.GroupRoutineScheduleRequest
 import com.li_routi.core.data.network.dto.request.JoinGroupRequest
 import com.li_routi.core.data.network.dto.request.TransferGroupOwnerRequest
@@ -21,16 +22,20 @@ import com.li_routi.core.domain.grouproutine.GroupDetail
 import com.li_routi.core.domain.grouproutine.GroupInviteCode
 import com.li_routi.core.domain.grouproutine.GroupJoinPreview
 import com.li_routi.core.domain.grouproutine.GroupJoinResult
+import com.li_routi.core.domain.grouproutine.GroupRoutineDisappointment
+import com.li_routi.core.domain.grouproutine.GroupRoutineLike
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.GroupRoutineUpdateResult
 import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationFeed
+import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationRead
 import com.li_routi.core.domain.grouproutine.LeaveGroupResult
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
+import com.li_routi.core.domain.grouproutine.UnreadGroupRoutineVerificationFeed
 import com.google.gson.Gson
 import com.google.gson.JsonObject
 import retrofit2.HttpException
@@ -212,6 +217,56 @@ class GroupRoutineRepositoryImpl(
             cursor = cursor,
             size = size,
         ).unwrap().toDomain()
+    }
+
+    override suspend fun getUnreadGroupRoutineVerifications(
+        groupId: Long,
+        cursor: Long?,
+        size: Int?,
+    ): ResultState<UnreadGroupRoutineVerificationFeed> = safeApiCall {
+        api.getUnreadRoutineVerifications(
+            groupId = groupId,
+            cursor = cursor,
+            size = size,
+        ).unwrap().toDomain()
+    }
+
+    override suspend fun markGroupRoutineVerificationsRead(
+        groupId: Long,
+        lastReadVerificationId: Long,
+    ): ResultState<GroupRoutineVerificationRead> = safeApiCall {
+        api.markRoutineVerificationsRead(
+            groupId = groupId,
+            request = GroupRoutineVerificationReadRequest(lastReadVerificationId = lastReadVerificationId),
+        ).unwrap().toDomain()
+    }
+
+    override suspend fun likeGroupRoutineVerification(
+        groupId: Long,
+        verificationId: Long,
+    ): ResultState<GroupRoutineLike> = safeApiCall {
+        api.likeRoutineVerification(groupId = groupId, verificationId = verificationId).unwrap().toDomain()
+    }
+
+    override suspend fun unlikeGroupRoutineVerification(
+        groupId: Long,
+        verificationId: Long,
+    ): ResultState<GroupRoutineLike> = safeApiCall {
+        api.unlikeRoutineVerification(groupId = groupId, verificationId = verificationId).unwrap().toDomain()
+    }
+
+    override suspend fun disappointGroupRoutineVerification(
+        groupId: Long,
+        verificationId: Long,
+    ): ResultState<GroupRoutineDisappointment> = safeApiCall {
+        api.disappointRoutineVerification(groupId = groupId, verificationId = verificationId).unwrap().toDomain()
+    }
+
+    override suspend fun undisappointGroupRoutineVerification(
+        groupId: Long,
+        verificationId: Long,
+    ): ResultState<GroupRoutineDisappointment> = safeApiCall {
+        api.undisappointRoutineVerification(groupId = groupId, verificationId = verificationId).unwrap().toDomain()
     }
 }
 

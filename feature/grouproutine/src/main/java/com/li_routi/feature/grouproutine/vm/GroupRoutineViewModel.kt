@@ -23,23 +23,29 @@ import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
 import com.li_routi.core.domain.grouproutine.DeleteGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.DeleteGroupUseCase
+import com.li_routi.core.domain.grouproutine.DisappointGroupRoutineVerificationUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupJoinPreviewUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GetTodayGroupRoutinesUseCase
+import com.li_routi.core.domain.grouproutine.GetUnreadGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.GroupRoutineStatus
 import com.li_routi.core.domain.grouproutine.JoinGroupUseCase
 import com.li_routi.core.domain.grouproutine.KickGroupMemberUseCase
 import com.li_routi.core.domain.grouproutine.LeaveGroupResult
 import com.li_routi.core.domain.grouproutine.LeaveGroupUseCase
+import com.li_routi.core.domain.grouproutine.LikeGroupRoutineVerificationUseCase
+import com.li_routi.core.domain.grouproutine.MarkGroupRoutineVerificationsReadUseCase
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.RepeatDay
 import com.li_routi.core.domain.grouproutine.SetGroupLockUseCase
 import com.li_routi.core.domain.grouproutine.TransferGroupOwnerUseCase
+import com.li_routi.core.domain.grouproutine.UndisappointGroupRoutineVerificationUseCase
+import com.li_routi.core.domain.grouproutine.UnlikeGroupRoutineVerificationUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupMemberStatusMessageUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupNameUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
@@ -82,6 +88,12 @@ class GroupRoutineViewModel(
     private val getGroupRoutineCategoriesUseCase: GetGroupRoutineCategoriesUseCase = GroupRoutineContainer.getGroupRoutineCategoriesUseCase,
     private val createGroupRoutineCategoryUseCase: CreateGroupRoutineCategoryUseCase = GroupRoutineContainer.createGroupRoutineCategoryUseCase,
     private val getGroupRoutineVerificationsUseCase: GetGroupRoutineVerificationsUseCase = GroupRoutineContainer.getGroupRoutineVerificationsUseCase,
+    private val getUnreadGroupRoutineVerificationsUseCase: GetUnreadGroupRoutineVerificationsUseCase = GroupRoutineContainer.getUnreadGroupRoutineVerificationsUseCase,
+    private val markGroupRoutineVerificationsReadUseCase: MarkGroupRoutineVerificationsReadUseCase = GroupRoutineContainer.markGroupRoutineVerificationsReadUseCase,
+    private val likeGroupRoutineVerificationUseCase: LikeGroupRoutineVerificationUseCase = GroupRoutineContainer.likeGroupRoutineVerificationUseCase,
+    private val unlikeGroupRoutineVerificationUseCase: UnlikeGroupRoutineVerificationUseCase = GroupRoutineContainer.unlikeGroupRoutineVerificationUseCase,
+    private val disappointGroupRoutineVerificationUseCase: DisappointGroupRoutineVerificationUseCase = GroupRoutineContainer.disappointGroupRoutineVerificationUseCase,
+    private val undisappointGroupRoutineVerificationUseCase: UndisappointGroupRoutineVerificationUseCase = GroupRoutineContainer.undisappointGroupRoutineVerificationUseCase,
     private val getChatMessagesUseCase: GetChatMessagesUseCase = ChatContainer.getChatMessagesUseCase,
     private val updateChatReadPositionUseCase: UpdateChatReadPositionUseCase = ChatContainer.updateChatReadPositionUseCase,
     private val getEmoticonsUseCase: GetEmoticonsUseCase = ChatContainer.getEmoticonsUseCase,
@@ -98,6 +110,7 @@ class GroupRoutineViewModel(
     private var chatSocketJob: Job? = null
     private var chatReadJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
+    private var unreadRoutineVerificationsJob: Job? = null
 
     // PR 반영: Mock ID와 실제 서버 ID 분리
     // createGroupUseCase 성공 시나 초대코드로 조인했을 때 발급되는 실제 서버 그룹 ID를 저장합니다.
@@ -125,24 +138,21 @@ class GroupRoutineViewModel(
                 screenMode = GroupRoutineScreenMode.Detail,
                 selectedRoutineId = routineId,
                 selectedMemberId = null,
-                isNewCertificationDialogVisible = true,
+                isNewCertificationDialogVisible = false,
                 actionMessage = null,
             )
         }
-        // 목록에 아직 mock 카드(음수 id)가 섞여 있어서, 실제 서버 그룹일 때만 상세를 불러옴
         if (routineId > 0L) {
             backendGroupId = routineId
             loadGroupDetail(routineId)
             loadTodayRoutines(routineId)
+            loadUnreadRoutineVerifications()
         } else {
-            // mock 방을 열었는데 직전 그룹 id가 남아 있으면 엉뚱한 그룹으로 요청이 나감
             backendGroupId = null
-            // 서버 방을 보다 넘어온 경우 그 방의 멤버/체크리스트가 그대로 남아 보임
             _uiState.update {
                 it.copy(members = DefaultGroupMembers, todos = DefaultGroupTodos, groupInviteCode = null)
             }
         }
-        // 방마다 방장이 다르니 방을 옮기면 이전 방 기준 판단을 버림
         _uiState.update { it.copy(isConfirmedOwner = false) }
     }
 
@@ -626,6 +636,9 @@ class GroupRoutineViewModel(
                                     name = member.name,
                                     message = member.statusMessage.orEmpty(),
                                     streak = member.currentStreak,
+                                    completedCount = member.completedCount.toInt(),
+                                    totalCount = member.totalCount.toInt(),
+                                    totalLikeCount = member.totalLikeCount.toInt(),
                                     isMe = member.memberId == myMemberId,
                                 )
                             },
@@ -717,9 +730,10 @@ class GroupRoutineViewModel(
                                     memberId = item.memberId,
                                     userName = item.nickname,
                                     body = item.content.orEmpty(),
-                                    likeCount = 0,
+                                    likeCount = item.likeCount.toInt(),
                                     timeAgo = item.verifiedAt.orEmpty(),
                                     isMine = item.memberId == myMemberId,
+                                    isLiked = item.liked,
                                 )
                             },
                         )
@@ -741,7 +755,160 @@ class GroupRoutineViewModel(
     }
 
     fun onDismissNewCertificationDialog() {
+        val groupId = currentGroupId()
+        val lastReadId = _uiState.value.newCertifications.maxOfOrNull { it.id }
         _uiState.update { it.copy(isNewCertificationDialogVisible = false) }
+
+        if (groupId == null || lastReadId == null) return
+
+        viewModelScope.launch {
+            when (val result = markGroupRoutineVerificationsReadUseCase(groupId, lastReadId)) {
+                is ResultState.Success -> Unit
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun loadUnreadRoutineVerifications() {
+        val groupId = currentGroupId() ?: return
+
+        unreadRoutineVerificationsJob?.cancel()
+        unreadRoutineVerificationsJob = viewModelScope.launch {
+            when (
+                val result = getUnreadGroupRoutineVerificationsUseCase(
+                    groupId = groupId,
+                    cursor = null,
+                    size = 20,
+                )
+            ) {
+                is ResultState.Success -> {
+                    if (currentGroupId() != groupId) return@launch
+
+                    val unreadCertifications = result.data.verifications.map { item ->
+                        NewCertificationUiModel(
+                            id = item.verificationId,
+                            memberName = item.authorName,
+                            routineName = item.routineName,
+                            message = item.content.orEmpty(),
+                        )
+                    }
+                    _uiState.update {
+                        it.copy(
+                            newCertifications = unreadCertifications,
+                            isNewCertificationDialogVisible = unreadCertifications.isNotEmpty(),
+                        )
+                    }
+                }
+
+                is ResultState.Error -> {
+                    if (currentGroupId() == groupId) {
+                        _uiState.update { it.copy(actionMessage = result.message) }
+                    }
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onCertificationLikeClick(verificationId: Long, currentlyLiked: Boolean) {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        viewModelScope.launch {
+            val result = if (currentlyLiked) {
+                unlikeGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)
+            } else {
+                likeGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)
+            }
+
+            when (result) {
+                is ResultState.Success -> {
+                    val like = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            posts = state.posts.map { post ->
+                                if (post.id == like.verificationId) {
+                                    post.copy(
+                                        likeCount = like.likeCount.toInt(),
+                                        isLiked = like.liked,
+                                    )
+                                } else {
+                                    post
+                                }
+                            },
+                        )
+                    }
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onNewCertificationLikeClick(verificationId: Long) {
+        val groupId = currentGroupId() ?: return
+
+        viewModelScope.launch {
+            when (val result = likeGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)) {
+                is ResultState.Success -> onDismissNewCertificationDialog()
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onNewCertificationDisappointClick(verificationId: Long) {
+        val groupId = currentGroupId() ?: return
+
+        viewModelScope.launch {
+            when (val result = disappointGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)) {
+                is ResultState.Success -> onDismissNewCertificationDialog()
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onCertificationDisappointmentClick(verificationId: Long, currentlyDisappointed: Boolean) {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        viewModelScope.launch {
+            val result = if (currentlyDisappointed) {
+                undisappointGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)
+            } else {
+                disappointGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)
+            }
+
+            when (result) {
+                is ResultState.Success -> {
+                    val disappointment = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            posts = state.posts.map { post ->
+                                if (post.id == disappointment.verificationId) {
+                                    post.copy(
+                                        disappointmentCount = disappointment.count.toInt(),
+                                        isDisappointed = disappointment.disappointed,
+                                    )
+                                } else {
+                                    post
+                                }
+                            },
+                        )
+                    }
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     fun onGroupRoutineManageClick() {
@@ -1079,6 +1246,7 @@ class GroupRoutineViewModel(
                         // 실제 멤버/루틴 수는 상세 조회로 채움
                         loadGroupDetail(joined.groupId)
                         loadTodayRoutines(joined.groupId)
+                        loadUnreadRoutineVerifications()
                     }
 
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
