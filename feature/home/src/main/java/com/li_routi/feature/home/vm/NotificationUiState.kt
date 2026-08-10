@@ -41,6 +41,9 @@ data class NotificationItemUiModel(
     val title: String,
     val timeLabel: String,
     val isUnread: Boolean = false,
+    /** 딥링크 판단용 원본 이벤트 타입([resolveNotificationNavigationTarget]에 그대로 넘긴다). */
+    val type: String = "",
+    val referenceId: Long? = null,
 )
 
 enum class NotificationSettingKey {
@@ -137,4 +140,8 @@ val SampleNotifications: List<NotificationItemUiModel> = listOf(
 sealed interface NotificationUiEvent {
     data object NavigateBack : NotificationUiEvent
     data object NavigateToSettings : NotificationUiEvent
+    data object NavigateToPersonalRoutine : NotificationUiEvent
+    data object NavigateToGroupRoutine : NotificationUiEvent
+    data object NavigateToChallengeHome : NotificationUiEvent
+    data class NavigateToChallengeDetail(val challengeId: Long) : NotificationUiEvent
 }
