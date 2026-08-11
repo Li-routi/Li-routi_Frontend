@@ -18,6 +18,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.style.TextOverflow
@@ -68,6 +69,8 @@ fun PendingVerificationCard(
                     model = item.imageUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    // 서명 URL 만료 등으로 로드 자체가 실패해도 빈 화면 대신 자리표시자를 보여준다.
+                    error = ColorPainter(LiroutiTheme.colors.backgroundSecondary),
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -96,14 +99,18 @@ fun PendingVerificationCard(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
         ) {
             Text(text = item.routineName, style = InfoLabelTextStyle, color = LiroutiTheme.colors.labelInfo)
-            Text(
-                text = item.memo,
-                style = InfoMemoTextStyle,
-                color = LiroutiTheme.colors.labelSub,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.padding(top = 4.dp),
-            )
+            // 메모가 없으면 빈 Text가 줄 높이 + 위 여백만큼 자리를 차지해 라벨들 사이가 붕 뜬다 —
+            // 아예 렌더링을 건너뛴다([MyVerificationCard]와 동일한 이유).
+            if (item.memo.isNotBlank()) {
+                Text(
+                    text = item.memo,
+                    style = InfoMemoTextStyle,
+                    color = LiroutiTheme.colors.labelSub,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    modifier = Modifier.padding(top = 4.dp),
+                )
+            }
             Text(
                 text = item.remainingTimeLabel,
                 style = InfoLabelTextStyle,

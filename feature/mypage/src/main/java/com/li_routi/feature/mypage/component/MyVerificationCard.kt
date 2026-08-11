@@ -15,6 +15,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -68,11 +69,15 @@ fun MyVerificationCard(
                 LiroutiBadge(text = "대기중", color = LiroutiBadgeColor.Blue, size = LiroutiBadgeSize.XSmall)
             }
         }
-        Text(
-            text = item.memo,
-            style = LiroutiTheme.typography.body2LongRegular,
-            color = LiroutiTheme.colors.labelSub,
-        )
+        // 메모가 없으면 빈 Text도 자기 스타일의 줄 높이만큼 자리를 차지해 제목과 사진 사이가 붕 뜬다 —
+        // 아예 렌더링을 건너뛰어 spacedBy 간격이 제목·사진 사이에만 한 번 적용되게 한다.
+        if (item.memo.isNotBlank()) {
+            Text(
+                text = item.memo,
+                style = LiroutiTheme.typography.body2LongRegular,
+                color = LiroutiTheme.colors.labelSub,
+            )
+        }
         Box(
             modifier = Modifier
                 .fillMaxWidth()
@@ -91,6 +96,8 @@ fun MyVerificationCard(
                     model = item.imageUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
+                    // 서명 URL 만료 등으로 로드 자체가 실패해도 빈 화면 대신 자리표시자를 보여준다.
+                    error = ColorPainter(LiroutiTheme.colors.backgroundSecondary),
                     modifier = Modifier.fillMaxSize(),
                 )
             }
