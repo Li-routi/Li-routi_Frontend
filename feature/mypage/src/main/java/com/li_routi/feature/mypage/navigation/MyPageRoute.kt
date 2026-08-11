@@ -17,7 +17,6 @@ import com.li_routi.feature.mypage.screen.AchievementScreen
 import com.li_routi.feature.mypage.screen.AppInfoScreen
 import com.li_routi.feature.mypage.screen.EditProfileScreen
 import com.li_routi.feature.mypage.screen.MyPageScreen
-import com.li_routi.feature.mypage.screen.MyVerificationScreen
 import com.li_routi.feature.mypage.screen.ReportScreen
 import com.li_routi.feature.mypage.vm.MyPageUiEvent
 import com.li_routi.feature.mypage.vm.MyPageViewModel
@@ -91,7 +90,7 @@ fun MyPageRoute(
             modifier = modifier,
         )
 
-        MyPageDestination.MyVerification -> MyVerificationScreen(
+        MyPageDestination.MyVerification -> MyVerificationRoute(
             onBackClick = { destination = MyPageDestination.MyPage },
             modifier = modifier,
         )

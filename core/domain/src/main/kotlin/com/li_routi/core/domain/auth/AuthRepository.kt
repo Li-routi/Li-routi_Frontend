@@ -29,4 +29,13 @@ interface AuthRepository {
 
     /** 로그인한 회원의 닉네임/프로필 이미지를 수정한다. [image]가 null이면 기존 프로필 이미지를 그대로 유지한다. */
     suspend fun updateProfile(nickname: String, image: ProfileImageUpload? = null): ResultState<MyInfo>
+
+    /**
+     * 특정 날짜에 남긴 인증(챌린지·개인 루틴·그룹 루틴 통합)을 최신순으로 조회한다.
+     * [date]("yyyy-MM-dd")를 생략하면 오늘(KST) 기준으로 조회한다.
+     */
+    suspend fun getMyVerifications(
+        date: String? = null,
+        status: VerificationReviewStatus? = null,
+    ): ResultState<MyVerificationDay>
 }

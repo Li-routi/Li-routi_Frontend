@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -40,24 +41,27 @@ import com.li_routi.feature.mypage.component.PendingVerificationUiModel
 import com.li_routi.feature.mypage.component.ReportPeriodHeader
 import com.li_routi.feature.mypage.component.SimpleDate
 import com.li_routi.feature.mypage.component.plusDays
-import com.li_routi.feature.mypage.component.todaySimpleDate
 
 /**
  * "내 인증" 화면. Figma node `4869:36868`("내인증") 기준 — 마이페이지 "내 인증" 메뉴로 진입한다.
  *
  * 날짜 네비게이션(◀ 날짜 ▶) + AI 검증 대기 중인 인증 가로 목록 + 그 날 확정된 루틴 인증 카드 목록으로
  * 구성된다. 날짜 라벨을 탭하면 [MyVerificationDatePickerBottomSheet](일자/월 선택)가 뜬다.
+ *
+ * 날짜 선택 상태는 `GET /api/members/me/verifications`를 다시 호출해야 해서(
+ * [com.li_routi.feature.mypage.vm.MyVerificationViewModel]) 화면이 직접 들고 있지 않고
+ * [selectedDate]/[onDateChange]로 끌어올렸다.
  */
 @Composable
 fun MyVerificationScreen(
     onBackClick: () -> Unit,
+    selectedDate: SimpleDate,
+    onDateChange: (SimpleDate) -> Unit,
     modifier: Modifier = Modifier,
-    initialDate: SimpleDate = todaySimpleDate(),
     verifications: List<MyVerificationCardUiModel> = SampleMyVerifications,
     pendingVerifications: List<PendingVerificationUiModel> = SamplePendingVerifications,
     onMenuClick: () -> Unit = {},
 ) {
-    var selectedDate by remember { mutableStateOf(initialDate) }
     var showDatePicker by remember { mutableStateOf(false) }
 
     Column(
@@ -79,48 +83,59 @@ fun MyVerificationScreen(
                 )
             },
         )
-        Column(
+        ReportPeriodHeader(
+            label = selectedDate.toDisplayLabel(),
+            onPreviousClick = { onDateChange(selectedDate.plusDays(-1)) },
+            onNextClick = { onDateChange(selectedDate.plusDays(1)) },
+            onLabelClick = { showDatePicker = true },
             modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState()),
-            verticalArrangement = Arrangement.spacedBy(20.dp),
-        ) {
-            ReportPeriodHeader(
-                label = selectedDate.toDisplayLabel(),
-                onPreviousClick = { selectedDate = selectedDate.plusDays(-1) },
-                onNextClick = { selectedDate = selectedDate.plusDays(1) },
-                onLabelClick = { showDatePicker = true },
-                modifier = Modifier
-                    .align(Alignment.CenterHorizontally)
-                    .padding(top = 16.dp),
-            )
+                .align(Alignment.CenterHorizontally)
+                .padding(top = 16.dp),
+        )
 
-            if (pendingVerifications.isNotEmpty()) {
-                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                    PendingVerificationCountLabel(
-                        count = pendingVerifications.size,
-                        modifier = Modifier.padding(horizontal = 16.dp),
-                    )
-                    LazyRow(
-                        contentPadding = PaddingValues(horizontal = 16.dp),
-                        horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    ) {
-                        items(pendingVerifications) { item -> PendingVerificationCard(item = item) }
-                    }
-                }
-                Box(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .height(8.dp)
-                        .background(LiroutiTheme.colors.borderAlternative),
-                )
+        if (verifications.isEmpty() && pendingVerifications.isEmpty()) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                MyVerificationEmptyState()
             }
-
+        } else {
             Column(
-                modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 20.dp),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
-                verifications.forEach { item -> MyVerificationCard(item = item) }
+                if (pendingVerifications.isNotEmpty()) {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        PendingVerificationCountLabel(
+                            count = pendingVerifications.size,
+                            modifier = Modifier.padding(horizontal = 16.dp),
+                        )
+                        LazyRow(
+                            contentPadding = PaddingValues(horizontal = 16.dp),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
+                            items(pendingVerifications) { item -> PendingVerificationCard(item = item) }
+                        }
+                    }
+                    Box(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .height(8.dp)
+                            .background(LiroutiTheme.colors.borderAlternative),
+                    )
+                }
+
+                Column(
+                    modifier = Modifier.padding(start = 16.dp, end = 16.dp, bottom = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(20.dp),
+                ) {
+                    verifications.forEach { item -> MyVerificationCard(item = item) }
+                }
             }
         }
     }
@@ -129,7 +144,25 @@ fun MyVerificationScreen(
         MyVerificationDatePickerBottomSheet(
             initialDate = selectedDate,
             onDismissRequest = { showDatePicker = false },
-            onDateSelected = { selectedDate = it },
+            onDateSelected = onDateChange,
+        )
+    }
+}
+
+/** 선택한 날짜에 인증 기록이 없을 때 화면 가운데에 보여주는 빈 상태. */
+@Composable
+private fun MyVerificationEmptyState(modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Image(
+            painter = painterResource(id = R.drawable.warning),
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+        )
+        Text(
+            text = "이 날의 인증 기록이 없어요",
+            style = LiroutiTheme.typography.body2LongMedium,
+            color = LiroutiTheme.colors.labelInfo,
+            modifier = Modifier.padding(top = 8.dp),
         )
     }
 }
@@ -172,7 +205,7 @@ private val SamplePendingVerifications = listOf(
 @Composable
 private fun MyVerificationScreenPreview() {
     LiroutiFrontendTheme {
-        MyVerificationScreen(onBackClick = {}, initialDate = SimpleDate(2026, 9, 2))
+        MyVerificationScreen(onBackClick = {}, selectedDate = SimpleDate(2026, 9, 2), onDateChange = {})
     }
 }
 
@@ -182,7 +215,22 @@ private fun MyVerificationScreenNoPendingPreview() {
     LiroutiFrontendTheme {
         MyVerificationScreen(
             onBackClick = {},
-            initialDate = SimpleDate(2026, 9, 2),
+            selectedDate = SimpleDate(2026, 9, 2),
+            onDateChange = {},
+            pendingVerifications = emptyList(),
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 900, name = "인증 기록 없음")
+@Composable
+private fun MyVerificationScreenEmptyPreview() {
+    LiroutiFrontendTheme {
+        MyVerificationScreen(
+            onBackClick = {},
+            selectedDate = SimpleDate(2026, 9, 2),
+            onDateChange = {},
+            verifications = emptyList(),
             pendingVerifications = emptyList(),
         )
     }

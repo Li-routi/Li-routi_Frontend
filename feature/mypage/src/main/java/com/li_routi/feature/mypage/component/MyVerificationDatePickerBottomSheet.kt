@@ -47,6 +47,9 @@ fun todaySimpleDate(): SimpleDate {
     return SimpleDate(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.DAY_OF_MONTH))
 }
 
+/** `GET /api/members/me/verifications`의 `date` 쿼리 파라미터용 "yyyy-MM-dd" 포맷. */
+fun SimpleDate.toApiDateString(): String = String.format(Locale.US, "%04d-%02d-%02d", year, month, day)
+
 fun SimpleDate.plusDays(delta: Int): SimpleDate {
     val calendar = Calendar.getInstance().apply {
         set(year, month - 1, day)
