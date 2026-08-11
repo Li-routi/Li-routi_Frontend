@@ -70,6 +70,7 @@ import com.li_routi.feature.home.vm.RoutineAuthSelectableUiModel
 import com.li_routi.feature.home.vm.SampleRoutineAuthSelectables
 import com.li_routi.feature.home.vm.VerificationPhotoAspectRatio
 import com.li_routi.feature.home.vm.decodeBitmapWithExif
+import com.li_routi.feature.home.vm.rotateToLandscapeIfPortrait
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 
@@ -209,7 +210,7 @@ private fun CapturedPhotoPreview(
             // CodeRabbit 반영: 컴포지션 스레드에서 원본 해상도를 디코딩하면 카메라 캡처 크기에 따라
             // 화면이 멈추거나 OOM이 날 수 있어, IO 디스패처에서 샘플링된 비트맵만 디코딩한다.
             withContext(Dispatchers.IO) {
-                runCatching { decodeBitmapWithExif(context, uri, PhotoPreviewTargetSizePx) }
+                runCatching { decodeBitmapWithExif(context, uri, PhotoPreviewTargetSizePx)?.rotateToLandscapeIfPortrait() }
                     .onFailure { Log.w("CapturedPhotoPreview", "사진 디코딩 실패: uri=$uri", it) }
                     .getOrNull()
             }
