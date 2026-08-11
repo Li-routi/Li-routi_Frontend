@@ -83,4 +83,35 @@ interface GroupRoutineRepository {
         cursor: Long?,
         size: Int?,
     ): ResultState<GroupRoutineVerificationFeed>
+
+    suspend fun getUnreadGroupRoutineVerifications(
+        groupId: Long,
+        cursor: Long?,
+        size: Int?,
+    ): ResultState<UnreadGroupRoutineVerificationFeed>
+
+    suspend fun markGroupRoutineVerificationsRead(
+        groupId: Long,
+        lastReadVerificationId: Long,
+    ): ResultState<GroupRoutineVerificationRead>
+
+    suspend fun likeGroupRoutineVerification(
+        groupId: Long,
+        verificationId: Long,
+    ): ResultState<GroupRoutineLike>
+
+    suspend fun unlikeGroupRoutineVerification(
+        groupId: Long,
+        verificationId: Long,
+    ): ResultState<GroupRoutineLike>
+
+    suspend fun disappointGroupRoutineVerification(
+        groupId: Long,
+        verificationId: Long,
+    ): ResultState<GroupRoutineDisappointment>
+
+    suspend fun undisappointGroupRoutineVerification(
+        groupId: Long,
+        verificationId: Long,
+    ): ResultState<GroupRoutineDisappointment>
 }

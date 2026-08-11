@@ -24,6 +24,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
     buildFeatures {
         compose = true
@@ -59,4 +60,7 @@ dependencies {
 
     // Coil (채팅 이모티콘, 프로필 이미지 등 서버 이미지)
     implementation(libs.coil.compose)
+
+    // java.time을 minSdk 24에서도 쓰기 위한 desugaring
+    coreLibraryDesugaring(libs.android.desugar.jdk.libs)
 }

@@ -1,5 +1,20 @@
 package com.li_routi.core.domain.challenge
 
+/** 인증 피드 정렬 기준 (GET .../verifications, .../verifications/me 공통). */
+enum class VerificationSort {
+    LATEST,
+    LIKES,
+}
+
+/** 인증 게시글 신고 사유 분류. ETC일 때만 [ReportVerificationUseCase]의 reason이 쓰인다. */
+enum class ReportType {
+    IRRELEVANT,
+    REUSED,
+    STOLEN,
+    SPAM,
+    ETC,
+}
+
 /** 인증 게시글 한 건 (GET /api/challenges/{id}/verifications). */
 data class Certification(
     val id: Long,
@@ -13,10 +28,16 @@ data class Certification(
     val isMine: Boolean,
 )
 
-/** 인증 피드 커서 기반 페이지네이션 결과. */
+/**
+ * 인증 피드 커서 기반 페이지네이션 결과.
+ *
+ * @param nextCursorLikeCount sort=LIKES일 때 다음 페이지 요청에 같이 넘겨야 하는 좋아요 수 커서.
+ * sort=LATEST일 때는 null.
+ */
 data class CertificationPage(
     val certifications: List<Certification>,
     val nextCursor: Long?,
+    val nextCursorLikeCount: Long?,
     val hasNext: Boolean,
 )
 
@@ -35,6 +56,7 @@ data class MyCertificationPage(
     val certifications: List<MyCertification>,
     val currentStreak: Int,
     val nextCursor: Long?,
+    val nextCursorLikeCount: Long?,
     val hasNext: Boolean,
 )
 

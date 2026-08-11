@@ -41,9 +41,19 @@ fun ChallengeNavHost(
     /** 공유 인증 플로우에서 챌린지 인증이 성공할 때마다 증가한다 — 지금 열려 있는 상세 화면이 있으면 새로고침한다. */
     verificationRefreshSignal: Int = 0,
     onTabSelected: (AppBottomTab) -> Unit = {},
+    /** 알림 탭 등 외부에서 특정 챌린지 상세로 바로 진입해 달라는 요청. 진입 후 [onInitialChallengeDetailConsumed]로 소비 처리해야 한다. */
+    initialChallengeDetailId: Long? = null,
+    onInitialChallengeDetailConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
+    LaunchedEffect(initialChallengeDetailId) {
+        if (initialChallengeDetailId != null) {
+            navController.navigate("challenge_detail/$initialChallengeDetailId")
+            onInitialChallengeDetailConsumed()
+        }
+    }
+
     NavHost(
         navController = navController,
         startDestination = RouteChallengeHome,
@@ -96,6 +106,7 @@ fun ChallengeNavHost(
                     participateChallengeUseCase = ChallengeContainer.participateChallengeUseCase,
                     leaveChallengeUseCase = ChallengeContainer.leaveChallengeUseCase,
                     reportVerificationUseCase = ChallengeContainer.reportVerificationUseCase,
+                    deleteVerificationUseCase = ChallengeContainer.deleteVerificationUseCase,
                     likeVerificationUseCase = ChallengeContainer.likeVerificationUseCase,
                     unlikeVerificationUseCase = ChallengeContainer.unlikeVerificationUseCase,
                     editVerificationUseCase = ChallengeContainer.editVerificationUseCase,

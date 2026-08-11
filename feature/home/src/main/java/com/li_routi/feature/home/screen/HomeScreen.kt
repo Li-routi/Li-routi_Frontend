@@ -111,6 +111,8 @@ fun HomeScreen(
     /** 롱프레스 편집 가능한 카테고리 조회(!fixed). */
     findEditableCategory: (String) -> RoutineCategory? = { null },
     addCategoryEnabled: Boolean = true,
+    /** 카테고리명 → 색 (필터 칩 선택 배경). */
+    categoryColors: Map<String, CategoryColor> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
     var showAddMenuSheet by remember { mutableStateOf(false) }
@@ -269,6 +271,7 @@ fun HomeScreen(
                                     myRoutineFilters = myRoutineFilters,
                                     groupRoomFilters = groupRoomFilters,
                                     groupRoomItems = groupRoomItems,
+                                    categoryColors = categoryColors,
                                     onRoutineCameraClick = actions::onRoutineCameraClick,
                                     onAddCategoryClick = {
                                         if (!addCategoryEnabled) return@RoutineChecklistSection

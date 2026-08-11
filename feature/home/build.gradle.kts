@@ -37,7 +37,6 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:common:ui"))
     implementation(project(":core:design-system"))
-    implementation(project(":feature:shopping"))
 
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.lifecycle.runtime.ktx)

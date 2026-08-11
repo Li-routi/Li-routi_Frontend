@@ -2,6 +2,11 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <!-- API 33+ 런타임 권한. minSdk 24에서도 선언은 가능하며 targetApi로 린트 경고를 맞춘다. -->
+    <uses-permission
+        android:name="android.permission.POST_NOTIFICATIONS"
+        tools:targetApi="33" />
+
     <application
         android:name=".LiRoutiApplication"
         android:allowBackup="true"
@@ -12,6 +17,15 @@
         android:roundIcon="@mipmap/ic_launcher_round"
         android:supportsRtl="true"
         android:theme="@style/Theme.LiroutiFrontend">
+
+        <!-- 백그라운드 FCM 자동 표시 시 사용할 기본 아이콘/채널. -->
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/ic_notification" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="lirouti_default" />
+
         <!-- launcher가 아니므로 Android Studio에서 실행 구성으로 직접 지정해야 켜진다.
              exported=true는 adb/Android Studio에서 바로 실행해 테스트하기 위한 설정이다. -->
         <activity

@@ -39,8 +39,6 @@ object NetworkModule {
 
     private val okHttpClient: OkHttpClient by lazy {
         val logging = HttpLoggingInterceptor().apply {
-            // TODO: 그룹 생성 409 디버깅용으로 BODY 사용 중. 원래는 릴리즈 빌드에서 로그를 끄고, 디버그
-            // 모드에서도 Body 노출(초대코드 등) 방지를 위해 BASIC을 썼음(PR 반영) — 디버깅 끝나면 되돌릴 것.
             level = if (BuildConfig.DEBUG) {
                 HttpLoggingInterceptor.Level.BODY
             } else {

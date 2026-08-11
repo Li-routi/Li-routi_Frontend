@@ -7,18 +7,24 @@ import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
 import com.li_routi.core.domain.grouproutine.DeleteGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.DeleteGroupUseCase
+import com.li_routi.core.domain.grouproutine.DisappointGroupRoutineVerificationUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupJoinPreviewUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetTodayGroupRoutinesUseCase
+import com.li_routi.core.domain.grouproutine.GetUnreadGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
 import com.li_routi.core.domain.grouproutine.JoinGroupUseCase
 import com.li_routi.core.domain.grouproutine.KickGroupMemberUseCase
 import com.li_routi.core.domain.grouproutine.LeaveGroupUseCase
+import com.li_routi.core.domain.grouproutine.LikeGroupRoutineVerificationUseCase
+import com.li_routi.core.domain.grouproutine.MarkGroupRoutineVerificationsReadUseCase
 import com.li_routi.core.domain.grouproutine.SetGroupLockUseCase
 import com.li_routi.core.domain.grouproutine.TransferGroupOwnerUseCase
+import com.li_routi.core.domain.grouproutine.UndisappointGroupRoutineVerificationUseCase
+import com.li_routi.core.domain.grouproutine.UnlikeGroupRoutineVerificationUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupMemberStatusMessageUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupNameUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
@@ -107,5 +113,29 @@ object GroupRoutineContainer {
 
     val getGroupRoutineVerificationsUseCase: GetGroupRoutineVerificationsUseCase by lazy {
         GetGroupRoutineVerificationsUseCase(repository)
+    }
+
+    val getUnreadGroupRoutineVerificationsUseCase: GetUnreadGroupRoutineVerificationsUseCase by lazy {
+        GetUnreadGroupRoutineVerificationsUseCase(repository)
+    }
+
+    val markGroupRoutineVerificationsReadUseCase: MarkGroupRoutineVerificationsReadUseCase by lazy {
+        MarkGroupRoutineVerificationsReadUseCase(repository)
+    }
+
+    val likeGroupRoutineVerificationUseCase: LikeGroupRoutineVerificationUseCase by lazy {
+        LikeGroupRoutineVerificationUseCase(repository)
+    }
+
+    val unlikeGroupRoutineVerificationUseCase: UnlikeGroupRoutineVerificationUseCase by lazy {
+        UnlikeGroupRoutineVerificationUseCase(repository)
+    }
+
+    val disappointGroupRoutineVerificationUseCase: DisappointGroupRoutineVerificationUseCase by lazy {
+        DisappointGroupRoutineVerificationUseCase(repository)
+    }
+
+    val undisappointGroupRoutineVerificationUseCase: UndisappointGroupRoutineVerificationUseCase by lazy {
+        UndisappointGroupRoutineVerificationUseCase(repository)
     }
 }

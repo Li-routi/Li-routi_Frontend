@@ -14,4 +14,6 @@ data class GroupRoutineVerificationItem(
     val imageUrl: String?,
     val content: String?,
     val verifiedAt: String?,
+    val likeCount: Long = 0L,
+    val liked: Boolean = false,
 )

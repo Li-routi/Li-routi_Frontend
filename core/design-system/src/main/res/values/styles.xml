@@ -1,15 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <!--
-        android.widget.NumberPicker 전용 스타일. NumberPicker는 가운데 선택 값(EditText) 바깥의
-        휠 프리뷰 값들을 내부 Paint(mSelectorWheelPaint)로 그리는데, 이 Paint의 초기 색상은 생성
-        시점에 EditText의 기본 텍스트 색(테마의 android:textColorPrimary)에서 복사된다.
-        [WheelNumberPicker]가 이 스타일로 감싼 Context로 NumberPicker를 생성해, 리플렉션 없이도
-        휠 프리뷰 값이 옅은 회색이 아니라 앱 라벨 색(labelDefault, Neutral10)으로 나오게 한다.
-        NumberPicker는 안드로이드 뷰라 Compose 테마(다크 모드 등)를 못 따라가므로 라이트 고정 색이다.
+        android.widget.NumberPicker 전용 테마.
+        휠 프리뷰 Paint는 생성 시 EditText의 textColorPrimary를 복사하므로,
+        Material Light 기반으로 고정 검정(#171719)을 넣는다.
+        NumberPicker는 시스템 뷰라 Compose 다크 모드를 따라가면 흰 글씨가 되어
+        밝은 시트 배경에서 안 보인다 — 라이트 고정.
     -->
-    <style name="LiroutiNumberPicker" parent="android:Widget">
+    <style name="LiroutiNumberPicker" parent="@android:style/Theme.Material.Light">
         <item name="android:textColorPrimary">#171719</item>
+        <item name="android:textColorSecondary">#171719</item>
         <item name="android:textColor">#171719</item>
+        <item name="android:colorForeground">#171719</item>
     </style>
 </resources>

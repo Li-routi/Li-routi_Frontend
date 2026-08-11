@@ -5,5 +5,6 @@ data class MyVerificationFeedResponse(
     val verifications: List<MyVerificationResponse>,
     val currentStreak: Int,
     val nextCursor: Long?,
+    val nextCursorLikeCount: Long?,
     val hasNext: Boolean,
 )

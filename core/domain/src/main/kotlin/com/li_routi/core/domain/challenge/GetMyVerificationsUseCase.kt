@@ -8,6 +8,8 @@ class GetMyVerificationsUseCase(
     suspend operator fun invoke(
         challengeId: Long,
         cursor: Long?,
+        cursorLikeCount: Long?,
         size: Int?,
-    ): ResultState<MyCertificationPage> = repository.getMyVerifications(challengeId, cursor, size)
+        sort: VerificationSort,
+    ): ResultState<MyCertificationPage> = repository.getMyVerifications(challengeId, cursor, cursorLikeCount, size, sort)
 }

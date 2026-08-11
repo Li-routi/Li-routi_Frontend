@@ -53,11 +53,14 @@ import com.li_routi.core.designsystem.component.LiroutiScrollToTopButton
 import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.core.domain.challenge.ReportType
+import com.li_routi.core.domain.challenge.VerificationSort
 import com.li_routi.feature.challenge.component.CertificationCard
 import com.li_routi.feature.challenge.navigation.ChallengeDetailScreenActions
 import com.li_routi.feature.challenge.vm.CertificationTab
 import com.li_routi.feature.challenge.vm.CertificationUiModel
 import com.li_routi.feature.challenge.vm.ChallengeDetailUiState
+import com.li_routi.feature.challenge.vm.toDisplayLabel
 import kotlinx.coroutines.launch
 
 // 챌린지 대표 이미지 자리의 배경. Figma 목업 기준 옅은 블루 톤(디자인 시스템에 대응하는 시맨틱 컬러 없음).
@@ -99,11 +102,8 @@ fun ChallengeDetailScreen(
     var editingCertification by remember { mutableStateOf<CertificationUiModel?>(null) }
     // "신고하기"를 누르면 이 값이 채워지고, 화면 전체가 신고 사유 선택 화면으로 전환된다.
     var reportingCertification by remember { mutableStateOf<CertificationUiModel?>(null) }
-    // "삭제하기"는 아직 백엔드 API가 없는 UI 스텁이라, 눌렀을 때 안내 토스트만 보여준다.
-    var showDeletePreparingToast by remember { mutableStateOf(false) }
-    // 인증 게시글 정렬 기준. 정렬 API가 아직 없어 라벨/바텀시트만 갖춘 UI 스텁이다 — 실제로 목록
-    // 순서를 바꾸지는 않는다(참여 여부와 무관하게 항상 노출).
-    var selectedSortLabel by remember { mutableStateOf("최신순") }
+    // 정렬 바텀시트 노출 여부만 화면 로컬 상태다. 실제 정렬 기준(uiState.selectedSort)은 바뀔 때마다
+    // 목록을 다시 불러와야 해서 ViewModel이 소유한다.
     var showSortSheet by remember { mutableStateOf(false) }
     val coroutineScope = rememberCoroutineScope()
     val listState = rememberLazyListState()
@@ -127,12 +127,9 @@ fun ChallengeDetailScreen(
             onSubmit = { content -> actions.onEditCertificationSubmit(certification.id, content) },
             isSubmitting = uiState.isSubmittingEdit,
             errorMessage = uiState.editCertificationError,
-            // 삭제 API가 아직 없어 버튼/다이얼로그만 우선 노출한다(ChallengeDetailScreenActions.onDeleteCertificationClick
-            // 참고). 실제 삭제 대신 화면을 닫고 "준비중입니다" 토스트만 보여준다.
             onDeleteClick = {
                 editingCertification = null
                 actions.onDeleteCertificationClick(certification.id)
-                showDeletePreparingToast = true
             },
             modifier = modifier,
         )
@@ -142,8 +139,8 @@ fun ChallengeDetailScreen(
     reportingCertification?.let { certification ->
         ReportReasonScreen(
             onClose = { reportingCertification = null },
-            onSubmit = { reason ->
-                actions.onReportCertificationClick(certification.id, reason)
+            onSubmit = { reportType, reason ->
+                actions.onReportCertificationClick(certification.id, reportType, reason)
                 reportingCertification = null
             },
             modifier = modifier,
@@ -168,6 +165,12 @@ fun ChallengeDetailScreen(
     // 조금이라도 스크롤을 내리면(맨 위가 아니면) "맨 위로" 버튼을 보여준다.
     val showScrollToTop by remember {
         derivedStateOf { listState.firstVisibleItemIndex > 0 || listState.firstVisibleItemScrollOffset > 0 }
+    }
+
+    // 정렬 기준이 바뀌면 목록이 통째로 리셋되므로, 스크롤 위치도 맨 위로 되돌린다 — 그렇지 않으면
+    // 이전 스크롤 위치가 남아 무한 스크롤 트리거가 불필요하게 다시 발동할 수 있다.
+    LaunchedEffect(uiState.selectedSort) {
+        listState.scrollToItem(0)
     }
 
     Box(modifier = modifier.fillMaxSize()) {
@@ -234,7 +237,7 @@ fun ChallengeDetailScreen(
                     }
                     item {
                         CertificationSortRow(
-                            selectedLabel = selectedSortLabel,
+                            selectedLabel = uiState.selectedSort.toDisplayLabel(),
                             onClick = { showSortSheet = true },
                         )
                     }
@@ -271,10 +274,10 @@ fun ChallengeDetailScreen(
                 .padding(16.dp),
         )
 
-        if (showDeletePreparingToast) {
+        if (uiState.actionErrorMessage != null) {
             LiroutiToast(
-                message = "준비중입니다",
-                onCloseClick = { showDeletePreparingToast = false },
+                message = uiState.actionErrorMessage,
+                onCloseClick = actions::onActionErrorDismissed,
                 modifier = Modifier
                     .align(Alignment.BottomCenter)
                     .fillMaxWidth()
@@ -330,23 +333,23 @@ fun ChallengeDetailScreen(
         }
     }
 
-    // 인증 게시글 정렬 바텀시트 (Figma 4424:51942). 정렬 API가 아직 없어 라벨만 바꾸는 UI 스텁이다.
+    // 인증 게시글 정렬 바텀시트 (Figma 4424:51942).
     if (showSortSheet) {
         LiroutiBottomSheet(
             onDismissRequest = { showSortSheet = false },
             title = null,
         ) {
             MoreSheetActionRow(
-                text = "인기순",
+                text = "최신순",
                 onClick = {
-                    selectedSortLabel = "인기순"
+                    actions.onSortSelected(VerificationSort.LATEST)
                     showSortSheet = false
                 },
             )
             MoreSheetActionRow(
-                text = "추천순",
+                text = "인기순",
                 onClick = {
-                    selectedSortLabel = "추천순"
+                    actions.onSortSelected(VerificationSort.LIKES)
                     showSortSheet = false
                 },
             )
@@ -502,10 +505,12 @@ private object PreviewChallengeDetailScreenActions : ChallengeDetailScreenAction
     override fun onEditCertificationSubmit(certificationId: Long, content: String) = Unit
     override fun onEditCertificationDismiss() = Unit
     override fun onDeleteCertificationClick(certificationId: Long) = Unit
-    override fun onReportCertificationClick(certificationId: Long, reason: String?) = Unit
+    override fun onReportCertificationClick(certificationId: Long, reportType: ReportType, reason: String?) = Unit
+    override fun onSortSelected(sort: VerificationSort) = Unit
     override fun onLikeToggleClick(certificationId: Long) = Unit
     override fun onVerificationSubmitted() = Unit
     override fun onRefresh() = Unit
+    override fun onActionErrorDismissed() = Unit
 }
 
 private val PreviewCertifications = List(4) { index ->

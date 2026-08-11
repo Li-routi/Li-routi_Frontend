@@ -34,6 +34,7 @@ import com.li_routi.core.data.di.ChallengeContainer
 import com.li_routi.core.data.di.HomeContainer
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.core.domain.notification.NotificationNavigationTarget
 import com.li_routi.feature.challenge.navigation.ChallengeNavHost
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
 import com.li_routi.feature.grouproutine.navigation.GrouproutineRootNavHost
@@ -75,9 +76,15 @@ private val NullableUriSaver = Saver<Uri?, String>(
 @Composable
 fun AppNavHost(
     modifier: Modifier = Modifier,
+    /** FCM 푸시를 탭해서 앱을 열었을 때 이동해야 할 화면. [MainActivity]가 인텐트에서 해석해 넘긴다. */
+    pendingNotificationTarget: NotificationNavigationTarget? = null,
+    /** 같은 [pendingNotificationTarget] 값이 연속으로 와도(예: 같은 타입 알림 재수신) 매번 새로 처리하기 위한 토큰. */
+    pendingNotificationToken: Long = 0L,
+    onPendingNotificationConsumed: () -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(AppBottomTab.Home) }
     var groupRoutineEntryPoint by rememberSaveable { mutableStateOf<GrouproutineEntryPoint?>(null) }
+    var challengeDetailEntryPoint by rememberSaveable { mutableStateOf<Long?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
 
     // 탭별로 몇 번 리셋됐는지 세는 값. SaveableStateProvider의 key에 섞어 넣어서,
@@ -134,6 +141,22 @@ fun AppNavHost(
         saveableStateHolder.removeState(tabKey(tab))
         bumpResetGenOf(tab)
         selectedTab = tab
+    }
+
+    // 알림을 눌러 앱에 진입한 경우 해당 탭으로 전환한다. 챌린지 id가 확실한 알림이면
+    // 챌린지 탭 전환과 동시에 상세 화면까지 바로 연다(challengeDetailEntryPoint).
+    LaunchedEffect(pendingNotificationToken) {
+        val target = pendingNotificationTarget ?: return@LaunchedEffect
+        when (target) {
+            NotificationNavigationTarget.PersonalRoutine -> selectTab(AppBottomTab.Home)
+            NotificationNavigationTarget.GroupRoutine -> selectTab(AppBottomTab.GroupRoutine)
+            NotificationNavigationTarget.ChallengeHome -> selectTab(AppBottomTab.Challenge)
+            is NotificationNavigationTarget.ChallengeDetail -> {
+                challengeDetailEntryPoint = target.challengeId
+                selectTab(AppBottomTab.Challenge)
+            }
+        }
+        onPendingNotificationConsumed()
     }
 
     // ---- 공유 인증 플로우(카메라 → 메모/루틴 선택) ----
@@ -200,6 +223,11 @@ fun AppNavHost(
                     onStartVerification = { routineId -> startVerificationFlow(routineId) },
                     verificationRefreshSignal = homeRefreshSignal,
                     onTabSelected = ::selectTab,
+                    onNavigateToChallengeHome = { selectTab(AppBottomTab.Challenge) },
+                    onNavigateToChallengeDetail = { challengeId ->
+                        challengeDetailEntryPoint = challengeId
+                        selectTab(AppBottomTab.Challenge)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -220,6 +248,8 @@ fun AppNavHost(
                     },
                     verificationRefreshSignal = challengeRefreshSignal,
                     onTabSelected = ::selectTab,
+                    initialChallengeDetailId = challengeDetailEntryPoint,
+                    onInitialChallengeDetailConsumed = { challengeDetailEntryPoint = null },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

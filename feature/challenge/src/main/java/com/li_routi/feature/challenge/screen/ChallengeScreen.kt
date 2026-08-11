@@ -28,8 +28,8 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
-import com.example.ri_routi.LabelButton
-import com.example.ri_routi.LiroutiButtonStyle
+import com.li_routi.core.designsystem.component.LabelButton
+import com.li_routi.core.designsystem.component.LiroutiButtonStyle
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiLabel
 import com.li_routi.core.designsystem.component.LiroutiRoutineSimpleCard
@@ -183,8 +183,10 @@ private fun ChallengeListContent(routines: List<RoutineUiModel>, onChallengeClic
         // ---------- 루틴 리스트 ----------
         // (Figma: List > Property1=routine_simple, node 2398:11076)
         // 카테고리가 여러 개인 경우 콤마로 이어붙임 (예: "건강, 취미")
-        val filteredRoutines = remember(routines, activeFilter) {
-            if (activeFilter == "전체") routines else routines.filter { activeFilter in it.categories }
+        val filteredRoutines = remember(routines, activeFilter, searchQuery) {
+            routines
+                .filter { activeFilter == "전체" || activeFilter in it.categories }
+                .filter { searchQuery.isBlank() || it.title.contains(searchQuery.trim(), ignoreCase = true) }
         }
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             filteredRoutines.forEach { routine ->

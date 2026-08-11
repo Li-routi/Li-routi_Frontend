@@ -23,6 +23,8 @@ data class HomeUiState(
     val myCategories: List<RoutineCategory> = emptyList(),
     /** POST 카테고리 가능 잔여 수. 홈 `+` 칩 활성 여부. */
     val addableCategoryCount: Int = 0,
+    /** 카테고리 생성 요청 진행 중 여부. 완료 전 재요청으로 중복 카테고리가 생기는 것을 막는다. */
+    val isMutatingCategory: Boolean = false,
     val groupRoomFilters: List<String> = emptyList(),
     val groupRoomItems: List<RoutineChecklistItemUiModel> = emptyList(),
     val isLoading: Boolean = false,

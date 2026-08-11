@@ -17,7 +17,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.component.LiroutiDivider
@@ -26,9 +25,12 @@ import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.mypage.component.ActivityStatUiModel
 import com.li_routi.feature.mypage.component.ActivityStatsGrid
+import com.li_routi.feature.mypage.component.BlackDay
+import com.li_routi.feature.mypage.component.BlueDay
 import com.li_routi.feature.mypage.component.EditProfileTopBar
 import com.li_routi.feature.mypage.component.MonthlyDayUiModel
 import com.li_routi.feature.mypage.component.MonthlyReportCard
+import com.li_routi.feature.mypage.component.RedDay
 import com.li_routi.feature.mypage.component.ReportPeriodTabs
 import com.li_routi.feature.mypage.component.SimpleDate
 import com.li_routi.feature.mypage.component.WeeklyBarUiModel
@@ -131,10 +133,6 @@ private fun stepMonth(year: Int, month: Int, delta: Int): Pair<Int, Int> {
     }
     return y to m
 }
-
-private val RedDay = Color(0xFFFF4242)
-private val BlueDay = Color(0xFF338AFF)
-private val BlackDay = Color(0xFF171719)
 
 /**
  * [year]년 [month]월 달력 그리드를 만든다. 달성률(ratio)은 실제 데이터가 없어 Figma 목업(2026년 9월

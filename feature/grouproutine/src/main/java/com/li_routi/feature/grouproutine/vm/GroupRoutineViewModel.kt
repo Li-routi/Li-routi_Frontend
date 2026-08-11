@@ -4,6 +4,7 @@ import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.data.di.ChatContainer
 import com.li_routi.core.data.di.GroupRoutineContainer
@@ -23,23 +24,29 @@ import com.li_routi.core.domain.grouproutine.CreateGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.CreateGroupUseCase
 import com.li_routi.core.domain.grouproutine.DeleteGroupRoutineUseCase
 import com.li_routi.core.domain.grouproutine.DeleteGroupUseCase
+import com.li_routi.core.domain.grouproutine.DisappointGroupRoutineVerificationUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupJoinPreviewUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GetTodayGroupRoutinesUseCase
+import com.li_routi.core.domain.grouproutine.GetUnreadGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.GroupRoutineStatus
 import com.li_routi.core.domain.grouproutine.JoinGroupUseCase
 import com.li_routi.core.domain.grouproutine.KickGroupMemberUseCase
 import com.li_routi.core.domain.grouproutine.LeaveGroupResult
 import com.li_routi.core.domain.grouproutine.LeaveGroupUseCase
+import com.li_routi.core.domain.grouproutine.LikeGroupRoutineVerificationUseCase
+import com.li_routi.core.domain.grouproutine.MarkGroupRoutineVerificationsReadUseCase
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
 import com.li_routi.core.domain.grouproutine.RepeatDay
 import com.li_routi.core.domain.grouproutine.SetGroupLockUseCase
 import com.li_routi.core.domain.grouproutine.TransferGroupOwnerUseCase
+import com.li_routi.core.domain.grouproutine.UndisappointGroupRoutineVerificationUseCase
+import com.li_routi.core.domain.grouproutine.UnlikeGroupRoutineVerificationUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupMemberStatusMessageUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupNameUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
@@ -82,6 +89,12 @@ class GroupRoutineViewModel(
     private val getGroupRoutineCategoriesUseCase: GetGroupRoutineCategoriesUseCase = GroupRoutineContainer.getGroupRoutineCategoriesUseCase,
     private val createGroupRoutineCategoryUseCase: CreateGroupRoutineCategoryUseCase = GroupRoutineContainer.createGroupRoutineCategoryUseCase,
     private val getGroupRoutineVerificationsUseCase: GetGroupRoutineVerificationsUseCase = GroupRoutineContainer.getGroupRoutineVerificationsUseCase,
+    private val getUnreadGroupRoutineVerificationsUseCase: GetUnreadGroupRoutineVerificationsUseCase = GroupRoutineContainer.getUnreadGroupRoutineVerificationsUseCase,
+    private val markGroupRoutineVerificationsReadUseCase: MarkGroupRoutineVerificationsReadUseCase = GroupRoutineContainer.markGroupRoutineVerificationsReadUseCase,
+    private val likeGroupRoutineVerificationUseCase: LikeGroupRoutineVerificationUseCase = GroupRoutineContainer.likeGroupRoutineVerificationUseCase,
+    private val unlikeGroupRoutineVerificationUseCase: UnlikeGroupRoutineVerificationUseCase = GroupRoutineContainer.unlikeGroupRoutineVerificationUseCase,
+    private val disappointGroupRoutineVerificationUseCase: DisappointGroupRoutineVerificationUseCase = GroupRoutineContainer.disappointGroupRoutineVerificationUseCase,
+    private val undisappointGroupRoutineVerificationUseCase: UndisappointGroupRoutineVerificationUseCase = GroupRoutineContainer.undisappointGroupRoutineVerificationUseCase,
     private val getChatMessagesUseCase: GetChatMessagesUseCase = ChatContainer.getChatMessagesUseCase,
     private val updateChatReadPositionUseCase: UpdateChatReadPositionUseCase = ChatContainer.updateChatReadPositionUseCase,
     private val getEmoticonsUseCase: GetEmoticonsUseCase = ChatContainer.getEmoticonsUseCase,
@@ -98,6 +111,7 @@ class GroupRoutineViewModel(
     private var chatSocketJob: Job? = null
     private var chatReadJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
+    private var unreadRoutineVerificationsJob: Job? = null
 
     // PR 반영: Mock ID와 실제 서버 ID 분리
     // createGroupUseCase 성공 시나 초대코드로 조인했을 때 발급되는 실제 서버 그룹 ID를 저장합니다.
@@ -125,24 +139,22 @@ class GroupRoutineViewModel(
                 screenMode = GroupRoutineScreenMode.Detail,
                 selectedRoutineId = routineId,
                 selectedMemberId = null,
-                isNewCertificationDialogVisible = true,
+                isNewCertificationDialogVisible = false,
                 actionMessage = null,
             )
         }
-        // 목록에 아직 mock 카드(음수 id)가 섞여 있어서, 실제 서버 그룹일 때만 상세를 불러옴
         if (routineId > 0L) {
             backendGroupId = routineId
             loadGroupDetail(routineId)
+            loadGroupRoutineCategories()
             loadTodayRoutines(routineId)
+            loadUnreadRoutineVerifications()
         } else {
-            // mock 방을 열었는데 직전 그룹 id가 남아 있으면 엉뚱한 그룹으로 요청이 나감
             backendGroupId = null
-            // 서버 방을 보다 넘어온 경우 그 방의 멤버/체크리스트가 그대로 남아 보임
             _uiState.update {
                 it.copy(members = DefaultGroupMembers, todos = DefaultGroupTodos, groupInviteCode = null)
             }
         }
-        // 방마다 방장이 다르니 방을 옮기면 이전 방 기준 판단을 버림
         _uiState.update { it.copy(isConfirmedOwner = false) }
     }
 
@@ -251,19 +263,38 @@ class GroupRoutineViewModel(
             return
         }
 
+        // 답장 대상이 있으면 원문을 인용 접두사로 앞에 합쳐서 보낸다 — 서버는 이걸 그냥
+        // 평범한 텍스트 메시지로 취급하므로 도메인/DTO 변경 없이 클라이언트에서만 처리 가능하다.
+        val replyTarget = _uiState.value.replyTarget
+        val content = if (replyTarget != null) {
+            "↩ ${replyTarget.senderName}: ${replyTarget.message.take(30)}\n$text"
+        } else {
+            text
+        }
+
         val message = NewChatMessage(
             clientMessageId = UUID.randomUUID().toString(),
             type = ChatMessageType.TEXT,
-            content = text,
+            content = content,
             emoticonCode = null,
         )
         viewModelScope.launch {
             when (val result = sendChatMessageUseCase(groupId, message)) {
-                is ResultState.Success -> _uiState.update { it.copy(chatDraftText = "") }
+                is ResultState.Success -> _uiState.update { it.copy(chatDraftText = "", replyTarget = null) }
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
         }
+    }
+
+    /** 채팅 메시지를 오른쪽으로 스와이프해서 답장 대상으로 지정했을 때 호출된다. */
+    fun onReplyTargetSelected(message: ChatMessageUiModel) {
+        _uiState.update { it.copy(replyTarget = message) }
+    }
+
+    /** 답장 미리보기(윗상자)의 취소 버튼을 눌렀을 때 호출된다. */
+    fun onReplyTargetCleared() {
+        _uiState.update { it.copy(replyTarget = null) }
     }
 
     // 탭한 즉시 채팅으로 전송된다 — 실제 화면 반영은 소켓 구독으로 돌아오는 브로드캐스트를 통해 이뤄진다.
@@ -607,6 +638,9 @@ class GroupRoutineViewModel(
                                     name = member.name,
                                     message = member.statusMessage.orEmpty(),
                                     streak = member.currentStreak,
+                                    completedCount = member.completedCount.toInt(),
+                                    totalCount = member.totalCount.toInt(),
+                                    totalLikeCount = member.totalLikeCount.toInt(),
                                     isMe = member.memberId == myMemberId,
                                 )
                             },
@@ -657,9 +691,24 @@ class GroupRoutineViewModel(
             when (val result = getGroupRoutineCategoriesUseCase(groupId)) {
                 is ResultState.Success -> {
                     val categoryNames = result.data.categories.map { it.name }
+                    val categoryColors = result.data.categories
+                        .mapNotNull { category ->
+                            category.color.toCategoryColor()?.let { color -> category.name to color }
+                        }
+                        .toMap()
                     _uiState.update { state ->
                         val allLabel = state.categories.firstOrNull().orEmpty()
-                        state.copy(categories = listOf(allLabel) + categoryNames)
+                        val mergedColors = state.categoryColors + categoryColors
+                        state.copy(
+                            categories = listOf(allLabel) + categoryNames,
+                            categoryColors = mergedColors,
+                            routineOptions = state.routineOptions.map { option ->
+                                option.copy(categoryColor = mergedColors[option.category] ?: option.categoryColor)
+                            },
+                            todos = state.todos.map { todo ->
+                                todo.copy(categoryColor = mergedColors[todo.category] ?: todo.categoryColor)
+                            },
+                        )
                     }
                 }
 
@@ -698,9 +747,10 @@ class GroupRoutineViewModel(
                                     memberId = item.memberId,
                                     userName = item.nickname,
                                     body = item.content.orEmpty(),
-                                    likeCount = 0,
+                                    likeCount = item.likeCount.toInt(),
                                     timeAgo = item.verifiedAt.orEmpty(),
                                     isMine = item.memberId == myMemberId,
+                                    isLiked = item.liked,
                                 )
                             },
                         )
@@ -722,7 +772,160 @@ class GroupRoutineViewModel(
     }
 
     fun onDismissNewCertificationDialog() {
+        val groupId = currentGroupId()
+        val lastReadId = _uiState.value.newCertifications.maxOfOrNull { it.id }
         _uiState.update { it.copy(isNewCertificationDialogVisible = false) }
+
+        if (groupId == null || lastReadId == null) return
+
+        viewModelScope.launch {
+            when (val result = markGroupRoutineVerificationsReadUseCase(groupId, lastReadId)) {
+                is ResultState.Success -> Unit
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun loadUnreadRoutineVerifications() {
+        val groupId = currentGroupId() ?: return
+
+        unreadRoutineVerificationsJob?.cancel()
+        unreadRoutineVerificationsJob = viewModelScope.launch {
+            when (
+                val result = getUnreadGroupRoutineVerificationsUseCase(
+                    groupId = groupId,
+                    cursor = null,
+                    size = 20,
+                )
+            ) {
+                is ResultState.Success -> {
+                    if (currentGroupId() != groupId) return@launch
+
+                    val unreadCertifications = result.data.verifications.map { item ->
+                        NewCertificationUiModel(
+                            id = item.verificationId,
+                            memberName = item.authorName,
+                            routineName = item.routineName,
+                            message = item.content.orEmpty(),
+                        )
+                    }
+                    _uiState.update {
+                        it.copy(
+                            newCertifications = unreadCertifications,
+                            isNewCertificationDialogVisible = unreadCertifications.isNotEmpty(),
+                        )
+                    }
+                }
+
+                is ResultState.Error -> {
+                    if (currentGroupId() == groupId) {
+                        _uiState.update { it.copy(actionMessage = result.message) }
+                    }
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onCertificationLikeClick(verificationId: Long, currentlyLiked: Boolean) {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        viewModelScope.launch {
+            val result = if (currentlyLiked) {
+                unlikeGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)
+            } else {
+                likeGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)
+            }
+
+            when (result) {
+                is ResultState.Success -> {
+                    val like = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            posts = state.posts.map { post ->
+                                if (post.id == like.verificationId) {
+                                    post.copy(
+                                        likeCount = like.likeCount.toInt(),
+                                        isLiked = like.liked,
+                                    )
+                                } else {
+                                    post
+                                }
+                            },
+                        )
+                    }
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onNewCertificationLikeClick(verificationId: Long) {
+        val groupId = currentGroupId() ?: return
+
+        viewModelScope.launch {
+            when (val result = likeGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)) {
+                is ResultState.Success -> onDismissNewCertificationDialog()
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onNewCertificationDisappointClick(verificationId: Long) {
+        val groupId = currentGroupId() ?: return
+
+        viewModelScope.launch {
+            when (val result = disappointGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)) {
+                is ResultState.Success -> onDismissNewCertificationDialog()
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onCertificationDisappointmentClick(verificationId: Long, currentlyDisappointed: Boolean) {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        viewModelScope.launch {
+            val result = if (currentlyDisappointed) {
+                undisappointGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)
+            } else {
+                disappointGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)
+            }
+
+            when (result) {
+                is ResultState.Success -> {
+                    val disappointment = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            posts = state.posts.map { post ->
+                                if (post.id == disappointment.verificationId) {
+                                    post.copy(
+                                        disappointmentCount = disappointment.count.toInt(),
+                                        isDisappointed = disappointment.disappointed,
+                                    )
+                                } else {
+                                    post
+                                }
+                            },
+                        )
+                    }
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     fun onGroupRoutineManageClick() {
@@ -913,6 +1116,7 @@ class GroupRoutineViewModel(
                                 deadline = routine.scheduledEndTime,
                                 category = routine.categoryName,
                                 isDone = routine.status == GroupRoutineStatus.COMPLETED,
+                                categoryColor = _uiState.value.categoryColors[routine.categoryName],
                             )
                         }
                     _uiState.update { it.copy(todos = todos) }
@@ -1059,7 +1263,9 @@ class GroupRoutineViewModel(
                         }
                         // 실제 멤버/루틴 수는 상세 조회로 채움
                         loadGroupDetail(joined.groupId)
+                        loadGroupRoutineCategories()
                         loadTodayRoutines(joined.groupId)
+                        loadUnreadRoutineVerifications()
                     }
 
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -1156,9 +1362,11 @@ class GroupRoutineViewModel(
         }
 
         if (state.screenMode == GroupRoutineScreenMode.CreateRoutineSelect) {
+            val selectedColor = state.categoryColorInput
             _uiState.update {
                 it.copy(
                     categories = it.categories + name,
+                    categoryColors = if (selectedColor == null) it.categoryColors else it.categoryColors + (name to selectedColor),
                     selectedCategory = name,
                     categoryInput = "",
                     categoryColorInput = null,
@@ -1179,9 +1387,11 @@ class GroupRoutineViewModel(
                 is ResultState.Success -> {
                     // CodeRabbit 반영: 이름뿐 아니라 서버 categoryId도 저장해야 루틴 제출 시 사용 가능
                     serverCategoryIds = serverCategoryIds + (result.data.name to result.data.categoryId)
+                    val categoryColor = result.data.color.toCategoryColor() ?: state.categoryColorInput
                     _uiState.update {
                         it.copy(
                             categories = it.categories + result.data.name,
+                            categoryColors = if (categoryColor == null) it.categoryColors else it.categoryColors + (result.data.name to categoryColor),
                             selectedCategory = result.data.name,
                             categoryInput = "",
                             categoryColorInput = null,
@@ -1228,6 +1438,61 @@ class GroupRoutineViewModel(
                 routineDraftEndTime = option.deadline,
                 routineDraftRepeatDays = option.repeatDays,
                 routineDraftCategory = option.category,
+                actionMessage = null,
+            )
+        }
+    }
+
+    fun onRoutineColorLongClick(optionId: Long) {
+        _uiState.update { state ->
+            val option = state.routineOptions.firstOrNull { it.id == optionId }
+                ?: state.todos.firstOrNull { it.id == optionId }?.let { todo ->
+                    CreateRoutineOptionUiModel(
+                        id = todo.id,
+                        title = todo.title,
+                        deadline = todo.deadline,
+                        category = todo.category,
+                        categoryColor = todo.categoryColor,
+                    )
+                }
+                ?: return@update state
+            state.copy(
+                isRoutineColorSheetVisible = true,
+                routineColorTargetId = optionId,
+                routineColorInput = option.categoryColor ?: state.categoryColors[option.category],
+                actionMessage = null,
+            )
+        }
+    }
+
+    fun onDismissRoutineColorSheet() {
+        _uiState.update {
+            it.copy(
+                isRoutineColorSheetVisible = false,
+                routineColorTargetId = null,
+                routineColorInput = null,
+            )
+        }
+    }
+
+    fun onRoutineColorSelected(color: CategoryColor) {
+        _uiState.update { state ->
+            val targetId = state.routineColorTargetId ?: return@update state
+            val categoryName = state.routineOptions.firstOrNull { it.id == targetId }?.category
+                ?: state.todos.firstOrNull { it.id == targetId }?.category
+                ?: return@update state
+            val nextColors = state.categoryColors + (categoryName to color)
+            state.copy(
+                categoryColors = nextColors,
+                routineOptions = state.routineOptions.map { option ->
+                    if (option.category == categoryName) option.copy(categoryColor = color) else option
+                },
+                todos = state.todos.map { todo ->
+                    if (todo.category == categoryName) todo.copy(categoryColor = color) else todo
+                },
+                isRoutineColorSheetVisible = false,
+                routineColorTargetId = null,
+                routineColorInput = color,
                 actionMessage = null,
             )
         }
@@ -1310,6 +1575,7 @@ class GroupRoutineViewModel(
         _uiState.update { it.copy(isSubmitting = true) }
 
         val categoryName = state.routineDraftCategory
+        val categoryColor = state.categoryColors[categoryName]
         val schedules = state.routineDraftRepeatDays.toGroupRoutineSchedules(
             startTime = state.routineDraftStartTime,
             endTime = state.routineDraftEndTime,
@@ -1359,6 +1625,7 @@ class GroupRoutineViewModel(
                             startTime = state.routineDraftStartTime,
                             repeatLabel = repeatLabel,
                             repeatDays = state.routineDraftRepeatDays,
+                            categoryColor = categoryColor,
                         )
                         _uiState.update {
                             val nextOptions = if (editingId == null) {
@@ -1397,6 +1664,7 @@ class GroupRoutineViewModel(
         val repeatLabel = repeatDaysLabel(state.routineDraftRepeatDays)
         val editingId = state.editingRoutineId
         val categoryName = state.routineDraftCategory
+        val categoryColor = state.categoryColors[categoryName]
         
         val nextOptions = if (editingId == null) {
             val newId = (state.routineOptions.maxOfOrNull { it.id } ?: 0L) + 1L
@@ -1408,6 +1676,7 @@ class GroupRoutineViewModel(
                 startTime = state.routineDraftStartTime,
                 repeatLabel = repeatLabel,
                 repeatDays = state.routineDraftRepeatDays,
+                categoryColor = categoryColor,
             )
         } else {
             state.routineOptions.map { option ->
@@ -1418,6 +1687,7 @@ class GroupRoutineViewModel(
                         startTime = state.routineDraftStartTime,
                         repeatLabel = repeatLabel,
                         repeatDays = state.routineDraftRepeatDays,
+                        categoryColor = categoryColor,
                     )
                 } else {
                     option
@@ -1440,7 +1710,13 @@ class GroupRoutineViewModel(
     }
 
     fun onRoutineDeleteClick() {
-        _uiState.update { it.copy(isDeleteRoutineDialogVisible = true) }
+        _uiState.update {
+            it.copy(
+                editingRoutineId = it.editingRoutineId ?: it.routineColorTargetId,
+                isRoutineColorSheetVisible = false,
+                isDeleteRoutineDialogVisible = true,
+            )
+        }
     }
 
     fun onDismissDeleteRoutineDialog() {
@@ -1591,6 +1867,7 @@ class GroupRoutineViewModel(
                                 deadline = option.deadline,
                                 category = option.category,
                                 isDone = false,
+                                categoryColor = option.categoryColor ?: _uiState.value.categoryColors[option.category],
                             )
                         }
                         _uiState.update {

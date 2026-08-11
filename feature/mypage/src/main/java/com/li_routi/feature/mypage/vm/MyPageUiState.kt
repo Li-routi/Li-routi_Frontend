@@ -12,6 +12,13 @@ data class MyPageUiState(
     val profileImageUrl: String? = null,
     val isProfileLoaded: Boolean = false,
     val isSavingProfile: Boolean = false,
+    /**
+     * 최초 프로필 조회 실패 메시지. `init`에서 곧바로 조회하다 보니 [MyPageRoute]의
+     * `uiEvent` 구독(`LaunchedEffect`)이 아직 시작되기 전에 실패가 끝날 수 있어(SharedFlow는
+     * 늦게 구독한 쪽에 재생하지 않음), 놓치지 않도록 일회성 이벤트 대신 상태로 들고 있는다.
+     * 화면에 보여준 뒤에는 null로 지운다.
+     */
+    val profileLoadError: String? = null,
 )
 
 /** 마이페이지에서 발생하는 일회성 내비게이션 이벤트. */

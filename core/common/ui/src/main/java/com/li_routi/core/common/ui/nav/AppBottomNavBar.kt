@@ -3,7 +3,6 @@ package com.li_routi.core.common.ui.nav
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -11,11 +10,14 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.R
@@ -57,13 +59,18 @@ fun AppBottomNavBar(
                 .fillMaxWidth()
                 .background(LiroutiTheme.colors.backgroundDefault)
                 .navigationBarsPadding()
-                .padding(vertical = 8.dp),
+                .padding(vertical = 8.dp)
+                .selectableGroup(),
             horizontalArrangement = Arrangement.SpaceEvenly,
         ) {
             AppBottomNavItems.forEach { item ->
                 val selected = item.tab == selectedTab
                 Column(
-                    modifier = Modifier.clickable(onClick = { onTabSelected(item.tab) }),
+                    modifier = Modifier.selectable(
+                        selected = selected,
+                        onClick = { onTabSelected(item.tab) },
+                        role = Role.Tab,
+                    ),
                     horizontalAlignment = Alignment.CenterHorizontally,
                 ) {
                     Image(

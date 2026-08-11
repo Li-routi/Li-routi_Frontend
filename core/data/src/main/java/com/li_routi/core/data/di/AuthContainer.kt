@@ -27,6 +27,8 @@ object AuthContainer {
             api = NetworkModule.authApiService,
             tokenPreference = tokenPreference,
             uploadMediaUseCase = MediaContainer.uploadMediaUseCase,
+            fcmTokenPreference = NotificationContainer.fcmTokenPreference,
+            notificationApi = NetworkModule.notificationApiService,
         )
     }
 

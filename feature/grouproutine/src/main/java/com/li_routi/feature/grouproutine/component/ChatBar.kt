@@ -5,6 +5,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
@@ -32,9 +33,11 @@ import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.example.ri_routi.AstaSans
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -49,6 +52,24 @@ private val ChatBarTextStyle = TextStyle(
     lineHeight = 21.98.sp,
     letterSpacing = 0.sp,
 )
+
+private val ReplyHeaderHeight = 44.dp
+private val ChatBarBackground = Color(0xFFD9D9D9)
+private val ReplyHeaderTextStartPadding = 16.dp
+private val ReplyHeaderTopTextTopPadding = 4.dp
+private val ReplyHeaderBottomTextBottomPadding = 4.dp
+private val ReplyMessageTextEndReserve = 28.dp
+private val ReplyCancelIconSize = 16.dp
+private val ReplyCancelIconEndPadding = 16.dp
+
+private val ReplyNicknameTextStyle = TextStyle(
+    fontFamily = AstaSans,
+    fontSize = 13.sp,
+    fontWeight = FontWeight.Bold,
+    lineHeight = 16.sp,
+    letterSpacing = (-0.325).sp,
+)
+private val ReplyMessageTextStyle = ReplyNicknameTextStyle.copy(fontWeight = FontWeight.Normal)
 
 /**
  * 모임방 상세 하단 채팅바 (텍스트 입력 + 이모티콘 버튼 + 전송 버튼).
@@ -66,25 +87,36 @@ fun ChatBar(
     onMessageChange: (String) -> Unit,
     focusRequester: FocusRequester,
     modifier: Modifier = Modifier,
+    replyTarget: ChatMessageUiModel? = null,
+    onReplyCancelClick: () -> Unit = {},
     isEmojiPanelOpen: Boolean = false,
     onFocusChanged: (Boolean) -> Unit = {},
     onTextFieldTap: () -> Unit = {},
     onEmojiClick: () -> Unit = {},
     onSendClick: () -> Unit = {},
 ) {
-    Box(
-        modifier = modifier
-            .padding(horizontal = ChatBarHorizontalMargin)
-            .fillMaxWidth()
-            .height(44.dp)
-            .background(LiroutiTheme.colors.backgroundFill),
-    ) {
-        Row(
+    Column(modifier = modifier.fillMaxWidth()) {
+        if (replyTarget != null) {
+            ChatReplyHeader(
+                nickname = replyTarget.senderName,
+                messagePreview = replyTarget.message,
+                onCancelClick = onReplyCancelClick,
+                modifier = Modifier.padding(horizontal = ChatBarHorizontalMargin),
+            )
+        }
+        Box(
             modifier = Modifier
-                .fillMaxSize()
-                .padding(horizontal = 10.dp),
-            verticalAlignment = Alignment.CenterVertically,
+                .padding(horizontal = ChatBarHorizontalMargin)
+                .fillMaxWidth()
+                .height(44.dp)
+                .background(ChatBarBackground),
         ) {
+            Row(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(horizontal = 10.dp),
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
             Box(
                 modifier = Modifier.weight(1f),
                 contentAlignment = Alignment.CenterStart,
@@ -155,6 +187,62 @@ fun ChatBar(
                 )
             }
         }
+        }
+    }
+}
+
+/**
+ * [ChatBar] 위에 붙는 답장 대상 헤더("윗상자"). 답장 대상이 있을 때만 [ChatBar]가 이 헤더를
+ * 얹어 보여준다 — 취소 아이콘을 누르면 [onCancelClick]으로 답장 대상을 해제한다.
+ */
+@Composable
+private fun ChatReplyHeader(
+    nickname: String,
+    messagePreview: String,
+    onCancelClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(ReplyHeaderHeight)
+            .background(ChatBarBackground),
+    ) {
+        Text(
+            text = "${nickname}에게 답장",
+            style = ReplyNicknameTextStyle,
+            color = Color(0xFF000000),
+            modifier = Modifier
+                .align(Alignment.TopStart)
+                .padding(
+                    start = ReplyHeaderTextStartPadding,
+                    top = ReplyHeaderTopTextTopPadding,
+                    end = ReplyMessageTextEndReserve,
+                ),
+        )
+        Text(
+            text = messagePreview,
+            style = ReplyMessageTextStyle,
+            color = LiroutiTheme.colors.labelSub,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+                .padding(
+                    start = ReplyHeaderTextStartPadding,
+                    bottom = ReplyHeaderBottomTextBottomPadding,
+                    end = ReplyMessageTextEndReserve,
+                ),
+        )
+        Image(
+            painter = painterResource(id = R.drawable.close__filled),
+            contentDescription = "답장 취소",
+            modifier = Modifier
+                .align(Alignment.CenterEnd)
+                .padding(end = ReplyCancelIconEndPadding)
+                .size(ReplyCancelIconSize)
+                .clickable(onClick = onCancelClick),
+        )
     }
 }
 
@@ -167,6 +255,26 @@ private fun ChatBarPreview() {
             message = message,
             onMessageChange = { message = it },
             focusRequester = remember { FocusRequester() },
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun ChatBarWithReplyPreview() {
+    LiroutiFrontendTheme {
+        var message by remember { mutableStateOf("") }
+        ChatBar(
+            message = message,
+            onMessageChange = { message = it },
+            focusRequester = remember { FocusRequester() },
+            replyTarget = ChatMessageUiModel(
+                id = 1L,
+                senderName = "민지",
+                message = "내일 몇 시에 만나?",
+                sentAtMillis = 0L,
+                isMine = false,
+            ),
         )
     }
 }

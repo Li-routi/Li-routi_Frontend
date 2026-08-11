@@ -30,3 +30,7 @@ data class NotificationPage(
 data class NotificationReadAllResult(
     val updatedCount: Int,
 )
+
+data class FcmDeviceActive(
+    val active: Boolean,
+)

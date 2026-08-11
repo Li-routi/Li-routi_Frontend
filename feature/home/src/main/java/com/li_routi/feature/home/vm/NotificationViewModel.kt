@@ -8,6 +8,8 @@ import com.li_routi.core.domain.notification.AppNotification
 import com.li_routi.core.domain.notification.GetNotificationsUseCase
 import com.li_routi.core.domain.notification.MarkNotificationReadUseCase
 import com.li_routi.core.domain.notification.NotificationCategory
+import com.li_routi.core.domain.notification.NotificationNavigationTarget
+import com.li_routi.core.domain.notification.resolveNotificationNavigationTarget
 import com.li_routi.feature.home.navigation.NotificationScreenActions
 import com.li_routi.feature.home.navigation.NotificationSettingsScreenActions
 import java.text.SimpleDateFormat
@@ -90,6 +92,7 @@ class NotificationViewModel(
                 },
             )
         }
+        emitDeepLinkEvent(item.type, item.referenceId)
 
         viewModelScope.launch {
             when (val result = markNotificationReadUseCase(id)) {
@@ -111,6 +114,18 @@ class NotificationViewModel(
                 is ResultState.Success, ResultState.Loading -> Unit
             }
         }
+    }
+
+    private fun emitDeepLinkEvent(type: String, referenceId: Long?) {
+        val event = when (val target = resolveNotificationNavigationTarget(type, referenceId)) {
+            NotificationNavigationTarget.PersonalRoutine -> NotificationUiEvent.NavigateToPersonalRoutine
+            NotificationNavigationTarget.GroupRoutine -> NotificationUiEvent.NavigateToGroupRoutine
+            NotificationNavigationTarget.ChallengeHome -> NotificationUiEvent.NavigateToChallengeHome
+            is NotificationNavigationTarget.ChallengeDetail ->
+                NotificationUiEvent.NavigateToChallengeDetail(target.challengeId)
+            null -> return
+        }
+        emitEvent(event)
     }
 
     override fun onMoreClick(notificationId: String) {
@@ -216,6 +231,8 @@ private fun AppNotification.toUiModel(): NotificationItemUiModel = NotificationI
     title = title.ifBlank { body },
     timeLabel = createdAt.toRelativeTimeLabel(),
     isUnread = !read,
+    type = type,
+    referenceId = referenceId,
 )
 
 private fun NotificationCategory.toTab(): NotificationTab = when (this) {

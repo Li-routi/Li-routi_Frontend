@@ -40,6 +40,9 @@ data class GroupMemberUiModel(
     val name: String,
     val message: String,
     val streak: Int,
+    val completedCount: Int = 0,
+    val totalCount: Int = 0,
+    val totalLikeCount: Int = 0,
     val isMe: Boolean = false,
 )
 
@@ -49,6 +52,7 @@ data class GroupTodoUiModel(
     val deadline: String,
     val category: String,
     val isDone: Boolean,
+    val categoryColor: CategoryColor? = null,
 )
 
 data class CertificationPostUiModel(
@@ -59,6 +63,9 @@ data class CertificationPostUiModel(
     val likeCount: Int,
     val timeAgo: String,
     val isMine: Boolean,
+    val isLiked: Boolean = false,
+    val disappointmentCount: Int = 0,
+    val isDisappointed: Boolean = false,
 )
 
 data class NewCertificationUiModel(
@@ -77,6 +84,7 @@ data class CreateRoutineOptionUiModel(
     val repeatLabel: String = "없음",
     val repeatDays: Set<String> = emptySet(),
     val isSelected: Boolean = false,
+    val categoryColor: CategoryColor? = null,
 )
 
 data class GroupRoutineUiState(
@@ -101,6 +109,7 @@ data class GroupRoutineUiState(
     val inviteCodeInput: String = "",
     val groupInviteCode: String? = null,
     val unreadChatCount: Int = 0,
+    val categoryColors: Map<String, CategoryColor> = emptyMap(),
     val selectedCategory: String = "전체",
     // PR 반영: 백엔드 카테고리와 일치시킴 ("공부" 제거 및 항목 추가)
     val categories: List<String> = listOf("전체", "운동", "건강", "자기계발", "생활정리", "마음관리", "취미"),
@@ -121,10 +130,15 @@ data class GroupRoutineUiState(
     val isCategorySheetVisible: Boolean = false,
     val categoryInput: String = "",
     val categoryColorInput: CategoryColor? = null,
+    val isRoutineColorSheetVisible: Boolean = false,
+    val routineColorTargetId: Long? = null,
+    val routineColorInput: CategoryColor? = null,
     val isMessageEditSheetVisible: Boolean = false,
     val messageDraft: String = "",
     val chatMessages: List<ChatMessageUiModel> = emptyList(),
     val chatDraftText: String = "",
+    /** 스와이프로 지정된 답장 대상. null이면 채팅바 윗상자를 숨긴다. */
+    val replyTarget: ChatMessageUiModel? = null,
     val chatEmoticons: List<ChatEmoticonUiModel> = emptyList(),
     val isChatLoading: Boolean = false,
     val newCertifications: List<NewCertificationUiModel> = SampleNewCertifications,

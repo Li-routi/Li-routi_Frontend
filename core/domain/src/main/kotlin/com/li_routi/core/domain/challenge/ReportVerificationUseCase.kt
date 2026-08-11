@@ -8,6 +8,7 @@ class ReportVerificationUseCase(
     suspend operator fun invoke(
         challengeId: Long,
         verificationId: Long,
+        reportType: ReportType,
         reason: String? = null,
-    ): ResultState<Unit> = repository.reportVerification(challengeId, verificationId, reason)
+    ): ResultState<Unit> = repository.reportVerification(challengeId, verificationId, reportType, reason)
 }

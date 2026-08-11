@@ -3,6 +3,8 @@ package com.li_routi.core.domain.notification
 import com.li_routi.core.common.kotlin.util.ResultState
 
 interface NotificationRepository {
+    suspend fun registerDevice(token: String): ResultState<FcmDeviceActive>
+    suspend fun unregisterDevice(token: String): ResultState<FcmDeviceActive>
     suspend fun getNotifications(
         category: NotificationCategory?,
         cursor: Long?,

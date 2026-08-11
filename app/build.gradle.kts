@@ -45,6 +45,7 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true
     }
     buildFeatures {
         compose = true
@@ -63,7 +64,6 @@ dependencies {
     implementation(project(":feature:login"))
     implementation(project(":feature:onboarding"))
     implementation(project(":feature:home"))
-    implementation(project(":feature:shopping"))
     implementation(project(":feature:mypage"))
     implementation(project(":feature:grouproutine"))
     implementation(project(":feature:challenge"))
@@ -113,4 +113,7 @@ dependencies {
     // Firebase (FCM)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.messaging.ktx)
+
+    // feature:grouproutine이 java.time을 minSdk 24에서 쓰기 위해 요구하는 desugaring
+    coreLibraryDesugaring(libs.android.desugar.jdk.libs)
 }
