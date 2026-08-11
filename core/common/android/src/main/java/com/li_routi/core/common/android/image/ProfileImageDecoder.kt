@@ -1,4 +1,4 @@
-package com.li_routi.feature.mypage.util
+package com.li_routi.core.common.android.image
 
 import android.content.Context
 import android.graphics.Bitmap
@@ -9,33 +9,34 @@ import android.media.ExifInterface
 import android.net.Uri
 import android.os.Build
 import android.provider.MediaStore
-import com.li_routi.core.domain.auth.ProfileImageUpload
 import java.io.ByteArrayOutputStream
 import java.io.IOException
 import kotlin.math.max
 import kotlin.math.roundToInt
 
-private const val PROFILE_IMAGE_MAX_DIMENSION = 1024
-private const val PROFILE_IMAGE_JPEG_QUALITY = 85
-
 /**
- * content:// Uri에서 프로필 이미지를 읽어 긴 변 [PROFILE_IMAGE_MAX_DIMENSION]px 이하로 리사이징하고
- * JPEG로 압축한 뒤 업로드용 바이트로 반환한다. IO/CPU 작업이라 호출부에서 IO 디스패처로 실행해야 한다.
+ * content:// Uri에서 프로필 이미지를 읽어 긴 변 [maxDimension]px 이하로 리사이징하고 JPEG로
+ * 압축한 뒤 업로드용 바이트로 반환한다. IO/CPU 작업이라 호출부에서 IO 디스패처로 실행해야 한다.
  *
- * feature/login의 `LoginViewModel`에 있는 동일 로직(온보딩 첫 프로필 설정용)을 참고했다 — 다만 원본은
- * `ContentResolver.openInputStream()` + `BitmapFactory.decodeStream()`으로 디코딩했는데, 시스템 포토
- * 피커(Android Photo Picker)가 돌려주는 `content://media/picker/...` Uri에서 이 조합이 스트림을 못 열어
- * (`openInputStream`이 null) 항상 실패했다. [EditProfileScreen][com.li_routi.feature.mypage.screen.EditProfileScreen]의
- * 미리보기(Coil)는 같은 Uri를 문제없이 읽는 걸로 봐서 `openInputStream` 경로 자체의 문제로 보여, 미리보기와
- * 동일하게 [ImageDecoder]/[MediaStore.Images.Media.getBitmap] 기반 디코딩으로 바꿨다.
+ * `feature/login`(온보딩 첫 프로필 설정)과 `feature/mypage`(프로필 사진 변경)가 같은 로직을
+ * 각자 들고 있다가 하나는 고쳐지고 하나는 안 고쳐지는 문제가 있어 여기로 합쳤다: 시스템 포토
+ * 피커(Android Photo Picker)가 돌려주는 `content://media/picker/...` Uri는
+ * `ContentResolver.openInputStream()`이 null을 반환해 `BitmapFactory.decodeStream()` 조합으로는
+ * 항상 실패한다. 대신 미리보기(Coil)가 문제없이 읽는 것과 동일하게 [ImageDecoder]/
+ * [MediaStore.Images.Media.getBitmap] 기반으로 디코딩한다.
  */
-internal fun readProfileImageUpload(context: Context, uri: Uri): ProfileImageUpload {
+fun readProfileImageBytes(
+    context: Context,
+    uri: Uri,
+    maxDimension: Int = 1024,
+    jpegQuality: Int = 85,
+): ByteArray {
     val resolver = context.contentResolver
 
-    var bitmap = decodeBitmap(context, uri, PROFILE_IMAGE_MAX_DIMENSION)
+    var bitmap = decodeBitmap(context, uri, maxDimension)
         ?: throw IOException("프로필 이미지를 디코딩할 수 없습니다: $uri")
 
-    bitmap = bitmap.scaleDownTo(PROFILE_IMAGE_MAX_DIMENSION)
+    bitmap = bitmap.scaleDownTo(maxDimension)
 
     // ImageDecoder(API 28+)는 EXIF 방향을 이미 반영해 디코딩하므로, 그 이하에서만 수동 회전한다.
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.P) {
@@ -48,12 +49,12 @@ internal fun readProfileImageUpload(context: Context, uri: Uri): ProfileImageUpl
     }
 
     val bytes = ByteArrayOutputStream().use { output ->
-        bitmap.compress(Bitmap.CompressFormat.JPEG, PROFILE_IMAGE_JPEG_QUALITY, output)
+        bitmap.compress(Bitmap.CompressFormat.JPEG, jpegQuality, output)
         output.toByteArray()
     }
     bitmap.recycle()
 
-    return ProfileImageUpload(bytes = bytes, contentType = "image/jpeg")
+    return bytes
 }
 
 /** [ImageDecoder]로 목표 크기까지 다운샘플링해 디코딩한다. API 28 미만은 [MediaStore.Images.Media.getBitmap]으로 대체한다. */

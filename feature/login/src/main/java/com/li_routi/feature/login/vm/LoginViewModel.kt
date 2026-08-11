@@ -4,11 +4,10 @@ import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
-import android.graphics.Matrix
-import android.media.ExifInterface
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
+import com.li_routi.core.common.android.image.readProfileImageBytes
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.designsystem.R
@@ -20,8 +19,6 @@ import com.li_routi.feature.login.auth.KakaoAuthHelper
 import com.li_routi.feature.login.navigation.LoginScreenActions
 import java.io.ByteArrayOutputStream
 import java.io.IOException
-import kotlin.math.max
-import kotlin.math.roundToInt
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -94,7 +91,14 @@ class LoginViewModel(
                 // profileImageUri가 null이면 "사진 선택 안 함"(정상 케이스)이라 imageResult도 null.
                 // profileImageUri가 있는데 읽기에 실패하면 Result.failure로 남아 아래에서 구분해 처리한다.
                 val imageResult = profileImageUri?.let { uri ->
-                    runCatching { withContext(Dispatchers.IO) { readProfileImageUpload(context, uri) } }
+                    runCatching {
+                        withContext(Dispatchers.IO) {
+                            ProfileImageUpload(
+                                bytes = readProfileImageBytes(context, uri, PROFILE_IMAGE_MAX_DIMENSION, PROFILE_IMAGE_JPEG_QUALITY),
+                                contentType = "image/jpeg",
+                            )
+                        }
+                    }
                 }
                 if (imageResult != null && imageResult.isFailure) {
                     // 사용자가 사진을 골랐는데 읽기가 실패한 경우 — 이미지 없이 조용히 저장하면 안 되므로 여기서 중단한다.
@@ -118,53 +122,6 @@ class LoginViewModel(
     }
 
     /**
-     * content:// Uri에서 프로필 이미지를 읽어 긴 변 [PROFILE_IMAGE_MAX_DIMENSION]px 이하로 리사이징하고
-     * JPEG로 압축한 뒤 업로드용 바이트로 반환한다. 원본을 그대로 ByteArray로 올리면 고해상도 사진에서
-     * 메모리 부족으로 앱이 죽을 수 있어, 디코딩 단계(inSampleSize)부터 다운샘플링해 최대 메모리 사용량을 줄인다.
-     * IO/CPU 작업이라 호출부에서 IO 디스패처로 실행한다.
-     *
-     * 스트림을 열지 못하거나 디코딩에 실패하면 이미지 없이 조용히 넘어가지 않고 [IOException]을 던진다 —
-     * 호출부(runCatching)가 이를 잡아 저장을 중단하고 사용자에게 실패를 알려야 하기 때문이다.
-     */
-    private fun readProfileImageUpload(context: Context, uri: Uri): ProfileImageUpload {
-        val resolver = context.contentResolver
-
-        // 1) inJustDecodeBounds: 픽셀 데이터 없이 가로/세로 크기만 먼저 읽는다.
-        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
-        resolver.openInputStream(uri)?.use { BitmapFactory.decodeStream(it, null, bounds) }
-            ?: throw IOException("프로필 이미지를 열 수 없습니다: $uri")
-        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
-            throw IOException("프로필 이미지 크기를 읽을 수 없습니다: $uri")
-        }
-
-        // 2) inSampleSize로 목표 크기에 가깝게 다운샘플링한 상태로 디코딩해, 원본 해상도 전체를 메모리에 올리지 않는다.
-        val decodeOptions = BitmapFactory.Options().apply {
-            inSampleSize = calculateInSampleSize(bounds.outWidth, bounds.outHeight, PROFILE_IMAGE_MAX_DIMENSION)
-        }
-        var bitmap = resolver.openInputStream(uri)?.use {
-            BitmapFactory.decodeStream(it, null, decodeOptions)
-        } ?: throw IOException("프로필 이미지를 디코딩할 수 없습니다: $uri")
-
-        // 3) inSampleSize는 2의 배수 단위로만 줄어들기 때문에, 목표 크기에 정확히 맞추기 위해 한 번 더 스케일링한다.
-        bitmap = bitmap.scaleDownTo(PROFILE_IMAGE_MAX_DIMENSION)
-
-        // 4) 카메라로 찍은 세로 사진은 EXIF 방향 정보에 픽셀 회전을 위임하는 경우가 많다.
-        // 재인코딩 과정에서 EXIF가 유지된다는 보장이 없으므로, 픽셀 자체를 회전시켜 방향을 고정한다.
-        val orientation = resolver.openInputStream(uri)?.use {
-            ExifInterface(it).getAttributeInt(ExifInterface.TAG_ORIENTATION, ExifInterface.ORIENTATION_NORMAL)
-        } ?: ExifInterface.ORIENTATION_NORMAL
-        bitmap = bitmap.rotateForExifOrientation(orientation)
-
-        val bytes = ByteArrayOutputStream().use { output ->
-            bitmap.compress(Bitmap.CompressFormat.JPEG, PROFILE_IMAGE_JPEG_QUALITY, output)
-            output.toByteArray()
-        }
-        bitmap.recycle()
-
-        return ProfileImageUpload(bytes = bytes, contentType = "image/jpeg")
-    }
-
-    /**
      * 사용자가 사진을 고르지 않았을 때 대신 올리는 임시 기본 이미지(앱 로고).
      * TODO: 서버에 디폴트 프로필 이미지 기능이 추가되면 이 함수와 호출부를 제거한다.
      */
@@ -177,46 +134,6 @@ class LoginViewModel(
         }
         bitmap.recycle()
         return ProfileImageUpload(bytes = bytes, contentType = "image/jpeg")
-    }
-
-    /** 디코딩 시점에 대략적으로만 줄어드는 [BitmapFactory.Options.inSampleSize] 값을 계산한다(2의 거듭제곱 단위). */
-    private fun calculateInSampleSize(width: Int, height: Int, maxDimension: Int): Int {
-        var inSampleSize = 1
-        var longerSide = max(width, height)
-        while (longerSide / 2 >= maxDimension) {
-            inSampleSize *= 2
-            longerSide /= 2
-        }
-        return inSampleSize
-    }
-
-    /** 긴 변이 [maxDimension]을 넘으면 비율을 유지한 채 정확히 그 크기로 축소한다. 이미 작으면 원본 비트맵을 그대로 반환한다. */
-    private fun Bitmap.scaleDownTo(maxDimension: Int): Bitmap {
-        val longerSide = max(width, height)
-        if (longerSide <= maxDimension) return this
-        val scale = maxDimension.toFloat() / longerSide
-        val scaledWidth = (width * scale).roundToInt().coerceAtLeast(1)
-        val scaledHeight = (height * scale).roundToInt().coerceAtLeast(1)
-        val scaled = Bitmap.createScaledBitmap(this, scaledWidth, scaledHeight, true)
-        if (scaled !== this) recycle()
-        return scaled
-    }
-
-    /** EXIF 방향 값에 맞춰 픽셀을 회전/반전시킨다. 회전이 필요 없으면(NORMAL 등) 원본 비트맵을 그대로 반환한다. */
-    private fun Bitmap.rotateForExifOrientation(orientation: Int): Bitmap {
-        val matrix = when (orientation) {
-            ExifInterface.ORIENTATION_ROTATE_90 -> Matrix().apply { postRotate(90f) }
-            ExifInterface.ORIENTATION_ROTATE_180 -> Matrix().apply { postRotate(180f) }
-            ExifInterface.ORIENTATION_ROTATE_270 -> Matrix().apply { postRotate(270f) }
-            ExifInterface.ORIENTATION_FLIP_HORIZONTAL -> Matrix().apply { postScale(-1f, 1f) }
-            ExifInterface.ORIENTATION_FLIP_VERTICAL -> Matrix().apply { postScale(1f, -1f) }
-            ExifInterface.ORIENTATION_TRANSPOSE -> Matrix().apply { postScale(-1f, 1f); postRotate(270f) }
-            ExifInterface.ORIENTATION_TRANSVERSE -> Matrix().apply { postScale(-1f, 1f); postRotate(90f) }
-            else -> return this
-        }
-        val rotated = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
-        if (rotated !== this) recycle()
-        return rotated
     }
 
     private suspend fun socialLogin(provider: SocialProvider, providerToken: String, nonce: String?) {

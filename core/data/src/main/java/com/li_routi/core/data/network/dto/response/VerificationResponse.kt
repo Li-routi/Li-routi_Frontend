@@ -5,7 +5,7 @@ data class VerificationResponse(
     val verificationId: Long,
     val nickname: String,
     val imageUrl: String?,
-    val content: String,
+    val content: String?,
     val verifiedAt: String,
     val likeCount: Long,
     val liked: Boolean,

@@ -25,12 +25,13 @@ private const val MainActivityClassName = "com.cmc.li_routi_frontend.MainActivit
 @Composable
 fun LoginRoute(
     modifier: Modifier = Modifier,
+    startAtProfileSetup: Boolean = false,
     viewModel: LoginViewModel = viewModel { LoginViewModel() },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val context = LocalContext.current
 
-    var showProfileScreen by remember { mutableStateOf(false) }
+    var showProfileScreen by remember { mutableStateOf(startAtProfileSetup) }
 
     fun goToMainActivity() {
         context.startActivity(Intent().setClassName(context.packageName, MainActivityClassName))
