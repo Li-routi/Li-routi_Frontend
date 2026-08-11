@@ -4,12 +4,13 @@ import android.content.Context
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
+import com.li_routi.core.common.android.image.readProfileImageBytes
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.domain.auth.GetMyInfoUseCase
+import com.li_routi.core.domain.auth.ProfileImageUpload
 import com.li_routi.core.domain.auth.UpdateProfileUseCase
 import com.li_routi.feature.mypage.navigation.MyPageScreenActions
-import com.li_routi.feature.mypage.util.readProfileImageUpload
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -76,7 +77,11 @@ class MyPageViewModel(
             _uiState.update { it.copy(isSavingProfile = true) }
 
             val imageResult = imageUri?.let { uri ->
-                runCatching { withContext(Dispatchers.IO) { readProfileImageUpload(context, uri) } }
+                runCatching {
+                    withContext(Dispatchers.IO) {
+                        ProfileImageUpload(bytes = readProfileImageBytes(context, uri), contentType = "image/jpeg")
+                    }
+                }
             }
             if (imageResult != null && imageResult.isFailure) {
                 _uiState.update { it.copy(isSavingProfile = false) }

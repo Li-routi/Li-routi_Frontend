@@ -18,13 +18,17 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.core.content.ContextCompat
+import androidx.lifecycle.lifecycleScope
 import com.cmc.li_routi_frontend.fcm.FcmNotificationPresenter
 import com.cmc.li_routi_frontend.navigation.AppNavHost
+import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.domain.notification.NotificationNavigationTarget
 import com.li_routi.core.domain.notification.resolveNotificationNavigationTarget
 import com.li_routi.feature.login.LoginActivity
+import kotlinx.coroutines.launch
 
 /**
  * 앱 전체를 하나로 묶는 진입점이자 매니페스트 launcher. [AppNavHost]를 통해 각 feature 화면을 연결한다.
@@ -50,6 +54,21 @@ class MainActivity : ComponentActivity() {
             return
         }
 
+        lifecycleScope.launch {
+            // 토큰은 있어도 프로필 설정(온보딩)을 마치기 전에 앱이 강제 종료됐을 수 있다 — 서버의
+            // 최신 onboardingCompleted를 다시 확인해, 미완료면 곧장 홈으로 들어가지 않고 프로필
+            // 설정 화면으로 되돌린다. 조회 실패(네트워크 등)로 사용자를 홈에서 막지는 않는다.
+            val myInfo = AuthContainer.getMyInfoUseCase()
+            if (myInfo is ResultState.Success && !myInfo.data.onboardingCompleted) {
+                startActivity(LoginActivity.createIntent(this@MainActivity, startAtProfileSetup = true))
+                finish()
+                return@launch
+            }
+            proceedToHome()
+        }
+    }
+
+    private fun proceedToHome() {
         FcmNotificationPresenter.ensureChannel(this)
         requestPostNotificationsIfNeeded()
         consumeNotificationIntent(intent)

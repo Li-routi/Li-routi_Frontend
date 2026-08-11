@@ -94,6 +94,18 @@ private fun Bitmap.applyExifOrientation(orientation: Int): Bitmap {
 }
 
 /**
+ * 세로 사진(height > width)을 90도 회전해 가로로 만든다. [centerCropToRatio]는 항상 가로
+ * 비율로 크롭하므로, 이 회전 없이 세로 사진이 들어오면 위아래 대부분이 잘려나간다.
+ */
+internal fun Bitmap.rotateToLandscapeIfPortrait(): Bitmap {
+    if (height <= width) return this
+    val matrix = Matrix().apply { postRotate(90f) }
+    val rotated = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
+    if (rotated !== this) recycle()
+    return rotated
+}
+
+/**
  * 사진을 [targetRatio](가로/세로)에 맞춰 중앙 기준으로 잘라낸다. 미리보기·업로드가 같은 크롭 결과를 쓰도록 공유한다.
  *
  * 주의: 크롭이 필요해 새 비트맵을 만드는 경우 수신 객체(this)를 [Bitmap.recycle]한다 — 소유권이 반환값으로

@@ -63,7 +63,7 @@ fun ChallengeDetailResponse.toDomain(): ChallengeDetail = ChallengeDetail(
 fun VerificationResponse.toDomain(): Certification = Certification(
     id = verificationId,
     authorName = nickname,
-    content = content,
+    content = content.orEmpty(),
     imageUrl = imageUrl.orEmpty(),
     verifiedAt = verifiedAt,
     likeCount = likeCount,
@@ -80,7 +80,7 @@ fun VerificationFeedResponse.toDomain(): CertificationPage = CertificationPage(
 
 fun MyVerificationResponse.toDomain(): MyCertification = MyCertification(
     id = verificationId,
-    content = content,
+    content = content.orEmpty(),
     imageUrl = imageUrl.orEmpty(),
     verifiedDate = verifiedDate,
     verifiedAt = verifiedAt,
@@ -104,14 +104,14 @@ fun LikeResponse.toDomain(): LikeResult = LikeResult(
 fun CreateVerificationResponse.toDomain(): CreatedVerification = CreatedVerification(
     verificationId = verificationId,
     imageUrl = imageUrl,
-    content = content,
+    content = content.orEmpty(),
     currentStreak = currentStreak,
     reverified = reverified,
 )
 
 fun UpdateVerificationMemoResponse.toDomain(): EditedVerification = EditedVerification(
     verificationId = verificationId,
-    content = content,
+    content = content.orEmpty(),
 )
 
 fun ParticipationResponse.toDomain(): Participation = Participation(
