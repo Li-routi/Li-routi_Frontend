@@ -1,4 +1,4 @@
-package com.li_routi.feature.grouproutine.vm
+﻿package com.li_routi.feature.grouproutine.vm
 
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
@@ -30,6 +30,7 @@ import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
+import com.li_routi.core.domain.grouproutine.GetParticipatingGroupsUseCase
 import com.li_routi.core.domain.grouproutine.GetTodayGroupRoutinesUseCase
 import com.li_routi.core.domain.grouproutine.GetUnreadGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
@@ -70,6 +71,7 @@ private data class ChatReadTarget(
 
 class GroupRoutineViewModel(
     private val createGroupUseCase: CreateGroupUseCase = GroupRoutineContainer.createGroupUseCase,
+    private val getParticipatingGroupsUseCase: GetParticipatingGroupsUseCase = GroupRoutineContainer.getParticipatingGroupsUseCase,
     private val createGroupRoutineUseCase: CreateGroupRoutineUseCase = GroupRoutineContainer.createGroupRoutineUseCase,
     private val updateGroupRoutineUseCase: UpdateGroupRoutineUseCase = GroupRoutineContainer.updateGroupRoutineUseCase,
     private val getGroupDetailUseCase: GetGroupDetailUseCase = GroupRoutineContainer.getGroupDetailUseCase,
@@ -107,26 +109,30 @@ class GroupRoutineViewModel(
     private val _uiState = MutableStateFlow(GroupRoutineUiState())
     val uiState: StateFlow<GroupRoutineUiState> = _uiState.asStateFlow()
 
-    // 채팅방 진입 중에만 살아있는 소켓 연결+구독 코루틴. 화면 이탈/ViewModel 소멸 시 취소한다.
+    // 癲?????쇰궚?癲ル슣????濚욌꼬?댄꺍??곕㎜壤????⑤；?????덉툗 ????????ㅼ뒦??????㎣筌??熬곣뫀?櫻?? ??釉먮뻤????熬곥룊??ViewModel ??????????爾???筌먲퐢??
     private var chatSocketJob: Job? = null
     private var chatReadJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
     private var unreadRoutineVerificationsJob: Job? = null
 
-    // PR 반영: Mock ID와 실제 서버 ID 분리
-    // createGroupUseCase 성공 시나 초대코드로 조인했을 때 발급되는 실제 서버 그룹 ID를 저장합니다.
+    // PR ?袁⑸즵??? Mock ID?? ???源놁졆 ??筌먦끉裕?ID ??됰슣維??
+    // createGroupUseCase ?濚밸Þ?볠쾮???筌?猷??縕???熬곣뫀???????釉뚰?????源낃도 ???袁⑸즵獒???嚥▲꺂痢????源놁졆 ??筌먦끉裕???숆강筌?쓣爾?ID?????濚왿몾??????덊렡.
     private var backendGroupId: Long? = null
 
-    // API 호출 시 사용할 currentGroupId()는 이제 실제 backendGroupId를 참조합니다.
+    // API ?嶺뚮ㅎ??????????currentGroupId()?????⑤챷?????源놁졆 backendGroupId??癲ル슔?蹂?덫???筌뤾퍓???
     private fun currentGroupId(): Long? = backendGroupId
 
-    // CodeRabbit 반영: 루틴이 없을 때 임의의 1L을 서버에 실제 ID처럼 보내지 않도록 nullable로 변경
+    // CodeRabbit ?袁⑸즵??? ??룸Ŧ爾??????⑤챶援?????ш끽維쀨린??1L????筌먦끉裕?????源놁졆 ID癲ル슪?ｇ몭???怨뚮옖?雅?겦?쇿퐲? ????녳뵣??nullable???怨뚮뼚???
     private fun currentRoutineId(): Long? = _uiState.value.todos.firstOrNull()?.id
 
-    // CodeRabbit 반영: 새로 생성된(서버) 카테고리의 이름 -> categoryId. DefaultCategoryIds에 없는 카테고리 제출 시 사용
+    init {
+        loadParticipatingGroups()
+    }
+
+    // CodeRabbit ?袁⑸즵??? ????궈???獄쏅똻?????筌먦끉裕? ?怨멸텭??沃섅뀙??關履????????-> categoryId. DefaultCategoryIds??????몄툗 ?怨멸텭??沃섅뀙??關履????筌믨퉭????????
     private var serverCategoryIds: Map<String, Long> = emptyMap()
 
-    // 구성원 목록에서 "나"를 가려내고 채팅 말풍선 좌우를 정하는 데 씀. 세션 내내 안 바뀌어서 한 번만 조회함
+    // ????늄???癲ル슢?꾤땟戮⑤뭄?????"??????좊읈????怨???癲????癲ル슢????????щ뮝??筌??嶺뚮쮳?년봼??????. ?嶺뚮ㅎ??????雅????袁⑸즴???????????類??袁?맪??釉뚰????
     private var myMemberId: Long? = null
 
     fun onDismissActionMessage() {
@@ -156,6 +162,48 @@ class GroupRoutineViewModel(
             }
         }
         _uiState.update { it.copy(isConfirmedOwner = false) }
+    }
+
+    private fun loadParticipatingGroups() {
+        viewModelScope.launch {
+            when (val result = getParticipatingGroupsUseCase()) {
+                is ResultState.Success -> {
+                    val routines = result.data.map { group ->
+                        GroupRoutineUiModel(
+                            id = group.groupId,
+                            title = group.groupName,
+                            lastActiveLabel = "1\uC2DC\uAC04 \uC804 \uD65C\uB3D9",
+                            memberCount = group.activeMemberCount,
+                            routineCount = group.activeRoutineCount,
+                            statusLabel = if (
+                                group.todayAssignedRoutineCount > 0 &&
+                                group.todayAssignedRoutineCount == group.todayCompletedRoutineCount
+                            ) {
+                                "\uC644\uB8CC"
+                            } else {
+                                "\uC9C4\uD589\uC911"
+                            },
+                            isCompleted = group.todayAssignedRoutineCount > 0 &&
+                                group.todayAssignedRoutineCount == group.todayCompletedRoutineCount,
+                            todayCompletedCount = group.todayCompletedRoutineCount,
+                            todayTotalCount = group.todayAssignedRoutineCount,
+                            streakDays = group.currentStreak,
+                            monthlyAchievementRate = group.monthlyAchievementRate,
+                            todayCertificationCount = group.todayGroupVerificationCount,
+                        )
+                    }
+                    _uiState.update {
+                        it.copy(
+                            routines = routines,
+                            isEmptyState = routines.isEmpty(),
+                        )
+                    }
+                }
+
+                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     fun onBackClick() {
@@ -197,7 +245,7 @@ class GroupRoutineViewModel(
                     screenMode = GroupRoutineScreenMode.List,
                     roomNameInput = "",
                     routineOptions = DefaultCreateRoutineOptions,
-                    selectedCategory = "전체",
+                    selectedCategory = "\uC804\uCCB4",
                     actionMessage = null,
                 )
 
@@ -219,7 +267,7 @@ class GroupRoutineViewModel(
                 screenMode = GroupRoutineScreenMode.List,
                 roomNameInput = "",
                 routineOptions = DefaultCreateRoutineOptions,
-                selectedCategory = "전체",
+                selectedCategory = "\uC804\uCCB4",
                 isCategorySheetVisible = false,
                 isRoutineSettingSheetVisible = false,
                 isDeleteRoutineDialogVisible = false,
@@ -263,11 +311,11 @@ class GroupRoutineViewModel(
             return
         }
 
-        // 답장 대상이 있으면 원문을 인용 접두사로 앞에 합쳐서 보낸다 — 서버는 이걸 그냥
-        // 평범한 텍스트 메시지로 취급하므로 도메인/DTO 변경 없이 클라이언트에서만 처리 가능하다.
+        // ??????????ㅼ굣?????源끹걬癲???????嶺뚮ㅎ??????쑩???繞???嚥▲꺆諭???獄?껫????怨뚮옖?雅??????筌먦끉裕??????볥윞 ??숆강筌?쑜??
+        // ???⑥щ뎁??????몄릇??癲ル슢?????????????????????ш끽維곮??DTO ?怨뚮뼚??????⑤챶?????????⑤９苑?嶺뚮ㅎ????筌먦끉??癲ル슪?ｇ몭????좊읈??濚왿몾???
         val replyTarget = _uiState.value.replyTarget
         val content = if (replyTarget != null) {
-            "↩ ${replyTarget.senderName}: ${replyTarget.message.take(30)}\n$text"
+            "??${replyTarget.senderName}: ${replyTarget.message.take(30)}\n$text"
         } else {
             text
         }
@@ -287,17 +335,17 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** 채팅 메시지를 오른쪽으로 스와이프해서 답장 대상으로 지정했을 때 호출된다. */
+    /** 癲????癲ル슢?????????????렺轅곗땡??낆쑋???肉??????熬곣뫀????⑤똾留???????????ㅼ굣筌뤿뱶??癲ル슣???嶺뚮쮳?노뭄?????嶺뚮ㅎ????筌먲퐢?? */
     fun onReplyTargetSelected(message: ChatMessageUiModel) {
         _uiState.update { it.copy(replyTarget = message) }
     }
 
-    /** 답장 미리보기(윗상자)의 취소 버튼을 눌렀을 때 호출된다. */
+    /** ?????雅?퍔瑗띰㎖???????깅탿(???筌???????爾???類?????????????嶺뚮ㅎ????筌먲퐢?? */
     fun onReplyTargetCleared() {
         _uiState.update { it.copy(replyTarget = null) }
     }
 
-    // 탭한 즉시 채팅으로 전송된다 — 실제 화면 반영은 소켓 구독으로 돌아오는 브로드캐스트를 통해 이뤄진다.
+    // ????癲ル슣鍮뽳쭕??癲??????⑥????ш끽維뽬땻??筌먲퐢???????源놁졆 ??釉먮뻤???袁⑸즵???? ?????????㎣筌???⑥??????????몄툗 ??怨쀫뮛繞??筌믨퉭堉????덉쉐??????????勇싲짅援⒴퐲?덉쪎??삵렡.
     fun onChatEmojiSelected(emoticon: ChatEmoticonUiModel) {
         val groupId = currentGroupId() ?: run {
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
@@ -318,7 +366,7 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** 소켓 연결 → 브로드캐스트 구독 시작 → REST 이력 조회 순서로 진행해, 연결 이후 온 메시지를 놓치지 않는다. */
+    /** ????????ㅼ뒦??????怨쀫뮛繞??筌믨퉭堉????덉쉐 ????㎣筌???筌믨퀣援???REST ??????釉뚰?????筌?留??癲ル슣???몄춿?? ???ㅼ뒦????熬곣뫖????癲ル슢?????????????袁ㅼ땡?堉온 ????낆툗?? */
     private fun enterChatSocket() {
         val groupId = currentGroupId() ?: run {
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
@@ -375,7 +423,7 @@ class GroupRoutineViewModel(
                 val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
                 val historyMessages = result.data.messages.map { it.toUiModel(isMine = it.senderId == myMemberId) }
                 _uiState.update { state ->
-                    // 조회 응답이 오기 전 소켓으로 먼저 들어온 메시지와 겹칠 수 있어 id 기준으로 합친다.
+                    // ?釉뚰??????쑩?젆?????됰씚逾??????????⑥???沃섅굥?? ???怨쀪퐨??癲ル슢????????? ?濡ろ뜐????????怨쀪퐨 id ??れ삀?????⑥????獄?낮萸??
                     val merged = (historyMessages + state.chatMessages).distinctBy { it.id }.sortedBy { it.id }
                     state.copy(
                         chatMessages = merged,
@@ -383,7 +431,7 @@ class GroupRoutineViewModel(
                         unreadChatCount = if (historyMessages.isEmpty()) 0 else state.unreadChatCount,
                     )
                 }
-                // 마지막 메시지까지 읽은 것으로 서버에 반영(화면에 들어와 목록을 봤으므로).
+                // 癲ル슢???癲?癲ル슢???????嚥싲갭큔?? ??? ?濡ろ뜏????肉???筌먦끉裕???袁⑸즵?????釉먮뻤??????怨쀪퐨?? 癲ル슢?꾤땟戮⑤뭄?????덇콬???곸쓸???.
                 historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
             }
 
@@ -449,7 +497,7 @@ class GroupRoutineViewModel(
 
     override fun onCleared() {
         chatSocketJob?.cancel()
-        // viewModelScope는 onCleared() 시점엔 이미 취소되어 있어 여기서 쓸 수 없다 — 별도 스코프로 소켓만 정리.
+        // viewModelScope??onCleared() ??筌믨퀣??????? ???爾???筌뚯슦苑????怨쀪퐨 ?????????????명렡 ???怨뚮옓????????몄???ш끽維곩ㅇ?????룸뎿異??嶺뚮㉡?섌걡?
         CoroutineScope(Dispatchers.IO).launch { disconnectChatSocketUseCase() }
         super.onCleared()
     }
@@ -472,7 +520,7 @@ class GroupRoutineViewModel(
     fun onMessageEditConfirmClick() {
         val message = _uiState.value.messageDraft.trim()
         val groupId = currentGroupId()
-        // mock 방(서버 그룹 아님)에선 예전처럼 로컬 상태만 바꿈
+        // mock ????筌먦끉裕???숆강筌?쓣爾???ш끽維筌?????????源놁벁癲ル슪?ｇ몭???棺??짆?쏆춾????ㅺ컼?얜쓣異??袁⑸즴???
         if (groupId == null) {
             applyMyStatusMessage(message)
             return
@@ -483,7 +531,7 @@ class GroupRoutineViewModel(
         viewModelScope.launch {
             try {
                 when (val result = updateGroupMemberStatusMessageUseCase(groupId, message)) {
-                    // 서버가 저장한 값을 그대로 반영해야 다른 사람 화면이랑 어긋나지 않음
+                    // ??筌먦끉裕??좊읈? ???濚왿몾????좊즴?????숆강筌????袁⑸즵?????⑤；??????렺???????釉먮뻤?????????源낅빖??? ???怨룹쓱
                     is ResultState.Success -> applyMyStatusMessage(result.data)
                     is ResultState.Error -> _uiState.update {
                         it.copy(isMessageEditSheetVisible = false, actionMessage = result.message)
@@ -541,8 +589,8 @@ class GroupRoutineViewModel(
             try {
                 when (val result = leaveGroupUseCase(groupId)) {
                     is ResultState.Success -> when (result.data) {
-                        LeaveGroupResult.Left -> exitRoom(groupId, "방에서 나왔어요.")
-                        // 방장은 못 나감 — 나가기 대신 삭제할지 다시 물어봄
+                        LeaveGroupResult.Left -> exitRoom(groupId, "?袁⑸젻泳?④덩?????쒓낮瑗???⑤챶萸?")
+                        // ?袁⑸젻泳??? 癲?????⑸춪 ????????????????? ???怨뺣빰 ??醫딅땾???돥椰?
                         LeaveGroupResult.OwnerMustDelete -> _uiState.update {
                             it.copy(
                                 isLeaveRoomDialogVisible = false,
@@ -575,7 +623,7 @@ class GroupRoutineViewModel(
         viewModelScope.launch {
             try {
                 when (val result = deleteGroupUseCase(groupId)) {
-                    is ResultState.Success -> exitRoom(groupId, "방을 삭제했어요.")
+                    is ResultState.Success -> exitRoom(groupId, "?袁⑸젻泳????????怨쀪퐨??")
                     is ResultState.Error -> _uiState.update {
                         it.copy(isDeleteRoomDialogVisible = false, actionMessage = result.message)
                     }
@@ -588,7 +636,7 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** 나가기/삭제 공통 뒷정리 — 목록에서 해당 방 카드를 지우고 목록 화면으로 돌려보냄 */
+    /** ????????????살씁????猷??????癲ル슢?꾤땟戮⑤뭄?????????????怨멸텭????ｏ쭗?癲ル슣?????ㅼ뒭??癲ル슢?꾤땟戮⑤뭄???釉먮뻤????⑥???????ъ녃域?濚?*/
     private fun exitRoom(groupId: Long, message: String) {
         backendGroupId = null
         _uiState.update { state ->
@@ -598,7 +646,7 @@ class GroupRoutineViewModel(
                 selectedRoutineId = null,
                 selectedMemberId = null,
                 groupInviteCode = null,
-                // 나간 방의 멤버/체크리스트가 다음 방 화면에 남지 않게 비움
+                // ????깅쐿 ?袁⑸젻泳??癲ル슢???볥뼀?癲ル슪???띿물筌먯옓????嶺? ???源낆쓱 ????釉먮뻤?????? ??熬곣뫗踰?????
                 members = emptyList(),
                 todos = emptyList(),
                 isConfirmedOwner = false,
@@ -609,14 +657,14 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** 그룹방 상세를 불러와 그룹명/초대코드/구성원 목록을 실제 서버 데이터로 채움 */
+    /** ??숆강筌?쓣爾?猿뗫궚????ㅳ늾?????됰씭???? ??숆강筌?쓣爾???떻??縕???熬곣뫀???????늄???癲ル슢?꾤땟戮⑤뭄?????源놁졆 ??筌먦끉裕????Β?????ㅻ깹鸚?癲??? */
     private fun loadGroupDetail(groupId: Long) {
         viewModelScope.launch {
             if (myMemberId == null) {
                 when (val myInfo = getMyInfoUseCase()) {
                     is ResultState.Success -> myMemberId = myInfo.data.memberId
-                    // 내 memberId를 모르면 모든 구성원이 남으로 찍혀서 상태 메시지 수정/채팅
-                    // 말풍선/내보내기 판단이 전부 어긋남. 잘못된 화면을 그리느니 알리고 멈춤
+                    // ??memberId??癲ル슢?꾤땟????곗떵?癲ル슢?꾤땟???????늄?????????쒙쭗?쒖뒙?癲ル슔?蹂?엥??????ㅺ컼??癲ル슢??????? ???쒓낯??癲????
+                    // 癲ル슢?????????????깅탿 ????????? ???源낅빖?? ??嚥?援????釉먮뻤?????숆강筌????????????癲ル슢????
                     is ResultState.Error -> {
                         _uiState.update { it.copy(actionMessage = myInfo.message) }
                         return@launch
@@ -674,7 +722,7 @@ class GroupRoutineViewModel(
         viewModelScope.launch {
             when (val result = getGroupInviteCodeUseCase(groupId)) {
                 is ResultState.Success -> _uiState.update { it.copy(groupInviteCode = result.data.inviteCode) }
-                // PR 반영: ResultState.Error 시 바로 새로 발급(issue)하지 않고 에러 메시지 띄우기 (기존 초대코드 무효화 방지)
+                // PR ?袁⑸즵??? ResultState.Error ???袁⑸즴??繞?????궈??袁⑸즵獒??issue)??? ??熬곥걿???????癲ル슢??????? ??ш끽維??堉?(??れ삀????縕???熬곣뫀??????뺤깙????袁⑸젻泳?)
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
@@ -691,6 +739,9 @@ class GroupRoutineViewModel(
             when (val result = getGroupRoutineCategoriesUseCase(groupId)) {
                 is ResultState.Success -> {
                     val categoryNames = result.data.categories.map { it.name }
+                    serverCategoryIds = result.data.categories.associate { category ->
+                        category.name to category.categoryId
+                    }
                     val categoryColors = result.data.categories
                         .mapNotNull { category ->
                             category.color.toCategoryColor()?.let { color -> category.name to color }
@@ -724,7 +775,7 @@ class GroupRoutineViewModel(
             return
         }
         val routineId = currentRoutineId() ?: run {
-            _uiState.update { it.copy(actionMessage = "루틴을 찾을 수 없습니다.") }
+            _uiState.update { it.copy(actionMessage = "루틴 ID를 찾을 수 없습니다.") }
             return
         }
 
@@ -892,7 +943,7 @@ class GroupRoutineViewModel(
 
     fun onCertificationDisappointmentClick(verificationId: Long, currentlyDisappointed: Boolean) {
         val groupId = currentGroupId() ?: run {
-            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            _uiState.update { it.copy(actionMessage = "\uADF8\uB8F9 ID\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.") }
             return
         }
 
@@ -965,14 +1016,14 @@ class GroupRoutineViewModel(
         val state = _uiState.value
         val targetMemberId = state.pendingLeaderMemberId
         val myId = state.members.firstOrNull { it.isMe }?.id
-        // 나를 고른 채로 확인하면 바뀌는 게 없어서 서버까지 갈 필요 없음
+        // ??? ??關履??癲???鍮??嶺뚮Ĳ?됮??嚥????袁⑸즴?????獒??????⑤９苑????筌먦끉裕끾퓴諛매?? ????ш끽維?????⑤챶苡?
         if (targetMemberId == null || targetMemberId == myId) {
             applyLeaderTransfer(isStillLeader = true, message = null)
             return
         }
         val groupId = currentGroupId()
         if (groupId == null) {
-            applyLeaderTransfer(isStillLeader = false, message = "방장이 변경되었습니다.")
+            applyLeaderTransfer(isStillLeader = false, message = "?袁⑸젻泳????怨뚮뼚??濡ろ뜑?管逾???怨?????덊렡.")
             return
         }
 
@@ -982,7 +1033,7 @@ class GroupRoutineViewModel(
             try {
                 when (val result = transferGroupOwnerUseCase(groupId, targetMemberId)) {
                     is ResultState.Success -> {
-                        applyLeaderTransfer(isStillLeader = false, message = "방장이 변경되었습니다.")
+                        applyLeaderTransfer(isStillLeader = false, message = "?袁⑸젻泳????怨뚮뼚??濡ろ뜑?管逾???怨?????덊렡.")
                         loadGroupDetail(groupId)
                     }
 
@@ -1003,7 +1054,7 @@ class GroupRoutineViewModel(
             state.copy(
                 screenMode = GroupRoutineScreenMode.GroupSettings,
                 isCurrentUserLeader = isStillLeader,
-                // 방장을 넘겼으면 더 이상 방장이 아님
+                // ?袁⑸젻泳???????듬젵??野껊갭???????⑤?彛??袁⑸젻泳?????ш끽維筌?
                 isConfirmedOwner = if (isStillLeader) state.isConfirmedOwner else false,
                 pendingLeaderMemberId = null,
                 actionMessage = message,
@@ -1017,21 +1068,21 @@ class GroupRoutineViewModel(
             return
         }
         val nextLocked = !_uiState.value.isRoomLocked
-        // 연타하면 lock/unlock이 순서 보장 없이 동시에 나감
+        // ?????嚥???lock/unlock????筌?留??怨뚮옖??????⑤챶??????덈빰??????⑸춪
         if (_uiState.value.isSubmitting) return
         _uiState.update { it.copy(isSubmitting = true) }
 
         viewModelScope.launch {
             try {
                 when (val result = setGroupLockUseCase(groupId, nextLocked)) {
-                    // 토글 상태는 낙관적으로 바꾸지 않고 서버가 알려준 최종 값을 씀
+                    // ??? ???ㅺ컼?????????ㅼ굣筌뤿뱶???袁⑸즴???癲ル슣?? ??熬곥걿????筌먦끉裕??좊읈? ??????㉨?? 癲ル슔?됭짆?륂렭???좊즴?????
                     is ResultState.Success -> _uiState.update {
                         it.copy(
                             isRoomLocked = result.data,
                             actionMessage = if (result.data) {
-                                "더 이상 다른 사람이 참여할 수 없습니다."
+                                "방이 잠겼어요."
                             } else {
-                                "다른 사람이 참여할 수 있습니다."
+                                "방 잠금이 해제되었어요."
                             },
                         )
                     }
@@ -1098,18 +1149,18 @@ class GroupRoutineViewModel(
 
     private var todayRoutinesJob: Job? = null
 
-    /** 오늘자 그룹 루틴을 불러와 방 상세 하단 체크리스트를 채움 */
+    /** ????몄툜????숆강筌?쓣爾???룸Ŧ爾?????됰씭???? ?????ㅳ늾????嚥▲꺂??癲ル슪???띿물筌먯옓????嶺? 癲??? */
     private fun loadTodayRoutines(groupId: Long) {
         todayRoutinesJob?.cancel()
         todayRoutinesJob = viewModelScope.launch {
             when (val result = getTodayGroupRoutinesUseCase()) {
                 is ResultState.Success -> {
-                    // 응답이 늦게 오는 사이 방을 옮겼으면 지금 방 체크리스트를 덮어쓰면 안 됨
+                    // ???쑩?젆??????????몄툗 ?????袁⑸젻泳???????野껊갭??癲ル슣??????癲ル슪???띿물筌먯옓????嶺? ??????ㅽ떝??????
                     if (backendGroupId != groupId) return@launch
-                    // 조회 API가 내가 속한 모든 그룹을 한 번에 주기 때문에 현재 방 것만 걸러냄
-                    val todos = result.data
+                    // ?釉뚰???API??좊읈? ??? ???⑤８??癲ル슢?꾤땟?????숆강筌?쓣爾?????類???산덩???낆뒩??곷뎨????????ш끽維?????濡ろ뜏?蹂잜맪?癲꾧퀗?э㎖???
+                    val groupRoutines = result.data
                         .filter { it.groupId == groupId }
-                        .map { routine ->
+                    val todos = groupRoutines.map { routine ->
                             GroupTodoUiModel(
                                 id = routine.routineId,
                                 title = routine.title,
@@ -1119,7 +1170,26 @@ class GroupRoutineViewModel(
                                 categoryColor = _uiState.value.categoryColors[routine.categoryName],
                             )
                         }
-                    _uiState.update { it.copy(todos = todos) }
+                    _uiState.update { state ->
+                        val routineOptionsById = state.routineOptions.associateBy { it.id }
+                        val updatedOptions = groupRoutines.map { routine ->
+                            routineOptionsById[routine.routineId]?.copy(
+                                title = routine.title,
+                                deadline = routine.scheduledEndTime,
+                                startTime = routine.scheduledStartTime,
+                                category = routine.categoryName,
+                                categoryColor = state.categoryColors[routine.categoryName],
+                            ) ?: CreateRoutineOptionUiModel(
+                                id = routine.routineId,
+                                title = routine.title,
+                                deadline = routine.scheduledEndTime,
+                                startTime = routine.scheduledStartTime,
+                                category = routine.categoryName,
+                                categoryColor = state.categoryColors[routine.categoryName],
+                            )
+                        }
+                        state.copy(todos = todos, routineOptions = updatedOptions)
+                    }
                 }
 
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -1131,7 +1201,7 @@ class GroupRoutineViewModel(
     fun onRoomNameEditConfirmClick() {
         val title = _uiState.value.roomNameInput.trim()
         if (title.isBlank()) {
-            _uiState.update { it.copy(actionMessage = "방 이름을 입력해주세요.") }
+            _uiState.update { it.copy(actionMessage = "방 이름을 입력해 주세요.") }
             return
         }
         val groupId = currentGroupId()
@@ -1162,7 +1232,7 @@ class GroupRoutineViewModel(
                 routines = state.routines.map { routine ->
                     if (routine.id == state.selectedRoutine?.id) routine.copy(title = title) else routine
                 },
-                actionMessage = "방 이름이 변경됐어요.",
+                actionMessage = "방 이름이 변경되었어요.",
             )
         }
     }
@@ -1186,7 +1256,7 @@ class GroupRoutineViewModel(
                 isActionSheetVisible = false,
                 roomNameInput = "",
                 routineOptions = DefaultCreateRoutineOptions,
-                selectedCategory = "전체",
+                selectedCategory = "\uC804\uCCB4",
                 actionMessage = null,
             )
         }
@@ -1210,7 +1280,7 @@ class GroupRoutineViewModel(
     fun onInviteCodeConfirmClick() {
         val inviteCode = _uiState.value.inviteCodeInput.trim()
         if (inviteCode.isBlank()) {
-            _uiState.update { it.copy(actionMessage = "초대코드를 입력해주세요.") }
+            _uiState.update { it.copy(actionMessage = "초대코드를 입력해 주세요.") }
             return
         }
         if (_uiState.value.isSubmitting) return
@@ -1218,7 +1288,7 @@ class GroupRoutineViewModel(
         _uiState.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
             try {
-                // 가입 전에 미리보기로 막힌 이유(인원 초과, 잠긴 방 등)를 먼저 알려줌
+                // ??좊읈?????ш끽維??雅?퍔瑗띰㎖???????깅탿??癲ル슢??쭕??????(?嶺뚮ㅎ????縕??? ???ル㎣?????????沃섅굥?? ??????㉨?
                 val preview = getGroupJoinPreviewUseCase(inviteCode)
                 if (preview is ResultState.Error) {
                     _uiState.update { it.copy(actionMessage = preview.message) }
@@ -1226,7 +1296,7 @@ class GroupRoutineViewModel(
                 }
                 if (preview is ResultState.Success && !preview.data.joinable) {
                     _uiState.update {
-                        it.copy(actionMessage = preview.data.unavailableReason ?: "지금은 참여할 수 없는 방이에요.")
+                        it.copy(actionMessage = preview.data.unavailableReason ?: "癲ル슣????ヂ??? 癲ル슔?蹂?덫?????????몄툗 ?袁⑸젻泳??????")
                     }
                     return@launch
                 }
@@ -1239,10 +1309,10 @@ class GroupRoutineViewModel(
                         val joinedRoutine = GroupRoutineUiModel(
                             id = joined.groupId,
                             title = joined.name,
-                            lastActiveLabel = "방금 전 활동",
+                            lastActiveLabel = "\uBC29\uAE08 \uC804 \uD65C\uB3D9",
                             memberCount = previewData?.activeMemberCount ?: 1,
                             routineCount = previewData?.totalRoutineCount ?: 0,
-                            statusLabel = "진행중",
+                            statusLabel = "\uC9C4\uD589\uC911",
                             isCompleted = false,
                             todayCompletedCount = 0,
                             todayTotalCount = 0,
@@ -1258,10 +1328,10 @@ class GroupRoutineViewModel(
                                 routines = listOf(joinedRoutine) + others,
                                 inviteCodeInput = "",
                                 isConfirmedOwner = false,
-                                actionMessage = "그룹방에 참여했어요.",
+                                actionMessage = "그룹에 참여했어요.",
                             )
                         }
-                        // 실제 멤버/루틴 수는 상세 조회로 채움
+                        // ???源놁졆 癲ル슢???볥뼀???룸Ŧ爾????嚥▲꺂痢????ㅳ늾???釉뚰????대퓠?癲???
                         loadGroupDetail(joined.groupId)
                         loadGroupRoutineCategories()
                         loadTodayRoutines(joined.groupId)
@@ -1278,7 +1348,7 @@ class GroupRoutineViewModel(
     }
 
     fun onInviteCodeCopyClick() {
-        _uiState.update { it.copy(actionMessage = "초대코드가 복사되었습니다!") }
+        _uiState.update { it.copy(actionMessage = "초대코드가 복사되었어요.") }
     }
 
     fun onRoomNameChange(value: String) {
@@ -1288,7 +1358,7 @@ class GroupRoutineViewModel(
     fun onCreateRoomNextClick() {
         _uiState.update { state ->
             if (state.roomNameInput.isBlank()) {
-                state.copy(actionMessage = "방 이름을 입력해주세요.")
+                state.copy(actionMessage = "방 이름을 입력해 주세요.")
             } else {
                 state.copy(
                     screenMode = GroupRoutineScreenMode.CreateRoutineSelect,
@@ -1353,7 +1423,7 @@ class GroupRoutineViewModel(
         val state = _uiState.value
         val name = state.categoryInput.trim()
         if (name.isBlank()) {
-            _uiState.update { it.copy(actionMessage = "카테고리를 입력해주세요.") }
+            _uiState.update { it.copy(actionMessage = "카테고리 이름을 입력해 주세요.") }
             return
         }
         if (name in state.categories) {
@@ -1385,7 +1455,7 @@ class GroupRoutineViewModel(
         viewModelScope.launch {
             when (val result = createGroupRoutineCategoryUseCase(groupId, name, color = state.categoryColorInput?.serverCode())) {
                 is ResultState.Success -> {
-                    // CodeRabbit 반영: 이름뿐 아니라 서버 categoryId도 저장해야 루틴 제출 시 사용 가능
+                    // CodeRabbit ?袁⑸즵??? ????κ퓭源욘뤃???ш끽維?????筌먦끉裕?categoryId?????濚왿몾?????룸Ŧ爾????筌믨퉭??????????좊읈???
                     serverCategoryIds = serverCategoryIds + (result.data.name to result.data.categoryId)
                     val categoryColor = result.data.color.toCategoryColor() ?: state.categoryColorInput
                     _uiState.update {
@@ -1408,16 +1478,15 @@ class GroupRoutineViewModel(
     }
 
     fun onRoutineAddClick() {
-        _uiState.update {
-            it.copy(
+        _uiState.update { state ->
+            state.copy(
                 isRoutineSettingSheetVisible = true,
                 editingRoutineId = null,
                 routineDraftName = "",
                 routineDraftStartTime = "08:00",
                 routineDraftEndTime = "20:00",
                 routineDraftRepeatDays = emptySet(),
-                // 필터로 특정 카테고리를 보고 있었으면 그걸 기본값으로 깔아줌
-                routineDraftCategory = it.selectedCategory.takeIf { name -> name != "전체" }.orEmpty(),
+                routineDraftCategory = state.resolveRoutineDraftCategory(),
                 actionMessage = null,
             )
         }
@@ -1507,6 +1576,7 @@ class GroupRoutineViewModel(
                 routineDraftStartTime = "08:00",
                 routineDraftEndTime = "20:00",
                 routineDraftRepeatDays = emptySet(),
+                routineDraftCategory = "",
                 isDeleteRoutineDialogVisible = false,
             )
         }
@@ -1540,27 +1610,35 @@ class GroupRoutineViewModel(
         val title = state.routineDraftName.trim()
         
         if (title.isBlank()) {
-            _uiState.update { it.copy(actionMessage = "루틴 이름을 입력해주세요.") }
+            _uiState.update { it.copy(actionMessage = "루틴 이름을 입력해 주세요.") }
             return
         }
 
-        // 상단 칩은 목록 필터라서 루틴 카테고리로 쓰면 안 됨 — 시트에서 고른 값을 씀
-        if (state.routineDraftCategory.isBlank()) {
-            _uiState.update { it.copy(actionMessage = "카테고리를 선택해주세요.") }
+        val routineState = state.copy(routineDraftCategory = state.resolveRoutineDraftCategory())
+
+        if (routineState.routineDraftCategory.isBlank()) {
+            _uiState.update { it.copy(actionMessage = "카테고리를 선택해 주세요.") }
             return
         }
 
-        // 서버가 schedules를 최소 1개 요구해서(문서엔 0개 가능이라 적혀 있음) 미리 막음
-        if (state.routineDraftRepeatDays.isEmpty()) {
-            _uiState.update { it.copy(actionMessage = "반복할 요일을 선택해주세요.") }
+        // ??筌먦끉裕??좊읈? schedules??癲ル슔?됭짆??1????釉먮윥????⑤똾留????뽮덫???0????좊읈????????? ???源낆쓱) 雅?퍔瑗띰㎖??癲ル슢??쭕??
+        if (routineState.routineDraftRepeatDays.isEmpty()) {
+            _uiState.update { it.copy(actionMessage = "반복 요일을 선택해 주세요.") }
             return
         }
 
-        if (state.screenMode == GroupRoutineScreenMode.GroupRoutineManage) {
-            submitGroupRoutine(state, title)
+        if (routineState.screenMode == GroupRoutineScreenMode.GroupRoutineManage) {
+            submitGroupRoutine(routineState, title)
         } else {
-            applyLocalRoutineDraft(state, title)
+            applyLocalRoutineDraft(routineState, title)
         }
+    }
+
+    private fun GroupRoutineUiState.resolveRoutineDraftCategory(): String {
+        return routineDraftCategory.takeIf { it.isNotBlank() && it != "\uC804\uCCB4" }
+            ?: selectedCategory.takeIf { it.isNotBlank() && it != "\uC804\uCCB4" }
+            ?: categories.firstOrNull { it != "\uC804\uCCB4" }
+            .orEmpty()
     }
 
     private fun submitGroupRoutine(state: GroupRoutineUiState, title: String) {
@@ -1570,7 +1648,7 @@ class GroupRoutineViewModel(
             return
         }
 
-        // PR 반영: 따닥(중복 클릭)으로 인한 API 다중 호출 방지 가드
+        // PR ?袁⑸즵??? ???ㅻ쿋??濚욌꼬?댄꺇??????????⑥???嶺뚮ㅏ援앯뵳?API ???湲깅룪 ?嶺뚮ㅎ????袁⑸젻泳? ??좊읈???
         if (state.isSubmitting) return
         _uiState.update { it.copy(isSubmitting = true) }
 
@@ -1581,15 +1659,15 @@ class GroupRoutineViewModel(
             endTime = state.routineDraftEndTime,
         )
         val editingId = state.editingRoutineId
-        // CodeRabbit 반영: 기본 카테고리에 없으면 새로 생성한 서버 카테고리 ID를 사용
+        // CodeRabbit ?袁⑸즵??? ??れ삀????怨멸텭??沃섅뀙??關履??????⑤챶?뺧┼?????궈???獄쏅똻?????筌먦끉裕??怨멸텭??沃섅뀙??關履??ID??????
         val categoryId = DefaultCategoryIds[categoryName] ?: serverCategoryIds[categoryName]
 
         if (categoryId == null) {
-            _uiState.update { it.copy(isSubmitting = false, actionMessage = "\"$categoryName\"은 아직 지원하지 않는 카테고리예요. 기본 카테고리를 선택해주세요.") }
+            _uiState.update { it.copy(isSubmitting = false, actionMessage = "\"$categoryName\" 카테고리 ID를 찾을 수 없습니다. 카테고리를 다시 선택해 주세요.") }
             return
         }
         if (editingId != null && DefaultCreateRoutineOptions.any { it.id == editingId }) {
-            _uiState.update { it.copy(isSubmitting = false, actionMessage = "기본 샘플 루틴은 서버에 수정할 수 없습니다.") }
+            _uiState.update { it.copy(isSubmitting = false, actionMessage = "기본 제공 루틴은 서버에 수정할 수 없습니다.") }
             return
         }
 
@@ -1632,7 +1710,7 @@ class GroupRoutineViewModel(
                                 it.routineOptions + savedOption
                             } else {
                                 it.routineOptions.map { option ->
-                                    // PR 반영: 수정 시 기존의 isSelected 상태 유지
+                                    // PR ?袁⑸즵??? ???쒓낯??????れ삀????isSelected ???ㅺ컼?????
                                     if (option.id == editingId) savedOption.copy(isSelected = option.isSelected) else option
                                 }
                             }
@@ -1644,17 +1722,18 @@ class GroupRoutineViewModel(
                                 routineDraftStartTime = "08:00",
                                 routineDraftEndTime = "20:00",
                                 routineDraftRepeatDays = emptySet(),
+                                routineDraftCategory = "",
                                 actionMessage = null,
                             )
                         }
-                        // 상세 화면 체크리스트(todos)는 오늘의 루틴 조회로 채워지니 여기서도 다시 불러와야 함
+                        // ???ㅳ늾????釉먮뻤??癲ル슪???띿물筌먯옓?????todos)??????몄툜????룸Ŧ爾???釉뚰????대퓠?癲??????????????筌먲퐣?????怨뺣빰 ??됰씭????????
                         loadTodayRoutines(groupId)
                     }
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                     ResultState.Loading -> Unit
                 }
             } finally {
-                // 성공/실패 무관하게 중복 호출 방지 플래그 초기화
+                // ?濚밸Þ?볠쾮?????됰꽡 ???뺣섕?????곕쿊 濚욌꼬?댄꺇???嶺뚮ㅎ????袁⑸젻泳? ?????μ쐺??縕?猿녿뎨??
                 _uiState.update { it.copy(isSubmitting = false) }
             }
         }
@@ -1704,6 +1783,7 @@ class GroupRoutineViewModel(
                 routineDraftStartTime = "08:00",
                 routineDraftEndTime = "20:00",
                 routineDraftRepeatDays = emptySet(),
+                routineDraftCategory = "",
                 actionMessage = null,
             )
         }
@@ -1727,18 +1807,18 @@ class GroupRoutineViewModel(
         val state = _uiState.value
         val editingId = state.editingRoutineId
         val groupId = currentGroupId()
-        // 이미 서버에 있는 루틴(그룹 루틴 관리 화면 진입)일 때만 실제로 삭제 요청함.
-        // 방 만들기 전 루틴 선택 단계랑 기본 샘플 루틴(음수 id)은 로컬 상태만 지움
+        // ???? ??筌먦끉裕??????덉툗 ??룸Ŧ爾????숆강筌?쓣爾???룸Ŧ爾?????굿????釉먮뻤??癲ル슣??????????????源놁졆????????釉먯뒜???
+        // ??癲ル슢?????琉왈?????룸Ŧ爾?????ャ뀕????影?됀????れ삀??????얜?源???룸Ŧ爾???????id)?? ?棺??짆?쏆춾????ㅺ컼?얜쓣異?癲ル슣????
         val shouldCallApi = state.screenMode == GroupRoutineScreenMode.GroupRoutineManage &&
             editingId != null && editingId > 0L && groupId != null
 
         if (!shouldCallApi) {
-            // 로컬 전용(방 만들기 전 단계, 샘플 루틴)이면 바로 목록에서 지움
+            // ?棺??짆?쏆춾???ш끽維????癲ル슢?????琉왈?????影?됀? ???얜?源???룸Ŧ爾????????袁⑸즴??繞?癲ル슢?꾤땟戮⑤뭄?????癲ル슣????
             clearRoutineDraft(editingId)
             return
         }
         if (state.isSubmitting) return
-        // 삭제가 실패하면 routineOptions는 되돌릴 방법이 없어서, 시트만 닫고 목록은 성공 후에 건드림
+        // ???影?놁씀? ????됰꽡??嚥???routineOptions????嚥▲꺃????袁⑸젻泳?쉬??????⑤９苑?? ????レ쉐癲?????됀?癲ル슢?꾤땟戮⑤뭄?? ?濚밸Þ?볠쾮???ш끽維??癲꾧퀗?????ｉ?
         closeRoutineSheets()
         _uiState.update { it.copy(isSubmitting = true) }
 
@@ -1747,7 +1827,7 @@ class GroupRoutineViewModel(
                 when (val result = deleteGroupRoutineUseCase(groupId, editingId)) {
                     is ResultState.Success -> {
                         clearRoutineDraft(editingId)
-                        _uiState.update { it.copy(actionMessage = "루틴을 삭제했어요.") }
+                        _uiState.update { it.copy(actionMessage = "루틴이 삭제되었어요.") }
                         loadTodayRoutines(groupId)
                     }
 
@@ -1760,7 +1840,7 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** 목록은 그대로 두고 편집 시트/삭제 다이얼로그만 닫음 */
+    /** 癲ル슢?꾤땟戮⑤뭄?? ??숆강筌?????????嶺뚮ㅎ?당빊?????レ쉐/???????源낇꼧???⑥???숆강筌?쑚?????甕?*/
     private fun closeRoutineSheets() {
         _uiState.update {
             it.copy(isRoutineSettingSheetVisible = false, isDeleteRoutineDialogVisible = false)
@@ -1793,22 +1873,28 @@ class GroupRoutineViewModel(
         val selectedOptions = state.routineOptions.filter { it.isSelected }
         val roomName = state.roomNameInput.trim()
         if (selectedOptions.isEmpty()) {
-            _uiState.update { it.copy(actionMessage = "함께할 루틴을 선택해주세요.") }
+            _uiState.update { it.copy(actionMessage = "함께할 루틴을 선택해 주세요.") }
             return
         }
         if (roomName.isBlank()) {
-            _uiState.update { it.copy(actionMessage = "방 이름을 입력해주세요.") }
+            _uiState.update { it.copy(actionMessage = "방 이름을 입력해 주세요.") }
             return
         }
         
-        // PR 반영: 따닥(중복 클릭)으로 인한 그룹 2개 생성 방지
+        // PR ?袁⑸즵??? ???ㅻ쿋??濚욌꼬?댄꺇??????????⑥???嶺뚮ㅏ援앯뵳???숆강筌?쓣爾?2????獄쏅똻???袁⑸젻泳?
         if (state.isSubmitting) return
         _uiState.update { it.copy(isSubmitting = true) }
 
         val categoryNames = selectedOptions.map { it.category }.distinct()
         val customCategories = categoryNames
             .filter { it !in DefaultCategoryIds }
-            .map { NewGroupCategory(clientKey = it, name = it, color = null) }
+            .map { categoryName ->
+                NewGroupCategory(
+                    clientKey = categoryName,
+                    name = categoryName,
+                    color = state.categoryColors[categoryName]?.serverCode(),
+                )
+            }
         val routines = selectedOptions.map { option ->
             NewGroupRoutine(
                 categoryId = DefaultCategoryIds[option.category],
@@ -1823,14 +1909,14 @@ class GroupRoutineViewModel(
             try {
                 when (val result = createGroupUseCase(roomName, customCategories, routines)) {
                     is ResultState.Success -> {
-                        // CodeRabbit 반영: 서버 응답의 루틴 개수/순서가 요청과 다르면 임시 클라이언트 ID를
-                        // 서버 ID인 것처럼 사용하지 않도록 개수와 제목 일치 여부를 먼저 검증
+                        // CodeRabbit ?袁⑸즵??? ??筌먦끉裕????쑩?젆????룸Ŧ爾????좊즵獒????筌?留??좊읈? ??釉먯뒜???????렺?異???ш끽維뽳쭛????????⑤９苑??ID??
+                        // ??筌먦끉裕?ID???濡ろ뜏?遺삳쐩???????? ????녳뵣????좊즵獒??? ??筌먯룄肄???繹먮봾萸???????沃섅굥?? ?濡ろ떟?癲?
                         val createdRoutines = result.data.routines
                         val responseIsValid = createdRoutines.size == selectedOptions.size &&
                             createdRoutines.indices.all { index -> createdRoutines[index].title == selectedOptions[index].title }
                         if (!responseIsValid) {
                             _uiState.update {
-                                it.copy(actionMessage = "그룹은 만들어졌지만 루틴 정보를 받아오지 못했어요. 다시 시도해주세요.")
+                                it.copy(actionMessage = "그룹 생성 응답이 선택한 루틴과 일치하지 않습니다. 다시 시도해 주세요.")
                             }
                             return@launch
                         }
@@ -1841,10 +1927,10 @@ class GroupRoutineViewModel(
                         val newRoutine = GroupRoutineUiModel(
                             id = groupId,
                             title = roomName,
-                            lastActiveLabel = "방금 전 활동",
+                            lastActiveLabel = "\uBC29\uAE08 \uC804 \uD65C\uB3D9",
                             memberCount = 1,
                             routineCount = selectedOptions.size,
-                            statusLabel = "진행중",
+                            statusLabel = "\uC9C4\uD589\uC911",
                             isCompleted = false,
                             todayCompletedCount = 0,
                             todayTotalCount = selectedOptions.size,
@@ -1879,21 +1965,23 @@ class GroupRoutineViewModel(
                                 selectedRoutineId = groupId,
                                 roomNameInput = "",
                                 routineOptions = createdOptions,
-                                selectedCategory = "전체",
+                                selectedCategory = "\uC804\uCCB4",
                                 routines = listOf(newRoutine) + existingServerRoutines,
                                 todos = selectedTodos,
                                 isConfirmedOwner = true,
-                                actionMessage = "방이 만들어졌어요.",
+                                actionMessage = "\uBC29\uC774 \uB9CC\uB4E4\uC5B4\uC84C\uC5B4\uC694.",
                             )
                         }
-                        // 방을 막 만들면 구성원이 나 혼자라 mock 멤버가 그대로 남음 — 상세 조회로 덮어씀
+                        // ?袁⑸젻泳??癲?癲ル슢???????떵?????늄??????????繹먮냱寃??mock 癲ル슢???볥뼀?筌? ??숆강筌??????쒑린??????ㅳ늾???釉뚰????대퓠??????
                         loadGroupDetail(groupId)
+                        loadGroupRoutineCategories()
+                        loadTodayRoutines(groupId)
                     }
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                     ResultState.Loading -> Unit
                 }
             } finally {
-                // 완료 후 제출 상태 해제
+                // ??ш끽維??????筌믨퉭?????ㅺ컼?????⑤챷??
                 _uiState.update { it.copy(isSubmitting = false) }
             }
         }
@@ -1955,8 +2043,8 @@ class GroupRoutineViewModel(
     )
 }
 
-// 스웨거 문서에 createdAt 포맷 예시가 없어 ISO-8601(Instant)로 우선 가정하고, 파싱에 실패하면
-// (그룹핑 판단용이라 실패해도 치명적이지 않으므로) 현재 시각으로 대체한다.
+// ???源낆뱼癲????뽮덫???createdAt ???????怨뺣빰??좊읈? ???⑤９苑?ISO-8601(Instant)?????Β?띾쭡 ??좊읈??嶺뚮쮳?년봼?? ??????????됰꽡??嚥???
+// (??숆강筌?쓣爾????????獄????????됰꽡??????怨멸땀?쀫씛????ㅼ굣?얠쥉異?堉온 ???怨룔걬雅?퍔源??? ??ш끽維????癰?????⑥????癲ル슪???쀫눀??
 private fun String.toEpochMillisOrNow(): Long =
     runCatching { Instant.parse(this).toEpochMilli() }.getOrDefault(System.currentTimeMillis())
 
@@ -1970,14 +2058,14 @@ private val KoreanDayToRepeatDay = mapOf(
     "\uD1A0" to RepeatDay.SATURDAY,
 )
 
-// 백엔드 기본 카테고리(운동/건강/자기계발/생활정리/마음관리/취미) 이름 → categoryId
+// ?袁⑸즲??援????れ삀????怨멸텭??沃섅뀙??關履???????癲꾧퀗???????????節뚮쳥?????됰Ŧ苑?嶺뚮㉡?섌걡?癲ル슢?????????????) ???????categoryId
 private val DefaultCategoryIds = mapOf(
-    "운동" to 1L,
-    "건강" to 2L,
-    "자기계발" to 3L,
-    "생활정리" to 4L,
-    "마음관리" to 5L,
-    "취미" to 6L,
+    "\uC6B4\uB3D9" to 1L,
+    "\uAC74\uAC15" to 2L,
+    "\uC790\uAE30\uACC4\uBC1C" to 3L,
+    "\uC0DD\uD65C\uC815\uB9AC" to 4L,
+    "\uB9C8\uC74C\uAD00\uB9AC" to 5L,
+    "\uCDE8\uBBF8" to 6L,
 )
 
 private fun Set<String>.toGroupRoutineSchedules(startTime: String, endTime: String): List<GroupRoutineSchedule> {
@@ -1986,5 +2074,5 @@ private fun Set<String>.toGroupRoutineSchedules(startTime: String, endTime: Stri
     }
 }
 
-/** 서버 카테고리 색은 RED/BLUE 같은 대문자 enum이라 Kotlin enum 이름을 그대로 보내면 400 남 */
+/** ??筌먦끉裕??怨멸텭??沃섅뀙??關履????? RED/BLUE ??좊즵?? ?????뽮덫??enum?????Kotlin enum ????????숆강筌????怨뚮옖?雅?겦?쇿퐲?400 ??*/
 private fun CategoryColor.serverCode(): String = name.uppercase()

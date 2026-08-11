@@ -43,6 +43,8 @@ data class GroupMemberUiModel(
     val completedCount: Int = 0,
     val totalCount: Int = 0,
     val totalLikeCount: Int = 0,
+    val totalDisappointmentCount: Int = 0,
+    val pokeCount: Int = 0,
     val isMe: Boolean = false,
 )
 
@@ -103,7 +105,7 @@ data class GroupRoutineUiState(
     val showOnlyMyCertifications: Boolean = false,
     val selectedCertificationMemberId: Long? = null,
     val isNewCertificationDialogVisible: Boolean = false,
-    val isEmptyState: Boolean = false,
+    val isEmptyState: Boolean = true,
     val searchInput: String = "",
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",
@@ -142,7 +144,7 @@ data class GroupRoutineUiState(
     val chatEmoticons: List<ChatEmoticonUiModel> = emptyList(),
     val isChatLoading: Boolean = false,
     val newCertifications: List<NewCertificationUiModel> = SampleNewCertifications,
-    val routines: List<GroupRoutineUiModel> = SampleGroupRoutines,
+    val routines: List<GroupRoutineUiModel> = emptyList(),
     val members: List<GroupMemberUiModel> = SampleGroupMembers,
     val todos: List<GroupTodoUiModel> = SampleGroupTodos,
     val posts: List<CertificationPostUiModel> = SampleCertificationPosts,

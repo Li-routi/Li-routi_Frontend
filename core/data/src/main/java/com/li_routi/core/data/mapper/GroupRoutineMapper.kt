@@ -16,6 +16,8 @@ import com.li_routi.core.data.network.dto.response.GroupRoutineVerificationItemR
 import com.li_routi.core.data.network.dto.response.GroupRoutineVerificationReadResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineScheduleResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultResponse
+import com.li_routi.core.data.network.dto.response.ParticipatingGroupListResponse
+import com.li_routi.core.data.network.dto.response.ParticipatingGroupResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineListResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineResponse
 import com.li_routi.core.data.network.dto.response.UnreadGroupRoutineVerificationListResponse
@@ -33,6 +35,7 @@ import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
 import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationFeed
 import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationItem
 import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationRead
+import com.li_routi.core.domain.grouproutine.ParticipatingGroup
 import com.li_routi.core.domain.grouproutine.GroupRoutineSchedule
 import com.li_routi.core.domain.grouproutine.GroupRoutineStatus
 import com.li_routi.core.domain.grouproutine.GroupRoutineUpdateResult
@@ -55,6 +58,21 @@ fun GroupCreateResultResponse.toDomain(): CreatedGroup = CreatedGroup(
     name = name,
     routines = routines.map { it.toDomain() },
     assignmentCount = assignmentCount,
+)
+
+fun ParticipatingGroupListResponse.toDomain(): List<ParticipatingGroup> =
+    groups.map { it.toDomain() }
+
+fun ParticipatingGroupResponse.toDomain(): ParticipatingGroup = ParticipatingGroup(
+    groupId = groupId.requireId("groupId"),
+    groupName = groupName,
+    activeMemberCount = activeMemberCount,
+    activeRoutineCount = activeRoutineCount,
+    todayAssignedRoutineCount = todayAssignedRoutineCount,
+    todayCompletedRoutineCount = todayCompletedRoutineCount,
+    currentStreak = currentStreak,
+    monthlyAchievementRate = monthlyAchievementRate,
+    todayGroupVerificationCount = todayGroupVerificationCount,
 )
 
 fun GroupDetailResponse.toDomain(): GroupDetail = GroupDetail(

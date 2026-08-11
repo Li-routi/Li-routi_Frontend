@@ -23,6 +23,7 @@ import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineVerificationReadResponse
+import com.li_routi.core.data.network.dto.response.ParticipatingGroupListResponse
 import com.li_routi.core.data.network.dto.response.TodayGroupRoutineListResponse
 import com.li_routi.core.data.network.dto.response.UnreadGroupRoutineVerificationListResponse
 import retrofit2.http.Body
@@ -40,6 +41,9 @@ interface GroupRoutineApiService {
     suspend fun createGroup(
         @Body request: CreateGroupRequest,
     ): ApiResponse<GroupCreateResultResponse>
+
+    @GET("api/groups")
+    suspend fun getParticipatingGroups(): ApiResponse<ParticipatingGroupListResponse>
 
     // 스웨거 문서(CreateRoutine)랑 실제 요청/응답 스키마가 다름 — 실서버 호출로 확인해봄. PUT이랑 동일하게
     // title/description/schedules 받고 단일 루틴 객체 반환함

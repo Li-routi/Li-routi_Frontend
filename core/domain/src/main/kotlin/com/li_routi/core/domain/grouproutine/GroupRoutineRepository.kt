@@ -11,6 +11,8 @@ interface GroupRoutineRepository {
         routines: List<NewGroupRoutine>,
     ): ResultState<CreatedGroup>
 
+    suspend fun getParticipatingGroups(): ResultState<List<ParticipatingGroup>>
+
     /** 그룹에 루틴을 등록함. 요청/응답 모양이 [updateGroupRoutine]과 동일함(실서버 확인, 스웨거 문서와 다름) */
     suspend fun createGroupRoutine(
         groupId: Long,
