@@ -223,6 +223,7 @@ fun GroupRoutineRoute(
         onNewCertificationLikeClick = viewModel::onNewCertificationLikeClick,
         onMemberClick = viewModel::onMemberClick,
         onDismissMemberDialog = viewModel::onDismissMemberDialog,
+        onPokeMemberClick = viewModel::onPokeMemberClick,
         onChatClick = viewModel::onChatClick,
         onChatMessageChange = viewModel::onChatMessageChange,
         onChatSendClick = viewModel::onChatSendClick,
@@ -307,6 +308,7 @@ private fun GroupRoutineScreen(
     onNewCertificationLikeClick: (Long) -> Unit = {},
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
+    onPokeMemberClick: () -> Unit = {},
     onChatClick: () -> Unit,
     onChatMessageChange: (String) -> Unit,
     onChatSendClick: () -> Unit,
@@ -349,6 +351,7 @@ private fun GroupRoutineScreen(
                 onCertificationSummaryClick = onCertificationSummaryClick,
                 onMemberClick = onMemberClick,
                 onDismissMemberDialog = onDismissMemberDialog,
+                onPokeMemberClick = onPokeMemberClick,
                 onMemberKickClick = onMemberKickClick,
                 onChatClick = onChatClick,
                 onMessageEditClick = onMessageEditClick,
@@ -612,7 +615,8 @@ private fun ActionMessageToastDialog(
                 modifier = Modifier
                     .navigationBarsPadding()
                     .padding(bottom = 92.dp)
-                    .width(332.dp)
+                    .widthIn(max = 332.dp)
+                    .fillMaxWidth()
                     .height(54.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(LiroutiTheme.colors.dimmerDefault)
@@ -677,14 +681,12 @@ private fun GroupRoutineListScreen(
                 .fillMaxWidth(),
             contentAlignment = Alignment.Center,
         ) {
-            if (uiState.isEmptyState) {
+            if (uiState.routines.isEmpty()) {
                 GroupRoutineEmptyState()
             } else if (uiState.visibleRoutines.isEmpty()) {
                 GroupRoutineEmptyState(
                     message = "검색 결과가 없어요.",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 180.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             } else {
                 LazyColumn(
@@ -2245,6 +2247,7 @@ private fun GroupRoutineDetailScreen(
     onCertificationSummaryClick: () -> Unit,
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
+    onPokeMemberClick: () -> Unit,
     onMemberKickClick: () -> Unit,
     onChatClick: () -> Unit,
     onMessageEditClick: () -> Unit,
@@ -2309,7 +2312,7 @@ private fun GroupRoutineDetailScreen(
             // 방장만 내보낼 수 있고, 자기 자신은 못 내보냄
             canKick = uiState.isConfirmedOwner && !member.isMe,
             onDismissRequest = onDismissMemberDialog,
-            onPokeClick = onDismissMemberDialog,
+            onPokeClick = onPokeMemberClick,
             onKickClick = onMemberKickClick,
         )
     }
@@ -3768,7 +3771,11 @@ private fun MemberProfileDialog(
                     }
                 }
                 if (!member.isMe) {
-                    PrimaryButton(text = "\uCFE1\uCFE1 \uCC14\uB7EC\uBCF4\uAE30", enabled = true, onClick = onPokeClick)
+                    PrimaryButton(
+                        text = "\uCFE1\uCFE1 \uCC14\uB7EC\uBCF4\uAE30",
+                        enabled = true,
+                        onClick = onPokeClick,
+                    )
                 }
                 if (!member.isMe && canKick) {
                     Text(

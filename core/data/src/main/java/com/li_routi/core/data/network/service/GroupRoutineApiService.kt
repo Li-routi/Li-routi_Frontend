@@ -119,6 +119,12 @@ interface GroupRoutineApiService {
         @Path("targetMemberId") targetMemberId: Long,
     ): ApiResponse<Unit?>
 
+    @POST("api/groups/{groupId}/members/{targetMemberId}/pokes")
+    suspend fun pokeMember(
+        @Path("groupId") groupId: Long,
+        @Path("targetMemberId") targetMemberId: Long,
+    ): ApiResponse<Unit?>
+
     @DELETE("api/groups/{groupId}/routines/{routineId}")
     suspend fun deleteRoutine(
         @Path("groupId") groupId: Long,

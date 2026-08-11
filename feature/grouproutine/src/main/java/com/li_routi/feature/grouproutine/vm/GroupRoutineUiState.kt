@@ -105,7 +105,6 @@ data class GroupRoutineUiState(
     val showOnlyMyCertifications: Boolean = false,
     val selectedCertificationMemberId: Long? = null,
     val isNewCertificationDialogVisible: Boolean = false,
-    val isEmptyState: Boolean = true,
     val searchInput: String = "",
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",
@@ -152,9 +151,7 @@ data class GroupRoutineUiState(
     val isSubmitting: Boolean = false,
 ) {
     val visibleRoutines: List<GroupRoutineUiModel>
-        get() = if (isEmptyState) {
-            emptyList()
-        } else if (searchInput.isBlank()) {
+        get() = if (searchInput.isBlank()) {
             routines
         } else {
             routines.filter { it.title.contains(searchInput.trim(), ignoreCase = true) }

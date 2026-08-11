@@ -43,6 +43,7 @@ import com.li_routi.core.domain.grouproutine.LikeGroupRoutineVerificationUseCase
 import com.li_routi.core.domain.grouproutine.MarkGroupRoutineVerificationsReadUseCase
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
+import com.li_routi.core.domain.grouproutine.PokeGroupMemberUseCase
 import com.li_routi.core.domain.grouproutine.RepeatDay
 import com.li_routi.core.domain.grouproutine.SetGroupLockUseCase
 import com.li_routi.core.domain.grouproutine.TransferGroupOwnerUseCase
@@ -81,6 +82,7 @@ class GroupRoutineViewModel(
     private val getGroupJoinPreviewUseCase: GetGroupJoinPreviewUseCase = GroupRoutineContainer.getGroupJoinPreviewUseCase,
     private val setGroupLockUseCase: SetGroupLockUseCase = GroupRoutineContainer.setGroupLockUseCase,
     private val kickGroupMemberUseCase: KickGroupMemberUseCase = GroupRoutineContainer.kickGroupMemberUseCase,
+    private val pokeGroupMemberUseCase: PokeGroupMemberUseCase = GroupRoutineContainer.pokeGroupMemberUseCase,
     private val updateGroupMemberStatusMessageUseCase: UpdateGroupMemberStatusMessageUseCase = GroupRoutineContainer.updateGroupMemberStatusMessageUseCase,
     private val updateGroupNameUseCase: UpdateGroupNameUseCase = GroupRoutineContainer.updateGroupNameUseCase,
     private val transferGroupOwnerUseCase: TransferGroupOwnerUseCase = GroupRoutineContainer.transferGroupOwnerUseCase,
@@ -195,7 +197,6 @@ class GroupRoutineViewModel(
                     _uiState.update {
                         it.copy(
                             routines = routines,
-                            isEmptyState = routines.isEmpty(),
                         )
                     }
                 }
@@ -315,7 +316,7 @@ class GroupRoutineViewModel(
         // ???⑥щ뎁??????몄릇??癲ル슢?????????????????????ш끽維곮??DTO ?怨뚮뼚??????⑤챶?????????⑤９苑?嶺뚮ㅎ????筌먦끉??癲ル슪?ｇ몭????좊읈??濚왿몾???
         val replyTarget = _uiState.value.replyTarget
         val content = if (replyTarget != null) {
-            "??${replyTarget.senderName}: ${replyTarget.message.take(30)}\n$text"
+            "[답장] ${replyTarget.senderName}: ${replyTarget.message.take(30)}\n$text"
         } else {
             text
         }
@@ -589,7 +590,7 @@ class GroupRoutineViewModel(
             try {
                 when (val result = leaveGroupUseCase(groupId)) {
                     is ResultState.Success -> when (result.data) {
-                        LeaveGroupResult.Left -> exitRoom(groupId, "?袁⑸젻泳?④덩?????쒓낮瑗???⑤챶萸?")
+                        LeaveGroupResult.Left -> exitRoom(groupId, "그룹방을 나갔어요.")
                         // ?袁⑸젻泳??? 癲?????⑸춪 ????????????????? ???怨뺣빰 ??醫딅땾???돥椰?
                         LeaveGroupResult.OwnerMustDelete -> _uiState.update {
                             it.copy(
@@ -623,7 +624,7 @@ class GroupRoutineViewModel(
         viewModelScope.launch {
             try {
                 when (val result = deleteGroupUseCase(groupId)) {
-                    is ResultState.Success -> exitRoom(groupId, "?袁⑸젻泳????????怨쀪퐨??")
+                    is ResultState.Success -> exitRoom(groupId, "그룹방을 삭제했어요.")
                     is ResultState.Error -> _uiState.update {
                         it.copy(isDeleteRoomDialogVisible = false, actionMessage = result.message)
                     }
@@ -1023,7 +1024,7 @@ class GroupRoutineViewModel(
         }
         val groupId = currentGroupId()
         if (groupId == null) {
-            applyLeaderTransfer(isStillLeader = false, message = "?袁⑸젻泳????怨뚮뼚??濡ろ뜑?管逾???怨?????덊렡.")
+            applyLeaderTransfer(isStillLeader = false, message = "방장 권한을 넘겼어요.")
             return
         }
 
@@ -1033,7 +1034,7 @@ class GroupRoutineViewModel(
             try {
                 when (val result = transferGroupOwnerUseCase(groupId, targetMemberId)) {
                     is ResultState.Success -> {
-                        applyLeaderTransfer(isStillLeader = false, message = "?袁⑸젻泳????怨뚮뼚??濡ろ뜑?管逾???怨?????덊렡.")
+                        applyLeaderTransfer(isStillLeader = false, message = "방장 권한을 넘겼어요.")
                         loadGroupDetail(groupId)
                     }
 
@@ -1102,6 +1103,36 @@ class GroupRoutineViewModel(
 
     fun onDismissKickMemberDialog() {
         _uiState.update { it.copy(isKickMemberDialogVisible = false) }
+    }
+
+    fun onPokeMemberClick() {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+        val targetMemberId = _uiState.value.selectedMemberId ?: return
+        if (_uiState.value.isSubmitting) return
+        _uiState.update { it.copy(isSubmitting = true) }
+
+        viewModelScope.launch {
+            try {
+                when (val result = pokeGroupMemberUseCase(groupId, targetMemberId)) {
+                    is ResultState.Success -> {
+                        _uiState.update {
+                            it.copy(
+                                actionMessage = "콕콕 찔렀어요.",
+                            )
+                        }
+                        loadGroupDetail(groupId)
+                    }
+
+                    is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
+            }
+        }
     }
 
     fun onKickMemberConfirmClick() {
@@ -1296,7 +1327,7 @@ class GroupRoutineViewModel(
                 }
                 if (preview is ResultState.Success && !preview.data.joinable) {
                     _uiState.update {
-                        it.copy(actionMessage = preview.data.unavailableReason ?: "癲ル슣????ヂ??? 癲ル슔?蹂?덫?????????몄툗 ?袁⑸젻泳??????")
+                        it.copy(actionMessage = preview.data.unavailableReason ?: "참여할 수 없는 그룹이에요.")
                     }
                     return@launch
                 }

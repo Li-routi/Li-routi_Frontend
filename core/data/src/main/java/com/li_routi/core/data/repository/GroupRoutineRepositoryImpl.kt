@@ -180,6 +180,10 @@ class GroupRoutineRepositoryImpl(
         api.kickMember(groupId = groupId, targetMemberId = targetMemberId).ensureSuccess()
     }
 
+    override suspend fun pokeGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {
+        api.pokeMember(groupId = groupId, targetMemberId = targetMemberId).ensureSuccess()
+    }
+
     override suspend fun deleteGroupRoutine(groupId: Long, routineId: Long): ResultState<Unit> = safeApiCall {
         api.deleteRoutine(groupId = groupId, routineId = routineId).ensureSuccess()
     }
