@@ -4,7 +4,7 @@ package com.li_routi.core.data.network.dto.response
 data class MyVerificationResponse(
     val verificationId: Long,
     val imageUrl: String?,
-    val content: String,
+    val content: String?,
     val verifiedDate: String,
     val verifiedAt: String,
     val likeCount: Long,
