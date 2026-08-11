@@ -16,6 +16,7 @@ import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -60,6 +61,8 @@ fun MyVerificationScreen(
     modifier: Modifier = Modifier,
     verifications: List<MyVerificationCardUiModel> = SampleMyVerifications,
     pendingVerifications: List<PendingVerificationUiModel> = SamplePendingVerifications,
+    isLoading: Boolean = false,
+    isError: Boolean = false,
     onMenuClick: () -> Unit = {},
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
@@ -93,7 +96,21 @@ fun MyVerificationScreen(
                 .padding(top = 16.dp),
         )
 
-        if (verifications.isEmpty() && pendingVerifications.isEmpty()) {
+        if (isLoading) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
+            }
+        } else if (isError) {
+            Box(
+                modifier = Modifier.weight(1f).fillMaxWidth(),
+                contentAlignment = Alignment.Center,
+            ) {
+                MyVerificationEmptyState(message = "인증 기록을 불러오지 못했어요")
+            }
+        } else if (verifications.isEmpty() && pendingVerifications.isEmpty()) {
             Box(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
                 contentAlignment = Alignment.Center,
@@ -149,9 +166,9 @@ fun MyVerificationScreen(
     }
 }
 
-/** 선택한 날짜에 인증 기록이 없을 때 화면 가운데에 보여주는 빈 상태. */
+/** 선택한 날짜에 인증 기록이 없거나(성공+빈 응답) 조회에 실패했을 때 화면 가운데에 보여주는 상태. */
 @Composable
-private fun MyVerificationEmptyState(modifier: Modifier = Modifier) {
+private fun MyVerificationEmptyState(modifier: Modifier = Modifier, message: String = "이 날의 인증 기록이 없어요") {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Image(
             painter = painterResource(id = R.drawable.warning),
@@ -159,7 +176,7 @@ private fun MyVerificationEmptyState(modifier: Modifier = Modifier) {
             modifier = Modifier.size(28.dp),
         )
         Text(
-            text = "이 날의 인증 기록이 없어요",
+            text = message,
             style = LiroutiTheme.typography.body2LongMedium,
             color = LiroutiTheme.colors.labelInfo,
             modifier = Modifier.padding(top = 8.dp),
@@ -232,6 +249,36 @@ private fun MyVerificationScreenEmptyPreview() {
             onDateChange = {},
             verifications = emptyList(),
             pendingVerifications = emptyList(),
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 900, name = "로딩 중")
+@Composable
+private fun MyVerificationScreenLoadingPreview() {
+    LiroutiFrontendTheme {
+        MyVerificationScreen(
+            onBackClick = {},
+            selectedDate = SimpleDate(2026, 9, 2),
+            onDateChange = {},
+            verifications = emptyList(),
+            pendingVerifications = emptyList(),
+            isLoading = true,
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 900, name = "조회 실패")
+@Composable
+private fun MyVerificationScreenErrorPreview() {
+    LiroutiFrontendTheme {
+        MyVerificationScreen(
+            onBackClick = {},
+            selectedDate = SimpleDate(2026, 9, 2),
+            onDateChange = {},
+            verifications = emptyList(),
+            pendingVerifications = emptyList(),
+            isError = true,
         )
     }
 }

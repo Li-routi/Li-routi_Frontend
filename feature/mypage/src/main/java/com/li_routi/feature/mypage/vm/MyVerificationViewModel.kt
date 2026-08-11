@@ -33,7 +33,7 @@ class MyVerificationViewModel(
     private val getMyVerificationsUseCase: GetMyVerificationsUseCase = AuthContainer.getMyVerificationsUseCase,
 ) : BaseViewModel() {
 
-    private val _uiState = MutableStateFlow(MyVerificationUiState(selectedDate = initialDate))
+    private val _uiState = MutableStateFlow(MyVerificationUiState(selectedDate = initialDate, isLoading = true))
     val uiState: StateFlow<MyVerificationUiState> = _uiState.asStateFlow()
 
     init {
@@ -49,7 +49,10 @@ class MyVerificationViewModel(
     private fun loadVerifications() {
         val requestedDate = _uiState.value.selectedDate
         viewModelScope.launch {
-            _uiState.update { it.copy(isLoading = true) }
+            // 로딩을 시작하면서 직전 날짜의 목록을 바로 비운다 — 안 그러면 새 응답이 오기 전까지
+            // 이전 날짜의 카드가 그대로 남아있어 "날짜를 넘겼는데 안 바뀐다"처럼 보이고, 로딩 중에도
+            // 빈 상태 문구("기록이 없어요")가 잘못 노출된다([MyVerificationUiState.isLoading] 참고).
+            _uiState.update { it.copy(isLoading = true, isError = false, verifications = emptyList(), pendingVerifications = emptyList()) }
             when (val result = getMyVerificationsUseCase(date = requestedDate.toApiDateString())) {
                 is ResultState.Success -> _uiState.update { current ->
                     // 응답이 오는 동안 다른 날짜로 넘어갔으면 무시한다 — 안 그러면 이전 요청의 응답이
@@ -65,14 +68,7 @@ class MyVerificationViewModel(
                     )
                 }
                 is ResultState.Error -> _uiState.update { current ->
-                    // 실패해도 직전 날짜의 목록을 그대로 남겨두면, 예를 들어 세션이 끊겨 모든 요청이
-                    // 401로 실패하는 상황에서 날짜를 넘겨도 화면이 안 바뀌는 것처럼 보인다 — 요청한
-                    // 날짜에 대한 응답이 실패했으면 그 날짜에 대해선 빈 목록으로 비워 보여준다.
-                    if (current.selectedDate != requestedDate) {
-                        current
-                    } else {
-                        current.copy(verifications = emptyList(), pendingVerifications = emptyList(), isLoading = false)
-                    }
+                    if (current.selectedDate != requestedDate) current else current.copy(isLoading = false, isError = true)
                 }
                 ResultState.Loading -> Unit
             }
@@ -85,6 +81,7 @@ data class MyVerificationUiState(
     val verifications: List<MyVerificationCardUiModel> = emptyList(),
     val pendingVerifications: List<PendingVerificationUiModel> = emptyList(),
     val isLoading: Boolean = false,
+    val isError: Boolean = false,
 )
 
 private fun MyVerificationEntry.toCardUiModel(): MyVerificationCardUiModel = MyVerificationCardUiModel(

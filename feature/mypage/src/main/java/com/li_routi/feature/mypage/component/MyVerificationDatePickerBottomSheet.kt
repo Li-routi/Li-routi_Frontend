@@ -35,6 +35,7 @@ import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import java.util.Calendar
 import java.util.Locale
+import java.util.TimeZone
 import kotlinx.coroutines.launch
 
 /** 연-월-일. [month]는 1..12. */
@@ -42,8 +43,13 @@ data class SimpleDate(val year: Int, val month: Int, val day: Int) {
     fun toDisplayLabel(): String = "${year}년 ${month}월 ${day}일"
 }
 
+/**
+ * 기기 시간대가 아니라 KST 기준 오늘 날짜를 반환한다. `GET /api/members/me/verifications`가 date
+ * 생략 시 오늘(KST) 기준으로 조회하는 것과 기준을 맞춰야, 기기 시간대가 KST와 다를 때(예: 해외 로밍)
+ * 서버와 다른 날짜를 요청하는 걸 막을 수 있다.
+ */
 fun todaySimpleDate(): SimpleDate {
-    val calendar = Calendar.getInstance()
+    val calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Seoul"))
     return SimpleDate(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.DAY_OF_MONTH))
 }
 

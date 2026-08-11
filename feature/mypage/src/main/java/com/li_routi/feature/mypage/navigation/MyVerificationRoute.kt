@@ -23,6 +23,8 @@ fun MyVerificationRoute(
         onDateChange = viewModel::onDateSelected,
         verifications = uiState.verifications,
         pendingVerifications = uiState.pendingVerifications,
+        isLoading = uiState.isLoading,
+        isError = uiState.isError,
         modifier = modifier,
     )
 }
