@@ -7,6 +7,7 @@ import com.li_routi.core.data.network.dto.request.UpdateProfileRequest
 import com.li_routi.core.data.network.dto.request.WithdrawRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.GoogleNonceResponse
+import com.li_routi.core.data.network.dto.response.MemberVerificationsResponse
 import com.li_routi.core.data.network.dto.response.MyInfoResponse
 import com.li_routi.core.data.network.dto.response.ReissueResponse
 import com.li_routi.core.data.network.dto.response.TokenResponse
@@ -15,6 +16,7 @@ import retrofit2.http.GET
 import retrofit2.http.HTTP
 import retrofit2.http.PATCH
 import retrofit2.http.POST
+import retrofit2.http.Query
 
 interface AuthApiService {
 
@@ -35,6 +37,17 @@ interface AuthApiService {
     suspend fun updateProfile(
         @Body request: UpdateProfileRequest,
     ): ApiResponse<MyInfoResponse>
+
+    /**
+     * 특정 날짜에 남긴 인증(챌린지·개인 루틴·그룹 루틴 통합)을 최신순으로 조회한다.
+     * [date]를 생략하면 오늘(KST) 기준으로 조회한다. [status]="PENDING"으로 좁히면 심사 중인 챌린지
+     * 인증만 내려간다 — 루틴 인증은 심사가 없어 빠진다.
+     */
+    @GET("api/members/me/verifications")
+    suspend fun getMyVerifications(
+        @Query("date") date: String?,
+        @Query("status") status: String?,
+    ): ApiResponse<MemberVerificationsResponse>
 
     /** accessToken 만료 시 refreshToken으로 서비스 토큰을 재발급받는다. */
     @POST("api/auth/reissue")

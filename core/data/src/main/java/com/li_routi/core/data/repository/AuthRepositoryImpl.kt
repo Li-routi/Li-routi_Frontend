@@ -18,8 +18,10 @@ import com.li_routi.core.data.preference.FcmTokenPreference
 import com.li_routi.core.domain.auth.AuthRepository
 import com.li_routi.core.domain.auth.AuthToken
 import com.li_routi.core.domain.auth.MyInfo
+import com.li_routi.core.domain.auth.MyVerificationDay
 import com.li_routi.core.domain.auth.ProfileImageUpload
 import com.li_routi.core.domain.auth.SocialProvider
+import com.li_routi.core.domain.auth.VerificationReviewStatus
 import com.li_routi.core.domain.media.MediaPurpose
 import com.li_routi.core.domain.media.UploadMediaUseCase
 import kotlinx.coroutines.flow.first
@@ -78,6 +80,13 @@ class AuthRepositoryImpl(
                 api.updateProfile(UpdateProfileRequest(nickname = nickname, profileImageKey = profileImageKey))
             }.toDomain()
         }
+
+    override suspend fun getMyVerifications(
+        date: String?,
+        status: VerificationReviewStatus?,
+    ): ResultState<MyVerificationDay> = safeApiCall {
+        apiCall { api.getMyVerifications(date = date, status = status?.name) }.toDomain()
+    }
 
     /** presigned URL 발급 → S3 PUT까지 미디어 도메인에 위임하고, 프로필 API에 넘길 mediaKey를 반환한다. */
     private suspend fun uploadProfileImage(image: ProfileImageUpload): String =
