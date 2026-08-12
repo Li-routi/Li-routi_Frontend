@@ -32,6 +32,7 @@
             android:name="com.li_routi.feature.grouproutine.GroupRoutineActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.LiroutiFrontend" />
 
         <!-- launcher가 아니므로 Android Studio에서 실행 구성으로 직접 지정해야 켜진다.
@@ -40,12 +41,14 @@
             android:name="com.li_routi.feature.login.LoginActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.LiroutiFrontend" />
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.LiroutiFrontend">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
