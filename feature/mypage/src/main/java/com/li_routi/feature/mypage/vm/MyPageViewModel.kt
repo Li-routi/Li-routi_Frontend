@@ -44,6 +44,11 @@ class MyPageViewModel(
         loadMyInfo()
     }
 
+    /** 마이 탭을 다시 눌러 들어올 때 등, 외부에서 프로필을 다시 불러오라는 신호가 왔을 때 호출한다. */
+    fun refresh() {
+        loadMyInfo()
+    }
+
     private fun loadMyInfo() {
         viewModelScope.launch {
             when (val result = getMyInfoUseCase()) {

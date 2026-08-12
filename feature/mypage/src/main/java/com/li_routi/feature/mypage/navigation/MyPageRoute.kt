@@ -40,12 +40,23 @@ private enum class MyPageDestination {
 @Composable
 fun MyPageRoute(
     onTabSelected: (AppBottomTab) -> Unit = {},
+    /**
+     * 마이 탭을 다시 눌러 들어올 때마다 증가하는 값(HomeRoute의 requestRefreshTick과 동일한 패턴).
+     * 0보다 커지면(=탭 재진입) 프로필을 다시 불러온다.
+     */
+    refreshTick: Int = 0,
     modifier: Modifier = Modifier,
     viewModel: MyPageViewModel = viewModel { MyPageViewModel() },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var destination by rememberSaveable { mutableStateOf(MyPageDestination.MyPage) }
     val context = LocalContext.current
+
+    LaunchedEffect(refreshTick) {
+        if (refreshTick > 0) {
+            viewModel.refresh()
+        }
+    }
 
     // Nav 백스택이 아니라 로컬 전환이므로, 시스템 Back이 마이페이지 하위 화면을 건너뛰고
     // 곧바로 홈 탭으로 넘어가지 않게 가로챈다.

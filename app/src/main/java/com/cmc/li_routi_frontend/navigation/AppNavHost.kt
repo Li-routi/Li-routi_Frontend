@@ -262,6 +262,7 @@ fun AppNavHost(
             AppBottomTab.My -> saveableStateHolder.SaveableStateProvider(tabKey(AppBottomTab.My)) {
                 MyPageRoute(
                     onTabSelected = ::selectTab,
+                    refreshTick = myResetGen,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
