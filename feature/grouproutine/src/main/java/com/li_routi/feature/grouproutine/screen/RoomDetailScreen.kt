@@ -30,7 +30,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -43,6 +42,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
+import com.li_routi.core.designsystem.foundation.color.ChatMessageAreaBackground
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.component.CalendarSheet
@@ -68,7 +68,6 @@ private val DefaultEmojiPanelHeight = 250.dp
 private val DefaultEmojiSize = 40.dp
 
 /** 상단 바/채팅바를 제외한 메시지 영역의 배경색. */
-private val MessageAreaBackground = Color(0xFFE8EAED)
 
 /**
  * 모임방 상세 화면 (Figma `ROOM_DETAIL`)의 최소 placeholder.
@@ -157,7 +156,7 @@ fun RoomDetailScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(MessageAreaBackground),
+                .background(ChatMessageAreaBackground),
         ) {
             if (messages.isEmpty()) {
                 Column(

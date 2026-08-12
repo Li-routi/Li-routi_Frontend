@@ -36,7 +36,6 @@ import java.time.YearMonth
 
 private val CalendarSheetHeight = 336.dp
 private val CalendarSheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-private val CalendarSheetShadowColor = Color.Black.copy(alpha = 0.25f)
 private val YearMonthLabelTopPadding = 20.dp
 private val CalendarSelectorHorizontalMargin = 28.dp
 private val CalendarActionButtonHorizontalMargin = 16.dp
@@ -45,7 +44,6 @@ private val CalendarGridTopPadding = 18.dp
 private val CalendarGridHorizontalMargin = 22.dp
 private val CalendarWeekdayLabels = listOf("일", "월", "화", "수", "목", "금", "토")
 private val CalendarSelectedDaySize = 28.dp
-private val CalendarSelectedDayColor = Color(0xFF338AFF)
 
 /**
  * 채팅 상단 캘린더 아이콘을 누르면 아래에서 올라오는 날짜 선택 팝업.
@@ -72,6 +70,7 @@ fun CalendarSheet(
     onCancel: () -> Unit = {},
     onDateConfirmed: (LocalDate) -> Unit = {},
 ) {
+    val shadowColor = LiroutiTheme.colors.dimmerDefault.copy(alpha = 0.25f)
     var draftYearMonth by remember(yearMonth) {
         mutableStateOf(LiroutiYearMonth(year = yearMonth.year, month = yearMonth.monthValue))
     }
@@ -84,8 +83,8 @@ fun CalendarSheet(
             .shadow(
                 elevation = 26.dp,
                 shape = CalendarSheetShape,
-                ambientColor = CalendarSheetShadowColor,
-                spotColor = CalendarSheetShadowColor,
+                ambientColor = shadowColor,
+                spotColor = shadowColor,
             )
             .clip(CalendarSheetShape)
             .background(LiroutiTheme.colors.backgroundDefault),
@@ -197,7 +196,7 @@ private fun CalendarDayGrid(
                             Box(
                                 modifier = Modifier
                                     .size(CalendarSelectedDaySize)
-                                    .background(if (isSelected) CalendarSelectedDayColor else Color.Transparent)
+                                    .background(if (isSelected) LiroutiTheme.colors.primaryNormal else Color.Transparent)
                                     .clickable {
                                         if (isSelected) {
                                             onDateConfirmed(yearMonth.atDay(day))
@@ -210,7 +209,7 @@ private fun CalendarDayGrid(
                                 Text(
                                     text = day.toString(),
                                     style = LiroutiTheme.typography.body3,
-                                    color = if (isSelected) Color.White else LiroutiTheme.colors.labelDefault,
+                                    color = if (isSelected) LiroutiTheme.colors.labelReverse else LiroutiTheme.colors.labelDefault,
                                 )
                             }
                         }

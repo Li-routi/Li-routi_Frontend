@@ -28,7 +28,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -39,11 +38,11 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ri_routi.AstaSans
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.ChatBarBackground
+import com.li_routi.core.designsystem.foundation.color.ChatSendBackground
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-private val PlaceholderColor = Color(0xFF878A93)
-private val SendButtonBackground = Color(0xFFD6E8FF)
 private val ChatBarHorizontalMargin = 16.dp
 
 private val ChatBarTextStyle = TextStyle(
@@ -54,7 +53,6 @@ private val ChatBarTextStyle = TextStyle(
 )
 
 private val ReplyHeaderHeight = 44.dp
-private val ChatBarBackground = Color(0xFFD9D9D9)
 private val ReplyHeaderTextStartPadding = 16.dp
 private val ReplyHeaderTopTextTopPadding = 4.dp
 private val ReplyHeaderBottomTextBottomPadding = 4.dp
@@ -137,7 +135,7 @@ fun ChatBar(
                                 Text(
                                     text = "메세지 보내기",
                                     style = ChatBarTextStyle,
-                                    color = PlaceholderColor,
+                                    color = LiroutiTheme.colors.labelInfo,
                                 )
                             }
                             innerTextField()
@@ -176,7 +174,7 @@ fun ChatBar(
                 modifier = Modifier
                     .size(width = 36.dp, height = 28.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(SendButtonBackground)
+                    .background(ChatSendBackground)
                     .clickable(onClick = onSendClick),
                 contentAlignment = Alignment.Center,
             ) {
@@ -211,7 +209,7 @@ private fun ChatReplyHeader(
         Text(
             text = "${nickname}에게 답장",
             style = ReplyNicknameTextStyle,
-            color = Color(0xFF000000),
+            color = LiroutiTheme.colors.labelDefault,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(
