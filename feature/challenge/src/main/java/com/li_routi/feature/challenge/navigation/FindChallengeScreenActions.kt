@@ -14,4 +14,7 @@ interface FindChallengeScreenActions {
 
     /** 목록 조회 실패 후 재시도 */
     fun onRetryClick()
+
+    /** 목록 끝에 가까워지면 다음 페이지를 요청한다(무한 스크롤). */
+    fun onLoadMore()
 }

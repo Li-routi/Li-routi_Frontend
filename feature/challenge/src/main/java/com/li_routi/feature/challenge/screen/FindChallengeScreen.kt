@@ -6,6 +6,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -13,11 +14,17 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.derivedStateOf
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
@@ -58,6 +65,22 @@ fun FindChallengeScreen(
     onTabSelected: (AppBottomTab) -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val listState = rememberLazyListState()
+
+    // 목록 끝에 가까워지면 다음 페이지를 불러오는 무한 스크롤 트리거. ChallengeDetailScreen과 동일한 패턴.
+    val shouldLoadMore by remember {
+        derivedStateOf {
+            val layoutInfo = listState.layoutInfo
+            val lastVisibleIndex = layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: 0
+            lastVisibleIndex >= layoutInfo.totalItemsCount - 3
+        }
+    }
+    LaunchedEffect(shouldLoadMore, uiState.hasNext) {
+        if (shouldLoadMore && uiState.hasNext) {
+            actions.onLoadMore()
+        }
+    }
+
     Column(modifier = modifier.fillMaxSize()) {
         Column(modifier = Modifier.weight(1f)) {
 
@@ -118,13 +141,10 @@ fun FindChallengeScreen(
 
             // ---------- 챌린지 카드 리스트 (백엔드 GET /api/challenges 연동) ----------
             // (Figma node 2380:40530 / 2380:40558).
-            Column(
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .background(LiroutiTheme.colors.backgroundSecondary)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp)
-                    .padding(top = 16.dp, bottom = 50.dp),
+                    .background(LiroutiTheme.colors.backgroundSecondary),
             ) {
                 when {
                     uiState.isLoading -> {
@@ -163,12 +183,31 @@ fun FindChallengeScreen(
                     }
 
                     else -> {
-                        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                            uiState.challenges.forEach { challenge ->
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier
+                                .fillMaxSize()
+                                .padding(horizontal = 16.dp),
+                            verticalArrangement = Arrangement.spacedBy(16.dp),
+                            contentPadding = PaddingValues(top = 16.dp, bottom = 50.dp),
+                        ) {
+                            items(uiState.challenges, key = { it.id }) { challenge ->
                                 ChallengeCard(
                                     challenge = challenge,
                                     onClick = { onChallengeClick(challenge.id) },
                                 )
+                            }
+                            if (uiState.isLoadingMore) {
+                                item {
+                                    Box(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(56.dp),
+                                        contentAlignment = Alignment.Center,
+                                    ) {
+                                        CircularProgressIndicator(color = LiroutiTheme.colors.labelDefault)
+                                    }
+                                }
                             }
                         }
                     }
@@ -185,6 +224,7 @@ private object PreviewFindChallengeScreenActions : FindChallengeScreenActions {
     override fun onCategorySelected(category: ChallengeCategory?) = Unit
     override fun onSearchQueryChanged(query: String) = Unit
     override fun onRetryClick() = Unit
+    override fun onLoadMore() = Unit
 }
 
 private val PreviewChallenges = listOf(
