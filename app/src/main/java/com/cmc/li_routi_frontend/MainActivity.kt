@@ -60,7 +60,13 @@ class MainActivity : ComponentActivity() {
             // 설정 화면으로 되돌린다. 조회 실패(네트워크 등)로 사용자를 홈에서 막지는 않는다.
             val myInfo = AuthContainer.getMyInfoUseCase()
             if (myInfo is ResultState.Success && !myInfo.data.onboardingCompleted) {
-                startActivity(LoginActivity.createIntent(this@MainActivity, startAtProfileSetup = true))
+                startActivity(
+                    LoginActivity.createIntent(
+                        this@MainActivity,
+                        startAtProfileSetup = true,
+                        initialNickname = myInfo.data.nickname,
+                    ),
+                )
                 finish()
                 return@launch
             }

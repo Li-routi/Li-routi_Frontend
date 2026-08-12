@@ -42,7 +42,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.asImageBitmap
@@ -229,10 +228,8 @@ private fun createCameraCaptureUri(context: Context): Uri {
     return FileProvider.getUriForFile(context, "${context.packageName}.fileprovider", imageFile)
 }
 
-/**
- * 아바타 아래 닉네임 입력 영역. [initialValue]가 채워진 채로 표시되다가,
- * 사용자가 입력 상자를 처음 클릭(포커스)하면 기존 글자를 지우고 새로 입력할 수 있다.
- */
+/** 아바타 아래 닉네임 입력 영역. 서버가 내려준 초기 닉네임이 채워진 채로 시작하며, 일반 텍스트
+ * 필드처럼 자유롭게 고쳐 쓸 수 있다. */
 @Composable
 fun ProfileNicknameField(
     nickname: String,
@@ -248,8 +245,6 @@ fun ProfileNicknameField(
     inputBorderColor: Color = ProfileNicknameInputBorderColor,
     inputBackgroundColor: Color = ProfileNicknameInputBackgroundColor,
 ) {
-    var hasClearedInitialValue by remember { mutableStateOf(false) }
-
     Column(
         modifier = modifier
             .width(width)
@@ -283,14 +278,7 @@ fun ProfileNicknameField(
                 singleLine = true,
                 textStyle = LiroutiTheme.typography.body2LongRegular.copy(color = LiroutiTheme.colors.labelDefault),
                 cursorBrush = SolidColor(LiroutiTheme.colors.labelDefault),
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .onFocusChanged { focusState ->
-                        if (focusState.isFocused && !hasClearedInitialValue) {
-                            onNicknameChange("")
-                            hasClearedInitialValue = true
-                        }
-                    },
+                modifier = Modifier.fillMaxWidth(),
             )
         }
     }

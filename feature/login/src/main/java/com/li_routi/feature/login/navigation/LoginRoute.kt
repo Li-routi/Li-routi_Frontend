@@ -14,6 +14,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.feature.login.auth.findActivity
 import com.li_routi.feature.login.screen.LoginScreen
+import com.li_routi.feature.login.screen.ProfileDefaultNickname
 import com.li_routi.feature.login.screen.ProfileScreen
 import com.li_routi.feature.login.vm.LoginUiEvent
 import com.li_routi.feature.login.vm.LoginViewModel
@@ -26,6 +27,8 @@ private const val MainActivityClassName = "com.cmc.li_routi_frontend.MainActivit
 fun LoginRoute(
     modifier: Modifier = Modifier,
     startAtProfileSetup: Boolean = false,
+    /** [com.cmc.li_routi_frontend.MainActivity]가 이미 조회해 둔 닉네임(재로그인 경로). */
+    initialNickname: String? = null,
     viewModel: LoginViewModel = viewModel { LoginViewModel() },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -59,6 +62,9 @@ fun LoginRoute(
     if (showProfileScreen) {
         ProfileScreen(
             modifier = modifier,
+            // 재로그인 경로(MainActivity가 이미 조회한 값)를 우선하고, 신규 가입 경로에서는
+            // socialLogin() 성공 시 ViewModel이 비동기로 채워 넣은 값을 쓴다.
+            initialNickname = initialNickname ?: uiState.nickname ?: ProfileDefaultNickname,
             isLoading = uiState.isLoading,
             onSaveClick = { nickname, profileImageUri ->
                 viewModel.onProfileSaveClick(context, nickname, profileImageUri)
