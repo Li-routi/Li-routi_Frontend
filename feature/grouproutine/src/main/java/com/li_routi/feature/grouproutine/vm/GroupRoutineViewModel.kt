@@ -417,9 +417,10 @@ class GroupRoutineViewModel(
         viewModelScope.launch { disconnectChatSocketUseCase() }
     }
 
-    private suspend fun loadChatMessages(groupId: Long) {
+    /** cursor가 null이면 최신 50개를, 값이 있으면 그 커서보다 오래된 과거 메시지 50개를 불러온다. */
+    private suspend fun loadChatMessages(groupId: Long, cursor: Long? = null) {
         _uiState.update { it.copy(isChatLoading = true) }
-        when (val result = getChatMessagesUseCase(groupId = groupId, size = 50)) {
+        when (val result = getChatMessagesUseCase(groupId = groupId, cursor = cursor, size = 50)) {
             is ResultState.Success -> {
                 val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
                 val historyMessages = result.data.messages.map { it.toUiModel(isMine = it.senderId == myMemberId) }
@@ -428,17 +429,29 @@ class GroupRoutineViewModel(
                     val merged = (historyMessages + state.chatMessages).distinctBy { it.id }.sortedBy { it.id }
                     state.copy(
                         chatMessages = merged,
+                        chatNextCursor = result.data.nextCursor,
+                        hasMoreChatHistory = result.data.hasNext,
                         isChatLoading = false,
                         unreadChatCount = if (historyMessages.isEmpty()) 0 else state.unreadChatCount,
                     )
                 }
                 // 癲ル슢???癲?癲ル슢???????嚥싲갭큔?? ??? ?濡ろ뜏????肉???筌먦끉裕???袁⑸즵?????釉먮뻤??????怨쀪퐨?? 癲ル슢?꾤땟戮⑤뭄?????덇콬???곸쓸???.
-                historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
+                if (cursor == null) {
+                    historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
+                }
             }
 
             is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message, isChatLoading = false) }
             ResultState.Loading -> _uiState.update { it.copy(isChatLoading = false) }
         }
+    }
+
+    /** 채팅 목록을 위로 스크롤해 맨 위 근처에 도달했을 때 호출해 이전 대화를 이어서 불러온다. */
+    fun onChatScrolledToTop() {
+        val state = _uiState.value
+        if (state.isChatLoading || !state.hasMoreChatHistory) return
+        val groupId = currentGroupId() ?: return
+        viewModelScope.launch { loadChatMessages(groupId, cursor = state.chatNextCursor) }
     }
 
     private fun markChatRead(groupId: Long, lastReadMessageId: Long) {

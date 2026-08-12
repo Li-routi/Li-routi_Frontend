@@ -137,6 +137,10 @@ data class GroupRoutineUiState(
     val isMessageEditSheetVisible: Boolean = false,
     val messageDraft: String = "",
     val chatMessages: List<ChatMessageUiModel> = emptyList(),
+    /** 다음에 과거 채팅을 더 불러올 때 서버에 실어 보낼 커서. null이면 최신 메시지부터 조회한다. */
+    val chatNextCursor: Long? = null,
+    /** false면 더 이상 불러올 과거 채팅이 없다는 뜻이라 추가 요청을 막는다. */
+    val hasMoreChatHistory: Boolean = true,
     val chatDraftText: String = "",
     /** 스와이프로 지정된 답장 대상. null이면 채팅바 윗상자를 숨긴다. */
     val replyTarget: ChatMessageUiModel? = null,

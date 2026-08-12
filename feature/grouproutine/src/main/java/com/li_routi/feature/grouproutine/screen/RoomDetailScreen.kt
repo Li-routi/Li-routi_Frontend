@@ -22,11 +22,13 @@ import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.focus.FocusRequester
@@ -93,6 +95,7 @@ fun RoomDetailScreen(
     onSendClick: () -> Unit = {},
     onEmojiSelected: (ChatEmoticonUiModel) -> Unit = {},
     onCalendarClick: () -> Unit = {},
+    onLoadMore: () -> Unit = {},
 ) {
     var chatInputMode by remember { mutableStateOf(ChatInputMode.NONE) }
     val chatFieldFocusRequester = remember { FocusRequester() }
@@ -111,6 +114,12 @@ fun RoomDetailScreen(
     var calendarYearMonth by remember { mutableStateOf(YearMonth.now()) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
+
+    // 스크롤이 맨 위(과거 채팅 방향) 근처에 도달하면 더 오래된 메시지를 불러오도록 요청한다.
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.firstVisibleItemIndex }
+            .collect { index -> if (index <= 3) onLoadMore() }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
