@@ -114,6 +114,7 @@ class GroupRoutineViewModel(
     // 癲?????쇰궚?癲ル슣????濚욌꼬?댄꺍??곕㎜壤????⑤；?????덉툗 ????????ㅼ뒦??????㎣筌??熬곣뫀?櫻?? ??釉먮뻤????熬곥룊??ViewModel ??????????爾???筌먲퐢??
     private var chatSocketJob: Job? = null
     private var chatReadJob: Job? = null
+    private var routineVerificationsJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
     private var unreadRoutineVerificationsJob: Job? = null
 
@@ -181,6 +182,10 @@ class GroupRoutineViewModel(
         _uiState.update { state ->
             val completedRoutine = state.todos.firstOrNull { it.id == routineId && !it.isDone }
             val totalRoutineCount = maxOf(state.todos.size, state.members.firstOrNull { it.isMe }?.totalCount ?: 0)
+            val selectedGroupId = currentGroupId()
+            val updatedCompletedCount = state.routines
+                .firstOrNull { it.id == selectedGroupId }
+                ?.let { (it.todayCompletedCount + if (completedRoutine == null) 0 else 1).coerceAtMost(it.todayTotalCount) }
             state.copy(
                 todos = state.todos.map { todo ->
                     if (todo.id == routineId) todo.copy(isDone = true) else todo
@@ -196,6 +201,21 @@ class GroupRoutineViewModel(
                             )
                         } else {
                             member
+                        }
+                    }
+                },
+                routines = if (selectedGroupId == null || updatedCompletedCount == null) {
+                    state.routines
+                } else {
+                    state.routines.map { group ->
+                        if (group.id == selectedGroupId) {
+                            group.copy(
+                                todayCompletedCount = updatedCompletedCount,
+                                isCompleted = group.todayTotalCount > 0 && updatedCompletedCount == group.todayTotalCount,
+                                statusLabel = if (group.todayTotalCount > 0 && updatedCompletedCount == group.todayTotalCount) "완료" else "진행중",
+                            )
+                        } else {
+                            group
                         }
                     }
                 },
@@ -816,9 +836,12 @@ class GroupRoutineViewModel(
             .filter { it > 0L }
             .distinct()
 
-        viewModelScope.launch {
+        routineVerificationsJob?.cancel()
+        routineVerificationsJob = viewModelScope.launch {
             if (routineIds.isEmpty()) {
-                _uiState.update { it.copy(posts = emptyList()) }
+                if (currentGroupId() == groupId) {
+                    _uiState.update { it.copy(posts = emptyList()) }
+                }
                 return@launch
             }
 
@@ -855,11 +878,13 @@ class GroupRoutineViewModel(
                 }
             }
 
-            _uiState.update {
-                it.copy(
-                    posts = posts.distinctBy(CertificationPostUiModel::id),
-                    actionMessage = if (posts.isEmpty()) lastErrorMessage else it.actionMessage,
-                )
+            if (currentGroupId() == groupId) {
+                _uiState.update {
+                    it.copy(
+                        posts = posts.distinctBy(CertificationPostUiModel::id),
+                        actionMessage = if (posts.isEmpty()) lastErrorMessage else it.actionMessage,
+                    )
+                }
             }
         }
     }
