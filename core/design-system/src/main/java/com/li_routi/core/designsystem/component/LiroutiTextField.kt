@@ -28,7 +28,8 @@ fun LiroutiTextField(
     value: String,
     onValueChange: (String) -> Unit,
     modifier: Modifier = Modifier,
-    placeholder: String = "Placeholder Text",
+    // 호출부가 placeholder를 깜빡 빠뜨려도 영문 더미 문구가 실제 화면에 노출되지 않도록 기본값을 비워둔다.
+    placeholder: String = "",
     labelText: String = "Label",
     helperText: String = "Helper Text",
     showLabel: Boolean = true,
