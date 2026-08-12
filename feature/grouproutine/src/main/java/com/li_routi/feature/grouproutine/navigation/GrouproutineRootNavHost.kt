@@ -12,12 +12,18 @@ fun GrouproutineRootNavHost(
     initialEntryPoint: GrouproutineEntryPoint?,
     onInitialEntryPointConsumed: () -> Unit,
     onTabSelected: (AppBottomTab) -> Unit,
+    onStartVerification: (String) -> Unit = {},
+    verificationRefreshSignal: Int = 0,
+    verifiedRoutineId: Long? = null,
     modifier: Modifier = Modifier,
 ) {
     GroupRoutineRoute(
         initialEntryPoint = initialEntryPoint,
         onInitialEntryPointConsumed = onInitialEntryPointConsumed,
         onTabSelected = onTabSelected,
+        onStartVerification = onStartVerification,
+        verificationRefreshSignal = verificationRefreshSignal,
+        verifiedRoutineId = verifiedRoutineId,
         modifier = modifier,
     )
 }

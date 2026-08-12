@@ -114,6 +114,7 @@ class GroupRoutineViewModel(
     // 癲?????쇰궚?癲ル슣????濚욌꼬?댄꺍??곕㎜壤????⑤；?????덉툗 ????????ㅼ뒦??????㎣筌??熬곣뫀?櫻?? ??釉먮뻤????熬곥룊??ViewModel ??????????爾???筌먲퐢??
     private var chatSocketJob: Job? = null
     private var chatReadJob: Job? = null
+    private var routineVerificationsJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
     private var unreadRoutineVerificationsJob: Job? = null
 
@@ -164,6 +165,62 @@ class GroupRoutineViewModel(
             }
         }
         _uiState.update { it.copy(isConfirmedOwner = false) }
+    }
+
+    fun refreshSelectedGroup(refreshMemberDetail: Boolean = true) {
+        val groupId = currentGroupId() ?: return
+        if (refreshMemberDetail) {
+            loadGroupDetail(groupId)
+        }
+        loadGroupRoutineCategories()
+        loadTodayRoutines(groupId)
+    }
+
+    fun markRoutineVerified(routineId: Long?) {
+        if (routineId == null) return
+
+        _uiState.update { state ->
+            val completedRoutine = state.todos.firstOrNull { it.id == routineId && !it.isDone }
+            val totalRoutineCount = maxOf(state.todos.size, state.members.firstOrNull { it.isMe }?.totalCount ?: 0)
+            val selectedGroupId = currentGroupId()
+            val updatedCompletedCount = state.routines
+                .firstOrNull { it.id == selectedGroupId }
+                ?.let { (it.todayCompletedCount + if (completedRoutine == null) 0 else 1).coerceAtMost(it.todayTotalCount) }
+            state.copy(
+                todos = state.todos.map { todo ->
+                    if (todo.id == routineId) todo.copy(isDone = true) else todo
+                },
+                members = if (completedRoutine == null) {
+                    state.members
+                } else {
+                    state.members.map { member ->
+                        if (member.isMe) {
+                            member.copy(
+                                completedCount = (member.completedCount + 1).coerceAtMost(totalRoutineCount),
+                                totalCount = totalRoutineCount,
+                            )
+                        } else {
+                            member
+                        }
+                    }
+                },
+                routines = if (selectedGroupId == null || updatedCompletedCount == null) {
+                    state.routines
+                } else {
+                    state.routines.map { group ->
+                        if (group.id == selectedGroupId) {
+                            group.copy(
+                                todayCompletedCount = updatedCompletedCount,
+                                isCompleted = group.todayTotalCount > 0 && updatedCompletedCount == group.todayTotalCount,
+                                statusLabel = if (group.todayTotalCount > 0 && updatedCompletedCount == group.todayTotalCount) "완료" else "진행중",
+                            )
+                        } else {
+                            group
+                        }
+                    }
+                },
+            )
+        }
     }
 
     private fun loadParticipatingGroups() {
@@ -788,48 +845,66 @@ class GroupRoutineViewModel(
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
             return
         }
-        val routineId = currentRoutineId() ?: run {
-            _uiState.update { it.copy(actionMessage = "루틴 ID를 찾을 수 없습니다.") }
-            return
-        }
+        val routineIds = (_uiState.value.todos.map { it.id } + _uiState.value.routineOptions.map { it.id })
+            .filter { it > 0L }
+            .distinct()
 
-        viewModelScope.launch {
-            when (
-                val result = getGroupRoutineVerificationsUseCase(
-                    groupId = groupId,
-                    routineId = routineId,
-                    cursor = null,
-                    size = 20,
-                )
-            ) {
-                is ResultState.Success -> {
-                    val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
-                    _uiState.update {
-                        it.copy(
-                            posts = result.data.verifications.map { item ->
-                                CertificationPostUiModel(
-                                    id = item.verificationId,
-                                    memberId = item.memberId,
-                                    userName = item.nickname,
-                                    body = item.content.orEmpty(),
-                                    likeCount = item.likeCount.toInt(),
-                                    timeAgo = item.verifiedAt.orEmpty(),
-                                    isMine = item.memberId == myMemberId,
-                                    isLiked = item.liked,
-                                )
-                            },
-                        )
-                    }
+        routineVerificationsJob?.cancel()
+        routineVerificationsJob = viewModelScope.launch {
+            if (routineIds.isEmpty()) {
+                if (currentGroupId() == groupId) {
+                    _uiState.update { it.copy(posts = emptyList()) }
                 }
+                return@launch
+            }
 
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
-                ResultState.Loading -> Unit
+            val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
+            val posts = mutableListOf<CertificationPostUiModel>()
+            var lastErrorMessage: String? = null
+
+            routineIds.forEach { routineId ->
+                when (
+                    val result = getGroupRoutineVerificationsUseCase(
+                        groupId = groupId,
+                        routineId = routineId,
+                        cursor = null,
+                        size = 20,
+                    )
+                ) {
+                    is ResultState.Success -> {
+                        posts += result.data.verifications.map { item ->
+                            CertificationPostUiModel(
+                                id = item.verificationId,
+                                memberId = item.memberId,
+                                userName = item.nickname,
+                                body = item.content.orEmpty(),
+                                likeCount = item.likeCount.toInt(),
+                                timeAgo = item.verifiedAt.orEmpty(),
+                                isMine = item.memberId == myMemberId,
+                                isLiked = item.liked,
+                            )
+                        }
+                    }
+
+                    is ResultState.Error -> lastErrorMessage = result.message
+                    ResultState.Loading -> Unit
+                }
+            }
+
+            if (currentGroupId() == groupId) {
+                _uiState.update {
+                    it.copy(
+                        posts = posts.distinctBy(CertificationPostUiModel::id),
+                        actionMessage = if (posts.isEmpty()) lastErrorMessage else it.actionMessage,
+                    )
+                }
             }
         }
     }
 
     fun onMemberClick(memberId: Long) {
         _uiState.update { it.copy(selectedMemberId = memberId, actionMessage = null) }
+        currentGroupId()?.let(::loadGroupDetail)
     }
 
     fun onDismissMemberDialog() {
@@ -1215,6 +1290,10 @@ class GroupRoutineViewModel(
                             )
                         }
                     _uiState.update { state ->
+                        val serverRoutineIds = todos.mapTo(mutableSetOf()) { it.id }
+                        val completedTodosNotReturned = state.todos.filter { todo ->
+                            todo.isDone && todo.id !in serverRoutineIds
+                        }
                         val routineOptionsById = state.routineOptions.associateBy { it.id }
                         val updatedOptions = groupRoutines.map { routine ->
                             routineOptionsById[routine.routineId]?.copy(
@@ -1232,7 +1311,10 @@ class GroupRoutineViewModel(
                                 categoryColor = state.categoryColors[routine.categoryName],
                             )
                         }
-                        state.copy(todos = todos, routineOptions = updatedOptions)
+                        state.copy(
+                            todos = todos + completedTodosNotReturned,
+                            routineOptions = updatedOptions,
+                        )
                     }
                 }
 
@@ -2019,7 +2101,6 @@ class GroupRoutineViewModel(
                         // ?袁⑸젻泳??癲?癲ル슢???????떵?????늄??????????繹먮냱寃??mock 癲ル슢???볥뼀?筌? ??숆강筌??????쒑린??????ㅳ늾???釉뚰????대퓠??????
                         loadGroupDetail(groupId)
                         loadGroupRoutineCategories()
-                        loadTodayRoutines(groupId)
                     }
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                     ResultState.Loading -> Unit

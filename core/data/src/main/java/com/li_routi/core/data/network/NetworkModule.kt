@@ -5,6 +5,7 @@ import com.li_routi.core.data.BuildConfig
 import com.li_routi.core.data.network.service.AchievementApiService
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.ChallengeApiService
+import com.li_routi.core.data.network.service.ShopApiService
 import com.li_routi.core.data.network.service.ChatApiService
 import com.li_routi.core.data.network.service.GroupRoutineApiService
 import com.li_routi.core.data.network.service.HomeApiService
@@ -92,6 +93,10 @@ object NetworkModule {
             .client(okHttpClient)
             .addConverterFactory(GsonConverterFactory.create())
             .build()
+    }
+
+    val shopApiService: ShopApiService by lazy {
+        retrofit.create(ShopApiService::class.java)
     }
 
     val challengeApiService: ChallengeApiService by lazy {

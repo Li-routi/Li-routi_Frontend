@@ -1,6 +1,5 @@
 package com.li_routi.feature.home.shop.vm
 
-import com.li_routi.feature.home.shop.component.SampleShopItems
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 
 /**
@@ -9,15 +8,22 @@ import com.li_routi.feature.home.shop.component.ShopItemUiModel
  * 카테고리 탭/보유 아이템 토글은 Screen 로컬 state로 두고,
  * 잔액·아이템 목록처럼 외부 데이터가 필요한 값만 여기서 관리한다.
  *
- * API 연동 전: 탭/토글 필터·저장 API는 미연결. 샘플 [items]/잔액만 표시한다.
+ * [items]는 `GET /api/shop/items` 결과로 채운다. 실패하면 빈 목록이라 샘플이 실제 상품처럼
+ * 보이는 일이 없다 — 샘플 id로는 구매도 되지 않는다.
+ *
+ * 탭/토글 필터는 아직 미연결이다.
  */
 data class ShopUiState(
     val nickname: String = "닉네임",
     val coinBalance: Int = 450,
     val gemBalance: Int = 30,
-    val items: List<ShopItemUiModel> = SampleShopItems,
+    val items: List<ShopItemUiModel> = emptyList(),
     /** 그리드에서 선택된 아이템. null이면 미선택. */
     val selectedItemId: String? = null,
+    val isLoading: Boolean = false,
+    /** 구매 요청 중. 따닥으로 두 번 사는 것 방지 */
+    val isPurchasing: Boolean = false,
+    val message: String? = null,
 )
 
 /**

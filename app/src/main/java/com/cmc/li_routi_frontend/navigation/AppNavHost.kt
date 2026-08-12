@@ -173,6 +173,8 @@ fun AppNavHost(
     var verificationLoadRetryTick by remember { mutableIntStateOf(0) }
     var homeRefreshSignal by remember { mutableIntStateOf(0) }
     var challengeRefreshSignal by remember { mutableIntStateOf(0) }
+    var groupRoutineRefreshSignal by remember { mutableIntStateOf(0) }
+    var verifiedGroupRoutineId by rememberSaveable { mutableStateOf<Long?>(null) }
 
     fun startVerificationFlow(preselectedId: String?) {
         verificationPreselectedId = preselectedId
@@ -237,6 +239,9 @@ fun AppNavHost(
                     initialEntryPoint = groupRoutineEntryPoint,
                     onInitialEntryPointConsumed = { groupRoutineEntryPoint = null },
                     onTabSelected = ::selectTab,
+                    onStartVerification = ::startVerificationFlow,
+                    verificationRefreshSignal = groupRoutineRefreshSignal,
+                    verifiedRoutineId = verifiedGroupRoutineId,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -327,9 +332,19 @@ fun AppNavHost(
                             }
                             RoutineAuthUploadUiEvent.NavigateClose -> closeVerificationFlow()
                             RoutineAuthUploadUiEvent.NavigateToHome -> {
+                                val completedGroupRoutineId = if (selectedTab == AppBottomTab.GroupRoutine) {
+                                    verificationPreselectedId
+                                        ?.takeIf { it.startsWith("group_") }
+                                        ?.substringAfterLast('_')
+                                        ?.toLongOrNull()
+                                } else {
+                                    null
+                                }
                                 closeVerificationFlow()
                                 homeRefreshSignal++
                                 challengeRefreshSignal++
+                                verifiedGroupRoutineId = completedGroupRoutineId
+                                groupRoutineRefreshSignal++
                             }
                         }
                     },
