@@ -26,7 +26,7 @@ import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-data class AchievementBadgeUiModel(val title: String)
+data class AchievementBadgeUiModel(val title: String, val rarity: AchievementRarity)
 
 private val CellHeight = 120.dp
 private val IconFrameWidth = 90.dp
@@ -94,10 +94,10 @@ private fun AchievementBadgeCell(badge: AchievementBadgeUiModel?, modifier: Modi
 }
 
 private val SampleBadges = listOf(
-    AchievementBadgeUiModel("불꽃 연속"),
-    AchievementBadgeUiModel("친구 부자"),
-    AchievementBadgeUiModel("소셜 스타"),
-    AchievementBadgeUiModel("꾸준한 루티너"),
+    AchievementBadgeUiModel("불꽃 연속", AchievementRarity.Rare),
+    AchievementBadgeUiModel("친구 부자", AchievementRarity.Epic),
+    AchievementBadgeUiModel("소셜 스타", AchievementRarity.Unique),
+    AchievementBadgeUiModel("꾸준한 루티너", AchievementRarity.Rare),
 )
 
 @Preview(showBackground = true)

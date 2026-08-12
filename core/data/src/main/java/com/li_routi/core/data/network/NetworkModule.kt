@@ -2,6 +2,7 @@ package com.li_routi.core.data.network
 
 import android.content.Context
 import com.li_routi.core.data.BuildConfig
+import com.li_routi.core.data.network.service.AchievementApiService
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.ChallengeApiService
 import com.li_routi.core.data.network.service.ChatApiService
@@ -9,6 +10,7 @@ import com.li_routi.core.data.network.service.GroupRoutineApiService
 import com.li_routi.core.data.network.service.HomeApiService
 import com.li_routi.core.data.network.service.MediaApiService
 import com.li_routi.core.data.network.service.NotificationApiService
+import com.li_routi.core.data.network.service.ReportApiService
 import com.li_routi.core.data.network.service.RoutineApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
 import okhttp3.OkHttpClient
@@ -122,5 +124,13 @@ object NetworkModule {
 
     val notificationApiService: NotificationApiService by lazy {
         retrofit.create(NotificationApiService::class.java)
+    }
+
+    val achievementApiService: AchievementApiService by lazy {
+        retrofit.create(AchievementApiService::class.java)
+    }
+
+    val reportApiService: ReportApiService by lazy {
+        retrofit.create(ReportApiService::class.java)
     }
 }

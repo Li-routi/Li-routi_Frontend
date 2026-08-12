@@ -13,11 +13,9 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
-import com.li_routi.feature.mypage.screen.AchievementScreen
 import com.li_routi.feature.mypage.screen.AppInfoScreen
 import com.li_routi.feature.mypage.screen.EditProfileScreen
 import com.li_routi.feature.mypage.screen.MyPageScreen
-import com.li_routi.feature.mypage.screen.ReportScreen
 import com.li_routi.feature.mypage.vm.MyPageUiEvent
 import com.li_routi.feature.mypage.vm.MyPageViewModel
 
@@ -36,7 +34,7 @@ private enum class MyPageDestination {
  * 마이페이지 진입점. [MyPageViewModel]과 [MyPageScreen]을 연결한다.
  *
  * "프로필 수정"/"업적"/"리포트"/"앱 정보"/"계정 관리" 탭 시 각각 [EditProfileScreen]/
- * [AchievementScreen]/[ReportScreen]/[AppInfoScreen]/[AccountManageRoute]로 전환한다 —
+ * [AchievementRoute]/[ReportRoute]/[AppInfoScreen]/[AccountManageRoute]로 전환한다 —
  * 별도 NavHost 없이 HomeRoute와 동일하게 화면 상태 하나로 전환한다.
  */
 @Composable
@@ -103,12 +101,12 @@ fun MyPageRoute(
             modifier = modifier,
         )
 
-        MyPageDestination.Achievement -> AchievementScreen(
+        MyPageDestination.Achievement -> AchievementRoute(
             onBackClick = { destination = MyPageDestination.MyPage },
             modifier = modifier,
         )
 
-        MyPageDestination.Report -> ReportScreen(
+        MyPageDestination.Report -> ReportRoute(
             onBackClick = { destination = MyPageDestination.MyPage },
             modifier = modifier,
         )

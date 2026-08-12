@@ -1,24 +1,32 @@
 package com.li_routi.feature.mypage.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
-import androidx.compose.material3.Text
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiLabel
 import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -44,8 +52,8 @@ private val CountTextStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
  * 진입한다.
  *
  * 상태 탭(전체/진행중/달성) + 등급 필터 칩(전체/레어/에픽/유니크)으로 구성되고, "달성" 탭만 진행률 카드
- * 목록 대신 3열 배지 그리드를 보여준다. 필터링은 아직 순수 UI 상태일 뿐 — 실제 데이터 연동 전이라
- * 탭/칩을 눌러도 목록 내용은 그대로다.
+ * 목록 대신 3열 배지 그리드를 보여준다. 등급 칩은 두 탭 모두에 적용되고, 상태 탭은 목록 화면(전체/
+ * 진행중)에서만 의미가 있다 — "달성"은 애초에 배지 그리드로 전환하는 탭이라 상태로 다시 거르지 않는다.
  */
 @Composable
 fun AchievementScreen(
@@ -53,9 +61,17 @@ fun AchievementScreen(
     modifier: Modifier = Modifier,
     achievements: List<AchievementUiModel> = SampleAchievements,
     achievedBadges: List<AchievementBadgeUiModel> = SampleAchievedBadges,
+    isLoading: Boolean = false,
+    isError: Boolean = false,
 ) {
     var selectedTab by remember { mutableStateOf(AchievementStatusTab.All) }
     var selectedRarity by remember { mutableStateOf<AchievementRarity?>(null) }
+
+    val filteredAchievements = achievements.filter { item ->
+        (selectedRarity == null || item.rarity == selectedRarity) &&
+            (selectedTab != AchievementStatusTab.InProgress || item.isInProgress)
+    }
+    val filteredBadges = achievedBadges.filter { selectedRarity == null || it.rarity == selectedRarity }
 
     Column(
         modifier = modifier
@@ -69,45 +85,73 @@ fun AchievementScreen(
             onTabSelected = { index -> selectedTab = AchievementStatusTab.entries[index] },
             equalWidth = true,
         )
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
-        ) {
-            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                LiroutiLabel(text = "전체", selected = selectedRarity == null, onClick = { selectedRarity = null })
-                AchievementRarity.entries.forEach { rarity ->
-                    LiroutiLabel(
-                        text = rarity.label,
-                        selected = selectedRarity == rarity,
-                        onClick = { selectedRarity = rarity },
-                    )
-                }
+        if (isLoading) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
             }
-            if (selectedTab == AchievementStatusTab.Achieved) {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "총 ${achievedBadges.size}개 달성",
-                        style = CountTextStyle,
-                        color = LiroutiTheme.colors.labelSub,
-                    )
-                    AchievementBadgeGrid(badges = achievedBadges)
+        } else if (isError) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                AchievementEmptyState(message = "업적 정보를 불러오지 못했어요")
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                    LiroutiLabel(text = "전체", selected = selectedRarity == null, onClick = { selectedRarity = null })
+                    AchievementRarity.entries.forEach { rarity ->
+                        LiroutiLabel(
+                            text = rarity.label,
+                            selected = selectedRarity == rarity,
+                            onClick = { selectedRarity = rarity },
+                        )
+                    }
                 }
-            } else {
-                Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                    Text(
-                        text = "총 ${achievements.size}개의 업적이 있어요",
-                        style = CountTextStyle,
-                        color = LiroutiTheme.colors.labelSub,
-                    )
+                if (selectedTab == AchievementStatusTab.Achieved) {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        achievements.forEach { item -> AchievementListItem(item = item) }
+                        Text(
+                            text = "총 ${filteredBadges.size}개 달성",
+                            style = CountTextStyle,
+                            color = LiroutiTheme.colors.labelSub,
+                        )
+                        AchievementBadgeGrid(badges = filteredBadges)
+                    }
+                } else {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            text = "총 ${filteredAchievements.size}개의 업적이 있어요",
+                            style = CountTextStyle,
+                            color = LiroutiTheme.colors.labelSub,
+                        )
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            filteredAchievements.forEach { item -> AchievementListItem(item = item) }
+                        }
                     }
                 }
             }
         }
+    }
+}
+
+/** 업적 조회에 실패했을 때 화면 가운데에 보여주는 상태. */
+@Composable
+private fun AchievementEmptyState(modifier: Modifier = Modifier, message: String) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Image(
+            painter = painterResource(id = R.drawable.warning),
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+        )
+        Text(
+            text = message,
+            style = LiroutiTheme.typography.body2LongMedium,
+            color = LiroutiTheme.colors.labelInfo,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }
 
@@ -118,7 +162,8 @@ private val SampleAchievements = listOf(
         description = "30일 연속 루틴을 달성하세요",
         progressLabel = "27/30",
         progress = 27f / 30f,
-        rewardText = "+50코인",
+        rewardText = "+50토파즈",
+        isInProgress = true,
     ),
     AchievementUiModel(
         title = "불꽃연속",
@@ -126,6 +171,7 @@ private val SampleAchievements = listOf(
         description = "30일 연속 루틴을 달성하세요",
         progressLabel = "27/30",
         progress = 27f / 30f,
+        isInProgress = true,
     ),
     AchievementUiModel(
         title = "친구 부자",
@@ -133,14 +179,15 @@ private val SampleAchievements = listOf(
         description = "친구 7명을 초대하세요",
         progressLabel = "5/7",
         progress = 5f / 7f,
+        isInProgress = true,
     ),
 )
 
 private val SampleAchievedBadges = listOf(
-    AchievementBadgeUiModel("불꽃 연속"),
-    AchievementBadgeUiModel("친구 부자"),
-    AchievementBadgeUiModel("소셜 스타"),
-    AchievementBadgeUiModel("꾸준한 루티너"),
+    AchievementBadgeUiModel("불꽃 연속", AchievementRarity.Rare),
+    AchievementBadgeUiModel("친구 부자", AchievementRarity.Unique),
+    AchievementBadgeUiModel("소셜 스타", AchievementRarity.Epic),
+    AchievementBadgeUiModel("꾸준한 루티너", AchievementRarity.Rare),
 )
 
 @Preview(showBackground = true, heightDp = 900)
