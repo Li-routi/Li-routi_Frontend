@@ -62,7 +62,6 @@ dependencies {
     implementation(project(":core:design-system"))
 
     implementation(project(":feature:login"))
-    implementation(project(":feature:onboarding"))
     implementation(project(":feature:home"))
     implementation(project(":feature:mypage"))
     implementation(project(":feature:grouproutine"))

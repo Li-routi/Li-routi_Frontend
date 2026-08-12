@@ -21,7 +21,6 @@ val Neutral17  = Color(0xFF212225)
 val Neutral20  = Color(0xFF242B37)
 val Neutral22  = Color(0xFF22262E)
 val Neutral23  = Color(0xFF262A32)
-val Neutral25  = Color(0xFF242B37)
 val Neutral30  = Color(0xFF46474C)
 val Neutral40  = Color(0xFF4C5563)
 val Neutral50  = Color(0xFF5C6675)
@@ -51,15 +50,21 @@ val Red900 = Color(0xFF750404)
 val DimmerDefault   = Color(0x99000000)
 val DimmerSecondary = Color(0x80767676)
 
+// green (status: 완료)
+val Green100 = Color(0xFFE0F8E9)
+val Green500 = Color(0xFF008C51)
+// Green100 배경 위 11sp 텍스트 기준 WCAG AA(4.5:1) 대비를 만족하는 완료 배지 텍스트 색.
+val Green700 = Color(0xFF00693C)
+
+// cyan (status: 진행중/미완료)
+val Cyan500 = Color(0xFF00AAD2)
+
 // misc
 val BackgroundFill        = Color(0xFFFAFAFA)
 val BackgroundSecondary   = Color(0xFFF4F7FB)
 val ChipSelectedNeutral   = Color(0xFF37383C)
 val SurfaceContainerMid   = Color(0xFF636D74)
 val OutlinedMid           = Color(0xFFCDD0D5)
-// Background
-val SelectedLight = Color(0xFFFFB5B5)
-val SelectedDark = Color(0xFFFFB5B5)
 
 // category
 val CategoryBlue = Blue500
@@ -74,5 +79,11 @@ val CategoryGreen = Color(0xFF2FD571)
 val CategoryGreenBorder = Color(0xFF00C94D)
 val CategoryMagenta = Color(0xFFE954EE)
 val CategoryMagentaBorder = Color(0xFFDD22E5)
-val CategoryBlack = Neutral25
+val CategoryBlack = Neutral20
 val CategoryBlackBorder = Neutral0
+
+// 그룹 루틴 화면 전용 일회성 장식 색상. 다크모드 값이 확정되지 않아 라이트값 그대로 유지.
+val MemberHeroGradientEnd = Color(0x33CFE4FF)
+val ChatSendBackground = Color(0xFFD6E8FF)
+val EarlyBirdText = Color(0xFFD26D00)
+val EarlyBirdBackground = Color(0xFFFFDDB8)
