@@ -1,6 +1,7 @@
 ﻿package com.li_routi.feature.grouproutine.screen
 
 import android.view.WindowManager
+import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -149,6 +150,13 @@ fun GroupRoutineRoute(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    // 목록이 아닌 화면(상세/채팅/설정 등)에서는 시스템/제스처 뒤로가기도 화면 자체의 뒤로가기와
+    // 똑같이 동작해야 한다. 이게 없으면 AppNavHost의 탭 전환용 BackHandler가 대신 받아서
+    // 곧장 홈 탭으로 나가버린다(뒤로가기를 눌렀는데 이전 화면이 아니라 홈으로 튕기는 버그).
+    BackHandler(enabled = uiState.screenMode != GroupRoutineScreenMode.List) {
+        viewModel.onBackClick()
+    }
 
     LaunchedEffect(initialEntryPoint) {
         when (initialEntryPoint) {
