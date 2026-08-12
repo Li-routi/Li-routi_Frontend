@@ -9,6 +9,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
+import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -115,6 +116,8 @@ import com.li_routi.core.designsystem.component.LiroutiDaySelector
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.component.LiroutiSearchField
 import com.li_routi.core.designsystem.component.LiroutiSwitch
+import com.li_routi.core.designsystem.component.LiroutiToast
+import com.li_routi.core.designsystem.component.LiroutiToastStyle
 import com.li_routi.core.designsystem.R as DesignSystemR
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -140,6 +143,9 @@ fun GroupRoutineRoute(
     onInitialEntryPointConsumed: () -> Unit = {},
     viewModel: GroupRoutineViewModel = viewModel { GroupRoutineViewModel() },
     onTabSelected: (AppBottomTab) -> Unit = {},
+    onStartVerification: (String) -> Unit = {},
+    verificationRefreshSignal: Int = 0,
+    verifiedRoutineId: Long? = null,
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -151,6 +157,13 @@ fun GroupRoutineRoute(
             null -> Unit
         }
         if (initialEntryPoint != null) onInitialEntryPointConsumed()
+    }
+
+    LaunchedEffect(verificationRefreshSignal) {
+        if (verificationRefreshSignal > 0) {
+            viewModel.markRoutineVerified(verifiedRoutineId)
+            viewModel.refreshSelectedGroup(refreshMemberDetail = false)
+        }
     }
 
     GroupRoutineScreen(
@@ -201,6 +214,9 @@ fun GroupRoutineRoute(
         onCategoryColorSelected = viewModel::onCategoryColorSelected,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
         onTodoCheckedChange = viewModel::onTodoCheckedChange,
+        onRoutineVerificationClick = { groupId, routineId ->
+            onStartVerification("group_${groupId}_${routineId}")
+        },
         onCertificationTabClick = viewModel::onCertificationTabClick,
         onCertificationMemberClick = viewModel::onCertificationMemberClick,
         onCertificationSummaryClick = viewModel::onCertificationSummaryClick,
@@ -286,6 +302,7 @@ private fun GroupRoutineScreen(
     onCategoryColorSelected: (CategoryColor) -> Unit,
     onCreateRoomDoneClick: () -> Unit,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
+    onRoutineVerificationClick: (Long, Long) -> Unit = { _, _ -> },
     onCertificationTabClick: (Boolean) -> Unit,
     onCertificationMemberClick: (Long?) -> Unit,
     onCertificationSummaryClick: () -> Unit,
@@ -335,6 +352,7 @@ private fun GroupRoutineScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
                 onTodoCheckedChange = onTodoCheckedChange,
+                onRoutineVerificationClick = onRoutineVerificationClick,
                 onCertificationTabClick = onCertificationTabClick,
                 onCertificationSummaryClick = onCertificationSummaryClick,
                 onMemberClick = onMemberClick,
@@ -599,36 +617,18 @@ private fun ActionMessageToastDialog(
             modifier = Modifier.fillMaxSize(),
             contentAlignment = Alignment.BottomCenter,
         ) {
-            Row(
+            LiroutiToast(
+                message = message,
+                style = LiroutiToastStyle.Dimmer,
+                onCloseClick = onDismiss,
                 modifier = Modifier
                     .navigationBarsPadding()
                     .padding(bottom = 92.dp)
                     .widthIn(max = 332.dp)
                     .fillMaxWidth()
-                    .height(54.dp)
-                    .clip(RoundedCornerShape(6.dp))
-                    .background(LiroutiTheme.colors.dimmerDefault)
-                    .padding(top = 16.dp, bottom = 16.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(8.dp),
-            ) {
-                Text(
-                    text = message,
-                    color = LiroutiTheme.colors.labelReverse,
-                    style = LiroutiTheme.typography.body3,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(start = 16.dp),
-                )
-                GroupRoutineCloseButton(
-                    onClick = onDismiss,
-                    contentDescription = "알림 닫기",
-                    tint = LiroutiTheme.colors.labelReverse,
-                    modifier = Modifier
-                        .padding(end = 16.dp)
-                        .size(20.dp),
-                )
-            }
+                    .height(54.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+            )
         }
     }
 }
@@ -1328,11 +1328,13 @@ private fun CreateRoutineOptionRow(
 private fun SmallSquareCheckbox(
     checked: Boolean,
     modifier: Modifier = Modifier,
+    enabled: Boolean = true,
     onClick: () -> Unit = {},
 ) {
     CustomCheckBox(
         state = if (checked) CheckBoxState.B else CheckBoxState.A,
         isCircle = false,
+        enabled = enabled,
         onClick = onClick,
         modifier = modifier,
     )
@@ -2119,7 +2121,7 @@ private fun GroupRoutineCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            AvatarStack()
+            AvatarStack(memberCount = routine.memberCount)
             Text(
                 text = "오늘 ${routine.todayCompletedCount}/${routine.todayTotalCount} 완료",
                 color = LiroutiTheme.colors.labelInfo,
@@ -2148,9 +2150,12 @@ private fun StatusBadge(
 }
 
 @Composable
-private fun AvatarStack(modifier: Modifier = Modifier) {
+private fun AvatarStack(
+    memberCount: Int,
+    modifier: Modifier = Modifier,
+) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
-        repeat(3) {
+        repeat(memberCount.coerceIn(1, 3)) {
             Box(
                 modifier = Modifier
                     .size(24.dp)
@@ -2186,7 +2191,7 @@ private fun RoutineStatsRow(
     ) {
         StatItem(value = "${routine.streakDays}일", label = "연속 달성")
         VerticalStatDivider()
-        StatItem(value = "${routine.monthlyAchievementRate}%", label = "이번 달성률")
+        StatItem(value = "${routine.monthlyAchievementRate}%", label = "이번 달 달성률")
         VerticalStatDivider()
         StatItem(value = "${routine.todayCertificationCount}건", label = "오늘 인증")
     }
@@ -2231,6 +2236,7 @@ private fun GroupRoutineDetailScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
+    onRoutineVerificationClick: (Long, Long) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
     onCertificationSummaryClick: () -> Unit,
     onMemberClick: (Long) -> Unit,
@@ -2283,6 +2289,9 @@ private fun GroupRoutineDetailScreen(
                 categoryColors = uiState.categoryColors,
                 progressLabel = uiState.todoProgressLabel,
                 onTodoCheckedChange = onTodoCheckedChange,
+                onRoutineVerificationClick = { routineId ->
+                    onRoutineVerificationClick(routine.id, routineId)
+                },
                 onRoutineColorLongClick = onRoutineColorLongClick,
                 onCategoryClick = onCategoryClick,
                 expanded = isRoutineSheetExpanded,
@@ -2419,6 +2428,7 @@ private fun DetailRoutineTabSheet(
     categoryColors: Map<String, CategoryColor>,
     progressLabel: String,
     onTodoCheckedChange: (Long, Boolean) -> Unit,
+    onRoutineVerificationClick: (Long) -> Unit,
     onRoutineColorLongClick: (Long) -> Unit,
     onCategoryClick: (String) -> Unit,
     expanded: Boolean,
@@ -2505,6 +2515,7 @@ private fun DetailRoutineTabSheet(
                         todo = todo,
                         categoryColor = categoryColors[todo.category],
                         onCheckedChange = { checked -> onTodoCheckedChange(todo.id, checked) },
+                        onCameraClick = { onRoutineVerificationClick(todo.id) },
                         onLongClick = { onRoutineColorLongClick(todo.id) },
                     )
                 }
@@ -2561,6 +2572,7 @@ private fun DetailRoutineTodoRow(
     todo: GroupTodoUiModel,
     categoryColor: CategoryColor?,
     onCheckedChange: (Boolean) -> Unit,
+    onCameraClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -2574,11 +2586,11 @@ private fun DetailRoutineTodoRow(
             .clip(shape)
             .background(LiroutiTheme.colors.backgroundDefault)
             .border(1.dp, LiroutiTheme.colors.borderAlternative, shape)
-            .combinedClickable(
-                onClick = { onCheckedChange(!todo.isDone) },
-                onLongClickLabel = "\uCE74\uD14C\uACE0\uB9AC \uC0C9\uC0C1 \uBCC0\uACBD",
-                onLongClick = onLongClick,
-            ),
+            .pointerInput(onLongClick) {
+                detectTapGestures(
+                    onLongPress = { onLongClick() },
+                )
+            },
     ) {
         Box(
             modifier = Modifier
@@ -2597,7 +2609,7 @@ private fun DetailRoutineTodoRow(
             SmallSquareCheckbox(
                 checked = todo.isDone,
                 modifier = Modifier.size(16.dp),
-                onClick = { onCheckedChange(!todo.isDone) },
+                enabled = false,
             )
             Column(
                 modifier = Modifier.weight(1f),
@@ -2648,8 +2660,10 @@ private fun DetailRoutineTodoRow(
             } else {
                 Image(
                     painter = painterResource(id = DesignSystemR.drawable.camera),
-                    contentDescription = null,
-                    modifier = Modifier.size(18.dp),
+                    contentDescription = "루틴 인증하기",
+                    modifier = Modifier
+                        .size(18.dp)
+                        .clickable(onClick = onCameraClick),
                 )
             }
         }
@@ -3864,7 +3878,7 @@ private fun TodoRow(
         SmallSquareCheckbox(
             checked = todo.isDone,
             modifier = Modifier.size(16.dp),
-            onClick = { onCheckedChange(!todo.isDone) },
+            enabled = false,
         )
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
             Text(
