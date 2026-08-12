@@ -51,6 +51,13 @@ val Red900 = Color(0xFF750404)
 val DimmerDefault   = Color(0x99000000)
 val DimmerSecondary = Color(0x80767676)
 
+// green (status: 완료)
+val Green100 = Color(0xFFE0F8E9)
+val Green500 = Color(0xFF008C51)
+
+// cyan (status: 진행중/미완료)
+val Cyan500 = Color(0xFF00AAD2)
+
 // misc
 val BackgroundFill        = Color(0xFFFAFAFA)
 val BackgroundSecondary   = Color(0xFFF4F7FB)
