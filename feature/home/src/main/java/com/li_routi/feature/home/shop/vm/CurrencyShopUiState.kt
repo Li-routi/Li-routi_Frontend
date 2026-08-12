@@ -19,6 +19,10 @@ data class CurrencyShopUiState(
     val blueProducts: List<CurrencyProductUiModel> = SampleBlueGemProducts,
     val selectedProductId: String? = null,
     val chargeDialogProductId: String? = null,
+    val isLoading: Boolean = false,
+    /** 교환 요청 중. 따닥으로 두 번 교환되는 것 방지 */
+    val isExchanging: Boolean = false,
+    val message: String? = null,
 ) {
     val allProducts: List<CurrencyProductUiModel>
         get() = orangeProducts + blueProducts

@@ -18,6 +18,10 @@ data class ShopUiState(
     val items: List<ShopItemUiModel> = SampleShopItems,
     /** 그리드에서 선택된 아이템. null이면 미선택. */
     val selectedItemId: String? = null,
+    val isLoading: Boolean = false,
+    /** 구매 요청 중. 따닥으로 두 번 사는 것 방지 */
+    val isPurchasing: Boolean = false,
+    val message: String? = null,
 )
 
 /**

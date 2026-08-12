@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -27,6 +28,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -37,6 +39,9 @@ data class ShopItemUiModel(
     val id: String,
     val name: String,
     val price: Int,
+    val imageUrl: String? = null,
+    /** 보유한 아이템도 같은 목록에 섞여 내려옴 — 구매 대신 착용만 하면 됨 */
+    val owned: Boolean = false,
 )
 
 val SampleShopItems: List<ShopItemUiModel> = List(8) { index ->
@@ -103,7 +108,16 @@ private fun ShopItemCell(
                 .height(60.dp)
                 .clip(RoundedCornerShape(6.dp))
                 .background(LiroutiTheme.colors.backgroundAlternative),
-        )
+        ) {
+            // imageUrl이 없으면 기존처럼 회색 자리만 보여줌
+            if (!item.imageUrl.isNullOrBlank()) {
+                AsyncImage(
+                    model = item.imageUrl,
+                    contentDescription = item.name,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
         Spacer(modifier = Modifier.height(10.dp))
         Row(verticalAlignment = Alignment.CenterVertically) {
             Image(

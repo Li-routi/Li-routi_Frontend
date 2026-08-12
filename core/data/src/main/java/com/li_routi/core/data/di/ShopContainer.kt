@@ -1,0 +1,41 @@
+package com.li_routi.core.data.di
+
+import com.li_routi.core.data.network.NetworkModule
+import com.li_routi.core.data.repository.ShopRepositoryImpl
+import com.li_routi.core.domain.shop.ExchangeCurrencyUseCase
+import com.li_routi.core.domain.shop.GetChargeProductsUseCase
+import com.li_routi.core.domain.shop.GetExchangeProductsUseCase
+import com.li_routi.core.domain.shop.GetShopAvatarItemsUseCase
+import com.li_routi.core.domain.shop.PurchaseShopAvatarItemUseCase
+import com.li_routi.core.domain.shop.ShopRepository
+
+/**
+ * Hilt 등 DI 프레임워크가 붙기 전까지 사용하는 수동 구성 root.
+ * feature 모듈은 여기서 필요한 UseCase만 가져다 씀.
+ */
+object ShopContainer {
+
+    private val repository: ShopRepository by lazy {
+        ShopRepositoryImpl(NetworkModule.shopApiService)
+    }
+
+    val getShopAvatarItemsUseCase: GetShopAvatarItemsUseCase by lazy {
+        GetShopAvatarItemsUseCase(repository)
+    }
+
+    val purchaseShopAvatarItemUseCase: PurchaseShopAvatarItemUseCase by lazy {
+        PurchaseShopAvatarItemUseCase(repository)
+    }
+
+    val getChargeProductsUseCase: GetChargeProductsUseCase by lazy {
+        GetChargeProductsUseCase(repository)
+    }
+
+    val getExchangeProductsUseCase: GetExchangeProductsUseCase by lazy {
+        GetExchangeProductsUseCase(repository)
+    }
+
+    val exchangeCurrencyUseCase: ExchangeCurrencyUseCase by lazy {
+        ExchangeCurrencyUseCase(repository)
+    }
+}
