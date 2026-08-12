@@ -5,6 +5,7 @@ import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.network.dto.request.SendChatMessageRequest
 import com.li_routi.core.data.network.dto.response.ChatMessageItemResponse
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.CoroutineStart
 import kotlinx.coroutines.Dispatchers
@@ -50,9 +51,19 @@ class ChatSocketClient(
         // UNDISPATCHED로 SUBSCRIBE 프레임 전송을 이 함수가 반환하기 전에 최대한 앞당겨,
         // connect() 직후 곧바로 이력 조회를 시작해도 그 사이 온 메시지를 놓치지 않게 한다.
         scope.launch(start = CoroutineStart.UNDISPATCHED) {
-            stompSession.subscribeText(ChatTopicFormat.format(groupId))
-                .mapNotNull { raw -> runCatching { gson.fromJson(raw, ChatMessageItemResponse::class.java) }.getOrNull() }
-                .collect { incoming.emit(it) }
+            // 이 스코프는 CoroutineExceptionHandler가 없는 SupervisorJob이라, 하트비트 타임아웃
+            // (MissingHeartBeatException) 같은 STOMP 세션 레벨 예외가 그대로 새면 스레드의 미처리
+            // 예외로 앱 전체가 죽는다(채팅방에 "일정 시간" 머물다 튕기는 원인). 소켓 하나가 끊긴 것으로
+            // 앱이 죽으면 안 되므로 여기서 흡수한다 — 재연결은 화면 재진입(enterChatSocket) 흐름에 맡긴다.
+            try {
+                stompSession.subscribeText(ChatTopicFormat.format(groupId))
+                    .mapNotNull { raw -> runCatching { gson.fromJson(raw, ChatMessageItemResponse::class.java) }.getOrNull() }
+                    .collect { incoming.emit(it) }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                // 조용히 종료 — 구독이 끊겼을 뿐 프로세스를 죽일 이유는 아니다.
+            }
         }
     }
 
