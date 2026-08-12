@@ -4,6 +4,7 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -30,6 +31,7 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 enum class LiroutiToastStyle {
     Black,
     Gray,
+    Dimmer,
 }
 
 private val MessageTextStyle = TextStyle(
@@ -46,21 +48,24 @@ fun LiroutiToast(
     modifier: Modifier = Modifier,
     style: LiroutiToastStyle = LiroutiToastStyle.Black,
     onCloseClick: (() -> Unit)? = null,
+    contentPadding: PaddingValues = PaddingValues(20.dp),
 ) {
     val backgroundColor = when (style) {
         LiroutiToastStyle.Black -> LiroutiTheme.colors.surfaceInverse
         LiroutiToastStyle.Gray -> Neutral96
+        LiroutiToastStyle.Dimmer -> LiroutiTheme.colors.dimmerDefault
     }
     val contentColor = when (style) {
         LiroutiToastStyle.Black -> LiroutiTheme.colors.labelReverse
         LiroutiToastStyle.Gray -> LiroutiTheme.colors.labelDefault
+        LiroutiToastStyle.Dimmer -> LiroutiTheme.colors.labelReverse
     }
 
     Row(
         modifier = modifier
             .fillMaxWidth()
             .background(backgroundColor, RoundedCornerShape(6.dp))
-            .padding(20.dp),
+            .padding(contentPadding),
         horizontalArrangement = Arrangement.spacedBy(20.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
