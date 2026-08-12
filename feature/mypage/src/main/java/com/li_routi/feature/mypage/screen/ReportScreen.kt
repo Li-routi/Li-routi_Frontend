@@ -1,24 +1,25 @@
 package com.li_routi.feature.mypage.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiDivider
 import com.li_routi.core.designsystem.component.LiroutiDividerThickness
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
@@ -32,12 +33,8 @@ import com.li_routi.feature.mypage.component.MonthlyDayUiModel
 import com.li_routi.feature.mypage.component.MonthlyReportCard
 import com.li_routi.feature.mypage.component.RedDay
 import com.li_routi.feature.mypage.component.ReportPeriodTabs
-import com.li_routi.feature.mypage.component.SimpleDate
 import com.li_routi.feature.mypage.component.WeeklyBarUiModel
 import com.li_routi.feature.mypage.component.WeeklyReportCard
-import com.li_routi.feature.mypage.component.plusDays
-import com.li_routi.feature.mypage.component.todaySimpleDate
-import java.util.Calendar
 
 private const val PeriodTabWeekly = 0
 private const val PeriodTabMonthly = 1
@@ -47,19 +44,32 @@ private const val PeriodTabMonthly = 1
  * 마이페이지 "리포트" 메뉴로 진입한다.
  *
  * 주간/월간 탭 + 기간별 달성률 그래프(주간: 막대그래프, 월간: 달력) + 활동 통계로 구성된다.
- * ◀▶로 주차/월을 이동하면 라벨과(월간은) 달력 모양이 그 기간에 맞게 바뀐다 — 다만 막대그래프/달성률
- * 자체는 아직 실제 기간별 데이터 연동 전이라 항상 같은 샘플 값을 보여준다.
+ * `GET /api/members/me/reports/weekly`·`/monthly`를 다시 호출해야 해서(
+ * [com.li_routi.feature.mypage.vm.ReportViewModel]) 탭/주차/월 선택 상태를 화면이 직접 들고 있지
+ * 않고 끌어올렸다 — ◀▶나 탭을 누르면 각 콜백을 통해 상위(ViewModel)가 새로 조회한다.
  */
 @Composable
 fun ReportScreen(
     onBackClick: () -> Unit,
+    selectedTab: Int,
+    onTabSelected: (Int) -> Unit,
+    weekLabel: String,
+    weeklyBars: List<WeeklyBarUiModel>,
+    onPreviousWeekClick: () -> Unit,
+    onNextWeekClick: () -> Unit,
+    monthLabel: String,
+    monthlyDays: List<MonthlyDayUiModel>,
+    onPreviousMonthClick: () -> Unit,
+    onNextMonthClick: () -> Unit,
+    activityStats: List<ActivityStatUiModel>,
     modifier: Modifier = Modifier,
-    weeklyBars: List<WeeklyBarUiModel> = SampleWeeklyBars,
-    activityStats: List<ActivityStatUiModel> = SampleActivityStats,
+    isLoading: Boolean = false,
+    isError: Boolean = false,
 ) {
-    var selectedTab by remember { mutableIntStateOf(PeriodTabWeekly) }
-    var weekAnchor by remember { mutableStateOf(todaySimpleDate()) }
-    var monthAnchor by remember { mutableStateOf(todaySimpleDate().let { it.year to it.month }) }
+    // 이미 보여줄 데이터가 있으면(탭을 최소 한 번은 불러왔으면) ◀▶나 탭 전환으로 다시 불러오는 동안에도
+    // 기존 내용을 그대로 두고, 완전히 처음 불러올 때만 전체 화면 스피너/에러로 바꾼다 — 안 그러면
+    // 매번 화면이 통째로 깜빡이며 새로고침되는 것처럼 보인다.
+    val hasContent = if (selectedTab == PeriodTabWeekly) weeklyBars.isNotEmpty() else monthlyDays.isNotEmpty()
 
     Column(
         modifier = modifier
@@ -67,102 +77,73 @@ fun ReportScreen(
             .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         EditProfileTopBar(title = "리포트", onBackClick = onBackClick)
-        Column(
-            modifier = Modifier
-                .weight(1f)
-                .verticalScroll(rememberScrollState())
-                .padding(top = 20.dp, bottom = 20.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(25.dp),
-        ) {
-            ReportPeriodTabs(
-                tabs = listOf("주간", "월간"),
-                selectedIndex = selectedTab,
-                onTabSelected = { selectedTab = it },
-            )
-            if (selectedTab == PeriodTabWeekly) {
-                WeeklyReportCard(
-                    weekLabel = weekLabel(weekAnchor),
-                    bars = weeklyBars,
-                    onPreviousWeekClick = { weekAnchor = weekAnchor.plusDays(-7) },
-                    onNextWeekClick = { weekAnchor = weekAnchor.plusDays(7) },
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
-            } else if (selectedTab == PeriodTabMonthly) {
-                val (year, month) = monthAnchor
-                MonthlyReportCard(
-                    monthLabel = monthLabel(year, month),
-                    days = buildMonthlyDays(year, month),
-                    onPreviousMonthClick = { monthAnchor = stepMonth(year, month, -1) },
-                    onNextMonthClick = { monthAnchor = stepMonth(year, month, 1) },
-                    modifier = Modifier.padding(horizontal = 16.dp),
-                )
+        if (isLoading && !hasContent) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
             }
-            LiroutiDivider(thickness = LiroutiDividerThickness.ExtraBold, color = LiroutiTheme.colors.borderSub)
+        } else if (isError && !hasContent) {
+            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                ReportEmptyState(message = "리포트를 불러오지 못했어요")
+            }
+        } else {
             Column(
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
-                verticalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier
+                    .weight(1f)
+                    .verticalScroll(rememberScrollState())
+                    .padding(top = 20.dp, bottom = 20.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.spacedBy(25.dp),
             ) {
-                Text(text = "활동 통계", style = LiroutiTheme.typography.body1Bold, color = LiroutiTheme.colors.labelStrong)
-                ActivityStatsGrid(stats = activityStats)
+                ReportPeriodTabs(
+                    tabs = listOf("주간", "월간"),
+                    selectedIndex = selectedTab,
+                    onTabSelected = onTabSelected,
+                )
+                if (selectedTab == PeriodTabWeekly) {
+                    WeeklyReportCard(
+                        weekLabel = weekLabel,
+                        bars = weeklyBars,
+                        onPreviousWeekClick = onPreviousWeekClick,
+                        onNextWeekClick = onNextWeekClick,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                } else if (selectedTab == PeriodTabMonthly) {
+                    MonthlyReportCard(
+                        monthLabel = monthLabel,
+                        days = monthlyDays,
+                        onPreviousMonthClick = onPreviousMonthClick,
+                        onNextMonthClick = onNextMonthClick,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
+                LiroutiDivider(thickness = LiroutiDividerThickness.ExtraBold, color = LiroutiTheme.colors.borderSub)
+                Column(
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                ) {
+                    Text(text = "활동 통계", style = LiroutiTheme.typography.body1Bold, color = LiroutiTheme.colors.labelStrong)
+                    ActivityStatsGrid(stats = activityStats)
+                }
             }
         }
     }
 }
 
-/** 일요일 시작 기준 그 달의 몇 번째 주인지("N주차") — 1일이 속한 주가 1주차. */
-private fun weekOfMonth(date: SimpleDate): Int {
-    val firstWeekdayOfMonth = Calendar.getInstance().apply { set(date.year, date.month - 1, 1) }.get(Calendar.DAY_OF_WEEK) - 1
-    return (date.day - 1 + firstWeekdayOfMonth) / 7 + 1
-}
-
-private fun weekLabel(date: SimpleDate): String = "%d년 %02d월 · %d주차".format(date.year, date.month, weekOfMonth(date))
-
-private fun monthLabel(year: Int, month: Int): String = "%d년 %02d월".format(year, month)
-
-private fun stepMonth(year: Int, month: Int, delta: Int): Pair<Int, Int> {
-    var y = year
-    var m = month + delta
-    while (m > 12) {
-        m -= 12
-        y += 1
-    }
-    while (m < 1) {
-        m += 12
-        y -= 1
-    }
-    return y to m
-}
-
-/**
- * [year]년 [month]월 달력 그리드를 만든다. 달성률(ratio)은 실제 데이터가 없어 Figma 목업(2026년 9월
- * 1/5/8일)의 값을 요일 상관없이 날짜 번호에 그대로 고정해 재사용한다 — 다른 달로 이동해도 그 달의
- * 1/5/8일에 같은 자리표시자 값이 보인다.
- */
-private fun buildMonthlyDays(year: Int, month: Int): List<MonthlyDayUiModel> {
-    val firstWeekday = Calendar.getInstance().apply { set(year, month - 1, 1) }.get(Calendar.DAY_OF_WEEK) - 1
-    val total = Calendar.getInstance().apply { set(year, month - 1, 1) }.getActualMaximum(Calendar.DAY_OF_MONTH)
-
-    val cells = ArrayList<Pair<Int?, Float>>(42)
-    repeat(firstWeekday) { cells.add(null to 0f) }
-    (1..total).forEach { day ->
-        val ratio = when (day) {
-            1 -> 1f
-            5 -> 12f / 28f
-            8 -> 19f / 28f
-            else -> 0f
-        }
-        cells.add(day to ratio)
-    }
-    while (cells.size % 7 != 0) cells.add(null to 0f)
-
-    return cells.mapIndexed { index, (day, ratio) ->
-        val dayColor = when (index % 7) {
-            0 -> RedDay
-            6 -> BlueDay
-            else -> BlackDay
-        }
-        MonthlyDayUiModel(day = day, dayColor = dayColor, ratio = ratio)
+/** 리포트 조회에 실패했을 때 화면 가운데에 보여주는 상태. */
+@Composable
+private fun ReportEmptyState(modifier: Modifier = Modifier, message: String) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Image(
+            painter = painterResource(id = R.drawable.warning),
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+        )
+        Text(
+            text = message,
+            style = LiroutiTheme.typography.body2LongMedium,
+            color = LiroutiTheme.colors.labelInfo,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }
 
@@ -177,6 +158,22 @@ private val SampleWeeklyBars = listOf(
     WeeklyBarUiModel(registeredCount = 0, completedCount = 0),
 )
 
+/** Figma 목업(2026년 9월, 1일=화요일)을 그대로 옮긴 샘플 데이터. */
+private val SampleMonthlyDays = listOf(
+    null to 0f, null to 0f, 1 to 1f, 2 to 0f, 3 to 0f, 4 to 0f, 5 to (12f / 28f),
+    6 to 0f, 7 to 0f, 8 to (19f / 28f), 9 to 0f, 10 to 0f, 11 to 0f, 12 to 0f,
+    13 to 0f, 14 to 0f, 15 to 0f, 16 to 0f, 17 to 0f, 18 to 0f, 19 to 0f,
+    20 to 0f, 21 to 0f, 22 to 0f, 23 to 0f, 24 to 0f, 25 to 0f, 26 to 0f,
+    27 to 0f, 28 to 0f, 29 to 0f, 30 to 0f, null to 0f, null to 0f, null to 0f,
+).mapIndexed { index, (day, ratio) ->
+    val dayColor = when (index % 7) {
+        0 -> RedDay
+        6 -> BlueDay
+        else -> BlackDay
+    }
+    MonthlyDayUiModel(day = day, dayColor = dayColor, ratio = ratio)
+}
+
 private val SampleActivityStats = listOf(
     ActivityStatUiModel("이번 달 완료 루틴", "100"),
     ActivityStatUiModel("이번 달 평균 달성률", "98%"),
@@ -188,6 +185,63 @@ private val SampleActivityStats = listOf(
 @Composable
 private fun ReportScreenPreview() {
     LiroutiFrontendTheme {
-        ReportScreen(onBackClick = {})
+        ReportScreen(
+            onBackClick = {},
+            selectedTab = PeriodTabWeekly,
+            onTabSelected = {},
+            weekLabel = "2026년 09월 · 1주차",
+            weeklyBars = SampleWeeklyBars,
+            onPreviousWeekClick = {},
+            onNextWeekClick = {},
+            monthLabel = "2026년 09월",
+            monthlyDays = SampleMonthlyDays,
+            onPreviousMonthClick = {},
+            onNextMonthClick = {},
+            activityStats = SampleActivityStats,
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 900, name = "로딩 중")
+@Composable
+private fun ReportScreenLoadingPreview() {
+    LiroutiFrontendTheme {
+        ReportScreen(
+            onBackClick = {},
+            selectedTab = PeriodTabWeekly,
+            onTabSelected = {},
+            weekLabel = "",
+            weeklyBars = emptyList(),
+            onPreviousWeekClick = {},
+            onNextWeekClick = {},
+            monthLabel = "",
+            monthlyDays = emptyList(),
+            onPreviousMonthClick = {},
+            onNextMonthClick = {},
+            activityStats = emptyList(),
+            isLoading = true,
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 900, name = "조회 실패")
+@Composable
+private fun ReportScreenErrorPreview() {
+    LiroutiFrontendTheme {
+        ReportScreen(
+            onBackClick = {},
+            selectedTab = PeriodTabWeekly,
+            onTabSelected = {},
+            weekLabel = "",
+            weeklyBars = emptyList(),
+            onPreviousWeekClick = {},
+            onNextWeekClick = {},
+            monthLabel = "",
+            monthlyDays = emptyList(),
+            onPreviousMonthClick = {},
+            onNextMonthClick = {},
+            activityStats = emptyList(),
+            isError = true,
+        )
     }
 }
