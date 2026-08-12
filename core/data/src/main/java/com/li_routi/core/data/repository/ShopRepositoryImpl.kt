@@ -8,6 +8,7 @@ import com.li_routi.core.data.network.dto.request.ExchangeRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.service.ShopApiService
 import com.li_routi.core.domain.shop.ChargeProduct
+import com.li_routi.core.domain.shop.CurrencyBalance
 import com.li_routi.core.domain.shop.ExchangeProduct
 import com.li_routi.core.domain.shop.ExchangeResult
 import com.li_routi.core.domain.shop.MemberAvatar
@@ -20,6 +21,10 @@ import retrofit2.HttpException
 class ShopRepositoryImpl(
     private val api: ShopApiService,
 ) : ShopRepository {
+
+    override suspend fun getWalletBalances(): ResultState<List<CurrencyBalance>> = shopCall {
+        api.getWalletBalances().unwrap().toDomain()
+    }
 
     override suspend fun getAvatarItems(
         slot: String?,

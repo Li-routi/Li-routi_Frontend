@@ -2,6 +2,13 @@ package com.li_routi.core.domain.shop
 
 import com.li_routi.core.common.kotlin.util.ResultState
 
+class GetWalletBalancesUseCase(
+    private val repository: ShopRepository,
+) {
+    suspend operator fun invoke(): ResultState<List<CurrencyBalance>> =
+        repository.getWalletBalances()
+}
+
 class GetShopAvatarItemsUseCase(
     private val repository: ShopRepository,
 ) {

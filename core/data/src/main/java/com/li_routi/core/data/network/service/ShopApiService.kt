@@ -7,6 +7,7 @@ import com.li_routi.core.data.network.dto.response.ExchangeProductsResponse
 import com.li_routi.core.data.network.dto.response.ExchangeResultResponse
 import com.li_routi.core.data.network.dto.response.MemberAvatarResponse
 import com.li_routi.core.data.network.dto.response.ShopAvatarItemsResponse
+import com.li_routi.core.data.network.dto.response.WalletBalancesResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
@@ -14,6 +15,9 @@ import retrofit2.http.Path
 import retrofit2.http.Query
 
 interface ShopApiService {
+
+    @GET("api/members/me/wallet")
+    suspend fun getWalletBalances(): ApiResponse<WalletBalancesResponse>
 
     @GET("api/shop/items")
     suspend fun getAvatarItems(

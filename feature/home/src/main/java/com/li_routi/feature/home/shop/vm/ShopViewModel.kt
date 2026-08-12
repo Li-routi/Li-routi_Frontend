@@ -4,7 +4,9 @@ import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.ShopContainer
+import com.li_routi.core.domain.shop.CurrencyBalance
 import com.li_routi.core.domain.shop.GetShopAvatarItemsUseCase
+import com.li_routi.core.domain.shop.GetWalletBalancesUseCase
 import com.li_routi.core.domain.shop.PurchaseShopAvatarItemUseCase
 import com.li_routi.core.domain.shop.ShopAvatarItem
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
@@ -27,6 +29,7 @@ class ShopViewModel(
     initialState: ShopUiState = ShopUiState(),
     private val getShopAvatarItemsUseCase: GetShopAvatarItemsUseCase = ShopContainer.getShopAvatarItemsUseCase,
     private val purchaseShopAvatarItemUseCase: PurchaseShopAvatarItemUseCase = ShopContainer.purchaseShopAvatarItemUseCase,
+    private val getWalletBalancesUseCase: GetWalletBalancesUseCase = ShopContainer.getWalletBalancesUseCase,
 ) : BaseViewModel(), ShopScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -37,6 +40,22 @@ class ShopViewModel(
 
     init {
         loadItems()
+        loadBalances()
+    }
+
+    /** 상점 헤더 잔액. 구매 후에도 다시 불러서 서버 값과 어긋나지 않게 함 */
+    private fun loadBalances() {
+        viewModelScope.launch {
+            val result = getWalletBalancesUseCase()
+            if (result is ResultState.Success) {
+                _uiState.update { state ->
+                    state.copy(
+                        coinBalance = result.data.balanceOf("TOPAZ") ?: state.coinBalance,
+                        gemBalance = result.data.balanceOf("GEM") ?: state.gemBalance,
+                    )
+                }
+            }
+        }
     }
 
     fun onDismissMessage() {
@@ -45,19 +64,23 @@ class ShopViewModel(
 
     /** 상점 격자에 뿌릴 아이템을 불러옴. 보유한 것도 같이 내려와서 owned로 구분함 */
     fun loadItems() {
+        viewModelScope.launch { refreshItems() }
+    }
+
+    /** 목록 갱신을 기다려야 하는 곳(구매 직후)에서도 쓸 수 있게 suspend로 둠 */
+    private suspend fun refreshItems() {
         _uiState.update { it.copy(isLoading = true) }
-        viewModelScope.launch {
-            when (val result = getShopAvatarItemsUseCase()) {
-                is ResultState.Success -> _uiState.update { state ->
-                    state.copy(isLoading = false, items = result.data.map { it.toUiModel() })
-                }
-
-                is ResultState.Error -> _uiState.update {
-                    it.copy(isLoading = false, message = result.message)
-                }
-
-                ResultState.Loading -> Unit
+        when (val result = getShopAvatarItemsUseCase()) {
+            is ResultState.Success -> _uiState.update { state ->
+                state.copy(isLoading = false, items = result.data.map { it.toUiModel() })
             }
+
+            // 실패하면 이전 목록을 남기지 않음 — 없는 상품을 고를 수 있게 되면 안 됨
+            is ResultState.Error -> _uiState.update {
+                it.copy(isLoading = false, items = emptyList(), message = result.message)
+            }
+
+            ResultState.Loading -> Unit
         }
     }
 
@@ -109,8 +132,9 @@ class ShopViewModel(
                 when (val result = purchaseShopAvatarItemUseCase(itemId)) {
                     is ResultState.Success -> {
                         _uiState.update { it.copy(message = "${selected.name}을(를) 구매했어요.") }
-                        // 보유 상태랑 잔액이 바뀌어서 목록을 다시 받아야 함
-                        loadItems()
+                        // 갱신을 기다려야 함. 먼저 풀어주면 owned가 반영되기 전에 또 살 수 있음
+                        refreshItems()
+                        loadBalances()
                         emitEvent(ShopUiEvent.SaveSelectedItems)
                     }
 
@@ -129,6 +153,9 @@ class ShopViewModel(
         }
     }
 }
+
+private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =
+    firstOrNull { it.currency == currency }?.balance
 
 private fun ShopAvatarItem.toUiModel(): ShopItemUiModel = ShopItemUiModel(
     id = id.toString(),

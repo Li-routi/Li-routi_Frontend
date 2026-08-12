@@ -8,7 +8,9 @@ import com.li_routi.core.domain.shop.ChargeProduct
 import com.li_routi.core.domain.shop.ExchangeCurrencyUseCase
 import com.li_routi.core.domain.shop.ExchangeProduct
 import com.li_routi.core.domain.shop.GetChargeProductsUseCase
+import com.li_routi.core.domain.shop.CurrencyBalance
 import com.li_routi.core.domain.shop.GetExchangeProductsUseCase
+import com.li_routi.core.domain.shop.GetWalletBalancesUseCase
 import com.li_routi.feature.home.shop.component.CurrencyProductUiModel
 import com.li_routi.feature.home.shop.navigation.CurrencyShopScreenActions
 import java.text.NumberFormat
@@ -37,6 +39,7 @@ class CurrencyShopViewModel(
     private val getExchangeProductsUseCase: GetExchangeProductsUseCase = ShopContainer.getExchangeProductsUseCase,
     private val getChargeProductsUseCase: GetChargeProductsUseCase = ShopContainer.getChargeProductsUseCase,
     private val exchangeCurrencyUseCase: ExchangeCurrencyUseCase = ShopContainer.exchangeCurrencyUseCase,
+    private val getWalletBalancesUseCase: GetWalletBalancesUseCase = ShopContainer.getWalletBalancesUseCase,
 ) : BaseViewModel(), CurrencyShopScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -50,6 +53,22 @@ class CurrencyShopViewModel(
 
     init {
         loadProducts()
+        loadBalances()
+    }
+
+    /** 상점 헤더 잔액 */
+    private fun loadBalances() {
+        viewModelScope.launch {
+            val result = getWalletBalancesUseCase()
+            if (result is ResultState.Success) {
+                _uiState.update { state ->
+                    state.copy(
+                        coinBalance = result.data.balanceOf("TOPAZ") ?: state.coinBalance,
+                        gemBalance = result.data.balanceOf("GEM") ?: state.gemBalance,
+                    )
+                }
+            }
+        }
     }
 
     fun onDismissMessage() {
@@ -67,10 +86,11 @@ class CurrencyShopViewModel(
             _uiState.update { state ->
                 state.copy(
                     isLoading = false,
+                    // 실패하면 이전 목록을 남기지 않음 — 없는 상품을 고를 수 있게 되면 안 됨
                     orangeProducts = (exchange as? ResultState.Success)?.data?.map { it.toUiModel() }
-                        ?: state.orangeProducts,
+                        .orEmpty(),
                     blueProducts = (charge as? ResultState.Success)?.data?.map { it.toUiModel() }
-                        ?: state.blueProducts,
+                        .orEmpty(),
                     message = (exchange as? ResultState.Error)?.message
                         ?: (charge as? ResultState.Error)?.message,
                 )
@@ -153,7 +173,10 @@ private const val ExchangeIdPrefix = "exchange_"
 private const val ChargeIdPrefix = "charge_"
 
 private fun String.exchangeProductIdOrNull(): Long? =
-    removePrefix(ExchangeIdPrefix).takeIf { startsWith(ExchangeIdPrefix) }?.toLongOrNull()
+    if (startsWith(ExchangeIdPrefix)) removePrefix(ExchangeIdPrefix).toLongOrNull() else null
+
+private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =
+    firstOrNull { it.currency == currency }?.balance
 
 private fun com.li_routi.core.domain.shop.ExchangeResult.balanceOf(currency: String): Long? = when (currency) {
     fromCurrency -> fromBalance

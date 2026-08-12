@@ -1,5 +1,15 @@
 package com.li_routi.core.data.network.dto.response
 
+/** GET /api/members/me/wallet 응답 result. */
+data class WalletBalancesResponse(
+    val balances: List<WalletBalanceResponse>?,
+)
+
+data class WalletBalanceResponse(
+    val currency: String?,
+    val balance: Int,
+)
+
 /** GET /api/shop/items 응답 result. */
 data class ShopAvatarItemsResponse(
     val items: List<ShopAvatarItemResponse>?,

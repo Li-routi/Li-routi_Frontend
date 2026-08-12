@@ -4,6 +4,9 @@ import com.li_routi.core.common.kotlin.util.ResultState
 
 interface ShopRepository {
 
+    /** 내 재화 잔액을 조회함. 재화 종류마다 한 건씩 항상 전부 내려옴 */
+    suspend fun getWalletBalances(): ResultState<List<CurrencyBalance>>
+
     /** 아바타 아이템 목록을 조회함. [slot]을 안 주면 전체 탭 */
     suspend fun getAvatarItems(slot: String?, ownedOnly: Boolean?): ResultState<List<ShopAvatarItem>>
 

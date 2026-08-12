@@ -25,6 +25,12 @@ data class AvatarEquippedItem(
     val imageUrl: String?,
 )
 
+/** 상점 헤더에 표시할 재화 잔액. 한 번도 받은 적 없는 재화도 0으로 실려서 옴 */
+data class CurrencyBalance(
+    val currency: String,
+    val balance: Int,
+)
+
 /** 현금으로 사는 재화 묶음(파란보석 탭). 유상 [rewardAmount]와 무상 [bonusAmount]를 나눠서 보여줌 */
 data class ChargeProduct(
     val id: Long,
