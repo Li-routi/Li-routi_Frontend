@@ -85,3 +85,9 @@ val CategoryMagenta = Color(0xFFE954EE)
 val CategoryMagentaBorder = Color(0xFFDD22E5)
 val CategoryBlack = Neutral25
 val CategoryBlackBorder = Neutral0
+
+// 그룹 루틴 화면 전용 일회성 장식 색상. 다크모드 값이 확정되지 않아 라이트값 그대로 유지.
+val MemberHeroGradientEnd = Color(0x33CFE4FF)
+val ChatSendBackground = Color(0xFFD6E8FF)
+val EarlyBirdText = Color(0xFFD26D00)
+val EarlyBirdBackground = Color(0xFFFFDDB8)

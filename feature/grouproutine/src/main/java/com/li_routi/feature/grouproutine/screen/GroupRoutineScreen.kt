@@ -103,6 +103,10 @@ import com.li_routi.core.designsystem.component.CheckBoxState
 import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.designsystem.foundation.color.ChatSendBackground
+import com.li_routi.core.designsystem.foundation.color.EarlyBirdBackground
+import com.li_routi.core.designsystem.foundation.color.EarlyBirdText
+import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
@@ -610,7 +614,7 @@ private fun ActionMessageToastDialog(
             ) {
                 Text(
                     text = message,
-                    color = Color.White,
+                    color = LiroutiTheme.colors.labelReverse,
                     style = LiroutiTheme.typography.body3,
                     modifier = Modifier
                         .weight(1f)
@@ -619,7 +623,7 @@ private fun ActionMessageToastDialog(
                 GroupRoutineCloseButton(
                     onClick = onDismiss,
                     contentDescription = "알림 닫기",
-                    tint = Color.White,
+                    tint = LiroutiTheme.colors.labelReverse,
                     modifier = Modifier
                         .padding(end = 16.dp)
                         .size(20.dp),
@@ -644,7 +648,7 @@ private fun GroupRoutineListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "그룹 루틴",
@@ -700,7 +704,7 @@ private fun CreateRoomNameScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "방 만들기",
@@ -760,7 +764,7 @@ private fun JoinByCodeScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "초대코드로 참여",
@@ -828,7 +832,7 @@ private fun CreateRoutineSelectScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "루틴 추가",
@@ -882,7 +886,7 @@ private fun CreateRoutineSelectScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(LiroutiTheme.colors.backgroundDefault)
                 .navigationBarsPadding()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -936,7 +940,7 @@ private fun CategoryChipRow(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(Color.White)
+                .background(LiroutiTheme.colors.backgroundDefault)
                 .border(1.dp, LiroutiTheme.colors.borderDefault, CircleShape)
                 .clickable(onClick = onCategoryAddClick),
             contentAlignment = Alignment.Center,
@@ -993,7 +997,7 @@ private fun RoutineColorBottomSheet(
                     .fillMaxWidth()
                     .height(44.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color.White)
+                    .background(LiroutiTheme.colors.backgroundDefault)
                     .border(1.dp, LiroutiTheme.colors.borderDefault, RoundedCornerShape(6.dp))
                     .padding(horizontal = 16.dp),
                 contentAlignment = Alignment.CenterStart,
@@ -1033,7 +1037,7 @@ private fun RoutineColorBottomSheet(
                     )
                 }
 
-                HorizontalDivider(color = Color(0xFFEAEBEC))
+                HorizontalDivider(color = LiroutiTheme.colors.borderSub)
 
                 Row(
                     modifier = Modifier
@@ -1060,13 +1064,13 @@ private fun RoutineColorBottomSheet(
                 shape = RoundedCornerShape(6.dp),
                 colors = ButtonDefaults.buttonColors(
                     containerColor = LiroutiTheme.colors.primaryNormal,
-                    contentColor = Color.White,
+                    contentColor = LiroutiTheme.colors.labelReverse,
                 ),
                 contentPadding = PaddingValues(horizontal = 16.dp, vertical = 10.dp),
             ) {
                 Text(
                     text = "확인",
-                    color = Color.White,
+                    color = LiroutiTheme.colors.labelReverse,
                     style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                 )
             }
@@ -1098,7 +1102,7 @@ private fun RoutineColorSwatch(
             Icon(
                 imageVector = Icons.Filled.Check,
                 contentDescription = null,
-                tint = Color.White,
+                tint = LiroutiTheme.colors.labelReverse,
                 modifier = Modifier.size(18.dp),
             )
         }
@@ -1149,7 +1153,7 @@ private fun RoutineOptionsCard(
                 .fillMaxWidth()
                 .height(48.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color.White)
+                .background(LiroutiTheme.colors.backgroundDefault)
                 .border(1.dp, LiroutiTheme.colors.borderAlternative, RoundedCornerShape(6.dp))
                 .padding(horizontal = 16.dp, vertical = 2.dp),
         ) {
@@ -1231,7 +1235,7 @@ private fun RoutineScrollIndicator(
                 .width(4.dp)
                 .height(with(density) { thumbHeightPx.toDp() })
                 .clip(RoundedCornerShape(99.dp))
-                .background(Color(0xFF9CA3AF)),
+                .background(LiroutiTheme.colors.borderStrong),
         )
     }
 }
@@ -1476,9 +1480,9 @@ private fun BasicInputBox(
         },
         shape = RoundedCornerShape(6.dp),
         colors = TextFieldDefaults.colors(
-            focusedContainerColor = Color.White,
-            unfocusedContainerColor = Color.White,
-            disabledContainerColor = Color.White,
+            focusedContainerColor = LiroutiTheme.colors.backgroundDefault,
+            unfocusedContainerColor = LiroutiTheme.colors.backgroundDefault,
+            disabledContainerColor = LiroutiTheme.colors.backgroundDefault,
             focusedIndicatorColor = LiroutiTheme.colors.borderDefault,
             unfocusedIndicatorColor = LiroutiTheme.colors.borderDefault,
             cursorColor = LiroutiTheme.colors.primaryNormal,
@@ -1525,7 +1529,7 @@ private fun RoutineSettingExpandableRow(
 @Composable
 private fun RoutineSettingDivider() {
     HorizontalDivider(
-        color = Color(0xFFEDEEF0),
+        color = LiroutiTheme.colors.borderSub,
         modifier = Modifier.padding(horizontal = 12.dp),
     )
 }
@@ -1617,7 +1621,7 @@ private fun WheelPickerColumn(
                 .fillMaxWidth()
                 .height(rowHeight)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFFF4F4F5)),
+                .background(LiroutiTheme.colors.borderAlternative),
         )
         LazyColumn(
             state = listState,
@@ -1811,7 +1815,7 @@ private fun DangerConfirmDialog(
                 .fillMaxWidth()
                 .padding(horizontal = 38.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color.White)
+                .background(LiroutiTheme.colors.backgroundDefault)
                 .padding(24.dp),
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
@@ -1846,7 +1850,7 @@ private fun DangerConfirmDialog(
                 Button(
                     onClick = onConfirmClick,
                     shape = RoundedCornerShape(6.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = Color(0xFFE55454), contentColor = Color.White),
+                    colors = ButtonDefaults.buttonColors(containerColor = LiroutiTheme.colors.dangerBase, contentColor = LiroutiTheme.colors.labelReverse),
                     modifier = Modifier
                         .weight(1f)
                         .height(48.dp),
@@ -1877,7 +1881,7 @@ private fun NewCertificationDialog(
                 .fillMaxWidth()
                 .padding(horizontal = 36.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color.White)
+                .background(LiroutiTheme.colors.backgroundDefault)
                 .padding(22.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
@@ -1944,7 +1948,7 @@ private fun NewCertificationDialog(
                   Button(
                       onClick = { onPositiveClick(current.id) },
                     shape = RoundedCornerShape(6.dp),
-                    colors = ButtonDefaults.buttonColors(containerColor = LiroutiTheme.colors.primaryNormal, contentColor = Color.White),
+                    colors = ButtonDefaults.buttonColors(containerColor = LiroutiTheme.colors.primaryNormal, contentColor = LiroutiTheme.colors.labelReverse),
                     modifier = Modifier
                         .weight(1f)
                         .height(42.dp),
@@ -2002,7 +2006,7 @@ private fun BottomFixedButton(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .navigationBarsPadding()
             .padding(16.dp),
     ) {
@@ -2070,7 +2074,7 @@ private fun GroupRoutineCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .clickable(onClick = onClick)
             .padding(horizontal = 20.dp, vertical = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -2100,7 +2104,7 @@ private fun GroupRoutineCard(
                 }
                 Text(
                     text = "멤버 ${routine.memberCount}명  |  루틴 ${routine.routineCount}개",
-                    color = Color.Black,
+                    color = LiroutiTheme.colors.labelDefault,
                     style = LiroutiTheme.typography.caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
@@ -2151,7 +2155,7 @@ private fun AvatarStack(modifier: Modifier = Modifier) {
                 modifier = Modifier
                     .size(24.dp)
                     .clip(CircleShape)
-                    .background(Color(0xFFE8EAEB))
+                    .background(LiroutiTheme.colors.borderSub)
                     .border(0.6.dp, LiroutiTheme.colors.borderDefault, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
@@ -2321,7 +2325,7 @@ private fun DetailMemberSection(
             .heightIn(min = 360.dp)
             .background(
                 Brush.verticalGradient(
-                    colors = listOf(Color.White, Color(0x33CFE4FF)),
+                    colors = listOf(LiroutiTheme.colors.backgroundDefault, MemberHeroGradientEnd),
                 ),
             )
             .padding(start = 20.dp, top = 20.dp, end = 20.dp, bottom = 20.dp),
@@ -2440,7 +2444,7 @@ private fun DetailRoutineTabSheet(
             .fillMaxWidth()
             .fillMaxHeight()
             .clip(if (expanded) RoundedCornerShape(0.dp) else RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Box(
@@ -2469,7 +2473,7 @@ private fun DetailRoutineTabSheet(
                     .width(44.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(100.dp))
-                    .background(Color(0xFFDEDEDE)),
+                    .background(LiroutiTheme.colors.borderDefault),
             )
         }
         Column(
@@ -2759,7 +2763,7 @@ private fun ChatMessageBubble(
                 modifier = Modifier
                     .size(40.dp)
                     .clip(CircleShape)
-                    .background(Color.White),
+                    .background(LiroutiTheme.colors.backgroundDefault),
             )
             Spacer(modifier = Modifier.width(8.dp))
         } else if (!isMine) {
@@ -2800,7 +2804,7 @@ private fun ChatInputBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .border(1.dp, LiroutiTheme.colors.borderDefault)
             .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -2811,7 +2815,7 @@ private fun ChatInputBar(
                 .weight(1f)
                 .height(44.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color.White)
+                .background(LiroutiTheme.colors.backgroundDefault)
                 .border(1.dp, LiroutiTheme.colors.borderDefault, RoundedCornerShape(6.dp))
                 .padding(horizontal = 16.dp),
             contentAlignment = Alignment.CenterStart,
@@ -2822,7 +2826,7 @@ private fun ChatInputBar(
             modifier = Modifier
                 .size(44.dp)
                 .clip(RoundedCornerShape(6.dp))
-                .background(Color(0xFFD6E8FF)),
+                .background(ChatSendBackground),
             contentAlignment = Alignment.Center,
         ) {
             Text(text = "➤", color = LiroutiTheme.colors.primaryNormal, fontSize = 28.sp)
@@ -2849,7 +2853,7 @@ private fun GroupSettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "방 설정",
@@ -2926,7 +2930,7 @@ private fun GroupSettingsScreen(
             shape = RoundedCornerShape(6.dp),
             colors = ButtonDefaults.buttonColors(
                 containerColor = LiroutiTheme.colors.dangerBase,
-                contentColor = Color.White,
+                contentColor = LiroutiTheme.colors.labelReverse,
             ),
             modifier = Modifier
                 .fillMaxWidth()
@@ -2956,7 +2960,7 @@ private fun GroupRoutineManageScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "루틴 관리",
@@ -3010,7 +3014,7 @@ private fun GroupRoutineManageScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(Color.White)
+                .background(LiroutiTheme.colors.backgroundDefault)
                 .navigationBarsPadding()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
@@ -3038,7 +3042,7 @@ private fun RoomNameEditScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "방 이름 변경",
@@ -3088,7 +3092,7 @@ private fun LeaderSettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "방장 넘기기",
@@ -3132,7 +3136,7 @@ private fun LeaderMemberRow(
         modifier = modifier
             .fillMaxWidth()
             .height(58.dp)
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -3175,7 +3179,7 @@ private fun RoomAlarmSettingsScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(Color.White),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "방 알림 설정",
@@ -3224,7 +3228,7 @@ private fun SettingsSectionDivider(modifier: Modifier = Modifier) {
             .fillMaxWidth()
             .padding(top = 12.dp, bottom = 25.dp)
             .height(8.dp)
-            .background(Color(0xFFF4F4F5)),
+            .background(LiroutiTheme.colors.borderAlternative),
     )
 }
 
@@ -3239,7 +3243,7 @@ private fun SettingsNavigationRow(
         modifier = modifier
             .fillMaxWidth()
             .height(54.dp)
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -3273,7 +3277,7 @@ private fun InviteLockRow(
         modifier = modifier
             .fillMaxWidth()
             .height(54.dp)
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -3307,7 +3311,7 @@ private fun InviteCodeRow(
         modifier = modifier
             .fillMaxWidth()
             .height(42.dp)
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .clickable(onClick = onClick)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -3341,7 +3345,7 @@ private fun RoomAlarmToggleRow(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .padding(horizontal = 16.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
@@ -3389,7 +3393,7 @@ private fun TwoButtonBottomBar(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .navigationBarsPadding()
             .padding(start = 16.dp, end = 16.dp, bottom = 32.dp, top = 12.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -3398,7 +3402,7 @@ private fun TwoButtonBottomBar(
             onClick = onLeftClick,
             shape = RoundedCornerShape(6.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFFF4F4F5),
+                containerColor = LiroutiTheme.colors.borderAlternative,
                 contentColor = LiroutiTheme.colors.labelDefault,
             ),
             modifier = Modifier
@@ -3411,8 +3415,8 @@ private fun TwoButtonBottomBar(
             onClick = onRightClick,
             shape = RoundedCornerShape(6.dp),
             colors = ButtonDefaults.buttonColors(
-                containerColor = Color(0xFF6688F4),
-                contentColor = Color.White,
+                containerColor = LiroutiTheme.colors.primaryNormal,
+                contentColor = LiroutiTheme.colors.labelReverse,
             ),
             modifier = Modifier
                 .weight(1f)
@@ -3433,7 +3437,7 @@ private fun CertificationSummaryCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .clickable(onClick = onClick)
             .padding(20.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -3443,7 +3447,7 @@ private fun CertificationSummaryCard(
             modifier = Modifier
                 .size(42.dp)
                 .clip(RoundedCornerShape(8.dp))
-                .background(Color(0xFFF3F4F5)),
+                .background(LiroutiTheme.colors.borderAlternative),
             contentAlignment = Alignment.Center,
           ) {
               Image(
@@ -3484,7 +3488,7 @@ private fun GroupMemberCard(
             .fillMaxWidth()
             .heightIn(min = 360.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .padding(horizontal = 20.dp, vertical = 20.dp),
         verticalArrangement = Arrangement.spacedBy(20.dp, Alignment.Top),
         horizontalAlignment = Alignment.Start,
@@ -3585,13 +3589,13 @@ private fun MemberSeat(
                     .widthIn(min = 57.dp)
                     .height(30.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFF878A93))
+                    .background(LiroutiTheme.colors.labelInfo)
                     .padding(horizontal = 8.dp),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(
                     text = member.message.take(8),
-                    color = Color.White,
+                    color = LiroutiTheme.colors.labelReverse,
                     fontSize = 11.sp,
                     maxLines = 1,
                 )
@@ -3600,7 +3604,7 @@ private fun MemberSeat(
                 modifier = Modifier
                     .requiredSize(48.dp)
                     .clip(CircleShape)
-                    .background(Color.White),
+                    .background(LiroutiTheme.colors.backgroundDefault),
                 contentAlignment = Alignment.Center,
             ) {
                 Image(
@@ -3651,7 +3655,7 @@ private fun MemberProfileDialog(
     Dialog(onDismissRequest = onDismissRequest) {
         Surface(
             shape = RoundedCornerShape(6.dp),
-            color = Color.White,
+            color = LiroutiTheme.colors.backgroundDefault,
             modifier = Modifier
                 .width(320.dp)
                 .then(if (member.isMe) Modifier.height(272.dp) else Modifier),
@@ -3723,11 +3727,11 @@ private fun MemberProfileDialog(
                             ) {
                                 Text(
                                     text = "\uC5BC\uB9AC\uBC84\uB4DC",
-                                    color = Color(0xFFD26D00),
+                                    color = EarlyBirdText,
                                     style = LiroutiTheme.typography.caption,
                                     modifier = Modifier
                                         .clip(RoundedCornerShape(6.dp))
-                                        .background(Color(0xFFFFDDB8))
+                                        .background(EarlyBirdBackground)
                                         .padding(horizontal = 6.dp, vertical = 3.dp),
                                 )
                                 Text(text = "\uD83D\uDD25${member.streak}", color = LiroutiTheme.colors.dangerBase, fontSize = 10.sp)
@@ -3806,7 +3810,7 @@ private fun ReactionBadge(text: String) {
         style = LiroutiTheme.typography.caption,
         modifier = Modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(Color(0xFFEAEBEC))
+            .background(LiroutiTheme.colors.borderSub)
             .padding(horizontal = 6.dp, vertical = 3.dp),
     )
 }
@@ -3822,7 +3826,7 @@ private fun GroupTodoCard(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .padding(20.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {
@@ -3984,7 +3988,7 @@ private fun FeedTab(
 ) {
     Text(
         text = text,
-        color = if (selected) Color.White else LiroutiTheme.colors.labelDefault,
+        color = if (selected) LiroutiTheme.colors.labelReverse else LiroutiTheme.colors.labelDefault,
         style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
         modifier = Modifier
             .clip(RoundedCornerShape(40.dp))
@@ -4178,7 +4182,7 @@ private fun GroupRoutineTopBar(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .statusBarsPadding(),
     ) {
         Box(
@@ -4277,7 +4281,7 @@ private fun TopBarActionButton(
             ) {
                 Text(
                     text = badgeCount.toString(),
-                    color = Color.White,
+                    color = LiroutiTheme.colors.labelReverse,
                     fontSize = 10.sp,
                     lineHeight = 10.sp,
                     fontWeight = FontWeight.Bold,
@@ -4311,7 +4315,7 @@ private fun GroupRoutineActionSheetContent(
                     .width(44.dp)
                     .height(4.dp)
                     .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xFFDEDEDE)),
+                    .background(LiroutiTheme.colors.borderDefault),
             )
         },
     ) {
