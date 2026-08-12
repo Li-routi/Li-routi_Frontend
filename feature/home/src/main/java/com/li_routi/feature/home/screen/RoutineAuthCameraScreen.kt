@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -235,14 +236,6 @@ private fun RoutineAuthCameraLayout(
                 .height(topBandHeight)
                 .background(LiroutiTheme.colors.dimmerDefault),
         )
-        // 하단 크롭 아웃 스크림. 아래 Column(컨트롤)보다 먼저 그려 뒤에 깔리게 한다.
-        Box(
-            modifier = Modifier
-                .align(Alignment.BottomCenter)
-                .fillMaxWidth()
-                .height(bottomBandHeight)
-                .background(LiroutiTheme.colors.dimmerDefault),
-        )
         Image(
             painter = painterResource(id = R.drawable.close),
             contentDescription = "닫기",
@@ -258,11 +251,15 @@ private fun RoutineAuthCameraLayout(
             colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelReverse),
         )
 
-        // 안내 문구 + 컨트롤(전환/셔터/플래시). 배경은 위 하단 스크림 Box가 담당한다.
+        // 안내 문구 + 컨트롤(전환/셔터/플래시). 스크림 배경을 Column 자신에 둬서 내비게이션
+        // 바 인셋 등으로 실제 컨텐츠가 bottomBandHeight보다 커져도 스크림이 항상 컨트롤
+        // 전체를 덮는다(Figma 크롭 비율은 heightIn min으로 하한만 보장).
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
+                .heightIn(min = bottomBandHeight)
+                .background(LiroutiTheme.colors.dimmerDefault)
                 .navigationBarsPadding()
                 .padding(top = 24.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -404,7 +401,7 @@ private object PreviewRoutineAuthCameraScreenActions : RoutineAuthCameraScreenAc
     override fun onCaptureSuccess(photoUri: Uri) = Unit
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 private fun RoutineAuthCameraScreenPreview() {
     LiroutiFrontendTheme {
