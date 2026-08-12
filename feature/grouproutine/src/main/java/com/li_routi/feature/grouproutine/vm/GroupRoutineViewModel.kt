@@ -491,8 +491,10 @@ class GroupRoutineViewModel(
                 val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
                 val historyMessages = result.data.messages.map { it.toUiModel(isMine = it.senderId == myMemberId) }
                 _uiState.update { state ->
-                    // ?釉뚰??????쑩?젆?????됰씚逾??????????⑥???沃섅굥?? ???怨쀪퐨??癲ル슢????????? ?濡ろ뜐????????怨쀪퐨 id ??れ삀?????⑥????獄?낮萸??
-                    val merged = (historyMessages + state.chatMessages).distinctBy { it.id }.sortedBy { it.id }
+                    // historyMessages(오래된 페이지)와 state.chatMessages(기존 목록)는 각각
+                    // 이미 id 오름차순이고 historyMessages의 모든 id가 더 작으므로 이어붙이기만
+                    // 하면 된다. distinctBy는 커서 경계에서 중복 응답이 와도 안전하게 걸러낸다.
+                    val merged = (historyMessages.sortedBy { it.id } + state.chatMessages).distinctBy { it.id }
                     state.copy(
                         chatMessages = merged,
                         chatNextCursor = result.data.nextCursor,
@@ -501,7 +503,7 @@ class GroupRoutineViewModel(
                         unreadChatCount = if (historyMessages.isEmpty()) 0 else state.unreadChatCount,
                     )
                 }
-                // 癲ル슢???癲?癲ル슢???????嚥싲갭큔?? ??? ?濡ろ뜏????肉???筌먦끉裕???袁⑸즵?????釉먮뻤??????怨쀪퐨?? 癲ル슢?꾤땟戮⑤뭄?????덇콬???곸쓸???.
+                // cursor가 null이면(최신 메시지 조회) 마지막 메시지까지 읽음 처리한다.
                 if (cursor == null) {
                     historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
                 }
