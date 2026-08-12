@@ -17,8 +17,9 @@ suspend fun <T> apiCall(call: suspend () -> ApiResponse<T>): T {
     val response = try {
         call()
     } catch (e: HttpException) {
-        val message = e.response()?.errorBody()?.string()
-            ?.let { body -> runCatching { errorBodyGson.fromJson(body, ApiResponse::class.java).message }.getOrNull() }
+        val message = e.retryAfterMessage()
+            ?: e.response()?.errorBody()?.string()
+                ?.let { body -> runCatching { errorBodyGson.fromJson(body, ApiResponse::class.java).message }.getOrNull() }
         throw ApiException(
             message = message ?: e.message(),
             statusCode = e.code(),

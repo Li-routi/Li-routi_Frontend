@@ -14,12 +14,14 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -38,7 +40,6 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
@@ -179,10 +180,23 @@ fun RoutineAuthCameraScreen(
     )
 }
 
+// Figma node 5562:14552(Subtract): 360x800 기준 프레임에서 상단 0–94dp(94/800), 하단
+// 614–800dp(186/800) 구간이 최종 인증 사진 크롭 시 잘려나간다. 실제 화면 높이에 이 비율을
+// 곱해 "나중에 잘리는 영역"을 촬영 전에 스크림으로 미리 보여준다.
+private const val CropIndicatorTopFraction = 94f / 800f
+private const val CropIndicatorBottomFraction = 186f / 800f
+
+// Figma `backdrop-blur(5px)` + rgba(93,93,93,0.6) — minSdk 24라 실제 backdrop blur(API 31+)를
+// 못 써서 ChatBox.ChatDateDividerBackground와 동일한 값의 반투명 단색으로 대체한다.
+private val HintPillScrimColor = Color(0xFF5D5D5D).copy(alpha = 0.60f)
+private val HintPillShape = RoundedCornerShape(percent = 50)
+
 /**
- * Figma node `4734:42024`: 프리뷰가 화면 전체(상태바/내비게이션 바 영역까지)를 꽉 채우고, 닫기·안내
- * 문구·하단 컨트롤은 그 위에 얹힌 오버레이다 — 흰 배경의 별도 상단/하단 바가 아니다. 오버레이가 사진
- * 위에서도 읽히도록 위/아래에 어두운 그라데이션 스크림을 깔고, 아이콘·텍스트는 흰색(labelReverse)을 쓴다.
+ * Figma node `4734:42024`/`5562:14547`: 프리뷰가 화면 전체(상태바/내비게이션 바 영역까지)를 꽉
+ * 채우고, 닫기·안내 문구·하단 컨트롤은 그 위에 얹힌 오버레이다 — 흰 배경의 별도 상단/하단 바가
+ * 아니다. 상/하단에는 실제 인증 사진 크롭 시 잘려나갈 영역을 미리 보여주는 스크림을 깔아 오버레이
+ * 가독성과 크롭 안내를 함께 담당한다. minSdk 24라 Figma의 backdrop blur는 못 쓰고 반투명 단색으로
+ * 대체했다(다른 화면의 blur→scrim 대체 전례와 동일). 아이콘·텍스트는 흰색(labelReverse)을 쓴다.
  */
 @Composable
 private fun RoutineAuthCameraLayout(
@@ -197,11 +211,14 @@ private fun RoutineAuthCameraLayout(
     modifier: Modifier = Modifier,
     onRequestPermission: () -> Unit = {},
 ) {
-    Box(
+    BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black),
     ) {
+        val topBandHeight = maxHeight * CropIndicatorTopFraction
+        val bottomBandHeight = maxHeight * CropIndicatorBottomFraction
+
         if (hasCameraPermission) {
             cameraContent()
         } else {
@@ -211,17 +228,13 @@ private fun RoutineAuthCameraLayout(
             )
         }
 
-        // 상단 스크림 + 닫기 버튼.
+        // 상단 크롭 아웃 스크림 — 닫기 버튼 가독성 확보 + 잘려나갈 영역 안내를 겸한다.
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
-                .height(112.dp)
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Black.copy(alpha = 0.35f), Color.Transparent),
-                    ),
-                ),
+                .height(topBandHeight)
+                .background(LiroutiTheme.colors.dimmerDefault),
         )
         Image(
             painter = painterResource(id = R.drawable.close),
@@ -238,16 +251,15 @@ private fun RoutineAuthCameraLayout(
             colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelReverse),
         )
 
-        // 하단 스크림 + 안내 문구 + 컨트롤(전환/셔터/플래시).
+        // 안내 문구 + 컨트롤(전환/셔터/플래시). 스크림 배경을 Column 자신에 둬서 내비게이션
+        // 바 인셋 등으로 실제 컨텐츠가 bottomBandHeight보다 커져도 스크림이 항상 컨트롤
+        // 전체를 덮는다(Figma 크롭 비율은 heightIn min으로 하한만 보장).
         Column(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .background(
-                    Brush.verticalGradient(
-                        listOf(Color.Transparent, Color.Black.copy(alpha = 0.35f)),
-                    ),
-                )
+                .heightIn(min = bottomBandHeight)
+                .background(LiroutiTheme.colors.dimmerDefault)
                 .navigationBarsPadding()
                 .padding(top = 24.dp, bottom = 24.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
@@ -260,10 +272,10 @@ private fun RoutineAuthCameraLayout(
                     color = LiroutiTheme.colors.labelReverse,
                     modifier = Modifier
                         .background(
-                            color = Color.Black.copy(alpha = 0.45f),
-                            shape = RoundedCornerShape(8.dp),
+                            color = HintPillScrimColor,
+                            shape = HintPillShape,
                         )
-                        .padding(horizontal = 12.dp, vertical = 6.dp),
+                        .padding(horizontal = 12.dp, vertical = 8.dp),
                 )
                 Spacer(modifier = Modifier.height(20.dp))
             }
@@ -389,7 +401,7 @@ private object PreviewRoutineAuthCameraScreenActions : RoutineAuthCameraScreenAc
     override fun onCaptureSuccess(photoUri: Uri) = Unit
 }
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, widthDp = 360, heightDp = 800)
 @Composable
 private fun RoutineAuthCameraScreenPreview() {
     LiroutiFrontendTheme {

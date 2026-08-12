@@ -5,6 +5,8 @@ import com.li_routi.core.common.kotlin.util.ResultState
 import retrofit2.HttpException
 import java.io.IOException
 
+private const val RetryAfterHeader = "Retry-After"
+
 /**
  * 홈/미디어/루틴 인증용 API 호출 래퍼.
  * HTTP 상태 코드를 사용자용 메시지로 변환한다.
@@ -18,11 +20,21 @@ internal suspend fun <T> safeDataApiCall(apiCall: suspend () -> T): ResultState<
 }
 
 internal fun Throwable.toUserFacingMessage(): String = when (this) {
-    is HttpException -> httpCodeToMessage(code())
+    is HttpException -> retryAfterMessage() ?: httpCodeToMessage(code())
     is IOException -> "네트워크 연결을 확인해 주세요."
     is ApiException -> message?.takeIf { it.isNotBlank() } ?: "요청에 실패했습니다."
     else -> message?.takeIf { it.isNotBlank() } ?: "알 수 없는 오류가 발생했습니다."
 }
+
+/**
+ * 인증을 너무 자주 시도하면 서버가 [RetryAfterHeader] 헤더(초 단위)를 내려준다.
+ * 있으면 상태 코드별 고정 문구보다 우선해 "n초 후 다시 시도해 주세요." 안내로 바꾼다.
+ */
+internal fun HttpException.retryAfterMessage(): String? =
+    response()?.headers()?.get(RetryAfterHeader)
+        ?.toIntOrNull()
+        ?.takeIf { it > 0 }
+        ?.let { seconds -> "${seconds}초 후 다시 시도해 주세요." }
 
 private fun httpCodeToMessage(code: Int): String = when (code) {
     400 -> "요청 형식이 올바르지 않습니다."
