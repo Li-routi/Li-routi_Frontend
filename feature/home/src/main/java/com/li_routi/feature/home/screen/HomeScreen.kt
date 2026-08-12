@@ -16,9 +16,7 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -64,17 +62,12 @@ import kotlinx.coroutines.flow.emptyFlow
 
 /** Figma `Bottom Sheet` 상단의 드래그 힌트 바 (`h-[4px] w-[44px]`, 회색 pill). */
 private val SheetDragHandleColor = androidx.compose.ui.graphics.Color(0xFFDEDEDE)
-private val SheetPeekHeight = 370.dp
 
 /**
- * 홈 화면 상태별 캐릭터 툴팁 문구 (Figma Design Page [1.1] `처음 진입 시` 기준).
- * - 처음 진입 / 내 루틴+그룹방: 인사
- * - 내 루틴 O / 그룹방 X: 방 만들기 유도
+ * Figma `Bottom Sheet`(352dp) + 그 아래 `Bottom GNB` 예약 공간(80dp)을 합친 값.
+ * 이 값이 실제보다 작으면 시트(와 드래그 핸들)가 Figma보다 아래쪽에 뜬다.
  */
-internal fun homeTooltipMessage(hasActiveRoutine: Boolean, hasGroupRoom: Boolean): String = when {
-    !hasActiveRoutine || hasGroupRoom -> "반가워요!"
-    else -> "상단 + 버튼을 눌러 친구와 방을 만들어봐요."
-}
+private val SheetPeekHeight = 432.dp
 
 /**
  * 홈 화면.
@@ -122,7 +115,6 @@ fun HomeScreen(
     var categoryName by remember { mutableStateOf("") }
     var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
     var categoryCreateError by remember { mutableStateOf<String?>(null) }
-    val tooltipMessage = homeTooltipMessage(hasActiveRoutine, hasGroupRoom)
     val sheetScaffoldState = rememberBottomSheetScaffoldState()
 
     // 예전엔 카메라가 HorizontalPager의 별도 페이지라 스와이프가 저절로 됐지만, 카메라가 `app` 모듈이
@@ -300,21 +292,21 @@ fun HomeScreen(
                 }
             },
         ) { innerPadding ->
-            Column(
+            // Figma comp/myVehicle은 좌우 여백 없이 화면 폭 전체를 그라데이션으로 채우고(내부
+            // 16dp padding은 ShopEntryCard 자신이 갖는다), 시트 상단까지 꽉 차게 이어진다 —
+            // 그래서 스크롤 없는 Box로 감싸 ShopEntryCard가 남는 공간을 그대로 채우게 한다.
+            Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .padding(innerPadding)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 16.dp, vertical = 8.dp),
+                    .padding(innerPadding),
             ) {
                 // Design Page [1.1]: 내 루틴 카드 없이 닉네임/캐릭터/상점가기 영역이 메인
                 ShopEntryCard(
                     nickname = nickname,
-                    tooltipMessage = tooltipMessage,
                     onNavigateToShop = actions::onNavigateToShop,
                     // Figma `처음 진입 시` 포함 홈 메인에서 대표 배지 노출
                     showRepresentativeBadge = true,
-                    modifier = Modifier.fillMaxWidth(),
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
         }
