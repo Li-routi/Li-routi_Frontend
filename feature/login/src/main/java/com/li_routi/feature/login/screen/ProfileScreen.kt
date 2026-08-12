@@ -20,6 +20,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -361,6 +362,8 @@ fun ProfileScreen(
                 containerHeight = ProfileActionButtonHeight,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
+                    // 제스처 내비게이션 바 등 시스템 내비게이션 바 높이만큼 버튼을 위로 밀어 올려, 버튼이 내비게이션 바에 가리지 않도록 한다.
+                    .navigationBarsPadding()
                     .padding(bottom = ProfileActionButtonBottomSpacing)
                     // HorizontalDoubleButton에 enabled 옵션이 없어, 로딩 중엔 시각적으로 흐리게 표시해 비활성 상태임을 알린다.
                     .alpha(if (isLoading) ProfileActionButtonDisabledAlpha else 1f),

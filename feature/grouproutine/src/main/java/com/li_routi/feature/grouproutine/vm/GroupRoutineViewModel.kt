@@ -113,6 +113,7 @@ class GroupRoutineViewModel(
 
     // 癲?????쇰궚?癲ル슣????濚욌꼬?댄꺍??곕㎜壤????⑤；?????덉툗 ????????ㅼ뒦??????㎣筌??熬곣뫀?櫻?? ??釉먮뻤????熬곥룊??ViewModel ??????????爾???筌먲퐢??
     private var chatSocketJob: Job? = null
+    private var chatHistoryJob: Job? = null
     private var chatReadJob: Job? = null
     private var routineVerificationsJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
@@ -471,13 +472,22 @@ class GroupRoutineViewModel(
     private fun leaveChatSocket() {
         chatSocketJob?.cancel()
         chatSocketJob = null
+        // A방에서 시작된 과거 채팅 로딩이 B방 이동 후에도 살아남아 응답으로 B방 상태를 덮어쓰지 않도록 함께 취소한다.
+        chatHistoryJob?.cancel()
+        chatHistoryJob = null
         viewModelScope.launch { disconnectChatSocketUseCase() }
     }
 
-    private suspend fun loadChatMessages(groupId: Long) {
+    /** cursor가 null이면 최신 50개를, 값이 있으면 그 커서보다 오래된 과거 메시지 50개를 불러온다. */
+    private suspend fun loadChatMessages(groupId: Long, cursor: Long? = null) {
         _uiState.update { it.copy(isChatLoading = true) }
-        when (val result = getChatMessagesUseCase(groupId = groupId, size = 50)) {
+        when (val result = getChatMessagesUseCase(groupId = groupId, cursor = cursor, size = 50)) {
             is ResultState.Success -> {
+                // 응답이 오는 사이 다른 방으로 이동했다면(현재 활성 방 ID != 요청 당시 방 ID) 상태 반영을 건너뛴다.
+                if (currentGroupId() != groupId) {
+                    _uiState.update { it.copy(isChatLoading = false) }
+                    return
+                }
                 val myMemberId = _uiState.value.members.firstOrNull { it.isMe }?.id
                 val historyMessages = result.data.messages.map { it.toUiModel(isMine = it.senderId == myMemberId) }
                 _uiState.update { state ->
@@ -485,17 +495,30 @@ class GroupRoutineViewModel(
                     val merged = (historyMessages + state.chatMessages).distinctBy { it.id }.sortedBy { it.id }
                     state.copy(
                         chatMessages = merged,
+                        chatNextCursor = result.data.nextCursor,
+                        hasMoreChatHistory = result.data.hasNext,
                         isChatLoading = false,
                         unreadChatCount = if (historyMessages.isEmpty()) 0 else state.unreadChatCount,
                     )
                 }
                 // 癲ル슢???癲?癲ル슢???????嚥싲갭큔?? ??? ?濡ろ뜏????肉???筌먦끉裕???袁⑸즵?????釉먮뻤??????怨쀪퐨?? 癲ル슢?꾤땟戮⑤뭄?????덇콬???곸쓸???.
-                historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
+                if (cursor == null) {
+                    historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
+                }
             }
 
             is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message, isChatLoading = false) }
             ResultState.Loading -> _uiState.update { it.copy(isChatLoading = false) }
         }
+    }
+
+    /** 채팅 목록을 위로 스크롤해 맨 위 근처에 도달했을 때 호출해 이전 대화를 이어서 불러온다. */
+    fun onChatScrolledToTop() {
+        val state = _uiState.value
+        if (state.isChatLoading || !state.hasMoreChatHistory) return
+        val groupId = currentGroupId() ?: return
+        chatHistoryJob?.cancel()
+        chatHistoryJob = viewModelScope.launch { loadChatMessages(groupId, cursor = state.chatNextCursor) }
     }
 
     private fun markChatRead(groupId: Long, lastReadMessageId: Long) {
@@ -555,6 +578,7 @@ class GroupRoutineViewModel(
 
     override fun onCleared() {
         chatSocketJob?.cancel()
+        chatHistoryJob?.cancel()
         // viewModelScope??onCleared() ??筌믨퀣??????? ???爾???筌뚯슦苑????怨쀪퐨 ?????????????명렡 ???怨뚮옓????????몄???ш끽維곩ㅇ?????룸뎿異??嶺뚮㉡?섌걡?
         CoroutineScope(Dispatchers.IO).launch { disconnectChatSocketUseCase() }
         super.onCleared()
