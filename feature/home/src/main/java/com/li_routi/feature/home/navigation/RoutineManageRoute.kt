@@ -14,6 +14,8 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.saveable.Saver
+import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -45,6 +47,12 @@ private val DayIndexToApi = listOf(
     "SATURDAY",
 )
 
+/** [LiroutiClockTime]은 일반 data class라 기본 Saver가 못 다뤄서, HH:mm 왕복 변환으로 저장한다. */
+private val LiroutiClockTimeSaver = Saver<LiroutiClockTime, String>(
+    save = { it.toApiHHmm() },
+    restore = { LiroutiClockTime.fromApiHHmm(it) },
+)
+
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun RoutineManageRoute(
@@ -67,19 +75,24 @@ fun RoutineManageRoute(
     },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    var showCategorySheet by remember { mutableStateOf(false) }
-    var showCategoryDeleteDialog by remember { mutableStateOf(false) }
-    var showRoutineSheet by remember { mutableStateOf(false) }
-    var showSheetDeleteDialog by remember { mutableStateOf(false) }
+    // 회전 등 구성 변경 시에도 작성 중이던 카테고리/루틴 폼이 사라지지 않도록 rememberSaveable을 쓴다.
+    var showCategorySheet by rememberSaveable { mutableStateOf(false) }
+    var showCategoryDeleteDialog by rememberSaveable { mutableStateOf(false) }
+    var showRoutineSheet by rememberSaveable { mutableStateOf(false) }
+    var showSheetDeleteDialog by rememberSaveable { mutableStateOf(false) }
     var showExitConfirmDialog by remember { mutableStateOf(false) }
     var pendingExitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
-    var editingCategoryId by remember { mutableStateOf<Long?>(null) }
-    var categoryName by remember { mutableStateOf("") }
-    var categoryColor by remember { mutableStateOf<CategoryColor?>(null) }
-    var routineName by remember { mutableStateOf("") }
-    var selectedDays by remember { mutableStateOf(emptySet<Int>()) }
-    var startTime by remember { mutableStateOf(LiroutiClockTime.DefaultMorning) }
-    var endTime by remember { mutableStateOf(LiroutiClockTime.DefaultEvening) }
+    var editingCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var categoryName by rememberSaveable { mutableStateOf("") }
+    var categoryColor by rememberSaveable { mutableStateOf<CategoryColor?>(null) }
+    var routineName by rememberSaveable { mutableStateOf("") }
+    var selectedDays by rememberSaveable { mutableStateOf(emptySet<Int>()) }
+    var startTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
+        mutableStateOf(LiroutiClockTime.DefaultMorning)
+    }
+    var endTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
+        mutableStateOf(LiroutiClockTime.DefaultEvening)
+    }
 
     val hasRoutineSheetDraft =
         routineName.isNotBlank() ||
