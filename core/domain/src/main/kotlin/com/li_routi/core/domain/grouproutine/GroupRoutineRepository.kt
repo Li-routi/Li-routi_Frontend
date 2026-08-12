@@ -11,6 +11,8 @@ interface GroupRoutineRepository {
         routines: List<NewGroupRoutine>,
     ): ResultState<CreatedGroup>
 
+    suspend fun getParticipatingGroups(): ResultState<List<ParticipatingGroup>>
+
     /** 그룹에 루틴을 등록함. 요청/응답 모양이 [updateGroupRoutine]과 동일함(실서버 확인, 스웨거 문서와 다름) */
     suspend fun createGroupRoutine(
         groupId: Long,
@@ -59,6 +61,9 @@ interface GroupRoutineRepository {
 
     /** 구성원을 강제 퇴장시킴. 방장만 가능함 */
     suspend fun kickGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit>
+
+    /** 다른 구성원을 콕콕 찌름 */
+    suspend fun pokeGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit>
 
     /** 그룹 루틴을 삭제함 */
     suspend fun deleteGroupRoutine(groupId: Long, routineId: Long): ResultState<Unit>

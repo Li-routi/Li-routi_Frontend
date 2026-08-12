@@ -11,6 +11,7 @@ import com.li_routi.core.domain.grouproutine.DisappointGroupRoutineVerificationU
 import com.li_routi.core.domain.grouproutine.GetGroupJoinPreviewUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
+import com.li_routi.core.domain.grouproutine.GetParticipatingGroupsUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetTodayGroupRoutinesUseCase
@@ -21,6 +22,7 @@ import com.li_routi.core.domain.grouproutine.KickGroupMemberUseCase
 import com.li_routi.core.domain.grouproutine.LeaveGroupUseCase
 import com.li_routi.core.domain.grouproutine.LikeGroupRoutineVerificationUseCase
 import com.li_routi.core.domain.grouproutine.MarkGroupRoutineVerificationsReadUseCase
+import com.li_routi.core.domain.grouproutine.PokeGroupMemberUseCase
 import com.li_routi.core.domain.grouproutine.SetGroupLockUseCase
 import com.li_routi.core.domain.grouproutine.TransferGroupOwnerUseCase
 import com.li_routi.core.domain.grouproutine.UndisappointGroupRoutineVerificationUseCase
@@ -41,6 +43,10 @@ object GroupRoutineContainer {
 
     val createGroupUseCase: CreateGroupUseCase by lazy {
         CreateGroupUseCase(repository)
+    }
+
+    val getParticipatingGroupsUseCase: GetParticipatingGroupsUseCase by lazy {
+        GetParticipatingGroupsUseCase(repository)
     }
 
     val createGroupRoutineUseCase: CreateGroupRoutineUseCase by lazy {
@@ -89,6 +95,10 @@ object GroupRoutineContainer {
 
     val kickGroupMemberUseCase: KickGroupMemberUseCase by lazy {
         KickGroupMemberUseCase(repository)
+    }
+
+    val pokeGroupMemberUseCase: PokeGroupMemberUseCase by lazy {
+        PokeGroupMemberUseCase(repository)
     }
 
     val deleteGroupRoutineUseCase: DeleteGroupRoutineUseCase by lazy {

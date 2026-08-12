@@ -34,6 +34,7 @@ import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationRead
 import com.li_routi.core.domain.grouproutine.LeaveGroupResult
 import com.li_routi.core.domain.grouproutine.NewGroupCategory
 import com.li_routi.core.domain.grouproutine.NewGroupRoutine
+import com.li_routi.core.domain.grouproutine.ParticipatingGroup
 import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
 import com.li_routi.core.domain.grouproutine.UnreadGroupRoutineVerificationFeed
 import com.google.gson.Gson
@@ -75,6 +76,10 @@ class GroupRoutineRepositoryImpl(
     }
 
     // 실서버로 확인해보니 생성/수정 요청 모양이 똑같음(스웨거 문서랑 다름)
+    override suspend fun getParticipatingGroups(): ResultState<List<ParticipatingGroup>> = safeApiCall {
+        api.getParticipatingGroups().unwrap().toDomain()
+    }
+
     override suspend fun createGroupRoutine(
         groupId: Long,
         categoryId: Long,
@@ -173,6 +178,10 @@ class GroupRoutineRepositoryImpl(
 
     override suspend fun kickGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {
         api.kickMember(groupId = groupId, targetMemberId = targetMemberId).ensureSuccess()
+    }
+
+    override suspend fun pokeGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {
+        api.pokeMember(groupId = groupId, targetMemberId = targetMemberId).ensureSuccess()
     }
 
     override suspend fun deleteGroupRoutine(groupId: Long, routineId: Long): ResultState<Unit> = safeApiCall {

@@ -1,5 +1,6 @@
-package com.li_routi.feature.grouproutine.screen
+﻿package com.li_routi.feature.grouproutine.screen
 
+import android.view.WindowManager
 import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
@@ -64,6 +65,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,6 +79,7 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.contentDescription
@@ -91,6 +94,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.compose.ui.window.DialogWindowProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
@@ -100,6 +104,8 @@ import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
+import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
+import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
 import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
 import com.li_routi.core.designsystem.component.LiroutiDaySelector
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
@@ -211,11 +217,13 @@ fun GroupRoutineRoute(
         onCertificationMemberClick = viewModel::onCertificationMemberClick,
         onCertificationSummaryClick = viewModel::onCertificationSummaryClick,
         onCertificationLikeClick = viewModel::onCertificationLikeClick,
+        onCertificationDisappointmentClick = viewModel::onCertificationDisappointmentClick,
         onDismissNewCertificationDialog = viewModel::onDismissNewCertificationDialog,
         onNewCertificationDisappointClick = viewModel::onNewCertificationDisappointClick,
         onNewCertificationLikeClick = viewModel::onNewCertificationLikeClick,
         onMemberClick = viewModel::onMemberClick,
         onDismissMemberDialog = viewModel::onDismissMemberDialog,
+        onPokeMemberClick = viewModel::onPokeMemberClick,
         onChatClick = viewModel::onChatClick,
         onChatMessageChange = viewModel::onChatMessageChange,
         onChatSendClick = viewModel::onChatSendClick,
@@ -294,11 +302,13 @@ private fun GroupRoutineScreen(
     onCertificationMemberClick: (Long?) -> Unit,
     onCertificationSummaryClick: () -> Unit,
     onCertificationLikeClick: (Long, Boolean) -> Unit,
+    onCertificationDisappointmentClick: (Long, Boolean) -> Unit,
     onDismissNewCertificationDialog: () -> Unit,
     onNewCertificationDisappointClick: (Long) -> Unit = {},
     onNewCertificationLikeClick: (Long) -> Unit = {},
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
+    onPokeMemberClick: () -> Unit = {},
     onChatClick: () -> Unit,
     onChatMessageChange: (String) -> Unit,
     onChatSendClick: () -> Unit,
@@ -341,6 +351,7 @@ private fun GroupRoutineScreen(
                 onCertificationSummaryClick = onCertificationSummaryClick,
                 onMemberClick = onMemberClick,
                 onDismissMemberDialog = onDismissMemberDialog,
+                onPokeMemberClick = onPokeMemberClick,
                 onMemberKickClick = onMemberKickClick,
                 onChatClick = onChatClick,
                 onMessageEditClick = onMessageEditClick,
@@ -356,6 +367,7 @@ private fun GroupRoutineScreen(
                 onBackClick = onBackClick,
                 onCertificationMemberClick = onCertificationMemberClick,
                 onCertificationLikeClick = onCertificationLikeClick,
+                onCertificationDisappointmentClick = onCertificationDisappointmentClick,
                 onTabSelected = onTabSelected,
             )
 
@@ -453,46 +465,6 @@ private fun GroupRoutineScreen(
             )
         }
 
-        uiState.actionMessage?.let { message ->
-            LaunchedEffect(message) {
-                delay(4_000)
-                onDismissActionMessage()
-            }
-            Row(
-                modifier = Modifier
-                    .align(Alignment.BottomCenter)
-                    .navigationBarsPadding()
-                    .padding(bottom = 92.dp)
-                    .fillMaxWidth()
-                    .padding(horizontal = 20.dp)
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(Color(0xCC171719))
-                    .padding(horizontal = 16.dp, vertical = 13.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
-            ) {
-                Text(
-                    text = message,
-                    color = Color.White,
-                    style = LiroutiTheme.typography.body3,
-                    modifier = Modifier.weight(1f),
-                )
-                Text(
-                    text = "×",
-                    color = Color.White,
-                    fontSize = 24.sp,
-                    lineHeight = 24.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .sizeIn(minWidth = 48.dp, minHeight = 48.dp)
-                        .semantics { contentDescription = "알림 닫기" }
-                        .clickable(
-                            onClickLabel = "알림 닫기",
-                            onClick = onDismissActionMessage,
-                        ),
-                )
-            }
-        }
     }
 
     if (uiState.isActionSheetVisible) {
@@ -510,9 +482,6 @@ private fun GroupRoutineScreen(
             startTime = uiState.routineDraftStartTime,
             endTime = uiState.routineDraftEndTime,
             repeatDays = uiState.routineDraftRepeatDays,
-            categories = uiState.categories,
-            selectedCategory = uiState.routineDraftCategory,
-            onCategoryClick = onRoutineDraftCategoryClick,
             onDismissRequest = onDismissRoutineSettingSheet,
             onNameChange = onRoutineDraftNameChange,
             onStartTimeChange = onRoutineDraftStartTimeChange,
@@ -609,6 +578,71 @@ private fun GroupRoutineScreen(
             onConfirmClick = onMessageEditConfirmClick,
         )
     }
+
+    uiState.actionMessage?.let { message ->
+        LaunchedEffect(message) {
+            delay(4_000)
+            onDismissActionMessage()
+        }
+        ActionMessageToastDialog(
+            message = message,
+            onDismiss = onDismissActionMessage,
+        )
+    }
+}
+@Composable
+private fun ActionMessageToastDialog(
+    message: String,
+    onDismiss: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismiss,
+        properties = DialogProperties(
+            usePlatformDefaultWidth = false,
+            decorFitsSystemWindows = false,
+        ),
+    ) {
+        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
+        SideEffect {
+            window?.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
+        }
+
+        Box(
+            modifier = Modifier.fillMaxSize(),
+            contentAlignment = Alignment.BottomCenter,
+        ) {
+            Row(
+                modifier = Modifier
+                    .navigationBarsPadding()
+                    .padding(bottom = 92.dp)
+                    .widthIn(max = 332.dp)
+                    .fillMaxWidth()
+                    .height(54.dp)
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(LiroutiTheme.colors.dimmerDefault)
+                    .padding(top = 16.dp, bottom = 16.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                Text(
+                    text = message,
+                    color = Color.White,
+                    style = LiroutiTheme.typography.body3,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(start = 16.dp),
+                )
+                GroupRoutineCloseButton(
+                    onClick = onDismiss,
+                    contentDescription = "알림 닫기",
+                    tint = Color.White,
+                    modifier = Modifier
+                        .padding(end = 16.dp)
+                        .size(20.dp),
+                )
+            }
+        }
+    }
 }
 
 @Composable
@@ -641,15 +675,18 @@ private fun GroupRoutineListScreen(
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
         )
 
-        Box(modifier = Modifier.weight(1f)) {
-            if (uiState.isEmptyState) {
-                GroupRoutineEmptyState(modifier = Modifier.align(Alignment.Center))
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (uiState.routines.isEmpty()) {
+                GroupRoutineEmptyState()
             } else if (uiState.visibleRoutines.isEmpty()) {
                 GroupRoutineEmptyState(
                     message = "검색 결과가 없어요.",
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(top = 180.dp),
+                    modifier = Modifier.fillMaxWidth(),
                 )
             } else {
                 LazyColumn(
@@ -955,15 +992,9 @@ private fun RoutineColorBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                Text(
-                    text = "×",
-                    color = LabelDefault,
-                    fontSize = 24.sp,
-                    lineHeight = 24.sp,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .size(24.dp)
-                        .clickable(onClick = onDismissRequest),
+                GroupRoutineCloseButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.size(24.dp),
                 )
                 Text(
                     text = "삭제",
@@ -1248,7 +1279,7 @@ private fun CreateRoutineOptionRow(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .width(6.dp)
+                .width(4.dp)
                 .fillMaxHeight()
                 .background(categoryColor),
         )
@@ -1339,9 +1370,6 @@ private fun RoutineSettingSheet(
     startTime: String,
     endTime: String,
     repeatDays: Set<String>,
-    categories: List<String>,
-    selectedCategory: String,
-    onCategoryClick: (String) -> Unit,
     onDismissRequest: () -> Unit,
     onNameChange: (String) -> Unit,
     onStartTimeChange: (String) -> Unit,
@@ -1358,11 +1386,9 @@ private fun RoutineSettingSheet(
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                Text(
-                    text = "×",
-                    color = LabelDefault,
-                    fontSize = 28.sp,
-                    modifier = Modifier.clickable(onClick = onDismissRequest),
+                GroupRoutineCloseButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.size(28.dp),
                 )
                 Spacer(modifier = Modifier.weight(1f))
                 Text(
@@ -1384,22 +1410,6 @@ private fun RoutineSettingSheet(
                     .clip(RoundedCornerShape(4.dp)),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                RoutineSettingExpandableRow(
-                    label = "카테고리",
-                    value = selectedCategory.ifBlank { "선택 안 함" },
-                    expanded = expandedSection == RoutineSettingSection.Category,
-                    onClick = {
-                        expandedSection = if (expandedSection == RoutineSettingSection.Category) null else RoutineSettingSection.Category
-                    },
-                )
-                if (expandedSection == RoutineSettingSection.Category) {
-                    RoutineSettingDivider()
-                    RoutineCategoryRow(
-                        categories = categories,
-                        selectedCategory = selectedCategory,
-                        onCategoryClick = onCategoryClick,
-                    )
-                }
                 RoutineSettingExpandableRow(
                     label = "시작시간",
                     value = displayRoutineTime(startTime),
@@ -1449,7 +1459,6 @@ private fun RoutineSettingSheet(
 }
 
 private enum class RoutineSettingSection {
-    Category,
     StartTime,
     EndTime,
     Repeat,
@@ -1474,11 +1483,10 @@ private fun BasicInputBox(
         },
         trailingIcon = {
             if (showClear) {
-                Text(
-                    text = "×",
-                    color = LabelInfo,
-                    fontSize = 18.sp,
-                    modifier = Modifier.clickable { onValueChange("") },
+                GroupRoutineCloseButton(
+                    onClick = { onValueChange("") },
+                    tint = LabelInfo,
+                    modifier = Modifier.size(18.dp),
                 )
             }
         },
@@ -1830,7 +1838,10 @@ private fun DangerConfirmDialog(
                     style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.weight(1f),
                 )
-                Text(text = "×", color = LabelDefault, fontSize = 28.sp, modifier = Modifier.clickable(onClick = onDismissRequest))
+                GroupRoutineCloseButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.size(28.dp),
+                )
             }
             Text(
                 text = description,
@@ -1893,11 +1904,9 @@ private fun NewCertificationDialog(
                     style = LiroutiTheme.typography.heading2.copy(fontWeight = FontWeight.Bold),
                     modifier = Modifier.weight(1f),
                 )
-                Text(
-                    text = "×",
-                    color = LabelDefault,
-                    fontSize = 28.sp,
-                    modifier = Modifier.clickable(onClick = onDismissRequest),
+                GroupRoutineCloseButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.size(28.dp),
                 )
             }
             HorizontalPager(state = pagerState) {
@@ -1978,7 +1987,10 @@ private fun MessageEditSheet(
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(modifier = Modifier.fillMaxWidth()) {
                 Spacer(modifier = Modifier.weight(1f))
-                Text(text = "×", color = LabelDefault, fontSize = 28.sp, modifier = Modifier.clickable(onClick = onDismissRequest))
+                GroupRoutineCloseButton(
+                    onClick = onDismissRequest,
+                    modifier = Modifier.size(28.dp),
+                )
             }
             Text(
                 text = "상태 메시지",
@@ -2235,6 +2247,7 @@ private fun GroupRoutineDetailScreen(
     onCertificationSummaryClick: () -> Unit,
     onMemberClick: (Long) -> Unit,
     onDismissMemberDialog: () -> Unit,
+    onPokeMemberClick: () -> Unit,
     onMemberKickClick: () -> Unit,
     onChatClick: () -> Unit,
     onMessageEditClick: () -> Unit,
@@ -2299,7 +2312,7 @@ private fun GroupRoutineDetailScreen(
             // 방장만 내보낼 수 있고, 자기 자신은 못 내보냄
             canKick = uiState.isConfirmedOwner && !member.isMe,
             onDismissRequest = onDismissMemberDialog,
-            onPokeClick = onDismissMemberDialog,
+            onPokeClick = onPokeMemberClick,
             onKickClick = onMemberKickClick,
         )
     }
@@ -2361,7 +2374,11 @@ private fun DetailMemberSection(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextAction(label = "메시지 수정", onClick = onMessageEditClick)
+            TextAction(
+                label = "메시지 수정",
+                iconRes = DesignSystemR.drawable.edit,
+                onClick = onMessageEditClick,
+            )
             Box(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
@@ -2369,7 +2386,11 @@ private fun DetailMemberSection(
                     .height(12.dp)
                     .background(BorderDefault),
             )
-            TextAction(label = "초대코드", onClick = onInviteCodeClick)
+            TextAction(
+                label = "초대코드",
+                iconRes = DesignSystemR.drawable.copy,
+                onClick = onInviteCodeClick,
+            )
         }
     }
 }
@@ -2574,7 +2595,7 @@ private fun DetailRoutineTodoRow(
         Box(
             modifier = Modifier
                 .align(Alignment.CenterStart)
-                .width(6.dp)
+                .width(4.dp)
                 .fillMaxHeight()
                 .background(routineCategoryColor),
         )
@@ -2653,6 +2674,7 @@ private fun CertificationCollectionScreen(
     onBackClick: () -> Unit,
     onCertificationMemberClick: (Long?) -> Unit,
     onCertificationLikeClick: (Long, Boolean) -> Unit,
+    onCertificationDisappointmentClick: (Long, Boolean) -> Unit,
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -2680,6 +2702,7 @@ private fun CertificationCollectionScreen(
                         selectedMemberId = uiState.selectedCertificationMemberId,
                         onMemberClick = onCertificationMemberClick,
                         onLikeClick = onCertificationLikeClick,
+                        onDisappointmentClick = onCertificationDisappointmentClick,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
@@ -3249,7 +3272,10 @@ private fun SettingsNavigationRow(
             style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.weight(1f),
         )
-        Text(text = ">", color = LabelDefault, fontSize = 22.sp)
+        LiroutiChevronRightIcon(
+            modifier = Modifier.size(24.dp),
+            color = LabelDefault,
+        )
     }
 }
 
@@ -3450,7 +3476,10 @@ private fun CertificationSummaryCard(
             )
             Text(text = streakLabel, color = LabelInfo, style = LiroutiTheme.typography.caption)
         }
-        Text(text = ">", color = LabelDefault, fontSize = 20.sp)
+        LiroutiChevronRightIcon(
+            modifier = Modifier.size(24.dp),
+            color = LabelDefault,
+        )
     }
 }
 
@@ -3494,7 +3523,11 @@ private fun GroupMemberCard(
             horizontalArrangement = Arrangement.Center,
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            TextAction(label = "메시지 수정", onClick = onMessageEditClick)
+            TextAction(
+                label = "메시지 수정",
+                iconRes = DesignSystemR.drawable.edit,
+                onClick = onMessageEditClick,
+            )
             Box(
                 modifier = Modifier
                     .padding(horizontal = 16.dp)
@@ -3502,7 +3535,11 @@ private fun GroupMemberCard(
                     .height(12.dp)
                     .background(BorderDefault),
             )
-            TextAction(label = "초대코드", onClick = onInviteCodeClick)
+            TextAction(
+                label = "초대코드",
+                iconRes = DesignSystemR.drawable.copy,
+                onClick = onInviteCodeClick,
+            )
         }
     }
 }
@@ -3631,27 +3668,37 @@ private fun MemberProfileDialog(
         Surface(
             shape = RoundedCornerShape(6.dp),
             color = Color.White,
-            modifier = Modifier.width(320.dp),
+            modifier = Modifier
+                .width(320.dp)
+                .then(if (member.isMe) Modifier.height(272.dp) else Modifier),
         ) {
             Column(
                 modifier = Modifier.padding(24.dp),
-                verticalArrangement = Arrangement.spacedBy(20.dp),
+                verticalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     horizontalArrangement = Arrangement.End,
                 ) {
                     Text(
-                        text = "×",
+                        text = "\u00D7",
                         color = LabelDefault,
                         fontSize = 24.sp,
-                        modifier = Modifier.clickable(onClick = onDismissRequest),
+                        lineHeight = 24.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .size(24.dp)
+                            .semantics { contentDescription = "\uD504\uB85C\uD544 \uB2EB\uAE30" }
+                            .clickable(
+                                onClickLabel = "\uD504\uB85C\uD544 \uB2EB\uAE30",
+                                onClick = onDismissRequest,
+                            ),
                     )
                 }
                 Row(
                     modifier = Modifier.fillMaxWidth(),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(24.dp),
+                    horizontalArrangement = Arrangement.spacedBy(14.dp),
                 ) {
                     Box(
                         modifier = Modifier
@@ -3670,24 +3717,37 @@ private fun MemberProfileDialog(
                         modifier = Modifier.weight(1f),
                         verticalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
-                        Text(
-                            text = member.name,
-                            color = LabelDefault,
-                            style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
-                            maxLines = 1,
-                            overflow = TextOverflow.Ellipsis,
-                        )
-                        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(4.dp),
+                        ) {
                             Text(
-                                text = "얼리버드",
-                                color = Color(0xFFD26D00),
-                                style = LiroutiTheme.typography.caption,
-                                modifier = Modifier
-                                    .clip(RoundedCornerShape(6.dp))
-                                    .background(Color(0xFFFFDDB8))
-                                    .padding(horizontal = 6.dp, vertical = 3.dp),
+                                text = member.name,
+                                color = LabelDefault,
+                                style = LiroutiTheme.typography.body2Long.copy(fontWeight = FontWeight.Bold),
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
                             )
-                            Text(text = "🔥${member.streak}", color = DangerBase, fontSize = 10.sp)
+                            if (member.isMe) {
+                                StatusBadge(label = "\uB098", completed = false)
+                            }
+                        }
+                        if (!member.isMe) {
+                            Row(
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                            ) {
+                                Text(
+                                    text = "\uC5BC\uB9AC\uBC84\uB4DC",
+                                    color = Color(0xFFD26D00),
+                                    style = LiroutiTheme.typography.caption,
+                                    modifier = Modifier
+                                        .clip(RoundedCornerShape(6.dp))
+                                        .background(Color(0xFFFFDDB8))
+                                        .padding(horizontal = 6.dp, vertical = 3.dp),
+                                )
+                                Text(text = "\uD83D\uDD25${member.streak}", color = DangerBase, fontSize = 10.sp)
+                            }
                         }
                     }
                 }
@@ -3699,19 +3759,27 @@ private fun MemberProfileDialog(
                         .padding(20.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    MemberProfileInfoRow(label = "오늘 루틴 진행", value = "${member.completedCount}/${member.totalCount} 완료")
-                    MemberProfileInfoRow(label = "연속 달성", value = "${member.streak}일 째")
+                    MemberProfileInfoRow(
+                        label = "\uC624\uB298 \uB8E8\uD2F4 \uC9C4\uD589\uB3C4",
+                        value = "${member.completedCount}/${member.totalCount} \uC644\uB8CC",
+                    )
+                    MemberProfileInfoRow(label = "\uC5F0\uC18D \uB2EC\uC131", value = "${member.streak}\uC77C \uC9F8")
                     Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                        ReactionBadge(text = "좋아요 ${member.totalLikeCount}")
-                        ReactionBadge(text = "아쉬워요 3")
-                        ReactionBadge(text = "쿡쿡 7")
+                        ReactionBadge(text = "\uC88B\uC544\uC694 ${member.totalLikeCount}")
+                        ReactionBadge(text = "\uC544\uC26C\uC6CC\uC694 ${member.totalDisappointmentCount}")
+                        ReactionBadge(text = "\uCFE1\uCFE1 ${member.pokeCount}")
                     }
                 }
-                PrimaryButton(text = "쿡쿡 찔러보기", enabled = true, onClick = onPokeClick)
-                // 디자인이 아직 없어서 임시로 붙여둔 내보내기 액션 — 시안 나오면 교체 필요함
-                if (canKick) {
+                if (!member.isMe) {
+                    PrimaryButton(
+                        text = "\uCFE1\uCFE1 \uCC14\uB7EC\uBCF4\uAE30",
+                        enabled = true,
+                        onClick = onPokeClick,
+                    )
+                }
+                if (!member.isMe && canKick) {
                     Text(
-                        text = "내보내기",
+                        text = "\uB0B4\uBCF4\uB0B4\uAE30",
                         color = DangerBase,
                         style = LiroutiTheme.typography.body3,
                         modifier = Modifier
@@ -3726,7 +3794,6 @@ private fun MemberProfileDialog(
         }
     }
 }
-
 @Composable
 private fun MemberProfileInfoRow(label: String, value: String) {
     Row(
@@ -3867,6 +3934,7 @@ private fun CertificationFeedCard(
     selectedMemberId: Long?,
     onMemberClick: (Long?) -> Unit,
     onLikeClick: (Long, Boolean) -> Unit,
+    onDisappointmentClick: (Long, Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -3894,6 +3962,7 @@ private fun CertificationFeedCard(
             CertificationPostItem(
                 post = post,
                 onLikeClick = { onLikeClick(post.id, post.isLiked) },
+                onDisappointmentClick = { onDisappointmentClick(post.id, post.isDisappointed) },
             )
         }
     }
@@ -3945,6 +4014,7 @@ private fun FeedTab(
 private fun CertificationPostItem(
     post: CertificationPostUiModel,
     onLikeClick: () -> Unit,
+    onDisappointmentClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -4006,6 +4076,25 @@ private fun CertificationPostItem(
                     style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
                 )
             }
+            Row(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .clickable(onClick = onDisappointmentClick)
+                    .padding(end = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                Text(
+                    text = if (post.isDisappointed) "\uD83D\uDC94" else "\u2661",
+                    color = LabelDefault,
+                    fontSize = 15.sp,
+                )
+                Text(
+                    text = "\uC544\uC26C\uC6CC\uC694 ${post.disappointmentCount}",
+                    color = LabelDefault,
+                    style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
+                )
+            }
             Spacer(modifier = Modifier.weight(1f))
             Text(
                 text = if (post.isMine) "내 인증" else "멤버 인증",
@@ -4039,16 +4128,48 @@ private fun RoutineIconBox(
 @Composable
 private fun TextAction(
     label: String,
+    @DrawableRes iconRes: Int? = null,
     onClick: () -> Unit = {},
 ) {
-    Text(
-        text = label,
-        color = LabelSub,
-        style = LiroutiTheme.typography.body2Long,
+    Row(
         modifier = Modifier
             .clip(RoundedCornerShape(4.dp))
             .clickable(onClick = onClick)
             .padding(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
+        if (iconRes != null) {
+            Icon(
+                painter = painterResource(id = iconRes),
+                contentDescription = null,
+                tint = LabelSub,
+                modifier = Modifier.size(18.dp),
+            )
+        }
+        Text(
+            text = label,
+            color = LabelSub,
+            style = LiroutiTheme.typography.body2Long,
+        )
+    }
+}
+
+@Composable
+private fun GroupRoutineCloseButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    tint: Color = LabelDefault,
+    contentDescription: String = "닫기",
+) {
+    Icon(
+        painter = painterResource(id = R.drawable.ic_group_routine_close),
+        contentDescription = contentDescription,
+        tint = tint,
+        modifier = modifier.clickable(
+            onClickLabel = contentDescription,
+            onClick = onClick,
+        ),
     )
 }
 
@@ -4083,13 +4204,12 @@ private fun GroupRoutineTopBar(
                 .padding(horizontal = 16.dp),
         ) {
             if (showBack) {
-                Text(
-                    text = "<",
-                    color = LabelDefault,
-                    fontSize = 24.sp,
+                LiroutiChevronLeftIcon(
                     modifier = Modifier
                         .align(Alignment.CenterStart)
+                        .size(24.dp)
                         .clickable(onClick = onBackClick),
+                    color = LabelDefault,
                 )
             }
             Text(
@@ -4104,18 +4224,18 @@ private fun GroupRoutineTopBar(
                     contentDescription = "방 만들기",
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .size(24.dp)
+                        .padding(end = 16.dp)
+                        .size(20.dp)
                         .clickable(onClick = onAddClick),
+                    colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
                 )
             }
             if (showClose) {
-                Text(
-                    text = "×",
-                    color = LabelDefault,
-                    fontSize = 22.sp,
+                GroupRoutineCloseButton(
+                    onClick = onCloseClick,
                     modifier = Modifier
                         .align(Alignment.CenterEnd)
-                        .clickable(onClick = onCloseClick),
+                        .size(22.dp),
                 )
             }
               if (showActions) {
@@ -4345,6 +4465,7 @@ private fun GroupRoutineListPreview() {
             onCertificationMemberClick = {},
             onCertificationSummaryClick = {},
             onCertificationLikeClick = { _, _ -> },
+            onCertificationDisappointmentClick = { _, _ -> },
             onDismissNewCertificationDialog = {},
             onMemberClick = {},
             onDismissMemberDialog = {},
@@ -4426,6 +4547,7 @@ private fun CreateRoomNamePreview() {
             onCertificationMemberClick = {},
             onCertificationSummaryClick = {},
             onCertificationLikeClick = { _, _ -> },
+            onCertificationDisappointmentClick = { _, _ -> },
             onDismissNewCertificationDialog = {},
             onMemberClick = {},
             onDismissMemberDialog = {},
@@ -4452,3 +4574,4 @@ private fun CreateRoomNamePreview() {
         )
     }
 }
+
