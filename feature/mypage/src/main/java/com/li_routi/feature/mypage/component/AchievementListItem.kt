@@ -44,6 +44,7 @@ data class AchievementUiModel(
     val progressLabel: String,
     val progress: Float,
     val rewardText: String? = null,
+    val isInProgress: Boolean = false,
 )
 
 private val TitleTextStyle = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 22.sp, letterSpacing = (-0.35).sp)

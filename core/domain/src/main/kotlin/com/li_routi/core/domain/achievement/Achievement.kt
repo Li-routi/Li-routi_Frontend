@@ -1,0 +1,31 @@
+package com.li_routi.core.domain.achievement
+
+/** GET /api/achievements 조회 결과 — 카테고리(rare/epic/unique)별로 묶인 업적 목록. */
+data class AchievementCategoryGroup(
+    val category: AchievementCategory,
+    val achievements: List<Achievement>,
+)
+
+/** [UNKNOWN]은 서버가 새 카테고리를 추가했을 때를 대비한 폴백이다. */
+enum class AchievementCategory { RARE, EPIC, UNIQUE, UNKNOWN }
+
+/**
+ * 업적 한 건. [status]는 문서에 진행 전 상태(`IN_PROGRESS`)만 명시돼 있어 도메인에서도 문자열 그대로
+ * 둔다 — [isInProgress]로만 분기하면 달성/보상수령 등 나머지 상태의 정확한 이름을 몰라도 안전하다.
+ */
+data class Achievement(
+    val achievementId: Long,
+    val code: String,
+    val name: String,
+    val conditionDesc: String,
+    val status: String,
+    val progressCurrent: Int,
+    val progressTarget: Int,
+    val topazReward: Int,
+    val badgeYn: Boolean,
+    val limitedOutfitYn: Boolean,
+    val achievedAt: String?,
+    val claimedAt: String?,
+) {
+    val isInProgress: Boolean get() = status == "IN_PROGRESS"
+}
