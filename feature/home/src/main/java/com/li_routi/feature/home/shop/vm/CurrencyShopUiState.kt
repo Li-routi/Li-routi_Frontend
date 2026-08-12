@@ -1,8 +1,6 @@
 package com.li_routi.feature.home.shop.vm
 
 import com.li_routi.feature.home.shop.component.CurrencyProductUiModel
-import com.li_routi.feature.home.shop.component.SampleBlueGemProducts
-import com.li_routi.feature.home.shop.component.SampleOrangeGemProducts
 
 /**
  * 재화 구매 화면 UI 상태.
@@ -10,13 +8,15 @@ import com.li_routi.feature.home.shop.component.SampleOrangeGemProducts
  * - [selectedProductId]: 첫 탭으로 선택된 상품 (파란 테두리)
  * - [chargeDialogProductId]: 같은 상품을 한 번 더 탭했을 때 충전 팝업에 표시할 상품
  *
- * 주황/파란 탭 UI 선택은 Screen 로컬. 목록은 탭별 샘플(또는 이후 API)로 분리한다.
+ * 주황/파란 탭 UI 선택은 Screen 로컬. 목록은 각각 교환/충전 상품 API로 채운다.
+ * 실패하면 빈 목록이다 — 샘플 id에는 exchange_/charge_ 접두사가 없어서 남아 있으면
+ * 교환을 현금 결제로 오인한다.
  */
 data class CurrencyShopUiState(
     val coinBalance: Int = 450,
     val gemBalance: Int = 30,
-    val orangeProducts: List<CurrencyProductUiModel> = SampleOrangeGemProducts,
-    val blueProducts: List<CurrencyProductUiModel> = SampleBlueGemProducts,
+    val orangeProducts: List<CurrencyProductUiModel> = emptyList(),
+    val blueProducts: List<CurrencyProductUiModel> = emptyList(),
     val selectedProductId: String? = null,
     val chargeDialogProductId: String? = null,
     val isLoading: Boolean = false,

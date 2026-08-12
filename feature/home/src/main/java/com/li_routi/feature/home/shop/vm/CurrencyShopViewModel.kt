@@ -14,6 +14,7 @@ import com.li_routi.feature.home.shop.navigation.CurrencyShopScreenActions
 import java.text.NumberFormat
 import java.util.Locale
 import java.util.UUID
+import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -58,8 +59,11 @@ class CurrencyShopViewModel(
     fun loadProducts() {
         _uiState.update { it.copy(isLoading = true) }
         viewModelScope.launch {
-            val exchange = getExchangeProductsUseCase()
-            val charge = getChargeProductsUseCase()
+            // 두 조회가 서로 독립이라 순차로 기다릴 이유가 없음
+            val exchangeDeferred = async { getExchangeProductsUseCase() }
+            val chargeDeferred = async { getChargeProductsUseCase() }
+            val exchange = exchangeDeferred.await()
+            val charge = chargeDeferred.await()
             _uiState.update { state ->
                 state.copy(
                     isLoading = false,
