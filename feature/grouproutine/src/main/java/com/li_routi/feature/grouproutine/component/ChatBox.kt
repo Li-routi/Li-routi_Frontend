@@ -27,6 +27,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
@@ -34,7 +35,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.li_routi.core.designsystem.foundation.color.ChatDateDividerBackground
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
 import java.time.Instant
@@ -42,6 +42,8 @@ import java.time.LocalDate
 import java.time.ZoneId
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
+
+private val ChatBubbleTextColor = Color(0xFF000000)
 
 private val LeftMargin = 16.dp
 private val AvatarSize = 40.dp
@@ -102,6 +104,7 @@ fun ChatMessageUiModel.isNewDate(previous: ChatMessageUiModel?): Boolean {
 }
 
 private val ChatDateDividerShape = RoundedCornerShape(6.dp)
+private val ChatDateDividerBackground = Color(0xFF5D5D5D).copy(alpha = 0.60f)
 
 // CSS padding: 8px 8px 8px 12px (top right bottom left)
 private val ChatDateDividerPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)
@@ -135,7 +138,7 @@ fun ChatDateDivider(sentAtMillis: Long, modifier: Modifier = Modifier) {
         Text(
             text = "${date.year}년 ${date.monthValue}월 ${date.dayOfMonth}일",
             style = LiroutiTheme.typography.captionMedium,
-            color = LiroutiTheme.colors.labelReverse,
+            color = Color.White,
             modifier = Modifier
                 .clip(ChatDateDividerShape)
                 .background(ChatDateDividerBackground)
@@ -196,7 +199,7 @@ fun ChatBox(
                     modifier = Modifier
                         .size(AvatarSize)
                         .clip(CircleShape)
-                        .background(LiroutiTheme.colors.backgroundDefault),
+                        .background(Color.White),
                 )
                 Spacer(modifier = Modifier.width(AvatarToNicknameGap))
                 Box(
@@ -269,7 +272,7 @@ fun ChatBox(
 private fun ChatBubble(text: String, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        color = LiroutiTheme.colors.labelDefault,
+        color = ChatBubbleTextColor,
         style = LiroutiTheme.typography.body3,
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))

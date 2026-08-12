@@ -85,8 +85,5 @@ val CategoryBlackBorder = Neutral0
 // 그룹 루틴 화면 전용 일회성 장식 색상. 다크모드 값이 확정되지 않아 라이트값 그대로 유지.
 val MemberHeroGradientEnd = Color(0x33CFE4FF)
 val ChatSendBackground = Color(0xFFD6E8FF)
-val ChatBarBackground = Color(0xFFD9D9D9)
-val ChatDateDividerBackground = Color(0x995D5D5D)
-val ChatMessageAreaBackground = Color(0xFFE8EAED)
 val EarlyBirdText = Color(0xFFD26D00)
 val EarlyBirdBackground = Color(0xFFFFDDB8)
