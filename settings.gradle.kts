@@ -34,7 +34,6 @@ include(":core:data")
 include(":core:design-system")
 
 include(":feature:login")
-include(":feature:onboarding")
 include(":feature:home")
 include(":feature:mypage")
 include(":feature:challenge")
