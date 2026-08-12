@@ -33,8 +33,10 @@ import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.designsystem.component.LiroutiClockTime
 import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.feature.home.vm.RegisteredCustomIdPrefix
 import com.li_routi.feature.home.vm.RoutineManageUiEvent
 import com.li_routi.feature.home.vm.RoutineManageViewModel
+import com.li_routi.feature.home.vm.toDayIndexes
 
 /** LiroutiDaySelector 인덱스: 0=일 … 6=토 */
 private val DayIndexToApi = listOf(
@@ -70,6 +72,7 @@ fun RoutineManageRoute(
             getMemberRoutinesUseCase = RoutineContainer.getMemberRoutinesUseCase,
             getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase,
             createMemberRoutinesUseCase = RoutineContainer.createMemberRoutinesUseCase,
+            updateMemberRoutineUseCase = RoutineContainer.updateMemberRoutineUseCase,
             deleteMemberRoutineUseCase = RoutineContainer.deleteMemberRoutineUseCase,
         )
     },
@@ -85,6 +88,8 @@ fun RoutineManageRoute(
     var editingCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
     var categoryName by rememberSaveable { mutableStateOf("") }
     var categoryColor by rememberSaveable { mutableStateOf<CategoryColor?>(null) }
+    // null이면 새 커스텀 루틴 추가, 아니면 이미 등록된 커스텀 루틴(routineId) 수정 중.
+    var editingRoutineId by rememberSaveable { mutableStateOf<Long?>(null) }
     var routineName by rememberSaveable { mutableStateOf("") }
     var selectedDays by rememberSaveable { mutableStateOf(emptySet<Int>()) }
     var startTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
@@ -108,6 +113,7 @@ fun RoutineManageRoute(
     fun closeRoutineSheet() {
         showRoutineSheet = false
         showSheetDeleteDialog = false
+        editingRoutineId = null
         routineName = ""
         selectedDays = emptySet()
         startTime = LiroutiClockTime.DefaultMorning
@@ -148,6 +154,9 @@ fun RoutineManageRoute(
                     showCategoryDeleteDialog = false
                     editingCategoryId = null
                 }
+                RoutineManageUiEvent.CustomRoutineSaved,
+                RoutineManageUiEvent.CustomRoutineDeleted,
+                -> closeRoutineSheet()
             }
         }
     }
@@ -185,6 +194,7 @@ fun RoutineManageRoute(
             allSelected = uiState.allSelectableSelected,
             onSelectAllChange = viewModel::onSelectAllChange,
             onAddRoutineClick = {
+                editingRoutineId = null
                 routineName = ""
                 selectedDays = emptySet()
                 startTime = LiroutiClockTime.DefaultMorning
@@ -196,6 +206,19 @@ fun RoutineManageRoute(
             onPrimaryButtonClick = viewModel::onSubmit,
             onBackClick = ::requestExit,
             onCloseClick = ::requestExit,
+            warningText = uiState.overLimitMessage,
+            onItemClick = { id ->
+                val routineId = id.removePrefix(RegisteredCustomIdPrefix).toLongOrNull()
+                val routine = uiState.registeredCustomRoutines.firstOrNull { it.routineId == routineId }
+                if (routine != null) {
+                    editingRoutineId = routine.routineId
+                    routineName = routine.name
+                    selectedDays = routine.toDayIndexes()
+                    startTime = LiroutiClockTime.DefaultMorning
+                    endTime = LiroutiClockTime.fromApiHHmm(routine.endTime ?: "23:59")
+                    showRoutineSheet = true
+                }
+            },
         )
 
         if (uiState.isLoading) {
@@ -283,16 +306,28 @@ fun RoutineManageRoute(
             },
             showAlarmSection = false,
             showRoomInfo = false,
+            hasDraft = hasRoutineSheetDraft,
             onDeleteClick = { showSheetDeleteDialog = true },
             onConfirm = {
-                val accepted = viewModel.onAddCustomRoutine(
-                    name = routineName,
-                    categoryId = uiState.selectedCategoryId,
-                    endTime = endTime.toApiHHmm(),
-                    repeatDays = selectedDays.toApiRepeatDays(),
-                )
-                if (accepted) {
-                    closeRoutineSheet()
+                val routineId = editingRoutineId
+                if (routineId == null) {
+                    val accepted = viewModel.onAddCustomRoutine(
+                        name = routineName,
+                        categoryId = uiState.selectedCategoryId,
+                        endTime = endTime.toApiHHmm(),
+                        repeatDays = selectedDays.toApiRepeatDays(),
+                    )
+                    if (accepted) {
+                        closeRoutineSheet()
+                    }
+                } else {
+                    // 성공 시 CustomRoutineSaved 이벤트에서 closeRoutineSheet()가 불린다.
+                    viewModel.onUpdateCustomRoutine(
+                        routineId = routineId,
+                        name = routineName,
+                        endTime = endTime.toApiHHmm(),
+                        repeatDays = selectedDays.toApiRepeatDays(),
+                    )
                 }
             },
             onDismissRequest = ::requestRoutineSheetDismiss,
@@ -304,7 +339,13 @@ fun RoutineManageRoute(
             onDismissRequest = { showSheetDeleteDialog = false },
             onConfirmDelete = {
                 showSheetDeleteDialog = false
-                closeRoutineSheet()
+                val routineId = editingRoutineId
+                if (routineId == null) {
+                    closeRoutineSheet()
+                } else {
+                    // 성공 시 CustomRoutineDeleted 이벤트에서 closeRoutineSheet()가 불린다.
+                    viewModel.onDeleteCustomRoutine(routineId)
+                }
             },
         )
     }

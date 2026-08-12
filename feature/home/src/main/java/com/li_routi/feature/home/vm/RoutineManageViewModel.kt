@@ -10,6 +10,7 @@ import com.li_routi.core.domain.home.GetHomeSummaryUseCase
 import com.li_routi.core.domain.routine.CreateMemberRoutinesUseCase
 import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.CreateRoutineItem
+import com.li_routi.core.domain.routine.CreatedRoutine
 import com.li_routi.core.domain.routine.DeleteMemberRoutineUseCase
 import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.GetMemberRoutinesUseCase
@@ -18,6 +19,8 @@ import com.li_routi.core.domain.routine.GetRoutineTemplatesUseCase
 import com.li_routi.core.domain.routine.RoutineCategory
 import com.li_routi.core.domain.routine.RoutineCategoryName
 import com.li_routi.core.domain.routine.RoutineTemplate
+import com.li_routi.core.domain.routine.UpdateMemberRoutine
+import com.li_routi.core.domain.routine.UpdateMemberRoutineUseCase
 import com.li_routi.core.domain.routine.UpdateRoutineCategoryUseCase
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -30,6 +33,14 @@ import kotlinx.coroutines.launch
 
 private const val AllCategoryLabel = "전체"
 private const val CustomIdPrefix = "custom_"
+/** 이미 등록된 커스텀 루틴(templateId == null)을 체크리스트에 표시할 때 쓰는 id 접두사. */
+const val RegisteredCustomIdPrefix = "routine_"
+
+/**
+ * 서버 규칙(POST /api/routines): "활성 루틴은 기존 개수와 요청 개수를 합해 최대 30개까지 등록할 수
+ * 있습니다" (ROUTINE409_1). 초과분은 배치 전체가 롤백되므로, 제출 전에 클라이언트에서 미리 막는다.
+ */
+private const val MaxActiveRoutines = 30
 
 /** 삭제 대상 해석용 — GET /routines · GET /home 양쪽에서 모은 등록 루틴. */
 private data class RegisteredRoutineRef(
@@ -46,7 +57,11 @@ private data class DeleteTarget(
 )
 
 private sealed interface RegisteredLoadResult {
-    data class Ok(val refs: List<RegisteredRoutineRef>) : RegisteredLoadResult
+    data class Ok(
+        val refs: List<RegisteredRoutineRef>,
+        /** GET /api/routines 원본 — 커스텀 루틴 수정 시트 프리필용(repeatDays/endTime 포함). */
+        val memberRoutines: List<CreatedRoutine>,
+    ) : RegisteredLoadResult
     data class Failed(val message: String) : RegisteredLoadResult
 }
 
@@ -54,6 +69,8 @@ data class RoutineManageUiState(
     val isLoading: Boolean = true,
     val isSubmitting: Boolean = false,
     val isMutatingCategory: Boolean = false,
+    /** 이미 등록된 커스텀 루틴 수정/삭제 진행 중 여부(수정 시트의 확인 버튼 중복 탭 방지용). */
+    val isMutatingCustomRoutine: Boolean = false,
     val categories: List<RoutineCategory> = emptyList(),
     val addableCount: Int = 0,
     val selectedCategoryName: String = AllCategoryLabel,
@@ -74,6 +91,10 @@ data class RoutineManageUiState(
     /** 사용자가 명시적으로 체크 해제한 id — 템플릿 재로드 시 다시 잠기지 않게 한다. */
     val userUncheckedIds: Set<String> = emptySet(),
     val customItems: List<CreateRoutineItem> = emptyList(),
+    /** 이미 등록된 커스텀 루틴(templateId == null) — 체크리스트에 표시하고 탭하면 수정 시트를 연다. */
+    val registeredCustomRoutines: List<CreatedRoutine> = emptyList(),
+    /** 이번 화면 진입 시점 기준 이미 등록돼 있던 활성 루틴 수 (30개 한도 계산용). */
+    val existingActiveRoutineCount: Int = 0,
     val errorMessage: String? = null,
     val categoryNameError: String? = null,
 ) {
@@ -121,7 +142,19 @@ data class RoutineManageUiState(
                     selectable = true,
                 )
             }
-            return (templateItems + customs).sortedByDescending { it.checked }
+            // 이미 등록된 커스텀 루틴 — 새로 만드는 항목이 아니므로 체크박스는 없고, 탭하면 수정 시트가 연다.
+            val registered = registeredCustomRoutines.map { routine ->
+                RoutineChecklistItem(
+                    id = "$RegisteredCustomIdPrefix${routine.routineId}",
+                    name = routine.name,
+                    checked = true,
+                    category = routine.categoryName,
+                    selectable = false,
+                    showCheckbox = false,
+                    editable = true,
+                )
+            }
+            return (templateItems + customs + registered).sortedByDescending { it.checked }
         }
 
     val allSelectableSelected: Boolean
@@ -131,11 +164,33 @@ data class RoutineManageUiState(
         }
 
     val selectedCount: Int
-        get() = checklistItems.count { it.checked }
+        get() = checklistItems.count { it.showCheckbox && it.checked }
 
-    /** 등록 중이 아니면 완료 버튼 활성 (선택 없어도 탭 가능). */
+    /**
+     * 제출 시 실제로 새로 생성될 개수. [RoutineManageViewModel.buildCreatePayload]와 같은 기준으로 센다
+     * (템플릿 캐시 기준 + 아직 등록되지 않은 것만) — 화면에 보이는 카테고리 밖에서 선택해둔 것도 포함.
+     */
+    val pendingCreateCount: Int
+        get() {
+            val newTemplateCount = templateCache.values.count { template ->
+                template.templateId !in knownAddedTemplateIds &&
+                    template.templateId.toString() in selectedIds
+            }
+            val newCustomCount = customItems.indices.count { "$CustomIdPrefix$it" in selectedIds }
+            return newTemplateCount + newCustomCount
+        }
+
+    /** 기존 + 새로 생성될 개수가 서버 한도(30개)를 넘으면 안내 문구, 아니면 null. */
+    val overLimitMessage: String?
+        get() {
+            val total = existingActiveRoutineCount + pendingCreateCount
+            return "루틴은 최대 ${MaxActiveRoutines}개까지 등록할 수 있어요 (현재 ${total}개 선택됨)"
+                .takeIf { total > MaxActiveRoutines }
+        }
+
+    /** 등록 중이 아니고, 제출하면 30개 한도를 넘지 않을 때만 완료 버튼 활성. */
     val canSubmit: Boolean
-        get() = !isSubmitting
+        get() = !isSubmitting && existingActiveRoutineCount + pendingCreateCount <= MaxActiveRoutines
 
     /**
      * 템플릿 선택·커스텀 추가·이미 등록된 항목 체크 해제 등 이탈 시 확인할 초안 변경.
@@ -154,6 +209,8 @@ sealed interface RoutineManageUiEvent {
     data object SubmitSuccess : RoutineManageUiEvent
     data object CategorySaved : RoutineManageUiEvent
     data object CategoryDeleted : RoutineManageUiEvent
+    data object CustomRoutineSaved : RoutineManageUiEvent
+    data object CustomRoutineDeleted : RoutineManageUiEvent
 }
 
 class RoutineManageViewModel(
@@ -165,6 +222,7 @@ class RoutineManageViewModel(
     private val getMemberRoutinesUseCase: GetMemberRoutinesUseCase,
     private val getHomeSummaryUseCase: GetHomeSummaryUseCase,
     private val createMemberRoutinesUseCase: CreateMemberRoutinesUseCase,
+    private val updateMemberRoutineUseCase: UpdateMemberRoutineUseCase,
     private val deleteMemberRoutineUseCase: DeleteMemberRoutineUseCase,
 ) : BaseViewModel() {
 
@@ -189,9 +247,19 @@ class RoutineManageViewModel(
     fun refresh() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, errorMessage = null) }
-            registeredRoutineRefs = when (val load = loadRegisteredRoutineRefs()) {
-                is RegisteredLoadResult.Ok -> load.refs
-                is RegisteredLoadResult.Failed -> emptyList()
+            when (val load = loadRegisteredRoutineRefs()) {
+                is RegisteredLoadResult.Ok -> {
+                    registeredRoutineRefs = load.refs
+                    _uiState.update {
+                        it.copy(
+                            existingActiveRoutineCount = load.refs.size,
+                            registeredCustomRoutines = load.memberRoutines.filter { r -> r.templateId == null },
+                        )
+                    }
+                }
+                is RegisteredLoadResult.Failed -> {
+                    registeredRoutineRefs = emptyList()
+                }
             }
             when (val categories = getRoutineCategoriesUseCase()) {
                 is ResultState.Success -> {
@@ -418,6 +486,10 @@ class RoutineManageViewModel(
             _uiState.update { it.copy(errorMessage = "루틴 이름은 1~20자로 입력해 주세요.") }
             return false
         }
+        if (repeatDays.isNullOrEmpty()) {
+            _uiState.update { it.copy(errorMessage = "반복 요일을 선택해 주세요.") }
+            return false
+        }
         val customId = "$CustomIdPrefix${_uiState.value.customItems.size}"
         _uiState.update { state ->
             state.copy(
@@ -433,6 +505,67 @@ class RoutineManageViewModel(
             )
         }
         return true
+    }
+
+    /** 이미 등록된 커스텀 루틴 수정. name/repeatDays 검증은 [UpdateMemberRoutineUseCase]가 한다. */
+    fun onUpdateCustomRoutine(
+        routineId: Long,
+        name: String,
+        endTime: String,
+        repeatDays: List<String>,
+    ) {
+        if (_uiState.value.isMutatingCustomRoutine) return
+        _uiState.update { it.copy(isMutatingCustomRoutine = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (
+                val result = updateMemberRoutineUseCase(
+                    routineId = routineId,
+                    update = UpdateMemberRoutine(name = name, endTime = endTime, repeatDays = repeatDays),
+                )
+            ) {
+                is ResultState.Success -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            isMutatingCustomRoutine = false,
+                            registeredCustomRoutines = state.registeredCustomRoutines.map { routine ->
+                                if (routine.routineId == routineId) result.data else routine
+                            },
+                        )
+                    }
+                    _uiEvent.emit(RoutineManageUiEvent.CustomRoutineSaved)
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isMutatingCustomRoutine = false, errorMessage = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    /** 이미 등록된 커스텀 루틴 삭제(수정 시트의 삭제 버튼에서 호출). */
+    fun onDeleteCustomRoutine(routineId: Long) {
+        if (_uiState.value.isMutatingCustomRoutine) return
+        _uiState.update { it.copy(isMutatingCustomRoutine = true, errorMessage = null) }
+        viewModelScope.launch {
+            when (val result = deleteMemberRoutineUseCase(routineId)) {
+                is ResultState.Success -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            isMutatingCustomRoutine = false,
+                            registeredCustomRoutines = state.registeredCustomRoutines
+                                .filterNot { it.routineId == routineId },
+                            existingActiveRoutineCount = (state.existingActiveRoutineCount - 1)
+                                .coerceAtLeast(0),
+                        )
+                    }
+                    _uiEvent.emit(RoutineManageUiEvent.CustomRoutineDeleted)
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isMutatingCustomRoutine = false, errorMessage = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     fun onSubmit() {
@@ -452,6 +585,12 @@ class RoutineManageViewModel(
                 }
                 is RegisteredLoadResult.Ok -> {
                     registeredRoutineRefs = load.refs
+                    _uiState.update {
+                        it.copy(
+                            existingActiveRoutineCount = load.refs.size,
+                            registeredCustomRoutines = load.memberRoutines.filter { r -> r.templateId == null },
+                        )
+                    }
                 }
             }
             val registered = registeredRoutineRefs
@@ -598,7 +737,8 @@ class RoutineManageViewModel(
         }
 
         return RegisteredLoadResult.Ok(
-            (fromMember.orEmpty() + fromHome.orEmpty()).distinctBy { it.routineId },
+            refs = (fromMember.orEmpty() + fromHome.orEmpty()).distinctBy { it.routineId },
+            memberRoutines = (memberResult as? ResultState.Success)?.data?.routines.orEmpty(),
         )
     }
 
