@@ -79,7 +79,9 @@ class ReportViewModel(
             _uiState.update { it.copy(isLoading = true, isError = false) }
             when (val result = getWeeklyReportUseCase(date = requestedWeek.toApiDateString())) {
                 is ResultState.Success -> _uiState.update { current ->
-                    if (current.weekAnchor != requestedWeek) return@update current
+                    // 응답이 오는 동안 다른 주로 넘어갔거나 월간 탭으로 바뀌었으면 무시한다 — 안 그러면
+                    // 늦게 도착한 주간 응답이 이미 표시 중인 월간 데이터를 덮어쓸 수 있다.
+                    if (current.selectedTab != PeriodTabWeekly || current.weekAnchor != requestedWeek) return@update current
                     val report = result.data
                     current.copy(
                         weekLabel = "${report.displayMonth.toDisplayMonthLabel()} · ${report.weekOfMonth}주차",
@@ -91,7 +93,11 @@ class ReportViewModel(
                     )
                 }
                 is ResultState.Error -> _uiState.update { current ->
-                    if (current.weekAnchor != requestedWeek) current else current.copy(isLoading = false, isError = true)
+                    if (current.selectedTab != PeriodTabWeekly || current.weekAnchor != requestedWeek) {
+                        current
+                    } else {
+                        current.copy(isLoading = false, isError = true)
+                    }
                 }
                 ResultState.Loading -> Unit
             }
@@ -104,7 +110,9 @@ class ReportViewModel(
             _uiState.update { it.copy(isLoading = true, isError = false) }
             when (val result = getMonthlyReportUseCase(yearMonth = requestedMonth.toApiYearMonthString())) {
                 is ResultState.Success -> _uiState.update { current ->
-                    if (current.monthAnchor != requestedMonth) return@update current
+                    // 응답이 오는 동안 다른 달로 넘어갔거나 주간 탭으로 바뀌었으면 무시한다 — 이유는
+                    // loadWeekly()의 같은 가드 참고.
+                    if (current.selectedTab != PeriodTabMonthly || current.monthAnchor != requestedMonth) return@update current
                     val report = result.data
                     current.copy(
                         monthLabel = monthLabel(requestedMonth),
@@ -114,7 +122,11 @@ class ReportViewModel(
                     )
                 }
                 is ResultState.Error -> _uiState.update { current ->
-                    if (current.monthAnchor != requestedMonth) current else current.copy(isLoading = false, isError = true)
+                    if (current.selectedTab != PeriodTabMonthly || current.monthAnchor != requestedMonth) {
+                        current
+                    } else {
+                        current.copy(isLoading = false, isError = true)
+                    }
                 }
                 ResultState.Loading -> Unit
             }
@@ -160,10 +172,16 @@ private fun stepMonth(month: Pair<Int, Int>, delta: Int): Pair<Int, Int> {
 
 private fun Pair<Int, Int>.toApiYearMonthString(): String = String.format(Locale.US, "%04d-%02d", first, second)
 
-/** [WeeklyReport.displayMonth]은 이름과 달리 "yyyy-MM" 원시 포맷으로 온다 — "년/월" 표시용으로 바꾼다. */
+/**
+ * [WeeklyReport.displayMonth]은 이름과 달리 "yyyy-MM" 원시 포맷으로 온다 — "년/월" 표시용으로 바꾼다.
+ * 서버 응답 문자열이라 형식이 예상과 다를 수 있어 파싱 실패 시 원본 문자열을 그대로 보여준다(화면
+ * 전체가 죽는 것보다 낫다).
+ */
 private fun String.toDisplayMonthLabel(): String {
-    val (year, month) = split("-").map { it.toInt() }
-    return "%d년 %02d월".format(year, month)
+    val parts = split("-")
+    val year = parts.getOrNull(0)?.toIntOrNull()
+    val month = parts.getOrNull(1)?.toIntOrNull()
+    return if (year != null && month != null) "%d년 %02d월".format(year, month) else this
 }
 
 /**
@@ -173,7 +191,9 @@ private fun String.toDisplayMonthLabel(): String {
  */
 private fun buildMonthlyDays(month: Pair<Int, Int>, apiDays: List<ReportDay>): List<MonthlyDayUiModel> {
     val (year, monthOfYear) = month
-    val countsByDay = apiDays.associateBy { it.date.takeLast(2).toInt() }
+    // day.date가 예상한 "yyyy-MM-dd" 형식이 아니어도(서버 응답이라 보장할 수 없다) 그 날짜만 조용히
+    // 빠질 뿐 화면 전체가 죽지 않게 한다.
+    val countsByDay = apiDays.mapNotNull { day -> day.date.substringAfterLast('-').toIntOrNull()?.let { it to day } }.toMap()
     val firstWeekday = Calendar.getInstance().apply { set(year, monthOfYear - 1, 1) }.get(Calendar.DAY_OF_WEEK) - 1
     val total = Calendar.getInstance().apply { set(year, monthOfYear - 1, 1) }.getActualMaximum(Calendar.DAY_OF_MONTH)
 

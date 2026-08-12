@@ -14,8 +14,10 @@ fun AchievementCategoryResponse.toDomain(): AchievementCategoryGroup = Achieveme
     achievements = achievements.map { it.toDomain() },
 )
 
+// 문서 설명은 소문자(rare/epic/unique)로 적혀 있고 실측 응답은 대문자(RARE/EPIC/UNIQUE)였다 — 어느
+// 쪽으로 오든 안전하게 매칭되도록 대문자로 정규화한 뒤 비교한다.
 private fun String.toAchievementCategory(): AchievementCategory =
-    runCatching { AchievementCategory.valueOf(this) }.getOrDefault(AchievementCategory.UNKNOWN)
+    runCatching { AchievementCategory.valueOf(trim().uppercase()) }.getOrDefault(AchievementCategory.UNKNOWN)
 
 fun AchievementResponse.toDomain(): Achievement = Achievement(
     achievementId = achievementId,

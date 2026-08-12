@@ -23,7 +23,9 @@ import kotlinx.coroutines.launch
  * 알 수 없고, 화면도 총 개수를 목록에서 직접 세고 있어 지금은 매핑하지 않는다
  * ([com.li_routi.core.data.network.dto.response.AchievementsResponse] 참고).
  *
- * "달성" 탭 배지 그리드는 진행 중이 아니면서(`!isInProgress`) `badgeYn`이 true인 업적만 모은다.
+ * "달성" 탭 배지 그리드는 실제로 달성 시점이 찍힌(`isAchieved`, [Achievement] 문서 참고) 업적 중
+ * `badgeYn`이 true인 것만 모은다 — `!isInProgress`로 판단하면 문서에 없는 새 상태가 추가됐을 때
+ * 그 항목까지 전부 "달성"으로 잘못 집계된다.
  */
 class AchievementViewModel(
     private val getAchievementsUseCase: GetAchievementsUseCase = AchievementContainer.getAchievementsUseCase,
@@ -48,7 +50,7 @@ class AchievementViewModel(
                         it.copy(
                             achievements = allAchievements.map { (achievement, category) -> achievement.toUiModel(category) },
                             achievedBadges = allAchievements
-                                .filter { (achievement, _) -> !achievement.isInProgress && achievement.badgeYn }
+                                .filter { (achievement, _) -> achievement.isAchieved && achievement.badgeYn }
                                 .map { (achievement, category) -> AchievementBadgeUiModel(achievement.name, category.toAchievementRarity()) },
                             isLoading = false,
                         )
