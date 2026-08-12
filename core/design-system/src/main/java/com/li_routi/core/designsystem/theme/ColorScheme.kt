@@ -13,7 +13,7 @@ import com.li_routi.core.designsystem.foundation.color.Cyan500
 import com.li_routi.core.designsystem.foundation.color.DimmerDefault
 import com.li_routi.core.designsystem.foundation.color.DimmerSecondary
 import com.li_routi.core.designsystem.foundation.color.Green100
-import com.li_routi.core.designsystem.foundation.color.Green500
+import com.li_routi.core.designsystem.foundation.color.Green700
 import com.li_routi.core.designsystem.foundation.color.Neutral0
 import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.foundation.color.Neutral15
@@ -151,7 +151,8 @@ val LiroutiLightColorScheme = LiroutiColorScheme(
     dangerSurface = Red100,
 
     // 그룹 루틴 화면에서 가져온 값. 다크 모드 전용 값은 아직 확정되지 않아 라이트와 동일하게 둔다.
-    completeText = Green500,
+    // completeText는 Green500(3.85:1)이 Green100 배경 대비 WCAG AA(4.5:1) 미달이라 Green700으로 상향.
+    completeText = Green700,
     completeBackground = Green100,
     pendingText = Cyan500,
 )
@@ -203,7 +204,8 @@ val LiroutiDarkColorScheme = LiroutiColorScheme(
     dangerSurface = Red100,
 
     // 그룹 루틴 화면에서 가져온 값. 다크 모드 전용 값은 아직 확정되지 않아 라이트와 동일하게 둔다.
-    completeText = Green500,
+    // completeText는 Green500(3.85:1)이 Green100 배경 대비 WCAG AA(4.5:1) 미달이라 Green700으로 상향.
+    completeText = Green700,
     completeBackground = Green100,
     pendingText = Cyan500,
 )

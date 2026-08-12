@@ -925,7 +925,7 @@ private fun CategoryChipRow(
                     style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                     modifier = Modifier
                         .clip(RoundedCornerShape(100.dp))
-                        .background(if (selected) selectedColor else Color.White)
+                        .background(if (selected) selectedColor else LiroutiTheme.colors.backgroundDefault)
                         .border(1.dp, if (selected) selectedColor else LiroutiTheme.colors.borderDefault, RoundedCornerShape(100.dp))
                         .clickable { onCategoryClick(label) }
                         .padding(horizontal = 16.dp, vertical = 10.dp),
@@ -1253,7 +1253,7 @@ private fun CreateRoutineOptionRow(
             .fillMaxWidth()
             .height(56.dp)
             .clip(shape)
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .border(1.dp, LiroutiTheme.colors.borderAlternative, shape)
             .combinedClickable(
                 onClick = onSettingClick,
@@ -1668,7 +1668,7 @@ private fun TimePickerPreviewRow(
             .fillMaxWidth()
             .height(28.dp)
             .clip(RoundedCornerShape(6.dp))
-            .background(if (selected) Color(0xFFF4F4F5) else LiroutiTheme.colors.backgroundFill)
+            .background(if (selected) LiroutiTheme.colors.borderAlternative else LiroutiTheme.colors.backgroundFill)
             .clickable(onClick = onClick)
             .padding(horizontal = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
@@ -1717,7 +1717,7 @@ private fun RoutineCategoryRow(
                 style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                 modifier = Modifier
                     .clip(RoundedCornerShape(100.dp))
-                    .background(if (selected) LiroutiTheme.colors.primaryNormal else Color.White)
+                    .background(if (selected) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
                     .border(1.dp, if (selected) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.borderDefault, RoundedCornerShape(100.dp))
                     .clickable { onCategoryClick(category) }
                     .padding(horizontal = 16.dp, vertical = 9.dp),
@@ -2542,7 +2542,7 @@ private fun DetailRoutineCategoryTabs(
                 modifier = Modifier
                     .height(38.dp)
                     .clip(RoundedCornerShape(100.dp))
-                    .background(if (selected) selectedColor else Color.White)
+                    .background(if (selected) selectedColor else LiroutiTheme.colors.backgroundDefault)
                     .border(1.dp, if (selected) selectedColor else LiroutiTheme.colors.borderDefault, RoundedCornerShape(100.dp))
                     .clickable { onCategoryClick(category) }
                     .padding(horizontal = 16.dp, vertical = 9.dp),
@@ -2568,7 +2568,7 @@ private fun DetailRoutineTodoRow(
             .fillMaxWidth()
             .height(56.dp)
             .clip(shape)
-            .background(Color.White)
+            .background(LiroutiTheme.colors.backgroundDefault)
             .border(1.dp, LiroutiTheme.colors.borderAlternative, shape)
             .combinedClickable(
                 onClick = { onCheckedChange(!todo.isDone) },
@@ -2634,11 +2634,11 @@ private fun DetailRoutineTodoRow(
             if (todo.isDone) {
                 Text(
                     text = "완료",
-                    color = LiroutiTheme.colors.labelInfo,
+                    color = LiroutiTheme.colors.completeText,
                     style = LiroutiTheme.typography.caption,
                     modifier = Modifier
                         .clip(RoundedCornerShape(6.dp))
-                        .background(Color(0xFFEAEBEC))
+                        .background(LiroutiTheme.colors.completeBackground)
                         .padding(horizontal = 7.dp, vertical = 3.dp),
                 )
             } else {
@@ -2775,11 +2775,11 @@ private fun ChatMessageBubble(
         }
         Text(
             text = message,
-            color = if (isMine) Color.White else LiroutiTheme.colors.labelDefault,
+            color = if (isMine) LiroutiTheme.colors.labelReverse else LiroutiTheme.colors.labelDefault,
             style = LiroutiTheme.typography.body3,
             modifier = Modifier
                 .clip(RoundedCornerShape(12.dp))
-                .background(if (isMine) LiroutiTheme.colors.primaryNormal else Color.White)
+                .background(if (isMine) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
         )
         if (!isMine && time.isNotBlank()) {
@@ -3156,12 +3156,12 @@ private fun LeaderMemberRow(
             modifier = Modifier
                 .size(18.dp)
                 .clip(CircleShape)
-                .background(if (selected) LiroutiTheme.colors.primaryNormal else Color.White)
+                .background(if (selected) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
                 .border(1.dp, if (selected) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.borderStrong, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
             if (selected) {
-                Text(text = "✓", color = Color.White, fontSize = 10.sp, fontWeight = FontWeight.Bold)
+                Text(text = "✓", color = LiroutiTheme.colors.labelReverse, fontSize = 10.sp, fontWeight = FontWeight.Bold)
             }
         }
     }
@@ -3898,11 +3898,11 @@ private fun TodoRow(
         if (todo.isDone) {
             Text(
                 text = "완료",
-                color = LiroutiTheme.colors.labelInfo,
+                color = LiroutiTheme.colors.completeText,
                 style = LiroutiTheme.typography.caption,
                 modifier = Modifier
                     .clip(RoundedCornerShape(6.dp))
-                    .background(Color(0xFFEAEBEC))
+                    .background(LiroutiTheme.colors.completeBackground)
                     .padding(horizontal = 7.dp, vertical = 3.dp),
             )
         } else {
@@ -3960,12 +3960,12 @@ private fun CertificationMemberChip(
 ) {
     Text(
         text = if (selected) "✓ $text" else text,
-        color = if (selected) Color.White else LiroutiTheme.colors.labelDefault,
+        color = if (selected) LiroutiTheme.colors.labelReverse else LiroutiTheme.colors.labelDefault,
         style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
         modifier = Modifier
             .height(32.dp)
             .clip(RoundedCornerShape(40.dp))
-            .background(if (selected) LiroutiTheme.colors.primaryNormal else Color.White)
+            .background(if (selected) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
             .border(
                 width = 1.dp,
                 color = if (selected) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.borderDefault,

@@ -54,6 +54,8 @@ val DimmerSecondary = Color(0x80767676)
 // green (status: 완료)
 val Green100 = Color(0xFFE0F8E9)
 val Green500 = Color(0xFF008C51)
+// Green100 배경 위 11sp 텍스트 기준 WCAG AA(4.5:1) 대비를 만족하는 완료 배지 텍스트 색.
+val Green700 = Color(0xFF00693C)
 
 // cyan (status: 진행중/미완료)
 val Cyan500 = Color(0xFF00AAD2)
