@@ -5,6 +5,9 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.ShopContainer
 import com.li_routi.core.domain.shop.ChargeProduct
+import com.li_routi.core.domain.shop.ChargeStarted
+import com.li_routi.core.domain.shop.CompleteChargeUseCase
+import com.li_routi.core.domain.shop.StartChargeUseCase
 import com.li_routi.core.domain.shop.ExchangeCurrencyUseCase
 import com.li_routi.core.domain.shop.ExchangeProduct
 import com.li_routi.core.domain.shop.GetChargeProductsUseCase
@@ -40,6 +43,8 @@ class CurrencyShopViewModel(
     private val getChargeProductsUseCase: GetChargeProductsUseCase = ShopContainer.getChargeProductsUseCase,
     private val exchangeCurrencyUseCase: ExchangeCurrencyUseCase = ShopContainer.exchangeCurrencyUseCase,
     private val getWalletBalancesUseCase: GetWalletBalancesUseCase = ShopContainer.getWalletBalancesUseCase,
+    private val startChargeUseCase: StartChargeUseCase = ShopContainer.startChargeUseCase,
+    private val completeChargeUseCase: CompleteChargeUseCase = ShopContainer.completeChargeUseCase,
 ) : BaseViewModel(), CurrencyShopScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -126,9 +131,7 @@ class CurrencyShopViewModel(
 
         val exchangeId = productId.exchangeProductIdOrNull()
         if (exchangeId == null) {
-            // 파란보석 탭(현금 결제)은 포트원 결제창이 있어야 해서 아직 못 붙임
-            _uiState.update { it.copy(message = "결제 준비 중이에요.") }
-            emitEvent(CurrencyShopUiEvent.ConfirmCharge(productId))
+            startCharge(productId)
             return
         }
         if (state.isExchanging) return
@@ -161,6 +164,62 @@ class CurrencyShopViewModel(
         }
     }
 
+    /**
+     * 현금 결제 시작. 서버가 준 값을 그대로 결제창에 넘겨야 해서 화면으로 올려보냄.
+     *
+     * 이 시점엔 돈이 오가지 않고 결제 식별자만 발급됨
+     */
+    private fun startCharge(productId: String) {
+        val chargeId = productId.chargeProductIdOrNull() ?: run {
+            _uiState.update { it.copy(message = "상품 정보를 불러오지 못했어요.") }
+            return
+        }
+        if (_uiState.value.isCharging) return
+
+        _uiState.update { it.copy(isCharging = true) }
+        viewModelScope.launch {
+            when (val result = startChargeUseCase(chargeId)) {
+                is ResultState.Success -> emitEvent(CurrencyShopUiEvent.OpenPaymentSheet(result.data))
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isCharging = false, message = result.message)
+                }
+
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    /** 결제창을 마친 뒤 서버에 검증·지급을 요청함 */
+    fun onPaymentSucceeded(paymentId: String) {
+        viewModelScope.launch {
+            try {
+                when (val result = completeChargeUseCase(paymentId)) {
+                    is ResultState.Success -> {
+                        // 응답에 지급 후 잔액이 실려 와서 잔액 조회를 따로 부를 필요가 없음
+                        val settled = result.data
+                        val charged = settled.rewardAmount + settled.bonusAmount
+                        _uiState.update { state ->
+                            state.copy(
+                                coinBalance = if (settled.currency == "TOPAZ") settled.totalBalance else state.coinBalance,
+                                gemBalance = if (settled.currency == "GEM") settled.totalBalance else state.gemBalance,
+                                message = "${charged}개 충전이 완료됐어요.",
+                            )
+                        }
+                    }
+
+                    is ResultState.Error -> _uiState.update { it.copy(message = result.message) }
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isCharging = false) }
+            }
+        }
+    }
+
+    fun onPaymentFailed(message: String?) {
+        _uiState.update { it.copy(isCharging = false, message = message ?: "결제가 취소됐어요.") }
+    }
+
     private fun emitEvent(event: CurrencyShopUiEvent) {
         viewModelScope.launch {
             _uiEvent.emit(event)
@@ -174,6 +233,9 @@ private const val ChargeIdPrefix = "charge_"
 
 private fun String.exchangeProductIdOrNull(): Long? =
     if (startsWith(ExchangeIdPrefix)) removePrefix(ExchangeIdPrefix).toLongOrNull() else null
+
+private fun String.chargeProductIdOrNull(): Long? =
+    if (startsWith(ChargeIdPrefix)) removePrefix(ChargeIdPrefix).toLongOrNull() else null
 
 private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =
     firstOrNull { it.currency == currency }?.balance

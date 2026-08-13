@@ -5,9 +5,12 @@ import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.kotlin.util.safeApiCall
 import com.li_routi.core.data.mapper.toDomain
 import com.li_routi.core.data.network.dto.request.ExchangeRequest
+import com.li_routi.core.data.network.dto.request.StartChargeRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.service.ShopApiService
 import com.li_routi.core.domain.shop.ChargeProduct
+import com.li_routi.core.domain.shop.ChargeSettled
+import com.li_routi.core.domain.shop.ChargeStarted
 import com.li_routi.core.domain.shop.CurrencyBalance
 import com.li_routi.core.domain.shop.ExchangeProduct
 import com.li_routi.core.domain.shop.ExchangeResult
@@ -21,6 +24,14 @@ import retrofit2.HttpException
 class ShopRepositoryImpl(
     private val api: ShopApiService,
 ) : ShopRepository {
+
+    override suspend fun startCharge(productId: Long): ResultState<ChargeStarted> = shopCall {
+        api.startCharge(StartChargeRequest(productId = productId)).unwrap().toDomain()
+    }
+
+    override suspend fun completeCharge(paymentId: String): ResultState<ChargeSettled> = shopCall {
+        api.completeCharge(paymentId).unwrap().toDomain()
+    }
 
     override suspend fun getWalletBalances(): ResultState<List<CurrencyBalance>> = shopCall {
         api.getWalletBalances().unwrap().toDomain()

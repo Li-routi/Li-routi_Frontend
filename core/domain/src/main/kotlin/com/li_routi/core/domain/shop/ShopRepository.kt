@@ -4,6 +4,17 @@ import com.li_routi.core.common.kotlin.util.ResultState
 
 interface ShopRepository {
 
+    /** 결제를 시작함. 아직 돈은 오가지 않고 결제 식별자와 금액만 기록됨 */
+    suspend fun startCharge(productId: Long): ResultState<ChargeStarted>
+
+    /**
+     * 결제창을 마친 뒤 서버에 검증·지급을 요청함.
+     *
+     * 서버가 포트원에 다시 물어보기 때문에 클라이언트가 무엇을 보내도 결과가 바뀌지 않음.
+     * 이미 지급된 결제면 조용히 성공으로 답함(이 요청과 웹훅이 둘 다 오는 게 정상)
+     */
+    suspend fun completeCharge(paymentId: String): ResultState<ChargeSettled>
+
     /** 내 재화 잔액을 조회함. 재화 종류마다 한 건씩 항상 전부 내려옴 */
     suspend fun getWalletBalances(): ResultState<List<CurrencyBalance>>
 

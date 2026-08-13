@@ -25,6 +25,34 @@ data class AvatarEquippedItem(
     val imageUrl: String?,
 )
 
+/**
+ * 결제 시작 응답. 이 값을 그대로 포트원 SDK에 넘기면 됨 —
+ * 상점 아이디·채널 키를 프론트가 따로 관리하지 않게 서버가 내려줌
+ */
+data class ChargeStarted(
+    val storeId: String,
+    val channelKey: String,
+    val paymentId: String,
+    val amount: Long,
+    val currency: String,
+    val orderName: String,
+)
+
+/**
+ * 결제 검증·지급 결과. 지급 후 잔액까지 실려 와서 잔액 조회를 따로 부를 필요가 없음.
+ * 화면에 하나로 보여줄 때는 유상([paidBalance])과 무상([freeBalance])을 더하면 됨
+ */
+data class ChargeSettled(
+    val paymentId: String,
+    val currency: String,
+    val rewardAmount: Int,
+    val bonusAmount: Int,
+    val paidBalance: Int,
+    val freeBalance: Int,
+) {
+    val totalBalance: Int get() = paidBalance + freeBalance
+}
+
 /** 상점 헤더에 표시할 재화 잔액. 한 번도 받은 적 없는 재화도 0으로 실려서 옴 */
 data class CurrencyBalance(
     val currency: String,

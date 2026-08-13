@@ -1,5 +1,10 @@
 package com.li_routi.core.data.network.dto.request
 
+/** POST /api/shop/charges 요청 body. */
+data class StartChargeRequest(
+    val productId: Long,
+)
+
 /** POST /api/shop/exchanges 요청 body. */
 data class ExchangeRequest(
     val productId: Long,

@@ -2,4 +2,7 @@
 <resources>
 
     <style name="Theme.LiroutiFrontend" parent="android:Theme.Material.Light.NoActionBar" />
+
+    <!-- 포트원 결제 액티비티 전용. AppCompat 계열이어야 실행됨 -->
+    <style name="Theme.LiroutiFrontend.Payment" parent="Theme.AppCompat.Light.NoActionBar" />
 </resources>
