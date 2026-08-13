@@ -1,10 +1,14 @@
 package com.li_routi.feature.home.shop.component
 
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.LocalIndication
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -22,10 +26,13 @@ import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
@@ -44,6 +51,8 @@ data class ShopItemUiModel(
     /** 결제 재화. 아이템마다 달라서 가격 옆 아이콘이 이 값으로 갈림 */
     val currency: String = "GEM",
     val imageUrl: String? = null,
+    /** 앱에 넣은 이미지. 서버에 없는 캐릭터를 그릴 때 씀 — 있으면 [imageUrl]보다 이걸 먼저 봄 */
+    @DrawableRes val imageRes: Int? = null,
     /** 보유한 아이템도 같은 목록에 섞여 내려옴 — 구매 대신 착용만 하면 됨 */
     val owned: Boolean = false,
 )
@@ -64,8 +73,8 @@ val SampleShopItems: List<ShopItemUiModel> = List(8) { index ->
 /**
  * 상점 아이템 그리드 (Figma node `2299:23502`, 4열 x 2행).
  *
- * 탭 → [selectedItemIds]에 파란 테두리(선택됨). 재화구매 리스트와 동일한 선택 스타일.
- * 한 번에 여러 개를 사려면 여러 개가 동시에 선택돼 있어야 해서 집합으로 받음.
+ * 탭 → 아직 안 산 아이템만 [selectedItemIds]에 파란 테두리(선택됨).
+ * 보유중은 클릭 중에만 파란 테두리가 보이고, 구매 선택에는 넣지 않음.
  */
 @Composable
 fun ShopItemGrid(
@@ -85,7 +94,7 @@ fun ShopItemGrid(
         items(items = items, key = { it.id }) { item ->
             ShopItemCell(
                 item = item,
-                selected = item.id in selectedItemIds,
+                selected = !item.owned && item.id in selectedItemIds,
                 equipped = item.id in equippedItemIds,
                 onClick = { onItemClick(item.id) },
             )
@@ -101,8 +110,12 @@ private fun ShopItemCell(
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val borderWidth = if (selected) 1.5.dp else 1.dp
-    val borderColor = if (selected) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val pressed by interactionSource.collectIsPressedAsState()
+    // 보유중은 눌러 있는 동안만 파란 테두리. 안 산 아이템은 고른 동안 유지
+    val showBlueBorder = selected || (item.owned && pressed)
+    val borderWidth = if (showBlueBorder) 1.5.dp else 1.dp
+    val borderColor = if (showBlueBorder) {
         LiroutiTheme.colors.primaryNormal
     } else {
         LiroutiTheme.colors.borderSub
@@ -116,7 +129,11 @@ private fun ShopItemCell(
                 border = BorderStroke(borderWidth, borderColor),
                 shape = RoundedCornerShape(6.dp),
             )
-            .clickable(onClick = onClick)
+            .clickable(
+                interactionSource = interactionSource,
+                indication = LocalIndication.current,
+                onClick = onClick,
+            )
             .padding(top = 8.dp, bottom = 12.dp, start = 10.dp, end = 10.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -127,9 +144,16 @@ private fun ShopItemCell(
                 .clip(RoundedCornerShape(6.dp))
                 .background(LiroutiTheme.colors.backgroundAlternative),
         ) {
-            // imageUrl이 없으면 기존처럼 회색 자리만 보여줌
-            if (!item.imageUrl.isNullOrBlank()) {
-                AsyncImage(
+            // 그릴 게 없으면 기존처럼 회색 자리만 보여줌
+            when {
+                item.imageRes != null -> Image(
+                    painter = painterResource(id = item.imageRes),
+                    contentDescription = item.name,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
+
+                !item.imageUrl.isNullOrBlank() -> AsyncImage(
                     model = item.imageUrl,
                     contentDescription = item.name,
                     modifier = Modifier.fillMaxSize(),

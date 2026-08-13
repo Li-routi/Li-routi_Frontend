@@ -64,6 +64,8 @@ fun ShopEntryCard(
     showRepresentativeBadge: Boolean = false,
     /** 착용 중인 아이템 이미지. 겹칠 순서대로 들어옴 */
     equippedImageUrls: List<String> = emptyList(),
+    /** 겹쳐 입기의 바탕이 되는 캐릭터 */
+    characterRes: Int = R.drawable.default_character,
 ) {
     Column(
         modifier = modifier
@@ -142,6 +144,7 @@ fun ShopEntryCard(
         // 그라데이션 위에 바로 얹힌다(캐릭터 전용 배경 박스를 두면 가운데가 네모나게 뚫려 보인다).
         AvatarCharacter(
             equippedImageUrls = equippedImageUrls,
+            characterRes = characterRes,
             modifier = Modifier.size(width = CharacterWidth, height = CharacterHeight),
         )
     }

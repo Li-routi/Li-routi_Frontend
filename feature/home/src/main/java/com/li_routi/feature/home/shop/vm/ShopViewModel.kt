@@ -3,18 +3,21 @@ package com.li_routi.feature.home.shop.vm
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.data.appearance.FallbackCharacterId
+import com.li_routi.core.data.appearance.MemberAppearanceStore
 import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.data.di.ShopContainer
 import com.li_routi.core.domain.auth.GetMyInfoUseCase
 import com.li_routi.core.domain.shop.CurrencyBalance
 import com.li_routi.core.domain.shop.EquipAvatarUseCase
-import com.li_routi.core.domain.shop.GetMyAvatarUseCase
 import com.li_routi.core.domain.shop.GetShopAvatarItemsUseCase
 import com.li_routi.core.domain.shop.GetShopCategoriesUseCase
 import com.li_routi.core.domain.shop.GetWalletBalancesUseCase
 import com.li_routi.core.domain.shop.PurchaseShopAvatarItemUseCase
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
+import com.li_routi.feature.home.component.CharacterCatalog
+import com.li_routi.feature.home.component.CharacterUiModel
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
 import kotlinx.coroutines.Job
@@ -39,8 +42,8 @@ class ShopViewModel(
     private val purchaseShopAvatarItemUseCase: PurchaseShopAvatarItemUseCase = ShopContainer.purchaseShopAvatarItemUseCase,
     private val getWalletBalancesUseCase: GetWalletBalancesUseCase = ShopContainer.getWalletBalancesUseCase,
     private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
-    private val getMyAvatarUseCase: GetMyAvatarUseCase = ShopContainer.getMyAvatarUseCase,
     private val equipAvatarUseCase: EquipAvatarUseCase = ShopContainer.equipAvatarUseCase,
+    private val appearanceStore: MemberAppearanceStore = ShopContainer.memberAppearanceStore,
 ) : BaseViewModel(), ShopScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -50,34 +53,78 @@ class ShopViewModel(
     val uiEvent: SharedFlow<ShopUiEvent> = _uiEvent.asSharedFlow()
 
     private var itemsJob: Job? = null
+    /** 늦게 온 착장 GET이 사용자가 고른 미리보기를 덮지 않게 */
+    private var hasUserPreviewed = false
 
     init {
         loadNickname()
-        loadEquipped()
+        hydrateAppearance()
         loadCategories()
-        loadItems()
         loadBalances()
     }
 
     /**
      * 상단 탭. 서버가 내려준 순서 그대로 그림.
      *
-     * 캐릭터 탭(`source == "CHARACTER"`)은 캐릭터 목록 API가 아직 없어서 뺌 —
-     * 나중에 API가 생기면 서버 목록에 그대로 실려 오므로 여기만 풀면 됨
+     * 캐릭터 탭은 목록 API가 없어서 앱에 넣은 이미지로 채움. 서버가 탭을 안 주면 맨 뒤에 붙임
      */
     private fun loadCategories() {
         viewModelScope.launch {
             val result = getShopCategoriesUseCase()
             if (result is ResultState.Success) {
                 val categories = result.data
-                    .filter { it.source != CharacterSource }
-                    .map { ShopCategoryUiModel(key = it.key, name = it.name, slot = it.slot) }
+                    .map {
+                        ShopCategoryUiModel(
+                            key = it.key,
+                            name = it.name,
+                            source = it.source,
+                            slot = it.slot,
+                        )
+                    }
+                    .let { tabs ->
+                        if (tabs.any { it.source == CharacterSource }) tabs
+                        else tabs + ShopCategoryUiModel(
+                            key = CharacterSource,
+                            name = "캐릭터",
+                            source = CharacterSource,
+                            slot = null,
+                        )
+                    }
                 _uiState.update { state ->
                     state.copy(
                         categories = categories,
-                        // 탭이 줄어들 수 있어서 선택 위치가 목록 밖으로 나가지 않게 맞춤
                         selectedCategoryIndex = state.selectedCategoryIndex
                             .coerceAtMost((categories.size - 1).coerceAtLeast(0)),
+                    )
+                }
+            }
+            // 탭을 못 받아도 전체 목록은 불러야 빈 상점이 안 됨
+            loadItems()
+        }
+    }
+
+    /**
+     * 상점에 들어올 때마다 서버 착장을 다시 받아 홈과 맞춤.
+     * 이미 미리보기 중이면 저장본만 갱신하고 캐릭터 카드는 그대로 둠 —
+     * 늦게 온 응답이 고른 옷을 덮어쓰지 않게
+     */
+    private fun hydrateAppearance() {
+        viewModelScope.launch {
+            appearanceStore.reloadAvatar()
+            val appearance = appearanceStore.appearance.value
+            val characterId = appearance.characterId.ifBlank { FallbackCharacterId }
+            val saved = MemberAvatar(equipped = appearance.equipped)
+            _uiState.update { state ->
+                val hydrated = state.applyServerAvatar(saved)
+                if (hasUserPreviewed) {
+                    state.copy(
+                        savedEquippedItemIds = hydrated.savedEquippedItemIds,
+                        savedCharacterId = characterId,
+                    )
+                } else {
+                    hydrated.copy(
+                        savedCharacterId = characterId,
+                        previewCharacterId = characterId,
                     )
                 }
             }
@@ -95,16 +142,6 @@ class ShopViewModel(
         if (_uiState.value.showOwnedOnly == ownedOnly) return
         _uiState.update { it.copy(showOwnedOnly = ownedOnly) }
         loadItems()
-    }
-
-    /** 지금 입고 있는 착장. 안 입은 자리는 응답에 실리지 않아서 그대로 비워둠 */
-    private fun loadEquipped() {
-        viewModelScope.launch {
-            val result = getMyAvatarUseCase()
-            if (result is ResultState.Success) {
-                _uiState.update { it.applyServerAvatar(result.data) }
-            }
-        }
     }
 
     /** 상단 캐릭터 카드에 쓸 내 닉네임 */
@@ -136,6 +173,11 @@ class ShopViewModel(
         _uiState.update { it.copy(message = null) }
     }
 
+    /** 재화 상점 등 다른 화면으로 나가면 구매 선택은 풀어줌. 미리보기는 그대로 둠 */
+    fun clearPurchaseSelection() {
+        _uiState.update { it.copy(selectedItems = emptyMap()) }
+    }
+
     /** 상점 격자에 뿌릴 아이템을 불러옴. 보유한 것도 같이 내려와서 owned로 구분함 */
     fun loadItems() {
         // 탭을 빠르게 옮기면 늦게 온 응답이 나중에 덮어써서, 이전 조회는 버림
@@ -154,8 +196,13 @@ class ShopViewModel(
     /** 목록 갱신을 기다려야 하는 곳(구매 직후)에서도 쓸 수 있게 suspend로 둠 */
     private suspend fun refreshItems() {
         val state = _uiState.value
+        val category = state.categories.getOrNull(state.selectedCategoryIndex)
+        if (category?.source == CharacterSource) {
+            _uiState.update { it.copy(isLoading = false, items = CharacterCatalog.map { it.toShopItem() }) }
+            return
+        }
         // 전체 탭은 slot 없이 부르는 것이라 null을 그대로 넘김
-        val slot = state.categories.getOrNull(state.selectedCategoryIndex)?.slot
+        val slot = category?.slot
         val ownedOnly = state.showOwnedOnly.takeIf { it }
         _uiState.update { it.copy(isLoading = true) }
         when (val result = getShopAvatarItemsUseCase(slot = slot, ownedOnly = ownedOnly)) {
@@ -188,29 +235,36 @@ class ShopViewModel(
      * 셀 탭. 안 산 것도 캐릭터에 바로 올려서 입어볼 수 있게 함.
      *
      * 구매 선택은 선택한 집합으로 판단함. 같은 자리 미리보기는 마지막에 고른 것만 올라감 —
-     * 다른 옷을 고른 뒤 이전 옷을 다시 누르면 구매 목록에서만 빠지고, 미리보기는 그대로 둠
+     * 다른 옷을 고른 뒤 이전 옷을 다시 누르면 구매 목록에서만 빠지고, 미리보기는 그대로 둠.
+     * 보유중은 구매 선택에 넣지 않음
      */
     override fun onItemClick(itemId: String) {
+        hasUserPreviewed = true
         _uiState.update { state ->
             val item = state.items.firstOrNull { it.id == itemId } ?: return@update state
+            if (item.imageRes != null) {
+                return@update state.copy(previewCharacterId = item.id)
+            }
             val numericId = item.id.toLongOrNull() ?: return@update state
+            val slot = item.slot.uppercase()
             val unselecting = itemId in state.selectedItems
+            val isActivePreview = slot.isNotEmpty() && state.equipped[slot]?.itemId == numericId
 
             val equipped = when {
-                item.slot.isEmpty() -> state.equipped
-                unselecting && state.equipped[item.slot]?.itemId == numericId ->
-                    state.equipped - item.slot
+                slot.isEmpty() -> state.equipped
+                item.owned && isActivePreview -> state.equipped - slot
+                unselecting && isActivePreview -> state.equipped - slot
                 unselecting -> state.equipped
-                else -> state.equipped + (item.slot to EquippedUiModel(
+                else -> state.equipped + (slot to EquippedUiModel(
                     itemId = numericId,
                     imageUrl = item.imageUrl,
                     owned = item.owned,
                 ))
             }
-            val selectedItems = if (unselecting) {
-                state.selectedItems - itemId
-            } else {
-                state.selectedItems + (itemId to item)
+            val selectedItems = when {
+                item.owned -> state.selectedItems - itemId
+                unselecting -> state.selectedItems - itemId
+                else -> state.selectedItems + (itemId to item.copy(slot = slot))
             }
             state.copy(selectedItems = selectedItems, equipped = equipped)
         }
@@ -224,12 +278,26 @@ class ShopViewModel(
     override fun onSaveClick() {
         val state = _uiState.value
         if (state.isPurchasing || state.isEquipping) return
+        persistPreviewCharacter()
         val targets = state.purchaseTargets
         if (targets.isEmpty()) {
             equipSelected()
             return
         }
         purchaseAll(targets)
+    }
+
+    /**
+     * 고른 캐릭터를 앱이 기억하게 함. 본체 id를 받을 서버 필드가 아직 없어 기기+로컬 캐시에 남김.
+     * 홈은 같은 캐시를 보고 바로 따라옴
+     */
+    private fun persistPreviewCharacter() {
+        val state = _uiState.value
+        if (state.previewCharacterId == state.savedCharacterId) return
+        viewModelScope.launch {
+            appearanceStore.saveCharacter(state.previewCharacterId)
+            _uiState.update { it.copy(savedCharacterId = it.previewCharacterId) }
+        }
     }
 
     /**
@@ -263,6 +331,7 @@ class ShopViewModel(
                     if (error != null) break
                 }
 
+                latestAvatar?.let { appearanceStore.applyAvatar(it) }
                 _uiState.update { state ->
                     val next = latestAvatar?.let { state.applyServerAvatar(it) } ?: state
                     next.copy(message = purchaseMessageOf(purchased, error))
@@ -293,8 +362,11 @@ class ShopViewModel(
         viewModelScope.launch {
             try {
                 when (val result = equipAvatarUseCase(itemIds)) {
-                    is ResultState.Success -> _uiState.update {
-                        it.applyServerAvatar(result.data).copy(message = "저장했어요.")
+                    is ResultState.Success -> {
+                        appearanceStore.applyAvatar(result.data)
+                        _uiState.update {
+                            it.applyServerAvatar(result.data).copy(message = "저장했어요.")
+                        }
                     }
 
                     // 서버가 부분 성공을 안 줘서 실패하면 저장 전 상태 그대로 둠
@@ -314,8 +386,15 @@ class ShopViewModel(
     }
 }
 
-/** 캐릭터 목록 API가 아직 없어서 이 탭은 그리지 않음 */
 private const val CharacterSource = "CHARACTER"
+
+private fun CharacterUiModel.toShopItem(): ShopItemUiModel = ShopItemUiModel(
+    id = id,
+    name = name,
+    price = 0,
+    imageRes = imageRes,
+    owned = true,
+)
 
 /** 하나씩 사기 때문에 중간에 끊길 수 있음 — 몇 개가 넘어갔는지 같이 밝힘 */
 private fun purchaseMessageOf(purchased: List<String>, error: String?): String = when {
@@ -335,7 +414,7 @@ private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =
  */
 private fun ShopUiState.applyServerAvatar(avatar: MemberAvatar): ShopUiState = copy(
     equipped = avatar.equipped.associate {
-        it.slot to EquippedUiModel(itemId = it.itemId, imageUrl = it.imageUrl)
+        it.slot.uppercase() to EquippedUiModel(itemId = it.itemId, imageUrl = it.imageUrl)
     },
     savedEquippedItemIds = avatar.equipped.mapTo(mutableSetOf()) { it.itemId },
 )
