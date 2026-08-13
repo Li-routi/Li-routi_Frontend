@@ -8,16 +8,17 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.width
-import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -42,10 +43,9 @@ private val RepresentativeBadgeText = Color(0xFF3A8009)
 /** Figma `comp/myVehicle` 그라데이션 끝색 `rgba(207,228,255,0.2)`. */
 private val CharacterCardGradientEnd = Color(0x33CFE4FF)
 
-// Figma `comp/myVehicle` 캐릭터 영역 220×180.
-// PNG는 400×400이지만 화면 박스 크기와는 다름 — Fit으로 이 안에 맞춤
-private val CharacterWidth = 220.dp
-private val CharacterHeight = 180.dp
+// 닉네임 아래 남는 공간을 쓰되, 400.dp처럼 화면을 덮지 않게 상한을 둠.
+// PNG는 400×400이고 그림은 그보다 작아서, 박스보다 실제 새는 조금 작게 보임
+private val CharacterMaxSize = 320.dp
 
 /**
  * 홈 화면의 닉네임/캐릭터/상점가기 영역 (Figma Design Page [1.1] `comp/myVehicle`).
@@ -55,10 +55,6 @@ private val CharacterHeight = 180.dp
  * 나머지 여백은 바텀시트 쪽으로 남는다(Figma node 3962:11620 확인). 그래서 [modifier]로 상위
  * (HomeScreen)가 남는 공간을 그대로 채우도록 넘기고, 여기서는 fillMaxSize + Arrangement.Top으로
  * 받는다.
- *
- * verticalScroll을 같이 둬서, 화면이 짧거나(작은 기기) 시스템 폰트 크기가 커서 닉네임 줄 + 캐릭터
- * 박스(220x180) 높이가 남는 공간보다 커지는 경우에도 위아래가 그냥 잘리지 않고 스크롤로 볼 수 있게
- * 한다.
  */
 @Composable
 fun ShopEntryCard(
@@ -82,7 +78,6 @@ fun ShopEntryCard(
                     ),
                 ),
             )
-            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -144,13 +139,22 @@ fun ShopEntryCard(
 
         Spacer(modifier = Modifier.height(20.dp))
 
-        // 캐릭터 illustration (비-DS 이미지 자리). Figma 220×180 — 별도 배경/카드 없이
-        // 그라데이션 위에 바로 얹힌다(캐릭터 전용 배경 박스를 두면 가운데가 네모나게 뚫려 보인다).
-        AvatarCharacter(
-            equippedImageUrls = equippedImageUrls,
-            characterRes = characterRes,
-            modifier = Modifier.size(width = CharacterWidth, height = CharacterHeight),
-        )
+        // 별도 배경/카드 없이 그라데이션 위에 바로 얹힘
+        Box(
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxWidth(),
+            contentAlignment = Alignment.Center,
+        ) {
+            AvatarCharacter(
+                equippedImageUrls = equippedImageUrls,
+                characterRes = characterRes,
+                modifier = Modifier
+                    .sizeIn(maxWidth = CharacterMaxSize, maxHeight = CharacterMaxSize)
+                    .fillMaxHeight()
+                    .aspectRatio(1f),
+            )
+        }
     }
 }
 
