@@ -7,6 +7,7 @@ data class GroupDetailResponse(
     val groupId: Long,
     val groupName: String?,
     val inviteCode: String?,
+    val myRole: String?,
     val members: List<GroupMemberActivityResponse>?,
 )
 
@@ -17,6 +18,7 @@ data class GroupMemberActivityResponse(
     val statusMessage: String?,
     val currentStreak: Int,
     val totalLikeCount: Long,
+    val totalPokeCount: Long,
     val dailyProgress: DailyProgressResponse?,
 )
 

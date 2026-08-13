@@ -28,6 +28,7 @@ import com.li_routi.core.domain.grouproutine.DisappointGroupRoutineVerificationU
 import com.li_routi.core.domain.grouproutine.GetGroupJoinPreviewUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupDetailUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineCategoriesUseCase
+import com.li_routi.core.domain.grouproutine.GetGroupRoutinesUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupRoutineVerificationsUseCase
 import com.li_routi.core.domain.grouproutine.GetGroupInviteCodeUseCase
 import com.li_routi.core.domain.grouproutine.GetParticipatingGroupsUseCase
@@ -70,6 +71,11 @@ private data class ChatReadTarget(
     val lastReadMessageId: Long,
 )
 
+private const val MAX_ROOM_NAME_LENGTH = 20
+private const val MAX_ROUTINE_NAME_LENGTH = 20
+private const val MAX_CATEGORY_NAME_LENGTH = 20
+private const val MAX_STATUS_MESSAGE_LENGTH = 8
+
 class GroupRoutineViewModel(
     private val createGroupUseCase: CreateGroupUseCase = GroupRoutineContainer.createGroupUseCase,
     private val getParticipatingGroupsUseCase: GetParticipatingGroupsUseCase = GroupRoutineContainer.getParticipatingGroupsUseCase,
@@ -88,6 +94,7 @@ class GroupRoutineViewModel(
     private val transferGroupOwnerUseCase: TransferGroupOwnerUseCase = GroupRoutineContainer.transferGroupOwnerUseCase,
     private val deleteGroupRoutineUseCase: DeleteGroupRoutineUseCase = GroupRoutineContainer.deleteGroupRoutineUseCase,
     private val getTodayGroupRoutinesUseCase: GetTodayGroupRoutinesUseCase = GroupRoutineContainer.getTodayGroupRoutinesUseCase,
+    private val getGroupRoutinesUseCase: GetGroupRoutinesUseCase = GroupRoutineContainer.getGroupRoutinesUseCase,
     private val getGroupInviteCodeUseCase: GetGroupInviteCodeUseCase = GroupRoutineContainer.getGroupInviteCodeUseCase,
     private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
     private val getGroupRoutineCategoriesUseCase: GetGroupRoutineCategoriesUseCase = GroupRoutineContainer.getGroupRoutineCategoriesUseCase,
@@ -116,6 +123,8 @@ class GroupRoutineViewModel(
     private var chatHistoryJob: Job? = null
     private var chatReadJob: Job? = null
     private var routineVerificationsJob: Job? = null
+    private var groupDetailJob: Job? = null
+    private var groupRoutineCategoriesJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
     private var unreadRoutineVerificationsJob: Job? = null
 
@@ -144,12 +153,16 @@ class GroupRoutineViewModel(
     }
 
     fun onRoutineClick(routineId: Long) {
+        cancelGroupScopedJobs()
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.Detail,
+                isDetailLoading = routineId > 0L,
                 selectedRoutineId = routineId,
                 selectedMemberId = null,
                 isNewCertificationDialogVisible = false,
+                members = emptyList(),
+                todos = emptyList(),
                 actionMessage = null,
             )
         }
@@ -165,7 +178,12 @@ class GroupRoutineViewModel(
                 it.copy(members = DefaultGroupMembers, todos = DefaultGroupTodos, groupInviteCode = null)
             }
         }
-        _uiState.update { it.copy(isConfirmedOwner = false) }
+        _uiState.update {
+            it.copy(
+                isCurrentUserLeader = false,
+                isConfirmedOwner = false,
+            )
+        }
     }
 
     fun refreshSelectedGroup(refreshMemberDetail: Boolean = true) {
@@ -255,13 +273,34 @@ class GroupRoutineViewModel(
                     _uiState.update {
                         it.copy(
                             routines = routines,
+                            isListLoading = false,
                         )
                     }
                 }
 
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(actionMessage = result.message, isListLoading = false)
+                }
                 ResultState.Loading -> Unit
             }
+        }
+    }
+
+    fun onGroupRoutineTabExit() {
+        backendGroupId = null
+        cancelGroupScopedJobs()
+        _uiState.update {
+            it.copy(
+                screenMode = GroupRoutineScreenMode.List,
+                isDetailLoading = false,
+                isCertificationLoading = false,
+                selectedRoutineId = null,
+                selectedMemberId = null,
+                showOnlyMyCertifications = false,
+                selectedCertificationMemberId = null,
+                isNewCertificationDialogVisible = false,
+                actionMessage = null,
+            )
         }
     }
 
@@ -339,8 +378,10 @@ class GroupRoutineViewModel(
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.CertificationCollection,
+                isCertificationLoading = true,
                 showOnlyMyCertifications = false,
                 selectedCertificationMemberId = null,
+                posts = emptyList(),
                 actionMessage = null,
             )
         }
@@ -602,7 +643,12 @@ class GroupRoutineViewModel(
     }
 
     fun onMessageDraftChange(value: String) {
-        _uiState.update { it.copy(messageDraft = value.take(8)) }
+        _uiState.update {
+            it.copy(
+                messageDraft = value.take(MAX_STATUS_MESSAGE_LENGTH),
+                actionMessage = null,
+            )
+        }
     }
 
     fun onDismissMessageEditSheet() {
@@ -611,6 +657,10 @@ class GroupRoutineViewModel(
 
     fun onMessageEditConfirmClick() {
         val message = _uiState.value.messageDraft.trim()
+        if (message.isBlank()) {
+            _uiState.update { it.copy(actionMessage = "상태 메시지를 입력해 주세요.") }
+            return
+        }
         val groupId = currentGroupId()
         // mock ????筌먦끉裕???숆강筌?쓣爾???ш끽維筌?????????源놁벁癲ル슪?ｇ몭???棺??짆?쏆춾????ㅺ컼?얜쓣異??袁⑸즴???
         if (groupId == null) {
@@ -751,14 +801,22 @@ class GroupRoutineViewModel(
 
     /** ??숆강筌?쓣爾?猿뗫궚????ㅳ늾?????됰씭???? ??숆강筌?쓣爾???떻??縕???熬곣뫀???????늄???癲ル슢?꾤땟戮⑤뭄?????源놁졆 ??筌먦끉裕????Β?????ㅻ깹鸚?癲??? */
     private fun loadGroupDetail(groupId: Long) {
-        viewModelScope.launch {
+        groupDetailJob?.cancel()
+        groupDetailJob = viewModelScope.launch {
             if (myMemberId == null) {
                 when (val myInfo = getMyInfoUseCase()) {
                     is ResultState.Success -> myMemberId = myInfo.data.memberId
                     // ??memberId??癲ル슢?꾤땟????곗떵?癲ル슢?꾤땟???????늄?????????쒙쭗?쒖뒙?癲ル슔?蹂?엥??????ㅺ컼??癲ル슢??????? ???쒓낯??癲????
                     // 癲ル슢?????????????깅탿 ????????? ???源낅빖?? ??嚥?援????釉먮뻤?????숆강筌????????????癲ル슢????
                     is ResultState.Error -> {
-                        _uiState.update { it.copy(actionMessage = myInfo.message) }
+                        if (currentGroupId() == groupId) {
+                            _uiState.update {
+                                it.copy(
+                                    actionMessage = myInfo.message,
+                                    isDetailLoading = false,
+                                )
+                            }
+                        }
                         return@launch
                     }
 
@@ -766,8 +824,11 @@ class GroupRoutineViewModel(
                 }
             }
 
+            if (currentGroupId() != groupId) return@launch
+
             when (val result = getGroupDetailUseCase(groupId)) {
                 is ResultState.Success -> {
+                    if (currentGroupId() != groupId) return@launch
                     val detail = result.data
                     _uiState.update { state ->
                         state.copy(
@@ -781,6 +842,11 @@ class GroupRoutineViewModel(
                                     completedCount = member.completedCount.toInt(),
                                     totalCount = member.totalCount.toInt(),
                                     totalLikeCount = member.totalLikeCount.toInt(),
+                                    totalDisappointmentCount = state.members
+                                        .firstOrNull { it.id == member.memberId }
+                                        ?.totalDisappointmentCount
+                                        ?: 0,
+                                    pokeCount = member.totalPokeCount,
                                     isMe = member.memberId == myMemberId,
                                 )
                             },
@@ -794,11 +860,19 @@ class GroupRoutineViewModel(
                                     )
                                 }
                             },
+                            isCurrentUserLeader = detail.isCurrentUserOwner,
+                            isConfirmedOwner = detail.isCurrentUserOwner,
+                            isDetailLoading = false,
                         )
                     }
                 }
 
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                is ResultState.Error -> {
+                    if (currentGroupId() != groupId) return@launch
+                    _uiState.update {
+                        it.copy(actionMessage = result.message, isDetailLoading = false)
+                    }
+                }
                 ResultState.Loading -> Unit
             }
         }
@@ -827,9 +901,11 @@ class GroupRoutineViewModel(
             return
         }
 
-        viewModelScope.launch {
+        groupRoutineCategoriesJob?.cancel()
+        groupRoutineCategoriesJob = viewModelScope.launch {
             when (val result = getGroupRoutineCategoriesUseCase(groupId)) {
                 is ResultState.Success -> {
+                    if (currentGroupId() != groupId) return@launch
                     val categoryNames = result.data.categories.map { it.name }
                     serverCategoryIds = result.data.categories.associate { category ->
                         category.name to category.categoryId
@@ -855,10 +931,22 @@ class GroupRoutineViewModel(
                     }
                 }
 
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                is ResultState.Error -> {
+                    if (currentGroupId() != groupId) return@launch
+                    _uiState.update { it.copy(actionMessage = result.message) }
+                }
                 ResultState.Loading -> Unit
             }
         }
+    }
+
+    private fun cancelGroupScopedJobs() {
+        groupDetailJob?.cancel()
+        groupRoutineCategoriesJob?.cancel()
+        unreadRoutineVerificationsJob?.cancel()
+        routineVerificationsJob?.cancel()
+        todayRoutinesJob?.cancel()
+        groupRoutinesJob?.cancel()
     }
 
     private fun loadRoutineVerifications() {
@@ -874,7 +962,7 @@ class GroupRoutineViewModel(
         routineVerificationsJob = viewModelScope.launch {
             if (routineIds.isEmpty()) {
                 if (currentGroupId() == groupId) {
-                    _uiState.update { it.copy(posts = emptyList()) }
+                    _uiState.update { it.copy(posts = emptyList(), isCertificationLoading = false) }
                 }
                 return@launch
             }
@@ -916,6 +1004,7 @@ class GroupRoutineViewModel(
                 _uiState.update {
                     it.copy(
                         posts = posts.distinctBy(CertificationPostUiModel::id),
+                        isCertificationLoading = false,
                         actionMessage = if (posts.isEmpty()) lastErrorMessage else it.actionMessage,
                     )
                 }
@@ -934,17 +1023,77 @@ class GroupRoutineViewModel(
 
     fun onDismissNewCertificationDialog() {
         val groupId = currentGroupId()
-        val lastReadId = _uiState.value.newCertifications.maxOfOrNull { it.id }
-        _uiState.update { it.copy(isNewCertificationDialogVisible = false) }
+        val lastReadId = _uiState.value.newCertificationLastReadId
+            ?: _uiState.value.newCertifications.maxOfOrNull { it.id }
+        _uiState.update {
+            it.copy(
+                isNewCertificationDialogVisible = false,
+                newCertifications = emptyList(),
+                newCertificationLastReadId = null,
+            )
+        }
 
         if (groupId == null || lastReadId == null) return
 
+        markNewCertificationsRead(groupId, lastReadId)
+    }
+
+    private fun markNewCertificationsRead(groupId: Long, lastReadId: Long) {
         viewModelScope.launch {
             when (val result = markGroupRoutineVerificationsReadUseCase(groupId, lastReadId)) {
                 is ResultState.Success -> Unit
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                is ResultState.Error -> {
+                    if (currentGroupId() == groupId) {
+                        _uiState.update { it.copy(actionMessage = result.message) }
+                    }
+                }
                 ResultState.Loading -> Unit
             }
+        }
+    }
+
+    private fun advanceNewCertification(verificationId: Long) {
+        val groupId = currentGroupId()
+        val lastReadId = _uiState.value.newCertificationLastReadId
+        var finished = false
+
+        _uiState.update { state ->
+            val remaining = state.newCertifications.filterNot { it.id == verificationId }
+            finished = remaining.isEmpty()
+            state.copy(
+                newCertifications = remaining,
+                isNewCertificationDialogVisible = remaining.isNotEmpty(),
+                newCertificationLastReadId = if (remaining.isEmpty()) null else state.newCertificationLastReadId,
+            )
+        }
+
+        if (finished && groupId != null && lastReadId != null) {
+            markNewCertificationsRead(groupId, lastReadId)
+        }
+    }
+
+    private fun updateMemberReactionCount(
+        memberId: Long?,
+        likeDelta: Int = 0,
+        disappointmentDelta: Int = 0,
+    ) {
+        if (memberId == null || memberId <= 0L) return
+
+        _uiState.update { state ->
+            state.copy(
+                members = state.members.map { member ->
+                    if (member.id != memberId) {
+                        member
+                    } else {
+                        member.copy(
+                            totalLikeCount = (member.totalLikeCount + likeDelta).coerceAtLeast(0),
+                            totalDisappointmentCount = (
+                                member.totalDisappointmentCount + disappointmentDelta
+                            ).coerceAtLeast(0),
+                        )
+                    }
+                },
+            )
         }
     }
 
@@ -969,12 +1118,14 @@ class GroupRoutineViewModel(
                             memberName = item.authorName,
                             routineName = item.routineName,
                             message = item.content.orEmpty(),
+                            memberId = item.authorMemberId,
                         )
                     }
                     _uiState.update {
                         it.copy(
                             newCertifications = unreadCertifications,
                             isNewCertificationDialogVisible = unreadCertifications.isNotEmpty(),
+                            newCertificationLastReadId = unreadCertifications.maxOfOrNull { certification -> certification.id },
                         )
                     }
                 }
@@ -994,6 +1145,7 @@ class GroupRoutineViewModel(
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
             return
         }
+        val memberId = _uiState.value.posts.firstOrNull { it.id == verificationId }?.memberId
 
         viewModelScope.launch {
             val result = if (currentlyLiked) {
@@ -1019,6 +1171,10 @@ class GroupRoutineViewModel(
                             },
                         )
                     }
+                    updateMemberReactionCount(
+                        memberId = memberId,
+                        likeDelta = if (like.liked) 1 else -1,
+                    )
                 }
 
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -1029,10 +1185,31 @@ class GroupRoutineViewModel(
 
     fun onNewCertificationLikeClick(verificationId: Long) {
         val groupId = currentGroupId() ?: return
+        val memberId = _uiState.value.newCertifications
+            .firstOrNull { it.id == verificationId }
+            ?.memberId
 
         viewModelScope.launch {
             when (val result = likeGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)) {
-                is ResultState.Success -> onDismissNewCertificationDialog()
+                is ResultState.Success -> {
+                    val like = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            posts = state.posts.map { post ->
+                                if (post.id == like.verificationId) {
+                                    post.copy(
+                                        likeCount = like.likeCount.toInt(),
+                                        isLiked = like.liked,
+                                    )
+                                } else {
+                                    post
+                                }
+                            },
+                        )
+                    }
+                    updateMemberReactionCount(memberId = memberId, likeDelta = 1)
+                    advanceNewCertification(verificationId)
+                }
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
@@ -1041,10 +1218,31 @@ class GroupRoutineViewModel(
 
     fun onNewCertificationDisappointClick(verificationId: Long) {
         val groupId = currentGroupId() ?: return
+        val memberId = _uiState.value.newCertifications
+            .firstOrNull { it.id == verificationId }
+            ?.memberId
 
         viewModelScope.launch {
             when (val result = disappointGroupRoutineVerificationUseCase(groupId = groupId, verificationId = verificationId)) {
-                is ResultState.Success -> onDismissNewCertificationDialog()
+                is ResultState.Success -> {
+                    val disappointment = result.data
+                    _uiState.update { state ->
+                        state.copy(
+                            posts = state.posts.map { post ->
+                                if (post.id == disappointment.verificationId) {
+                                    post.copy(
+                                        disappointmentCount = disappointment.count.toInt(),
+                                        isDisappointed = disappointment.disappointed,
+                                    )
+                                } else {
+                                    post
+                                }
+                            },
+                        )
+                    }
+                    updateMemberReactionCount(memberId = memberId, disappointmentDelta = 1)
+                    advanceNewCertification(verificationId)
+                }
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
@@ -1056,6 +1254,7 @@ class GroupRoutineViewModel(
             _uiState.update { it.copy(actionMessage = "\uADF8\uB8F9 ID\uB97C \uCC3E\uC744 \uC218 \uC5C6\uC2B5\uB2C8\uB2E4.") }
             return
         }
+        val memberId = _uiState.value.posts.firstOrNull { it.id == verificationId }?.memberId
 
         viewModelScope.launch {
             val result = if (currentlyDisappointed) {
@@ -1081,6 +1280,10 @@ class GroupRoutineViewModel(
                             },
                         )
                     }
+                    updateMemberReactionCount(
+                        memberId = memberId,
+                        disappointmentDelta = if (disappointment.disappointed) 1 else -1,
+                    )
                 }
 
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -1090,11 +1293,21 @@ class GroupRoutineViewModel(
     }
 
     fun onGroupRoutineManageClick() {
-        _uiState.update { it.copy(screenMode = GroupRoutineScreenMode.GroupRoutineManage, actionMessage = null) }
+        todayRoutinesJob?.cancel()
+        _uiState.update {
+            it.copy(
+                screenMode = GroupRoutineScreenMode.GroupRoutineManage,
+                routineOptions = emptyList(),
+                selectedCategory = "전체",
+                actionMessage = null,
+            )
+        }
         loadGroupRoutineCategories()
+        loadGroupRoutines()
     }
 
     fun onRoomNameEditClick() {
+        if (!requireConfirmedOwner()) return
         _uiState.update { state ->
             state.copy(
                 screenMode = GroupRoutineScreenMode.RoomNameEdit,
@@ -1105,6 +1318,7 @@ class GroupRoutineViewModel(
     }
 
     fun onLeaderSettingsClick() {
+        if (!requireConfirmedOwner()) return
         _uiState.update { state ->
             state.copy(
                 screenMode = GroupRoutineScreenMode.LeaderSettings,
@@ -1124,6 +1338,7 @@ class GroupRoutineViewModel(
 
     fun onLeaderTransferConfirmClick() {
         val state = _uiState.value
+        if (!requireConfirmedOwner()) return
         val targetMemberId = state.pendingLeaderMemberId
         val myId = state.members.firstOrNull { it.isMe }?.id
         // ??? ??關履??癲???鍮??嶺뚮Ĳ?됮??嚥????袁⑸즴?????獒??????⑤９苑????筌먦끉裕끾퓴諛매?? ????ш끽維?????⑤챶苡?
@@ -1173,6 +1388,7 @@ class GroupRoutineViewModel(
     }
 
     fun onRoomLockClick() {
+        if (!requireConfirmedOwner()) return
         val groupId = currentGroupId() ?: run {
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
             return
@@ -1230,6 +1446,7 @@ class GroupRoutineViewModel(
                         _uiState.update {
                             it.copy(
                                 actionMessage = "콕콕 찔렀어요.",
+                                actionMessageId = it.actionMessageId + 1,
                             )
                         }
                         loadGroupDetail(groupId)
@@ -1289,6 +1506,58 @@ class GroupRoutineViewModel(
 
     private var todayRoutinesJob: Job? = null
 
+    private var groupRoutinesJob: Job? = null
+
+    private fun loadGroupRoutines() {
+        val groupId = currentGroupId() ?: run {
+            _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
+            return
+        }
+
+        groupRoutinesJob?.cancel()
+        groupRoutinesJob = viewModelScope.launch {
+            when (val result = getGroupRoutinesUseCase(groupId)) {
+                is ResultState.Success -> {
+                    if (currentGroupId() != groupId) return@launch
+
+                    _uiState.update { state ->
+                        val previousOptions = state.routineOptions.associateBy { it.id }
+                        val options = result.data.map { routine ->
+                            val schedules = routine.schedules
+                            val repeatDays = schedules
+                                .mapNotNull { schedule -> RepeatDayToKoreanDay[schedule.repeatDay] }
+                                .toSet()
+                            CreateRoutineOptionUiModel(
+                                id = routine.routineId,
+                                title = routine.title,
+                                deadline = schedules.firstOrNull()?.endTime.orEmpty(),
+                                category = routine.categoryName,
+                                startTime = schedules.firstOrNull()?.startTime.orEmpty(),
+                                repeatLabel = repeatDaysLabel(repeatDays),
+                                repeatDays = repeatDays,
+                                isSelected = previousOptions[routine.routineId]?.isSelected == true,
+                                categoryColor = state.categoryColors[routine.categoryName],
+                            )
+                        }
+                        state.copy(routineOptions = options)
+                    }
+                }
+
+                is ResultState.Error -> _uiState.update { state ->
+                    if (currentGroupId() == groupId) {
+                        state.copy(
+                            routineOptions = emptyList(),
+                            actionMessage = result.message,
+                        )
+                    } else {
+                        state
+                    }
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
     /** ????몄툜????숆강筌?쓣爾???룸Ŧ爾?????됰씭???? ?????ㅳ늾????嚥▲꺂??癲ル슪???띿물筌먯옓????嶺? 癲??? */
     private fun loadTodayRoutines(groupId: Long) {
         todayRoutinesJob?.cancel()
@@ -1334,7 +1603,13 @@ class GroupRoutineViewModel(
                         }
                         state.copy(
                             todos = todos + completedTodosNotReturned,
-                            routineOptions = updatedOptions,
+                            routineOptions = if (
+                                state.screenMode == GroupRoutineScreenMode.GroupRoutineManage
+                            ) {
+                                state.routineOptions
+                            } else {
+                                updatedOptions
+                            },
                         )
                     }
                 }
@@ -1346,6 +1621,7 @@ class GroupRoutineViewModel(
     }
 
     fun onRoomNameEditConfirmClick() {
+        if (!requireConfirmedOwner()) return
         val title = _uiState.value.roomNameInput.trim()
         if (title.isBlank()) {
             _uiState.update { it.copy(actionMessage = "방 이름을 입력해 주세요.") }
@@ -1382,6 +1658,12 @@ class GroupRoutineViewModel(
                 actionMessage = "방 이름이 변경되었어요.",
             )
         }
+    }
+
+    private fun requireConfirmedOwner(): Boolean {
+        if (_uiState.value.isConfirmedOwner) return true
+        _uiState.update { it.copy(actionMessage = "방장만 사용할 수 있는 기능입니다.") }
+        return false
     }
 
     fun onAddClick() {
@@ -1421,7 +1703,12 @@ class GroupRoutineViewModel(
     }
 
     fun onInviteCodeChange(value: String) {
-        _uiState.update { it.copy(inviteCodeInput = value, actionMessage = null) }
+        _uiState.update {
+            it.copy(
+                inviteCodeInput = value.filterNot(Char::isWhitespace),
+                actionMessage = null,
+            )
+        }
     }
 
     fun onInviteCodeConfirmClick() {
@@ -1474,6 +1761,7 @@ class GroupRoutineViewModel(
                                 selectedRoutineId = joined.groupId,
                                 routines = listOf(joinedRoutine) + others,
                                 inviteCodeInput = "",
+                                isCurrentUserLeader = false,
                                 isConfirmedOwner = false,
                                 actionMessage = "그룹에 참여했어요.",
                             )
@@ -1495,20 +1783,32 @@ class GroupRoutineViewModel(
     }
 
     fun onInviteCodeCopyClick() {
-        _uiState.update { it.copy(actionMessage = "초대코드가 복사되었어요.") }
+        _uiState.update {
+            it.copy(
+                actionMessage = "초대코드가 복사되었어요.",
+                actionMessageId = it.actionMessageId + 1,
+            )
+        }
     }
 
     fun onRoomNameChange(value: String) {
-        _uiState.update { it.copy(roomNameInput = value, actionMessage = null) }
+        _uiState.update {
+            it.copy(
+                roomNameInput = value.take(MAX_ROOM_NAME_LENGTH),
+                actionMessage = null,
+            )
+        }
     }
 
     fun onCreateRoomNextClick() {
         _uiState.update { state ->
-            if (state.roomNameInput.isBlank()) {
+            val roomName = state.roomNameInput.trim()
+            if (roomName.isBlank()) {
                 state.copy(actionMessage = "방 이름을 입력해 주세요.")
             } else {
                 state.copy(
                     screenMode = GroupRoutineScreenMode.CreateRoutineSelect,
+                    roomNameInput = roomName,
                     actionMessage = null,
                 )
             }
@@ -1559,7 +1859,12 @@ class GroupRoutineViewModel(
     }
 
     fun onCategoryInputChange(value: String) {
-        _uiState.update { it.copy(categoryInput = value, actionMessage = null) }
+        _uiState.update {
+            it.copy(
+                categoryInput = value.take(MAX_CATEGORY_NAME_LENGTH),
+                actionMessage = null,
+            )
+        }
     }
 
     fun onCategoryColorSelected(color: CategoryColor) {
@@ -1730,7 +2035,12 @@ class GroupRoutineViewModel(
     }
 
     fun onRoutineDraftNameChange(value: String) {
-        _uiState.update { it.copy(routineDraftName = value, actionMessage = null) }
+        _uiState.update {
+            it.copy(
+                routineDraftName = value.take(MAX_ROUTINE_NAME_LENGTH),
+                actionMessage = null,
+            )
+        }
     }
 
     fun onRoutineDraftStartTimeChange(value: String) {
@@ -1874,7 +2184,7 @@ class GroupRoutineViewModel(
                             )
                         }
                         // ???ㅳ늾????釉먮뻤??癲ル슪???띿물筌먯옓?????todos)??????몄툜????룸Ŧ爾???釉뚰????대퓠?癲??????????????筌먲퐣?????怨뺣빰 ??됰씭????????
-                        loadTodayRoutines(groupId)
+                        loadGroupRoutines()
                     }
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                     ResultState.Loading -> Unit
@@ -1975,7 +2285,7 @@ class GroupRoutineViewModel(
                     is ResultState.Success -> {
                         clearRoutineDraft(editingId)
                         _uiState.update { it.copy(actionMessage = "루틴이 삭제되었어요.") }
-                        loadTodayRoutines(groupId)
+                        loadGroupRoutines()
                     }
 
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -2115,6 +2425,7 @@ class GroupRoutineViewModel(
                                 selectedCategory = "\uC804\uCCB4",
                                 routines = listOf(newRoutine) + existingServerRoutines,
                                 todos = selectedTodos,
+                                isCurrentUserLeader = true,
                                 isConfirmedOwner = true,
                                 actionMessage = "\uBC29\uC774 \uB9CC\uB4E4\uC5B4\uC84C\uC5B4\uC694.",
                             )
@@ -2203,6 +2514,10 @@ private val KoreanDayToRepeatDay = mapOf(
     "\uAE08" to RepeatDay.FRIDAY,
     "\uD1A0" to RepeatDay.SATURDAY,
 )
+
+private val RepeatDayToKoreanDay = KoreanDayToRepeatDay.entries.associate { (day, repeatDay) ->
+    repeatDay to day
+}
 
 // ?袁⑸즲??援????れ삀????怨멸텭??沃섅뀙??關履???????癲꾧퀗???????????節뚮쳥?????됰Ŧ苑?嶺뚮㉡?섌걡?癲ル슢?????????????) ???????categoryId
 private val DefaultCategoryIds = mapOf(

@@ -24,6 +24,7 @@ import com.li_routi.core.domain.grouproutine.GroupJoinPreview
 import com.li_routi.core.domain.grouproutine.GroupJoinResult
 import com.li_routi.core.domain.grouproutine.GroupRoutineDisappointment
 import com.li_routi.core.domain.grouproutine.GroupRoutineLike
+import com.li_routi.core.domain.grouproutine.GroupRoutineItem
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
 import com.li_routi.core.domain.grouproutine.GroupRoutineRepository
@@ -178,6 +179,10 @@ class GroupRoutineRepositoryImpl(
 
     override suspend fun kickGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {
         api.kickMember(groupId = groupId, targetMemberId = targetMemberId).ensureSuccess()
+    }
+
+    override suspend fun getGroupRoutines(groupId: Long): ResultState<List<GroupRoutineItem>> = safeApiCall {
+        api.getGroupRoutines(groupId).unwrap().toDomain()
     }
 
     override suspend fun pokeGroupMember(groupId: Long, targetMemberId: Long): ResultState<Unit> = safeApiCall {

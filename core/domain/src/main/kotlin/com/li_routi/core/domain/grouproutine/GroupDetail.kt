@@ -5,6 +5,7 @@ data class GroupDetail(
     val groupId: Long,
     val groupName: String,
     val inviteCode: String,
+    val isCurrentUserOwner: Boolean,
     val members: List<GroupMemberActivity>,
 )
 
@@ -16,6 +17,7 @@ data class GroupMemberActivity(
     val statusMessage: String?,
     val currentStreak: Int,
     val totalLikeCount: Long,
+    val totalPokeCount: Long,
     /** 금일 완료한 그룹 루틴 할당 수. 할당이 없으면 0 */
     val completedCount: Long,
     /** 금일 전체 그룹 루틴 할당 수. 할당이 없으면 0 */

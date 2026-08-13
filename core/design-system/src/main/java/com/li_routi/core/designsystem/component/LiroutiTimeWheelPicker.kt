@@ -14,6 +14,8 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -90,6 +92,8 @@ fun LiroutiTimeWheelPicker(
     modifier: Modifier = Modifier,
 ) {
     val periods = arrayOf("오전", "오후")
+    val currentValue by rememberUpdatedState(value)
+    val currentOnValueChange by rememberUpdatedState(onValueChange)
     val hours = (1..12).map { it.toString() }.toTypedArray()
     val minutes = arrayOf("00", "10", "20", "30", "40", "50")
     // 다크 모드 labelDefault(밝은색)를 쓰지 않고 라이트 라벨색으로 고정
@@ -117,7 +121,7 @@ fun LiroutiTimeWheelPicker(
                 values = periods,
                 selectedIndex = value.periodIndex.coerceIn(0, 1),
                 onSelectedIndexChange = { index ->
-                    onValueChange(value.copy(periodIndex = index))
+                    currentOnValueChange(currentValue.copy(periodIndex = index))
                 },
                 selectedTextColorArgb = wheelTextColorArgb,
                 modifier = Modifier.weight(1f),
@@ -126,7 +130,7 @@ fun LiroutiTimeWheelPicker(
                 values = hours,
                 selectedIndex = (value.hour12 - 1).coerceIn(0, 11),
                 onSelectedIndexChange = { index ->
-                    onValueChange(value.copy(hour12 = index + 1))
+                    currentOnValueChange(currentValue.copy(hour12 = index + 1))
                 },
                 selectedTextColorArgb = wheelTextColorArgb,
                 modifier = Modifier.weight(1f),
@@ -135,7 +139,7 @@ fun LiroutiTimeWheelPicker(
                 values = minutes,
                 selectedIndex = (value.minute / 10).coerceIn(0, 5),
                 onSelectedIndexChange = { index ->
-                    onValueChange(value.copy(minute = index * 10))
+                    currentOnValueChange(currentValue.copy(minute = index * 10))
                 },
                 selectedTextColorArgb = wheelTextColorArgb,
                 modifier = Modifier.weight(1f),
@@ -166,6 +170,8 @@ fun WheelNumberPicker(
     height: Dp = 90.dp,
     wrapSelectorWheel: Boolean = true,
 ) {
+    val currentOnSelectedIndexChange by rememberUpdatedState(onSelectedIndexChange)
+
     AndroidView(
         modifier = modifier.height(height),
         factory = { context ->
@@ -190,7 +196,7 @@ fun WheelNumberPicker(
                 setBackgroundColor(android.graphics.Color.TRANSPARENT)
                 applyWheelTextColor(selectedTextColorArgb)
                 setOnValueChangedListener { _, _, newVal ->
-                    onSelectedIndexChange(newVal)
+                    currentOnSelectedIndexChange(newVal)
                 }
             }
         },

@@ -44,7 +44,7 @@ data class GroupMemberUiModel(
     val totalCount: Int = 0,
     val totalLikeCount: Int = 0,
     val totalDisappointmentCount: Int = 0,
-    val pokeCount: Int = 0,
+    val pokeCount: Long = 0L,
     val isMe: Boolean = false,
 )
 
@@ -75,6 +75,7 @@ data class NewCertificationUiModel(
     val memberName: String,
     val routineName: String,
     val message: String,
+    val memberId: Long = 0L,
 )
 
 data class CreateRoutineOptionUiModel(
@@ -91,13 +92,17 @@ data class CreateRoutineOptionUiModel(
 
 data class GroupRoutineUiState(
     val screenMode: GroupRoutineScreenMode = GroupRoutineScreenMode.List,
+    val isListLoading: Boolean = true,
+    val isDetailLoading: Boolean = false,
+    val isCertificationLoading: Boolean = false,
     val selectedRoutineId: Long? = null,
     val selectedMemberId: Long? = null,
     val pendingLeaderMemberId: Long? = null,
     val isActionSheetVisible: Boolean = false,
     val actionMessage: String? = null,
+    val actionMessageId: Long = 0L,
     val isRoomLocked: Boolean = false,
-    val isCurrentUserLeader: Boolean = true,
+    val isCurrentUserLeader: Boolean = false,
     // 서버가 그룹 상세에 OWNER 여부를 안 내려줌. isCurrentUserLeader는 기본값이 true라
     // 실제 권한 판단에 쓸 수 없어서, 방장인 게 증명된 경우에만 켜지는 플래그를 따로 둠
     // (방을 직접 만들었거나 / 나가기가 GROUP409_1로 막혔거나)
@@ -105,6 +110,7 @@ data class GroupRoutineUiState(
     val showOnlyMyCertifications: Boolean = false,
     val selectedCertificationMemberId: Long? = null,
     val isNewCertificationDialogVisible: Boolean = false,
+    val newCertificationLastReadId: Long? = null,
     val searchInput: String = "",
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",
