@@ -3,11 +3,6 @@
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
@@ -16,7 +11,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectTapGestures
-import androidx.compose.foundation.gestures.detectVerticalDragGestures
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
@@ -56,6 +50,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
+import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
@@ -69,6 +64,7 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextFieldDefaults
 import androidx.compose.material3.rememberModalBottomSheetState
+import androidx.compose.material3.rememberBottomSheetScaffoldState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
@@ -104,6 +100,7 @@ import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import coil.compose.AsyncImage
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.designsystem.component.CheckBoxState
@@ -116,6 +113,8 @@ import com.li_routi.core.designsystem.foundation.color.EarlyBirdText
 import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
 import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
+import com.li_routi.core.designsystem.component.LiroutiBadge
+import com.li_routi.core.designsystem.component.LiroutiBadgeColor
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
 import com.li_routi.core.designsystem.component.LiroutiClockTime
@@ -219,7 +218,7 @@ fun GroupRoutineRoute(
     LaunchedEffect(verificationRefreshSignal) {
         if (verificationRefreshSignal > 0) {
             viewModel.markRoutineVerified(verifiedRoutineId)
-            viewModel.refreshSelectedGroup(refreshMemberDetail = false)
+            viewModel.refreshSelectedGroup(refreshMemberDetail = true)
         }
     }
 
@@ -273,7 +272,6 @@ fun GroupRoutineRoute(
         onRoutineDraftCategoryClick = viewModel::onRoutineDraftCategoryClick,
         onCategoryColorSelected = viewModel::onCategoryColorSelected,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
-        onTodoCheckedChange = viewModel::onTodoCheckedChange,
         onRoutineVerificationClick = { groupId, routineId ->
             onStartVerification("group_${groupId}_${routineId}")
         },
@@ -369,7 +367,6 @@ private fun GroupRoutineScreen(
     onRoutineDraftCategoryClick: (String) -> Unit,
     onCategoryColorSelected: (CategoryColor) -> Unit,
     onCreateRoomDoneClick: () -> Unit,
-    onTodoCheckedChange: (Long, Boolean) -> Unit,
     onRoutineVerificationClick: (Long, Long) -> Unit = { _, _ -> },
     onCertificationTabClick: (Boolean) -> Unit,
     onCertificationMemberClick: (Long?) -> Unit,
@@ -426,7 +423,6 @@ private fun GroupRoutineScreen(
             } else GroupRoutineDetailScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
-                onTodoCheckedChange = onTodoCheckedChange,
                 onRoutineVerificationClick = onRoutineVerificationClick,
                 onCertificationTabClick = onCertificationTabClick,
                 onCertificationSummaryClick = onCertificationSummaryClick,
@@ -1353,7 +1349,7 @@ private fun CreateRoutineOptionRow(
                 Text(
                     text = option.title,
                     color = LiroutiTheme.colors.labelDefault,
-                    style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+                    style = LiroutiTheme.typography.body2LongMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -1929,7 +1925,7 @@ private fun NewCertificationDialog(
                 .clip(RoundedCornerShape(6.dp))
                 .background(LiroutiTheme.colors.backgroundDefault)
                 .padding(22.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp),
         ) {
             Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                 Text(
@@ -1943,9 +1939,11 @@ private fun NewCertificationDialog(
                     modifier = Modifier.size(28.dp),
                 )
             }
-            HorizontalPager(state = pagerState) {
-                Image(
-                    painter = painterResource(id = R.drawable.img_group_routine_cert_water),
+            HorizontalPager(state = pagerState) { page ->
+                AsyncImage(
+                    model = certifications[page].imageUrl,
+                    error = painterResource(id = R.drawable.img_group_routine_cert_water),
+                    fallback = painterResource(id = R.drawable.img_group_routine_cert_water),
                     contentDescription = null,
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
@@ -2292,11 +2290,11 @@ private fun VerticalStatDivider() {
     )
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
 @Composable
 private fun GroupRoutineDetailScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
-    onTodoCheckedChange: (Long, Boolean) -> Unit,
     onRoutineVerificationClick: (Long, Long) -> Unit,
     onCertificationTabClick: (Boolean) -> Unit,
     onCertificationSummaryClick: () -> Unit,
@@ -2314,28 +2312,52 @@ private fun GroupRoutineDetailScreen(
     modifier: Modifier = Modifier,
 ) {
     val routine = uiState.selectedRoutine ?: return
-    var isRoutineSheetExpanded by remember(routine.id) { mutableStateOf(false) }
+    val sheetScaffoldState = rememberBottomSheetScaffoldState()
 
-    Column(
+    Box(
         modifier = modifier
             .fillMaxSize()
             .background(LiroutiTheme.colors.backgroundSecondary),
     ) {
-        GroupRoutineTopBar(
-            title = routine.title,
-            showBack = true,
-            showActions = true,
-            chatBadgeCount = uiState.unreadChatCount,
-            onBackClick = onBackClick,
-            onChatClick = onChatClick,
-            onSettingsClick = onSettingsClick,
-        )
-
-        Column(modifier = Modifier.weight(1f)) {
-            AnimatedVisibility(
-                visible = !isRoutineSheetExpanded,
-                enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
-                exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+        BottomSheetScaffold(
+            modifier = Modifier.fillMaxSize(),
+            scaffoldState = sheetScaffoldState,
+            topBar = {
+                GroupRoutineTopBar(
+                    title = routine.title,
+                    showBack = true,
+                    showActions = true,
+                    chatBadgeCount = uiState.unreadChatCount,
+                    onBackClick = onBackClick,
+                    onChatClick = onChatClick,
+                    onSettingsClick = onSettingsClick,
+                )
+            },
+            sheetPeekHeight = 360.dp,
+            sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
+            sheetContainerColor = LiroutiTheme.colors.backgroundDefault,
+            containerColor = LiroutiTheme.colors.backgroundSecondary,
+            sheetDragHandle = { GroupRoutineSheetDragHandle() },
+            sheetContent = {
+                DetailRoutineTabSheet(
+                    title = "오늘의 루틴",
+                    todos = uiState.todos,
+                    categories = uiState.categories,
+                    selectedCategory = uiState.selectedCategory,
+                    categoryColors = uiState.categoryColors,
+                    progressLabel = uiState.todoProgressLabel,
+                    onRoutineVerificationClick = { routineId ->
+                        onRoutineVerificationClick(routine.id, routineId)
+                    },
+                    onRoutineColorLongClick = onRoutineColorLongClick,
+                    onCategoryClick = onCategoryClick,
+                )
+            },
+        ) { innerPadding ->
+            Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .padding(innerPadding),
             ) {
                 DetailMemberSection(
                     title = routine.title,
@@ -2344,28 +2366,16 @@ private fun GroupRoutineDetailScreen(
                     onMessageEditClick = onMessageEditClick,
                     onInviteCodeClick = onInviteCodeClick,
                     onMemberClick = onMemberClick,
+                    modifier = Modifier.fillMaxSize(),
                 )
             }
-            DetailRoutineTabSheet(
-                title = "오늘의 루틴",
-                todos = uiState.todos,
-                categories = uiState.categories,
-                selectedCategory = uiState.selectedCategory,
-                categoryColors = uiState.categoryColors,
-                progressLabel = uiState.todoProgressLabel,
-                onTodoCheckedChange = onTodoCheckedChange,
-                onRoutineVerificationClick = { routineId ->
-                    onRoutineVerificationClick(routine.id, routineId)
-                },
-                onRoutineColorLongClick = onRoutineColorLongClick,
-                onCategoryClick = onCategoryClick,
-                expanded = isRoutineSheetExpanded,
-                onExpandedChange = { isRoutineSheetExpanded = it },
-                modifier = Modifier.weight(1f),
-            )
         }
 
-        AppBottomNavBar(selectedTab = AppBottomTab.GroupRoutine, onTabSelected = onTabSelected)
+        AppBottomNavBar(
+            selectedTab = AppBottomTab.GroupRoutine,
+            onTabSelected = onTabSelected,
+            modifier = Modifier.align(Alignment.BottomCenter),
+        )
     }
 
     uiState.selectedMember?.let { member ->
@@ -2376,6 +2386,24 @@ private fun GroupRoutineDetailScreen(
             onDismissRequest = onDismissMemberDialog,
             onPokeClick = onPokeMemberClick,
             onKickClick = onMemberKickClick,
+        )
+    }
+}
+
+@Composable
+private fun GroupRoutineSheetDragHandle(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .fillMaxWidth()
+            .height(20.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Box(
+            modifier = Modifier
+                .width(44.dp)
+                .height(4.dp)
+                .clip(RoundedCornerShape(100.dp))
+                .background(LiroutiTheme.colors.borderDefault),
         )
     }
 }
@@ -2492,15 +2520,11 @@ private fun DetailRoutineTabSheet(
     selectedCategory: String,
     categoryColors: Map<String, CategoryColor>,
     progressLabel: String,
-    onTodoCheckedChange: (Long, Boolean) -> Unit,
     onRoutineVerificationClick: (Long) -> Unit,
     onRoutineColorLongClick: (Long) -> Unit,
     onCategoryClick: (String) -> Unit,
-    expanded: Boolean,
-    onExpandedChange: (Boolean) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val dragThresholdPx = with(LocalDensity.current) { 24.dp.toPx() }
     val visibleTodos = remember(todos, selectedCategory) {
         if (selectedCategory == "전체") {
             todos
@@ -2518,43 +2542,13 @@ private fun DetailRoutineTabSheet(
         modifier = modifier
             .fillMaxWidth()
             .fillMaxHeight()
-            .clip(if (expanded) RoundedCornerShape(0.dp) else RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp))
             .background(LiroutiTheme.colors.backgroundDefault),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        Box(
-            modifier = Modifier
-                .fillMaxWidth()
-                .height(20.dp)
-                .pointerInput(expanded) {
-                    var dragAmountSum = 0f
-                    detectVerticalDragGestures(
-                        onDragStart = { dragAmountSum = 0f },
-                        onVerticalDrag = { _, dragAmount ->
-                            dragAmountSum += dragAmount
-                        },
-                        onDragEnd = {
-                            when {
-                                dragAmountSum < -dragThresholdPx -> onExpandedChange(true)
-                                dragAmountSum > dragThresholdPx -> onExpandedChange(false)
-                            }
-                        },
-                    )
-                },
-            contentAlignment = Alignment.Center,
-        ) {
-            Box(
-                modifier = Modifier
-                    .width(44.dp)
-                    .height(4.dp)
-                    .clip(RoundedCornerShape(100.dp))
-                    .background(LiroutiTheme.colors.borderDefault),
-            )
-        }
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(start = 16.dp, end = 16.dp, bottom = if (expanded) 12.dp else 16.dp),
+                .padding(start = 16.dp, end = 16.dp, bottom = 96.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
             Text(
@@ -2579,7 +2573,6 @@ private fun DetailRoutineTabSheet(
                     DetailRoutineTodoRow(
                         todo = todo,
                         categoryColor = categoryColors[todo.category],
-                        onCheckedChange = { checked -> onTodoCheckedChange(todo.id, checked) },
                         onCameraClick = { onRoutineVerificationClick(todo.id) },
                         onLongClick = { onRoutineColorLongClick(todo.id) },
                     )
@@ -2617,7 +2610,7 @@ private fun DetailRoutineCategoryTabs(
             val selectedColor = categoryColors[category]?.swatch ?: LiroutiTheme.colors.primaryNormal
             Text(
                 text = if (selected) "✓ $category" else category,
-                color = if (selected) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.labelSub,
+                color = if (selected) LiroutiTheme.colors.backgroundDefault else LiroutiTheme.colors.labelSub,
                 style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                 modifier = Modifier
                     .height(38.dp)
@@ -2636,7 +2629,6 @@ private fun DetailRoutineCategoryTabs(
 private fun DetailRoutineTodoRow(
     todo: GroupTodoUiModel,
     categoryColor: CategoryColor?,
-    onCheckedChange: (Boolean) -> Unit,
     onCameraClick: () -> Unit,
     onLongClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -2657,13 +2649,15 @@ private fun DetailRoutineTodoRow(
                 )
             },
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.CenterStart)
-                .width(4.dp)
-                .fillMaxHeight()
-                .background(routineCategoryColor),
-        )
+        if (!todo.isDone) {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.CenterStart)
+                    .width(4.dp)
+                    .fillMaxHeight()
+                    .background(routineCategoryColor),
+            )
+        }
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -2671,11 +2665,6 @@ private fun DetailRoutineTodoRow(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(12.dp),
         ) {
-            SmallSquareCheckbox(
-                checked = todo.isDone,
-                modifier = Modifier.size(16.dp),
-                enabled = false,
-            )
             Column(
                 modifier = Modifier.weight(1f),
                 verticalArrangement = Arrangement.spacedBy(2.dp),
@@ -2683,52 +2672,47 @@ private fun DetailRoutineTodoRow(
                 Text(
                     text = todo.title,
                     color = if (todo.isDone) LiroutiTheme.colors.labelInfo else LiroutiTheme.colors.labelDefault,
-                    style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
+                    style = LiroutiTheme.typography.body2LongMedium,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                ) {
-                    Text(
-                        text = "마감 ${todo.deadline}",
-                        color = LiroutiTheme.colors.labelInfo,
-                        style = LiroutiTheme.typography.caption,
-                        maxLines = 1,
-                    )
-                    Box(
-                        modifier = Modifier
-                            .width(1.dp)
-                            .height(10.dp)
-                            .background(LiroutiTheme.colors.borderDefault),
-                    )
-                    Text(
-                        text = todo.category,
-                        color = LiroutiTheme.colors.labelInfo,
-                        style = LiroutiTheme.typography.caption,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
+                if (!todo.isDone) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    ) {
+                        Text(
+                            text = todo.category,
+                            color = LiroutiTheme.colors.labelDefault,
+                            style = LiroutiTheme.typography.caption,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                        )
+                        Box(
+                            modifier = Modifier
+                                .width(1.dp)
+                                .height(10.dp)
+                                .background(LiroutiTheme.colors.borderStrong),
+                        )
+                        Text(
+                            text = "마감 ${todo.deadline}",
+                            color = LiroutiTheme.colors.labelInfo,
+                            style = LiroutiTheme.typography.caption,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
             if (todo.isDone) {
-                Text(
-                    text = "완료",
-                    color = LiroutiTheme.colors.completeText,
-                    style = LiroutiTheme.typography.caption,
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(6.dp))
-                        .background(LiroutiTheme.colors.completeBackground)
-                        .padding(horizontal = 7.dp, vertical = 3.dp),
-                )
+                LiroutiBadge(text = "완료", color = LiroutiBadgeColor.Neutral)
             } else {
                 Image(
                     painter = painterResource(id = DesignSystemR.drawable.camera),
                     contentDescription = "루틴 인증하기",
                     modifier = Modifier
-                        .size(18.dp)
+                        .size(20.dp)
                         .clickable(onClick = onCameraClick),
+                    colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelInfo),
                 )
             }
         }
@@ -3222,23 +3206,16 @@ private fun LeaderMemberRow(
                 .background(LiroutiTheme.colors.backgroundSecondary),
         )
         Text(
-            text = "팀원 이름",
+            text = member.name,
             color = LiroutiTheme.colors.labelDefault,
             style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
             modifier = Modifier.weight(1f),
         )
-        Box(
-            modifier = Modifier
-                .size(18.dp)
-                .clip(CircleShape)
-                .background(if (selected) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
-                .border(1.dp, if (selected) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.borderStrong, CircleShape),
-            contentAlignment = Alignment.Center,
-        ) {
-            if (selected) {
-                Text(text = "✓", color = LiroutiTheme.colors.labelReverse, fontSize = 10.sp, fontWeight = FontWeight.Bold)
-            }
-        }
+        CustomCheckBox(
+            state = if (selected) CheckBoxState.B else CheckBoxState.A,
+            isCircle = true,
+            onClick = onClick,
+        )
     }
 }
 
@@ -4104,8 +4081,10 @@ private fun CertificationPostItem(
             color = LiroutiTheme.colors.labelDefault,
             style = LiroutiTheme.typography.body2Long,
         )
-        Image(
-            painter = painterResource(id = R.drawable.img_group_routine_cert_water),
+        AsyncImage(
+            model = post.imageUrl,
+            error = painterResource(id = R.drawable.img_group_routine_cert_water),
+            fallback = painterResource(id = R.drawable.img_group_routine_cert_water),
             contentDescription = null,
             contentScale = ContentScale.Crop,
             modifier = Modifier
@@ -4126,7 +4105,18 @@ private fun CertificationPostItem(
                 verticalAlignment = Alignment.CenterVertically,
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Text(text = if (post.isLiked) "♥" else "♡", color = LiroutiTheme.colors.labelDefault, fontSize = 15.sp)
+                Icon(
+                    painter = painterResource(
+                        id = if (post.isLiked) {
+                            DesignSystemR.drawable.favorite__filled
+                        } else {
+                            DesignSystemR.drawable.favorite
+                        },
+                    ),
+                    contentDescription = if (post.isLiked) "좋아요 취소" else "좋아요",
+                    tint = LiroutiTheme.colors.labelDefault,
+                    modifier = Modifier.size(16.dp),
+                )
                 Text(
                     text = post.likeCount.toString(),
                     color = LiroutiTheme.colors.labelDefault,
@@ -4498,7 +4488,6 @@ private fun GroupRoutineListPreview() {
             onRoutineDraftCategoryClick = {},
             onCategoryColorSelected = {},
             onCreateRoomDoneClick = {},
-            onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
             onCertificationMemberClick = {},
             onCertificationSummaryClick = {},
@@ -4580,7 +4569,6 @@ private fun CreateRoomNamePreview() {
             onRoutineDraftCategoryClick = {},
             onCategoryColorSelected = {},
             onCreateRoomDoneClick = {},
-            onTodoCheckedChange = { _, _ -> },
             onCertificationTabClick = {},
             onCertificationMemberClick = {},
             onCertificationSummaryClick = {},
