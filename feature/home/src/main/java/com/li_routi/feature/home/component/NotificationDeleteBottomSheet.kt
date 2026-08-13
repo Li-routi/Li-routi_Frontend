@@ -19,15 +19,15 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.designsystem.foundation.color.DragHandleColor
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
 private val SheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
-private val HandleColor = Color(0xFFDEDEDE)
+private val HandleColor = DragHandleColor
 
 /**
  * 알림 더보기 → 삭제 바텀시트 (Figma `알림 삭제` / `4741:44644`).

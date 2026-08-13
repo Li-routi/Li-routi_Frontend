@@ -114,6 +114,7 @@ import com.li_routi.core.designsystem.foundation.color.ChatSendBackground
 import com.li_routi.core.designsystem.foundation.color.EarlyBirdBackground
 import com.li_routi.core.designsystem.foundation.color.EarlyBirdText
 import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
+import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
@@ -1819,7 +1820,7 @@ private fun formatRoutineTime(hour: Int, minute: Int): String {
 }
 
 private fun Color.readableContentColor(): Color =
-    if (luminance() < 0.5f) Color.White else Color(0xFF171719)
+    if (luminance() < 0.5f) Color.White else Neutral10
 
 @Composable
 private fun DeleteRoutineDialog(

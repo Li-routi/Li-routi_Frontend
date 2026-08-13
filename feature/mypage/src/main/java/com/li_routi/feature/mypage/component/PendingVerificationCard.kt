@@ -17,7 +17,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.TextStyle
@@ -26,12 +25,13 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.li_routi.core.designsystem.foundation.color.ScrimMuted
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
 private val CardWidth = 192.dp
 private val CardImageHeight = 144.dp
-private val ScrimColor = Color(0xFF505050).copy(alpha = 0.6f)
+private val ScrimColor = ScrimMuted
 
 /** AI 검증 대기 중인 인증 한 건. Figma node `4869:36895`("대기 중인 인증") 기준. */
 data class PendingVerificationUiModel(

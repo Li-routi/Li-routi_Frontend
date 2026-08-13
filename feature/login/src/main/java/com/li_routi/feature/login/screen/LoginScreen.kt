@@ -14,10 +14,12 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.BackgroundFill
+import com.li_routi.core.designsystem.foundation.color.KakaoBrandYellow
+import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.login.component.LoginPageText
@@ -93,7 +95,7 @@ fun LoginScreen(
                         .padding(top = 240.dp)
                         .fillMaxWidth()
                         .aspectRatio(1f)
-                        .background(Color(0xFFFAFAFA)),
+                        .background(BackgroundFill),
                 )
                 LoginProgressBar(
                     currentPage = pagerState.currentPage,
@@ -113,16 +115,16 @@ fun LoginScreen(
                 SocialLoginButton(
                     text = "카카오로 시작하기",
                     iconRes = R.drawable.kakao,
-                    backgroundColor = Color(0xFFFEE500),
-                    textColor = Color(0xFF171719),
+                    backgroundColor = KakaoBrandYellow,
+                    textColor = Neutral10,
                     onClick = onKakaoClick,
                     enabled = !isLoading,
                 )
                 SocialLoginButton(
                     text = "Google로 시작하기",
                     iconRes = R.drawable.google,
-                    backgroundColor = Color(0xFFFAFAFA),
-                    textColor = Color(0xFF171719),
+                    backgroundColor = BackgroundFill,
+                    textColor = Neutral10,
                     onClick = onGoogleClick,
                     enabled = !isLoading,
                 )
