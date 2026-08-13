@@ -55,7 +55,6 @@ import com.li_routi.core.domain.grouproutine.UpdateGroupNameUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
-import com.li_routi.feature.grouproutine.component.ChatReplyPreviewUiModel
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
@@ -415,18 +414,14 @@ class GroupRoutineViewModel(
             return
         }
 
-        // 답장 대상이 있으면 원본 메시지 정보(id/보낸 사람/미리보기)를 본문 앞에 인코딩해
-        // 실어 보낸다 — 서버가 별도 "답장" 필드를 지원하지 않아, 받는 쪽에서 content를 파싱해
-        // 다시 원본 메시지 정보로 복원한다(ChatMessage.toUiModel 참고).
+        // 답장 대상이 있으면 원본 메시지 id를 본문 앞에 인코딩해 실어 보낸다 — 서버가 별도
+        // "답장" 필드를 지원하지 않아서다. 보낸 사람/미리보기 텍스트는 여기 싣지 않는다 — 그건
+        // "보내는" 클라이언트가 자유롭게 채우는 값이라 그대로 믿으면 위조될 수 있다. 받는 쪽은
+        // id만 신뢰하고, 실제 내용은 자기가 받은 메시지 목록에서 직접 찾는다
+        // (ChatMessage.toUiModel / resolveReplyPreview 참고).
         val replyTarget = _uiState.value.replyTarget
         val content = if (replyTarget != null) {
-            val preview = if (replyTarget.emojiUrl != null) EmojiReplyPreviewLabel else replyTarget.message
-            encodeReplyContent(
-                replyToMessageId = replyTarget.id,
-                senderName = replyTarget.senderName,
-                preview = preview,
-                body = text,
-            )
+            encodeReplyContent(replyToMessageId = replyTarget.id, body = text)
         } else {
             text
         }
@@ -2530,13 +2525,7 @@ class GroupRoutineViewModel(
             sentAtMillis = createdAt.toEpochMillisOrNow(),
             isMine = isMine,
             emojiUrl = if (type == ChatMessageType.EMOTICON) emoticon?.assetUrl else null,
-            replyPreview = parsed?.replySenderName?.let { sender ->
-                ChatReplyPreviewUiModel(
-                    originalMessageId = parsed.replyToMessageId,
-                    senderName = sender,
-                    previewText = parsed.replyPreview.orEmpty(),
-                )
-            },
+            replyToMessageId = parsed?.replyToMessageId,
         )
     }
 }

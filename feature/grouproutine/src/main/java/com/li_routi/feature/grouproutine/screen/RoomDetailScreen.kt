@@ -59,6 +59,7 @@ import com.li_routi.feature.grouproutine.component.EmojiPannel
 import com.li_routi.feature.grouproutine.component.isGroupEnd
 import com.li_routi.feature.grouproutine.component.isGroupStart
 import com.li_routi.feature.grouproutine.component.isNewDate
+import com.li_routi.feature.grouproutine.component.resolveReplyPreview
 import com.li_routi.feature.grouproutine.component.toLocalDate
 import java.time.LocalDate
 import kotlinx.coroutines.launch
@@ -172,8 +173,10 @@ fun RoomDetailScreen(
         previousLastMessageId = lastId
     }
 
-    // 답장으로 보낸 메시지의 인용 미리보기를 탭하면 원본 메시지로 스크롤한다. 원본이 지금
-    // 불러와진 범위 밖(아직 로드하지 않은 과거 페이지)에 있으면 찾지 못해 아무 일도 하지 않는다.
+    // 답장으로 보낸 메시지의 인용 미리보기를 탭하면 원본 메시지로 스크롤한다. resolveReplyPreview가
+    // messages에서 실제로 찾은 메시지만 인용 블록으로 보여주고 클릭 가능하게 만들기 때문에(원본을
+    // 못 찾으면 인용 자체가 안 보임), 여기 targetIndex가 -1일 일은 사실상 없다 — 그래도 방어적으로
+    // 둔다.
     val onReplyPreviewClick: (Long) -> Unit = { targetMessageId ->
         val targetIndex = messages.indexOfFirst { it.id == targetMessageId }
         if (targetIndex >= 0) {
@@ -278,6 +281,11 @@ fun RoomDetailScreen(
                                 isGroupStart = message.isGroupStart(previous),
                                 isGroupEnd = message.isGroupEnd(next),
                                 emojiSize = emojiSize,
+                                // 보낸 사람이 채워 넣은 값을 그대로 믿지 않고, 지금 받은
+                                // messages에서 replyToMessageId를 검증해 실제 내용으로 만든다
+                                // (resolveReplyPreview 문서 참고) — 못 찾으면 인용 없이 일반
+                                // 텍스트로만 보인다.
+                                replyPreview = resolveReplyPreview(message.replyToMessageId, messages),
                                 onReplySwipe = onReplySwipe,
                                 onReplyPreviewClick = onReplyPreviewClick,
                             )
