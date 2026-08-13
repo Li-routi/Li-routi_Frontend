@@ -121,7 +121,8 @@ class HomeViewModel(
                         }
                         is ResultState.Error, ResultState.Loading -> Unit
                     }
-                    _uiState.update { current ->
+                    // 요약으로 상태를 새로 만들기 때문에 착장/캐릭터는 공용 캐시에서 다시 담음
+                    _uiState.update {
                         val appearance = appearanceStore.appearance.value
                         next.copy(
                             equippedImageUrls = equippedImageUrlsOf(
