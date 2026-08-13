@@ -42,6 +42,12 @@ data class ShopUiState(
      * 저장 전에도 화면에 바로 비치게 여기서 들고 있다가, 저장할 때 통째로 보냄
      */
     val equipped: Map<String, EquippedUiModel> = emptyMap(),
+    /**
+     * 서버에 저장된 착장. 목록의 `착용중` 표시는 이걸 따름.
+     *
+     * [equipped]를 쓰면 고르자마자 착용중이 돼서 저장한 것과 구분이 안 됨
+     */
+    val savedEquippedItemIds: Set<Long> = emptySet(),
     /** 착장 저장 중 */
     val isEquipping: Boolean = false,
     /** 그리드에서 선택된 아이템. null이면 미선택. */

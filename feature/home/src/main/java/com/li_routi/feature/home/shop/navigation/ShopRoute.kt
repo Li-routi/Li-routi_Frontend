@@ -46,6 +46,7 @@ fun ShopRoute(
             gemBalance = uiState.gemBalance,
             categories = uiState.categories,
             equipped = uiState.equipped,
+            savedEquippedItemIds = uiState.savedEquippedItemIds,
             selectedCategoryIndex = uiState.selectedCategoryIndex,
             showOwnedOnly = uiState.showOwnedOnly,
             items = uiState.items,

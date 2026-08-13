@@ -80,6 +80,7 @@ fun ShopScreen(
     gemBalance: Int = 30,
     categories: List<ShopCategoryUiModel> = emptyList(),
     equipped: Map<String, EquippedUiModel> = emptyMap(),
+    savedEquippedItemIds: Set<Long> = emptySet(),
     selectedCategoryIndex: Int = 0,
     showOwnedOnly: Boolean = false,
     items: List<ShopItemUiModel> = SampleShopItems,
@@ -200,7 +201,7 @@ fun ShopScreen(
                 selectedItemId = selectedItemId,
                 onItemClick = actions::onItemClick,
                 modifier = Modifier.weight(1f),
-                equippedItemIds = equipped.values.mapTo(mutableSetOf()) { it.itemId.toString() },
+                equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() },
             )
         }
     }

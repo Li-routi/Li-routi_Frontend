@@ -101,7 +101,7 @@ class ShopViewModel(
         viewModelScope.launch {
             val result = getMyAvatarUseCase()
             if (result is ResultState.Success) {
-                _uiState.update { it.copy(equipped = result.data.toEquippedMap()) }
+                _uiState.update { it.applyServerAvatar(result.data) }
             }
         }
     }
@@ -224,10 +224,8 @@ class ShopViewModel(
                     is ResultState.Success -> {
                         // 구매하면 서버가 그 자리에 바로 입혀줘서 응답이 곧 새 착장임
                         _uiState.update {
-                            it.copy(
-                                equipped = result.data.toEquippedMap(),
-                                message = "${selected.name}을(를) 구매했어요.",
-                            )
+                            it.applyServerAvatar(result.data)
+                                .copy(message = "${selected.name}을(를) 구매했어요.")
                         }
                         // 갱신을 기다려야 함. 먼저 풀어주면 owned가 반영되기 전에 또 살 수 있음
                         refreshItems()
@@ -254,7 +252,7 @@ class ShopViewModel(
             try {
                 when (val result = equipAvatarUseCase(state.equipped.values.map { it.itemId })) {
                     is ResultState.Success -> _uiState.update {
-                        it.copy(equipped = result.data.toEquippedMap(), message = "저장했어요.")
+                        it.applyServerAvatar(result.data).copy(message = "저장했어요.")
                     }
 
                     // 서버가 부분 성공을 안 줘서 실패하면 저장 전 상태 그대로 둠
@@ -280,9 +278,17 @@ private const val CharacterSource = "CHARACTER"
 private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =
     firstOrNull { it.currency == currency }?.balance
 
-/** 자리마다 하나씩이라 자리를 키로 씀 */
-private fun MemberAvatar.toEquippedMap(): Map<String, EquippedUiModel> =
-    equipped.associate { it.slot to EquippedUiModel(itemId = it.itemId, imageUrl = it.imageUrl) }
+/**
+ * 서버가 준 착장으로 화면과 저장 상태를 함께 맞춤.
+ *
+ * 자리마다 하나씩이라 자리를 키로 씀
+ */
+private fun ShopUiState.applyServerAvatar(avatar: MemberAvatar): ShopUiState = copy(
+    equipped = avatar.equipped.associate {
+        it.slot to EquippedUiModel(itemId = it.itemId, imageUrl = it.imageUrl)
+    },
+    savedEquippedItemIds = avatar.equipped.mapTo(mutableSetOf()) { it.itemId },
+)
 
 private fun ShopAvatarItem.toUiModel(): ShopItemUiModel = ShopItemUiModel(
     id = id.toString(),
