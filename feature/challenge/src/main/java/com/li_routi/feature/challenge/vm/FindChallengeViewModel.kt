@@ -16,7 +16,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
-private const val PageSize = 20
+private const val PageSize = 15
 private const val SearchDebounceMillis = 300L
 
 /**

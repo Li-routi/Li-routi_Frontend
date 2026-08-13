@@ -3,8 +3,11 @@ package com.li_routi.feature.grouproutine.component
 import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.gestures.detectHorizontalDragGestures
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,18 +23,26 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
@@ -56,8 +67,9 @@ private val NicknameToBubbleGap = 4.dp
 // 왼쪽 여백(16) + 프로필(40) + 프로필-닉네임 간격(8) = 화면 왼쪽 기준 64dp 지점.
 private val BubbleStartOffset = LeftMargin + AvatarSize + AvatarToNicknameGap
 
-// 상대 말풍선을 오른쪽으로 스와이프하면 답장 대상으로 지정한다 — 최대 64dp까지만 밀리고,
-// 48dp를 넘겨야 답장이 확정된다(안 넘기고 손을 떼면 스프링으로 원위치 복귀).
+// 말풍선을 스와이프하면 답장 대상으로 지정한다 — 최대 64dp까지만 밀리고, 48dp를 넘겨야
+// 답장이 확정된다(안 넘기고 손을 떼면 스프링으로 원위치 복귀). 상대 메시지는 왼쪽으로,
+// 내 메시지는 반대로 오른쪽으로 밀어야 한다([replySwipeGesture]의 dragToRight).
 private val ReplySwipeMaxOffset = 64.dp
 private val ReplySwipeTriggerThreshold = 48.dp
 
@@ -66,6 +78,8 @@ private val ReplySwipeTriggerThreshold = 48.dp
  *
  * [emojiUrl]이 있으면 이모티콘 메시지다 — 말풍선(텍스트) 없이 이모티콘 이미지만 그대로 보여주고,
  * 이때 [message]는 쓰이지 않는다(빈 문자열).
+ *
+ * [replyPreview]가 있으면 답장으로 보낸 메시지다 — 말풍선 위에 원본 메시지 인용을 함께 보여준다.
  */
 data class ChatMessageUiModel(
     val id: Long,
@@ -74,6 +88,20 @@ data class ChatMessageUiModel(
     val sentAtMillis: Long,
     val isMine: Boolean,
     val emojiUrl: String? = null,
+    val replyPreview: ChatReplyPreviewUiModel? = null,
+)
+
+/**
+ * 답장으로 보낸 메시지가 인용하는 원본 메시지 정보.
+ *
+ * [originalMessageId]는 서버가 "답장" 전용 필드를 지원하지 않아 클라이언트에서 content 문자열에
+ * 인코딩해 실어 보낸 값이라, 예전 방식으로 보낸 메시지거나 파싱에 실패하면 null일 수 있다 —
+ * 그럴 땐 인용 미리보기는 그대로 보여주되 탭해도 원본으로 이동하지 않는다.
+ */
+data class ChatReplyPreviewUiModel(
+    val originalMessageId: Long?,
+    val senderName: String,
+    val previewText: String,
 )
 
 /**
@@ -179,6 +207,59 @@ fun ChatDateDivider(sentAtMillis: Long, modifier: Modifier = Modifier) {
 }
 
 /**
+ * 답장 스와이프 제스처를 붙인다. [dragToRight]가 true면 오른쪽으로(내 메시지), false면
+ * 왼쪽으로(상대 메시지) 밀 때만 [ReplySwipeTriggerThreshold]를 넘겨 [onReplySwipe]가 불린다.
+ * 이모티콘 메시지는 답장에 실을 텍스트가 없으므로 스와이프 자체를 받지 않는다.
+ */
+@Composable
+private fun Modifier.replySwipeGesture(
+    message: ChatMessageUiModel,
+    dragToRight: Boolean,
+    onReplySwipe: (ChatMessageUiModel) -> Unit,
+): Modifier {
+    val density = LocalDensity.current
+    val coroutineScope = rememberCoroutineScope()
+    val maxOffsetPx = remember(density) { with(density) { ReplySwipeMaxOffset.toPx() } }
+    val thresholdPx = remember(density) { with(density) { ReplySwipeTriggerThreshold.toPx() } }
+    // message.id로 remember해야 리스트가 갱신돼도 이전 아이템의 드래그 상태가 새 메시지로 새지 않는다.
+    val offsetX = remember(message.id) { Animatable(0f) }
+    val minOffsetPx = if (dragToRight) 0f else -maxOffsetPx
+    val maxOffsetLimitPx = if (dragToRight) maxOffsetPx else 0f
+
+    return this
+        .offset { IntOffset(offsetX.value.roundToInt(), 0) }
+        .then(
+            if (message.emojiUrl == null) {
+                Modifier.pointerInput(message.id, dragToRight) {
+                    detectHorizontalDragGestures(
+                        onDragEnd = {
+                            val triggered = if (dragToRight) {
+                                offsetX.value > thresholdPx
+                            } else {
+                                offsetX.value < -thresholdPx
+                            }
+                            coroutineScope.launch {
+                                if (triggered) onReplySwipe(message)
+                                offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+                            }
+                        },
+                        onDragCancel = {
+                            coroutineScope.launch { offsetX.animateTo(0f) }
+                        },
+                        onHorizontalDrag = { change, dragAmount ->
+                            change.consume()
+                            val next = (offsetX.value + dragAmount).coerceIn(minOffsetPx, maxOffsetLimitPx)
+                            coroutineScope.launch { offsetX.snapTo(next) }
+                        },
+                    )
+                }
+            } else {
+                Modifier
+            },
+        )
+}
+
+/**
  * 채팅 말풍선 한 줄.
  *
  * 내 메시지([ChatMessageUiModel.isMine])는 오른쪽 정렬 + 프로필 없이 말풍선만 나온다.
@@ -186,6 +267,11 @@ fun ChatDateDivider(sentAtMillis: Long, modifier: Modifier = Modifier) {
  * 그 아래(화면 왼쪽 기준 64dp 지점)에서 말풍선이 시작된다. [isGroupStart]가 false면
  * 프로필/닉네임 없이 같은 64dp 지점에 말풍선만 이어붙는다 — 세로 간격은 이 컴포저블이 아니라
  * 메시지 리스트를 그리는 쪽(LazyColumn의 verticalArrangement)에서 10dp로 통일해서 준다.
+ *
+ * 두 종류 모두 스와이프하면 답장 대상으로 지정된다([replySwipeGesture]) — 상대 메시지는
+ * 왼쪽으로, 내 메시지는 반대로 오른쪽으로 밀어야 한다. 말풍선을 꾹 누르면(길게 누르기)
+ * "복사하기"/"답장하기" 메뉴가 뜨고([ChatMessageActionMenu]), 답장으로 보낸 메시지는 말풍선
+ * 위에 원본 인용이 함께 보이며 탭하면 [onReplyPreviewClick]으로 원본 메시지 id를 알려준다.
  *
  * [emojiSize]는 이모티콘 메시지([ChatMessageUiModel.emojiUrl])를 그릴 때 쓰는 크기로,
  * 이모지 패널에서 실제로 보였던 아이콘 크기를 그대로 넘겨받아 패널과 동일한 크기로 보이게 한다.
@@ -198,6 +284,7 @@ fun ChatBox(
     isGroupEnd: Boolean = true,
     emojiSize: Dp = 40.dp,
     onReplySwipe: (ChatMessageUiModel) -> Unit = {},
+    onReplyPreviewClick: (Long) -> Unit = {},
 ) {
     if (message.isMine) {
         Row(
@@ -207,22 +294,38 @@ fun ChatBox(
             horizontalArrangement = Arrangement.End,
             verticalAlignment = Alignment.Bottom,
         ) {
-            if (isGroupEnd) {
-                Text(
-                    text = message.sentAtMillis.toKoreanTimeLabel(),
-                    style = ChatTimestampTextStyle,
-                    color = LiroutiTheme.colors.labelDefault,
-                )
-                Spacer(modifier = Modifier.width(ChatTimestampGap))
-            }
-            if (message.emojiUrl != null) {
-                AsyncImage(
-                    model = message.emojiUrl,
-                    contentDescription = "이모티콘",
-                    modifier = Modifier.size(emojiSize),
-                )
-            } else {
-                ChatBubble(text = message.message, isMine = true)
+            Row(
+                modifier = Modifier.replySwipeGesture(
+                    message = message,
+                    dragToRight = true,
+                    onReplySwipe = onReplySwipe,
+                ),
+                verticalAlignment = Alignment.Bottom,
+            ) {
+                if (isGroupEnd) {
+                    Text(
+                        text = message.sentAtMillis.toKoreanTimeLabel(),
+                        style = ChatTimestampTextStyle,
+                        color = LiroutiTheme.colors.labelDefault,
+                    )
+                    Spacer(modifier = Modifier.width(ChatTimestampGap))
+                }
+                ChatMessageActionMenu(message = message, onReplySwipe = onReplySwipe) {
+                    if (message.emojiUrl != null) {
+                        AsyncImage(
+                            model = message.emojiUrl,
+                            contentDescription = "이모티콘",
+                            modifier = Modifier.size(emojiSize),
+                        )
+                    } else {
+                        ChatBubble(
+                            text = message.message,
+                            isMine = true,
+                            replyPreview = message.replyPreview,
+                            onReplyPreviewClick = onReplyPreviewClick,
+                        )
+                    }
+                }
             }
         }
         return
@@ -257,54 +360,32 @@ fun ChatBox(
             Spacer(modifier = Modifier.height(NicknameToBubbleGap))
         }
 
-        val density = LocalDensity.current
-        val coroutineScope = rememberCoroutineScope()
-        val maxOffsetPx = remember(density) { with(density) { ReplySwipeMaxOffset.toPx() } }
-        val thresholdPx = remember(density) { with(density) { ReplySwipeTriggerThreshold.toPx() } }
-        // message.id로 remember해야 리스트가 갱신돼도 이전 아이템의 드래그 상태가 새 메시지로 새지 않는다.
-        val offsetX = remember(message.id) { Animatable(0f) }
-
         Row(
             modifier = Modifier
                 .fillMaxWidth()
                 .padding(start = BubbleStartOffset)
-                .offset { IntOffset(offsetX.value.roundToInt(), 0) }
-                // 이모티콘 메시지는 답장에 실을 텍스트가 없으므로 스와이프 자체를 받지 않는다.
-                .then(
-                    if (message.emojiUrl == null) {
-                        Modifier.pointerInput(message.id) {
-                            detectHorizontalDragGestures(
-                                onDragEnd = {
-                                    val triggered = offsetX.value > thresholdPx
-                                    coroutineScope.launch {
-                                        if (triggered) onReplySwipe(message)
-                                        offsetX.animateTo(0f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
-                                    }
-                                },
-                                onDragCancel = {
-                                    coroutineScope.launch { offsetX.animateTo(0f) }
-                                },
-                                onHorizontalDrag = { change, dragAmount ->
-                                    change.consume()
-                                    val next = (offsetX.value + dragAmount).coerceIn(0f, maxOffsetPx)
-                                    coroutineScope.launch { offsetX.snapTo(next) }
-                                },
-                            )
-                        }
-                    } else {
-                        Modifier
-                    },
+                .replySwipeGesture(
+                    message = message,
+                    dragToRight = false,
+                    onReplySwipe = onReplySwipe,
                 ),
             verticalAlignment = Alignment.Bottom,
         ) {
-            if (message.emojiUrl != null) {
-                AsyncImage(
-                    model = message.emojiUrl,
-                    contentDescription = "이모티콘",
-                    modifier = Modifier.size(emojiSize),
-                )
-            } else {
-                ChatBubble(text = message.message, isMine = false)
+            ChatMessageActionMenu(message = message, onReplySwipe = onReplySwipe) {
+                if (message.emojiUrl != null) {
+                    AsyncImage(
+                        model = message.emojiUrl,
+                        contentDescription = "이모티콘",
+                        modifier = Modifier.size(emojiSize),
+                    )
+                } else {
+                    ChatBubble(
+                        text = message.message,
+                        isMine = false,
+                        replyPreview = message.replyPreview,
+                        onReplyPreviewClick = onReplyPreviewClick,
+                    )
+                }
             }
             if (isGroupEnd) {
                 Spacer(modifier = Modifier.width(ChatTimestampGap))
@@ -318,15 +399,134 @@ fun ChatBox(
     }
 }
 
+/**
+ * [content](말풍선 또는 이모티콘)를 꾹 누르면 "복사하기"/"답장하기" 팝업 메뉴를 띄운다.
+ * 이모티콘 메시지는 복사할 텍스트가 없으므로 "복사하기"는 숨긴다.
+ */
+@OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun ChatBubble(text: String, isMine: Boolean, modifier: Modifier = Modifier) {
-    Text(
-        text = text,
-        color = if (isMine) LiroutiTheme.colors.labelReverse else ChatBubbleTextColor,
-        style = LiroutiTheme.typography.body3,
+private fun ChatMessageActionMenu(
+    message: ChatMessageUiModel,
+    onReplySwipe: (ChatMessageUiModel) -> Unit,
+    modifier: Modifier = Modifier,
+    content: @Composable () -> Unit,
+) {
+    var isMenuVisible by remember(message.id) { mutableStateOf(false) }
+    val clipboardManager = LocalClipboardManager.current
+
+    Box(modifier = modifier) {
+        Box(
+            modifier = Modifier.combinedClickable(
+                onClick = {},
+                onLongClick = { isMenuVisible = true },
+            ),
+        ) {
+            content()
+        }
+        DropdownMenu(expanded = isMenuVisible, onDismissRequest = { isMenuVisible = false }) {
+            if (message.emojiUrl == null) {
+                DropdownMenuItem(
+                    text = { Text("복사하기") },
+                    onClick = {
+                        clipboardManager.setText(AnnotatedString(message.message))
+                        isMenuVisible = false
+                    },
+                )
+            }
+            DropdownMenuItem(
+                text = { Text("답장하기") },
+                onClick = {
+                    onReplySwipe(message)
+                    isMenuVisible = false
+                },
+            )
+        }
+    }
+}
+
+/**
+ * [replyPreview]가 있으면 실제 텍스트 위에 원본 메시지 인용을 함께 보여준다 — [ChatBar.kt]의
+ * 채팅바 윗상자(답장 작성 중 미리보기)와 같은 글꼴 스타일([ReplyNicknameTextStyle]/
+ * [ReplyMessageTextStyle])을 재사용해 두 UI가 하나로 통일되어 보이게 한다.
+ */
+@Composable
+private fun ChatBubble(
+    text: String,
+    isMine: Boolean,
+    modifier: Modifier = Modifier,
+    replyPreview: ChatReplyPreviewUiModel? = null,
+    onReplyPreviewClick: (Long) -> Unit = {},
+) {
+    Column(
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
             .background(if (isMine) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
             .padding(horizontal = 16.dp, vertical = 8.dp),
-    )
+    ) {
+        if (replyPreview != null) {
+            ChatBubbleReplyQuote(
+                replyPreview = replyPreview,
+                isMine = isMine,
+                onClick = onReplyPreviewClick,
+            )
+            Spacer(modifier = Modifier.height(6.dp))
+        }
+        Text(
+            text = text,
+            color = if (isMine) LiroutiTheme.colors.labelReverse else ChatBubbleTextColor,
+            style = LiroutiTheme.typography.body3,
+        )
+    }
+}
+
+private val ChatBubbleReplyQuoteShape = RoundedCornerShape(4.dp)
+private val ChatBubbleReplyQuoteTintOnPrimary = Color.White.copy(alpha = 0.16f)
+
+/**
+ * 답장으로 보낸 메시지의 말풍선 안, 실제 텍스트 위에 붙는 원본 메시지 인용 블록.
+ * [ChatReplyPreviewUiModel.originalMessageId]가 있을 때만(=서버 응답을 새 방식으로 파싱한
+ * 경우) 탭해서 원본 메시지로 이동할 수 있다 — 옛날 방식으로 보낸 메시지는 id를 몰라 인용만
+ * 보여주고 탭은 받지 않는다.
+ */
+@Composable
+private fun ChatBubbleReplyQuote(
+    replyPreview: ChatReplyPreviewUiModel,
+    isMine: Boolean,
+    onClick: (Long) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    val originalMessageId = replyPreview.originalMessageId
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(ChatBubbleReplyQuoteShape)
+            .background(if (isMine) ChatBubbleReplyQuoteTintOnPrimary else LiroutiTheme.colors.backgroundFill)
+            .then(
+                if (originalMessageId != null) {
+                    Modifier.clickable { onClick(originalMessageId) }
+                } else {
+                    Modifier
+                },
+            )
+            .padding(horizontal = 8.dp, vertical = 6.dp),
+    ) {
+        Text(
+            text = replyPreview.senderName,
+            style = ReplyNicknameTextStyle,
+            color = if (isMine) LiroutiTheme.colors.labelReverse else LiroutiTheme.colors.labelDefault,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+        Text(
+            text = replyPreview.previewText,
+            style = ReplyMessageTextStyle,
+            color = if (isMine) {
+                LiroutiTheme.colors.labelReverse.copy(alpha = 0.8f)
+            } else {
+                LiroutiTheme.colors.labelSub
+            },
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
+    }
 }

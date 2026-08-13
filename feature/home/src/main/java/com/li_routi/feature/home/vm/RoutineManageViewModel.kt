@@ -142,7 +142,8 @@ data class RoutineManageUiState(
                     selectable = true,
                 )
             }
-            // 이미 등록된 커스텀 루틴 — 새로 만드는 항목이 아니므로 체크박스는 없고, 탭하면 수정 시트가 연다.
+            // 이미 등록된 커스텀 루틴 — 다른 루틴처럼 체크된 상태의 체크박스를 보여주되(탭해서 해제할
+            // 수는 없다), 행을 탭하면 수정 시트가 연다.
             val registered = registeredCustomRoutines.map { routine ->
                 RoutineChecklistItem(
                     id = "$RegisteredCustomIdPrefix${routine.routineId}",
@@ -150,7 +151,7 @@ data class RoutineManageUiState(
                     checked = true,
                     category = routine.categoryName,
                     selectable = false,
-                    showCheckbox = false,
+                    showCheckbox = true,
                     editable = true,
                 )
             }

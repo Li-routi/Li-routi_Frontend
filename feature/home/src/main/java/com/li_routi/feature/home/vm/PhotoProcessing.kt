@@ -99,7 +99,7 @@ private fun Bitmap.applyExifOrientation(orientation: Int): Bitmap {
  */
 internal fun Bitmap.rotateToLandscapeIfPortrait(): Bitmap {
     if (height <= width) return this
-    val matrix = Matrix().apply { postRotate(90f) }
+    val matrix = Matrix().apply { postRotate(-90f) }
     val rotated = Bitmap.createBitmap(this, 0, 0, width, height, matrix, true)
     if (rotated !== this) recycle()
     return rotated
