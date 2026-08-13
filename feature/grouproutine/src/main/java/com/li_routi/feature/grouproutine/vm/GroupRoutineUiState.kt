@@ -68,6 +68,8 @@ data class CertificationPostUiModel(
     val isLiked: Boolean = false,
     val disappointmentCount: Int = 0,
     val isDisappointed: Boolean = false,
+    val imageUrl: String? = null,
+    val verifiedAtMillis: Long = 0L,
 )
 
 data class NewCertificationUiModel(
@@ -76,6 +78,7 @@ data class NewCertificationUiModel(
     val routineName: String,
     val message: String,
     val memberId: Long = 0L,
+    val imageUrl: String? = null,
 )
 
 data class CreateRoutineOptionUiModel(
@@ -262,14 +265,24 @@ private val SampleNewCertifications = listOf(
 )
 
 private val SampleCreateRoutineOptions = listOf(
-    CreateRoutineOptionUiModel(1L, "물 마시기", "22:00", "건강", repeatLabel = "\uC8FC\uC911", repeatDays = setOf("\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08")),
-    CreateRoutineOptionUiModel(2L, "스트레칭하기", "23:00", "운동", repeatLabel = "\uC6D4,\uC218,\uAE08", repeatDays = setOf("\uC6D4", "\uC218", "\uAE08")),
-    CreateRoutineOptionUiModel(3L, "영양제 먹기", "09:00", "건강", repeatLabel = "\uAE08\uC694\uC77C\uB9C8\uB2E4", repeatDays = setOf("\uAE08")),
-    // PR 반영: 지원하지 않는 "공부" 카테고리를 "자기계발"로 변경
-    CreateRoutineOptionUiModel(4L, "명상 하기", "23:30", "자기계발", repeatLabel = "\uAE08\uC694\uC77C\uB9C8\uB2E4", repeatDays = setOf("\uAE08")),
-    CreateRoutineOptionUiModel(5L, "산책하기", "21:00", "운동", repeatLabel = "\uC8FC\uB9D0", repeatDays = setOf("\uD1A0", "\uC77C")),
-    CreateRoutineOptionUiModel(6L, "책 읽기", "22:30", "자기계발", repeatLabel = "\uC6D4\uC694\uC77C\uB9C8\uB2E4", repeatDays = setOf("\uC6D4")),
-    CreateRoutineOptionUiModel(7L, "일기 쓰기", "23:30", "자기계발", repeatLabel = "\uB9E4\uC77C", repeatDays = setOf("\uC77C", "\uC6D4", "\uD654", "\uC218", "\uBAA9", "\uAE08", "\uD1A0")),
+    CreateRoutineOptionUiModel(1L, "스트레칭하기", "23:00", "운동", repeatLabel = "월,수,금", repeatDays = setOf("월", "수", "금")),
+    CreateRoutineOptionUiModel(2L, "산책하기", "21:00", "운동", repeatLabel = "주말", repeatDays = setOf("토", "일")),
+    CreateRoutineOptionUiModel(3L, "홈트레이닝하기", "21:00", "운동", repeatLabel = "화,목", repeatDays = setOf("화", "목")),
+    CreateRoutineOptionUiModel(4L, "물 마시기", "22:00", "건강", repeatLabel = "주중", repeatDays = setOf("월", "화", "수", "목", "금")),
+    CreateRoutineOptionUiModel(5L, "영양제 먹기", "09:00", "건강", repeatLabel = "매일", repeatDays = setOf("일", "월", "화", "수", "목", "금", "토")),
+    CreateRoutineOptionUiModel(6L, "일찍 자기", "23:00", "건강", repeatLabel = "주중", repeatDays = setOf("월", "화", "수", "목", "금")),
+    CreateRoutineOptionUiModel(7L, "책 읽기", "22:30", "자기계발", repeatLabel = "월요일마다", repeatDays = setOf("월")),
+    CreateRoutineOptionUiModel(8L, "일기 쓰기", "23:30", "자기계발", repeatLabel = "매일", repeatDays = setOf("일", "월", "화", "수", "목", "금", "토")),
+    CreateRoutineOptionUiModel(9L, "외국어 공부하기", "21:00", "자기계발", repeatLabel = "화,목", repeatDays = setOf("화", "목")),
+    CreateRoutineOptionUiModel(10L, "방 정리하기", "20:00", "생활정리", repeatLabel = "토요일마다", repeatDays = setOf("토")),
+    CreateRoutineOptionUiModel(11L, "설거지하기", "20:30", "생활정리", repeatLabel = "매일", repeatDays = setOf("일", "월", "화", "수", "목", "금", "토")),
+    CreateRoutineOptionUiModel(12L, "빨래하기", "18:00", "생활정리", repeatLabel = "일요일마다", repeatDays = setOf("일")),
+    CreateRoutineOptionUiModel(13L, "명상하기", "22:00", "마음관리", repeatLabel = "매일", repeatDays = setOf("일", "월", "화", "수", "목", "금", "토")),
+    CreateRoutineOptionUiModel(14L, "감사한 일 적기", "23:00", "마음관리", repeatLabel = "매일", repeatDays = setOf("일", "월", "화", "수", "목", "금", "토")),
+    CreateRoutineOptionUiModel(15L, "심호흡하기", "15:00", "마음관리", repeatLabel = "주중", repeatDays = setOf("월", "화", "수", "목", "금")),
+    CreateRoutineOptionUiModel(16L, "그림 그리기", "20:00", "취미", repeatLabel = "주말", repeatDays = setOf("토", "일")),
+    CreateRoutineOptionUiModel(17L, "음악 듣기", "19:00", "취미", repeatLabel = "매일", repeatDays = setOf("일", "월", "화", "수", "목", "금", "토")),
+    CreateRoutineOptionUiModel(18L, "악기 연습하기", "20:30", "취미", repeatLabel = "화,목", repeatDays = setOf("화", "목")),
 )
 
 val DefaultCreateRoutineOptions = SampleCreateRoutineOptions

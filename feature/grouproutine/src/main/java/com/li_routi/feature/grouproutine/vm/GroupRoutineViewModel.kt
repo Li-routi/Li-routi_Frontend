@@ -200,49 +200,14 @@ class GroupRoutineViewModel(
 
     fun markRoutineVerified(routineId: Long?) {
         if (routineId == null) return
+        refreshVerificationDecisionState()
+    }
 
-        _uiState.update { state ->
-            val completedRoutine = state.todos.firstOrNull { it.id == routineId && !it.isDone }
-            val totalRoutineCount = maxOf(state.todos.size, state.members.firstOrNull { it.isMe }?.totalCount ?: 0)
-            val selectedGroupId = currentGroupId()
-            val updatedCompletedCount = state.routines
-                .firstOrNull { it.id == selectedGroupId }
-                ?.let { (it.todayCompletedCount + if (completedRoutine == null) 0 else 1).coerceAtMost(it.todayTotalCount) }
-            state.copy(
-                todos = state.todos.map { todo ->
-                    if (todo.id == routineId) todo.copy(isDone = true) else todo
-                },
-                members = if (completedRoutine == null) {
-                    state.members
-                } else {
-                    state.members.map { member ->
-                        if (member.isMe) {
-                            member.copy(
-                                completedCount = (member.completedCount + 1).coerceAtMost(totalRoutineCount),
-                                totalCount = totalRoutineCount,
-                            )
-                        } else {
-                            member
-                        }
-                    }
-                },
-                routines = if (selectedGroupId == null || updatedCompletedCount == null) {
-                    state.routines
-                } else {
-                    state.routines.map { group ->
-                        if (group.id == selectedGroupId) {
-                            group.copy(
-                                todayCompletedCount = updatedCompletedCount,
-                                isCompleted = group.todayTotalCount > 0 && updatedCompletedCount == group.todayTotalCount,
-                                statusLabel = if (group.todayTotalCount > 0 && updatedCompletedCount == group.todayTotalCount) "완료" else "진행중",
-                            )
-                        } else {
-                            group
-                        }
-                    }
-                },
-            )
-        }
+    private fun refreshVerificationDecisionState() {
+        val groupId = currentGroupId() ?: return
+        loadTodayRoutines(groupId)
+        loadGroupDetail(groupId)
+        loadParticipatingGroups()
     }
 
     private fun loadParticipatingGroups() {
@@ -290,6 +255,7 @@ class GroupRoutineViewModel(
     }
 
     fun onGroupRoutineTabExit() {
+        val leavingChat = _uiState.value.screenMode == GroupRoutineScreenMode.GroupChat
         backendGroupId = null
         cancelGroupScopedJobs()
         _uiState.update {
@@ -305,6 +271,7 @@ class GroupRoutineViewModel(
                 actionMessage = null,
             )
         }
+        if (leavingChat) leaveChatSocket()
     }
 
     fun onBackClick() {
@@ -734,7 +701,13 @@ class GroupRoutineViewModel(
     }
 
     fun onLeaveRoomClick() {
-        _uiState.update { it.copy(isLeaveRoomDialogVisible = true) }
+        _uiState.update { state ->
+            if (state.isConfirmedOwner) {
+                state.copy(isDeleteRoomDialogVisible = true)
+            } else {
+                state.copy(isLeaveRoomDialogVisible = true)
+            }
+        }
     }
 
     fun onDismissLeaveRoomDialog() {
@@ -1014,9 +987,11 @@ class GroupRoutineViewModel(
                                 userName = item.nickname,
                                 body = item.content.orEmpty(),
                                 likeCount = item.likeCount.toInt(),
-                                timeAgo = item.verifiedAt.orEmpty(),
+                                timeAgo = item.verifiedAt.toRelativeTimeLabel(),
                                 isMine = item.memberId == myMemberId,
                                 isLiked = item.liked,
+                                imageUrl = item.imageUrl,
+                                verifiedAtMillis = item.verifiedAt.toEpochMillisOrNull() ?: 0L,
                             )
                         }
                     }
@@ -1029,7 +1004,9 @@ class GroupRoutineViewModel(
             if (currentGroupId() == groupId) {
                 _uiState.update {
                     it.copy(
-                        posts = posts.distinctBy(CertificationPostUiModel::id),
+                        posts = posts
+                            .distinctBy(CertificationPostUiModel::id)
+                            .sortedByDescending(CertificationPostUiModel::verifiedAtMillis),
                         isCertificationLoading = false,
                         actionMessage = if (posts.isEmpty()) lastErrorMessage else it.actionMessage,
                     )
@@ -1145,6 +1122,7 @@ class GroupRoutineViewModel(
                             routineName = item.routineName,
                             message = item.content.orEmpty(),
                             memberId = item.authorMemberId,
+                            imageUrl = item.imageUrl,
                         )
                     }
                     _uiState.update {
@@ -1201,6 +1179,7 @@ class GroupRoutineViewModel(
                         memberId = memberId,
                         likeDelta = if (like.liked) 1 else -1,
                     )
+                    refreshVerificationDecisionState()
                 }
 
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -1234,6 +1213,7 @@ class GroupRoutineViewModel(
                         )
                     }
                     updateMemberReactionCount(memberId = memberId, likeDelta = 1)
+                    refreshVerificationDecisionState()
                     advanceNewCertification(verificationId)
                 }
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -1267,6 +1247,7 @@ class GroupRoutineViewModel(
                         )
                     }
                     updateMemberReactionCount(memberId = memberId, disappointmentDelta = 1)
+                    refreshVerificationDecisionState()
                     advanceNewCertification(verificationId)
                 }
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -1310,6 +1291,7 @@ class GroupRoutineViewModel(
                         memberId = memberId,
                         disappointmentDelta = if (disappointment.disappointed) 1 else -1,
                     )
+                    refreshVerificationDecisionState()
                 }
 
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
@@ -1385,7 +1367,6 @@ class GroupRoutineViewModel(
                 when (val result = transferGroupOwnerUseCase(groupId, targetMemberId)) {
                     is ResultState.Success -> {
                         applyLeaderTransfer(isStillLeader = false, message = "방장 권한을 넘겼어요.")
-                        loadGroupDetail(groupId)
                     }
 
                     is ResultState.Error -> _uiState.update {
@@ -1606,10 +1587,6 @@ class GroupRoutineViewModel(
                             )
                         }
                     _uiState.update { state ->
-                        val serverRoutineIds = todos.mapTo(mutableSetOf()) { it.id }
-                        val completedTodosNotReturned = state.todos.filter { todo ->
-                            todo.isDone && todo.id !in serverRoutineIds
-                        }
                         val routineOptionsById = state.routineOptions.associateBy { it.id }
                         val updatedOptions = groupRoutines.map { routine ->
                             routineOptionsById[routine.routineId]?.copy(
@@ -1628,7 +1605,7 @@ class GroupRoutineViewModel(
                             )
                         }
                         state.copy(
-                            todos = todos + completedTodosNotReturned,
+                            todos = todos,
                             routineOptions = if (
                                 state.screenMode == GroupRoutineScreenMode.GroupRoutineManage
                             ) {
@@ -1751,7 +1728,7 @@ class GroupRoutineViewModel(
                 // ??좊읈?????ш끽維??雅?퍔瑗띰㎖???????깅탿??癲ル슢??쭕??????(?嶺뚮ㅎ????縕??? ???ル㎣?????????沃섅굥?? ??????㉨?
                 val preview = getGroupJoinPreviewUseCase(inviteCode)
                 if (preview is ResultState.Error) {
-                    _uiState.update { it.copy(actionMessage = preview.message) }
+                    _uiState.update { it.copy(actionMessage = preview.message.toGroupJoinMessage()) }
                     return@launch
                 }
                 if (preview is ResultState.Success && !preview.data.joinable) {
@@ -1799,7 +1776,9 @@ class GroupRoutineViewModel(
                         loadUnreadRoutineVerifications()
                     }
 
-                    is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(actionMessage = result.message.toGroupJoinMessage())
+                    }
                     ResultState.Loading -> Unit
                 }
             } finally {
@@ -2546,6 +2525,39 @@ private fun String.toEpochMillisOrNow(): Long {
         return LocalDateTime.parse(this).atZone(ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli()
     }
     return System.currentTimeMillis()
+}
+
+private fun String?.toEpochMillisOrNull(): Long? {
+    if (isNullOrBlank()) return null
+    runCatching { return Instant.parse(this).toEpochMilli() }
+    runCatching { return OffsetDateTime.parse(this).toInstant().toEpochMilli() }
+    runCatching {
+        return LocalDateTime.parse(this).atZone(ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli()
+    }
+    return null
+}
+
+private fun String?.toRelativeTimeLabel(nowMillis: Long = System.currentTimeMillis()): String {
+    val verifiedAtMillis = toEpochMillisOrNull() ?: return orEmpty()
+    val elapsedMinutes = ((nowMillis - verifiedAtMillis).coerceAtLeast(0L) / 60_000L)
+    return when {
+        elapsedMinutes < 1 -> "방금 전"
+        elapsedMinutes < 60 -> "${elapsedMinutes}분 전"
+        elapsedMinutes < 1_440 -> "${elapsedMinutes / 60}시간 전"
+        else -> "${elapsedMinutes / 1_440}일 전"
+    }
+}
+
+private fun String.toGroupJoinMessage(): String {
+    return if (
+        equals("HTTP 403", ignoreCase = true) ||
+        contains("잠금") ||
+        contains("잠긴")
+    ) {
+        "잠겨 있어 참여할 수 없는 그룹방이에요."
+    } else {
+        this
+    }
 }
 
 private val KoreanDayToRepeatDay = mapOf(
