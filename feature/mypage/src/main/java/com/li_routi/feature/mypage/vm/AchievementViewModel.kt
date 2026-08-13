@@ -42,8 +42,7 @@ class AchievementViewModel(
     private fun load() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, isError = false) }
-            // TODO: GET /api/achievements 서버가 준비되면 목데이터 대신 getAchievementsUseCase() 호출로 되돌린다.
-            when (val result = ResultState.Success(AchievementMockData.groups)) {
+            when (val result = getAchievementsUseCase()) {
                 is ResultState.Success -> {
                     val allAchievements = result.data.flatMap { group ->
                         group.achievements.map { it to group.category }
