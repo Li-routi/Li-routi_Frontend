@@ -132,19 +132,28 @@ private fun ShopItemCell(
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(id = currencyIconOf(item.currency)),
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+        // 이미 산 아이템은 다시 살 수 없어서 가격 대신 보유 여부를 보여줌
+        if (item.owned) {
             Text(
-                text = item.price.toString(),
-                // Figma Body4/Bold 13/16
+                text = "보유중",
                 style = LiroutiTheme.typography.body3SemiBold.copy(lineHeight = 16.sp),
-                color = LiroutiTheme.colors.labelStrong,
+                color = LiroutiTheme.colors.labelSub,
             )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = currencyIconOf(item.currency)),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = item.price.toString(),
+                    // Figma Body4/Bold 13/16
+                    style = LiroutiTheme.typography.body3SemiBold.copy(lineHeight = 16.sp),
+                    color = LiroutiTheme.colors.labelStrong,
+                )
+            }
         }
     }
 }

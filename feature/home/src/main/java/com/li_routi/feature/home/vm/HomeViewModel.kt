@@ -5,7 +5,10 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.toApiColor
+import com.li_routi.core.data.di.ShopContainer
 import com.li_routi.core.domain.home.GetHomeSummaryUseCase
+import com.li_routi.core.domain.shop.GetMyAvatarUseCase
+import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.GetRoutineCategoriesUseCase
@@ -38,6 +41,7 @@ class HomeViewModel(
     private val getRoutineCategoriesUseCase: GetRoutineCategoriesUseCase,
     private val updateRoutineCategoryUseCase: UpdateRoutineCategoryUseCase,
     private val deleteRoutineCategoryUseCase: DeleteRoutineCategoryUseCase,
+    private val getMyAvatarUseCase: GetMyAvatarUseCase = ShopContainer.getMyAvatarUseCase,
     initialState: HomeUiState = HomeUiState(isLoading = true),
 ) : BaseViewModel(), HomeScreenActions {
 
@@ -49,6 +53,20 @@ class HomeViewModel(
 
     init {
         refresh()
+        loadAvatar()
+    }
+
+    /** 홈 캐릭터에 입힐 착장. 상점에서 갈아입고 오면 다시 불러야 해서 refresh와 따로 둠 */
+    fun loadAvatar() {
+        viewModelScope.launch {
+            val result = getMyAvatarUseCase()
+            if (result is ResultState.Success) {
+                val urls = equippedImageUrlsOf(
+                    result.data.equipped.associate { it.slot to it.imageUrl },
+                )
+                _uiState.update { it.copy(equippedImageUrls = urls) }
+            }
+        }
     }
 
     /** 홈 요약을 다시 불러온다. 인증 업로드 성공 후 등에서 호출한다. */

@@ -15,6 +15,8 @@ import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
  */
 data class HomeUiState(
     val nickname: String = "닉네임",
+    /** 홈 캐릭터에 겹쳐 그릴 착용 아이템 이미지. 겹칠 순서대로 들어있음 */
+    val equippedImageUrls: List<String> = emptyList(),
     val hasActiveRoutine: Boolean = false,
     val hasGroupRoom: Boolean = false,
     val myRoutineItems: List<RoutineChecklistItemUiModel> = emptyList(),

@@ -48,15 +48,13 @@ import com.li_routi.feature.home.shop.component.ShopItemGrid
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 import com.li_routi.feature.home.shop.component.ShopTopBar
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
-import coil.compose.AsyncImage
+import com.li_routi.feature.home.component.AvatarCharacter
+import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.feature.home.shop.vm.EquippedUiModel
 import com.li_routi.feature.home.shop.vm.ShopCategoryUiModel
 
 /** Figma `Tooltip/Tooltip` — 홈 `ShopEntryCard`와 동일 (`neutral22` #2E2F33 @ 88%). */
 private val ShopTooltipFill = Color(0xFF2E2F33).copy(alpha = 0.88f)
-/** 옷 위에 모자, 그 위에 손에 든 것 순으로 겹침 */
-private val EquipSlotOrder = listOf("BODY", "HEAD", "HAND")
-
 private val CharacterWidth = 220.dp
 private val CharacterHeight = 180.dp
 private val TooltipArrowWidth = 20.dp
@@ -155,29 +153,12 @@ fun ShopScreen(
                         message = "의상을 선택해 주세요!",
                         modifier = Modifier.zIndex(1f),
                     )
-                    Box(
+                    AvatarCharacter(
+                        equippedImageUrls = equippedImageUrlsOf(equipped.mapValues { it.value.imageUrl }),
                         modifier = Modifier
                             .offset(y = -TooltipCharacterOverlap)
                             .size(width = CharacterWidth, height = CharacterHeight),
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.default_character),
-                            contentDescription = null,
-                            contentScale = ContentScale.Fit,
-                            modifier = Modifier.fillMaxSize(),
-                        )
-                        // 아이템 이미지가 캐릭터와 같은 캔버스라 순서대로 겹치기만 하면 됨
-                        EquipSlotOrder.forEach { slot ->
-                            val item = equipped[slot] ?: return@forEach
-                            AsyncImage(
-                                model = item.imageUrl,
-                                contentDescription = null,
-                                contentScale = ContentScale.Fit,
-                                modifier = Modifier.fillMaxSize(),
-                            )
-                        }
-                    }
+                    )
                 }
             }
 

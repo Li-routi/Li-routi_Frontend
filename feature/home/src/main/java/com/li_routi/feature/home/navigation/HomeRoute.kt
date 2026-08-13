@@ -90,6 +90,7 @@ private fun HomeScreenContent(
         hasActiveRoutine = uiState.hasActiveRoutine,
         hasGroupRoom = uiState.hasGroupRoom,
         nickname = uiState.nickname,
+        equippedImageUrls = uiState.equippedImageUrls,
         myRoutineItems = uiState.myRoutineItems,
         myRoutineFilters = uiState.myRoutineFilters,
         groupRoomFilters = uiState.groupRoomFilters,
