@@ -207,6 +207,7 @@ class GroupRoutineViewModel(
         val groupId = currentGroupId() ?: return
         loadTodayRoutines(groupId)
         loadGroupDetail(groupId)
+        loadGroupRoutineCategories()
         loadParticipatingGroups()
     }
 
