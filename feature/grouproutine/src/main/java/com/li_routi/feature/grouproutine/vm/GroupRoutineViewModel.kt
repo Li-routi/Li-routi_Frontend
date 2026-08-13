@@ -123,6 +123,8 @@ class GroupRoutineViewModel(
     private var chatHistoryJob: Job? = null
     private var chatReadJob: Job? = null
     private var routineVerificationsJob: Job? = null
+    private var groupDetailJob: Job? = null
+    private var groupRoutineCategoriesJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
     private var unreadRoutineVerificationsJob: Job? = null
 
@@ -151,6 +153,7 @@ class GroupRoutineViewModel(
     }
 
     fun onRoutineClick(routineId: Long) {
+        cancelGroupScopedJobs()
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.Detail,
@@ -284,8 +287,8 @@ class GroupRoutineViewModel(
     }
 
     fun onGroupRoutineTabExit() {
-        unreadRoutineVerificationsJob?.cancel()
-        routineVerificationsJob?.cancel()
+        backendGroupId = null
+        cancelGroupScopedJobs()
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.List,
@@ -798,14 +801,22 @@ class GroupRoutineViewModel(
 
     /** ??숆강筌?쓣爾?猿뗫궚????ㅳ늾?????됰씭???? ??숆강筌?쓣爾???떻??縕???熬곣뫀???????늄???癲ル슢?꾤땟戮⑤뭄?????源놁졆 ??筌먦끉裕????Β?????ㅻ깹鸚?癲??? */
     private fun loadGroupDetail(groupId: Long) {
-        viewModelScope.launch {
+        groupDetailJob?.cancel()
+        groupDetailJob = viewModelScope.launch {
             if (myMemberId == null) {
                 when (val myInfo = getMyInfoUseCase()) {
                     is ResultState.Success -> myMemberId = myInfo.data.memberId
                     // ??memberId??癲ル슢?꾤땟????곗떵?癲ル슢?꾤땟???????늄?????????쒙쭗?쒖뒙?癲ル슔?蹂?엥??????ㅺ컼??癲ル슢??????? ???쒓낯??癲????
                     // 癲ル슢?????????????깅탿 ????????? ???源낅빖?? ??嚥?援????釉먮뻤?????숆강筌????????????癲ル슢????
                     is ResultState.Error -> {
-                        _uiState.update { it.copy(actionMessage = myInfo.message) }
+                        if (currentGroupId() == groupId) {
+                            _uiState.update {
+                                it.copy(
+                                    actionMessage = myInfo.message,
+                                    isDetailLoading = false,
+                                )
+                            }
+                        }
                         return@launch
                     }
 
@@ -813,8 +824,11 @@ class GroupRoutineViewModel(
                 }
             }
 
+            if (currentGroupId() != groupId) return@launch
+
             when (val result = getGroupDetailUseCase(groupId)) {
                 is ResultState.Success -> {
+                    if (currentGroupId() != groupId) return@launch
                     val detail = result.data
                     _uiState.update { state ->
                         state.copy(
@@ -853,8 +867,11 @@ class GroupRoutineViewModel(
                     }
                 }
 
-                is ResultState.Error -> _uiState.update {
-                    it.copy(actionMessage = result.message, isDetailLoading = false)
+                is ResultState.Error -> {
+                    if (currentGroupId() != groupId) return@launch
+                    _uiState.update {
+                        it.copy(actionMessage = result.message, isDetailLoading = false)
+                    }
                 }
                 ResultState.Loading -> Unit
             }
@@ -884,9 +901,11 @@ class GroupRoutineViewModel(
             return
         }
 
-        viewModelScope.launch {
+        groupRoutineCategoriesJob?.cancel()
+        groupRoutineCategoriesJob = viewModelScope.launch {
             when (val result = getGroupRoutineCategoriesUseCase(groupId)) {
                 is ResultState.Success -> {
+                    if (currentGroupId() != groupId) return@launch
                     val categoryNames = result.data.categories.map { it.name }
                     serverCategoryIds = result.data.categories.associate { category ->
                         category.name to category.categoryId
@@ -912,10 +931,22 @@ class GroupRoutineViewModel(
                     }
                 }
 
-                is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
+                is ResultState.Error -> {
+                    if (currentGroupId() != groupId) return@launch
+                    _uiState.update { it.copy(actionMessage = result.message) }
+                }
                 ResultState.Loading -> Unit
             }
         }
+    }
+
+    private fun cancelGroupScopedJobs() {
+        groupDetailJob?.cancel()
+        groupRoutineCategoriesJob?.cancel()
+        unreadRoutineVerificationsJob?.cancel()
+        routineVerificationsJob?.cancel()
+        todayRoutinesJob?.cancel()
+        groupRoutinesJob?.cancel()
     }
 
     private fun loadRoutineVerifications() {
