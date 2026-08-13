@@ -14,9 +14,18 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.domain.auth.SocialProvider
+import com.li_routi.feature.mypage.component.CoinRefundPolicyLines
+import com.li_routi.feature.mypage.component.OpenSourceLicenseLines
+import com.li_routi.feature.mypage.component.PrivacyPolicyLines
+import com.li_routi.feature.mypage.component.ReportPolicyLines
+import com.li_routi.feature.mypage.component.SampleNotices
+import com.li_routi.feature.mypage.component.TermsOfServiceLines
 import com.li_routi.feature.mypage.screen.AppInfoScreen
 import com.li_routi.feature.mypage.screen.EditProfileScreen
 import com.li_routi.feature.mypage.screen.MyPageScreen
+import com.li_routi.feature.mypage.screen.NoticeDetailScreen
+import com.li_routi.feature.mypage.screen.NoticeListScreen
+import com.li_routi.feature.mypage.screen.PolicyTextScreen
 import com.li_routi.feature.mypage.vm.MyPageUiEvent
 import com.li_routi.feature.mypage.vm.MyPageViewModel
 
@@ -36,7 +45,35 @@ private enum class MyPageDestination {
     Report,
     AppInfo,
     AccountManage,
+    NoticeList,
+    NoticeDetail,
+    TermsOfService,
+    PrivacyPolicy,
+    ReportPolicy,
+    OpenSourceLicense,
+    CoinRefundPolicy,
 }
+
+private const val InquiryComingSoonMessage = "아직 준비중인 서비스에요"
+
+/**
+ * 로컬 destination 전환의 상위 화면. 시스템/제스처 Back이 각 화면의 뒤로가기 버튼과 같은 곳으로
+ * 가도록 계층을 매핑한다 — 이게 없으면(모두 MyPage로 보내면) 공지사항 상세처럼 4단계 깊이인
+ * 화면에서 시스템 Back과 화면 안 뒤로가기 버튼이 서로 다른 곳으로 가버린다.
+ */
+private val MyPageDestination.parent: MyPageDestination?
+    get() = when (this) {
+        MyPageDestination.MyPage -> null
+        MyPageDestination.NoticeList -> MyPageDestination.AppInfo
+        MyPageDestination.NoticeDetail -> MyPageDestination.NoticeList
+        MyPageDestination.TermsOfService,
+        MyPageDestination.PrivacyPolicy,
+        MyPageDestination.ReportPolicy,
+        MyPageDestination.OpenSourceLicense,
+        MyPageDestination.CoinRefundPolicy,
+        -> MyPageDestination.AppInfo
+        else -> MyPageDestination.MyPage
+    }
 
 /**
  * 마이페이지 진입점. [MyPageViewModel]과 [MyPageScreen]을 연결한다.
@@ -62,6 +99,9 @@ fun MyPageRoute(
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var destination by rememberSaveable { mutableStateOf(MyPageDestination.MyPage) }
+    // 공지 상세로 넘어갈 때만 채워진다 — 목록에서 어떤 공지를 눌렀는지 destination 전환과
+    // 별도로 들고 있어야 상세 화면이 어떤 내용을 보여줄지 알 수 있다.
+    var selectedNoticeId by rememberSaveable { mutableStateOf<String?>(null) }
     val context = LocalContext.current
 
     LaunchedEffect(refreshTick) {
@@ -73,7 +113,7 @@ fun MyPageRoute(
     // Nav 백스택이 아니라 로컬 전환이므로, 시스템 Back이 마이페이지 하위 화면을 건너뛰고
     // 곧바로 홈 탭으로 넘어가지 않게 가로챈다.
     BackHandler(enabled = destination != MyPageDestination.MyPage) {
-        destination = MyPageDestination.MyPage
+        destination = destination.parent ?: MyPageDestination.MyPage
     }
 
     LaunchedEffect(viewModel) {
@@ -138,6 +178,74 @@ fun MyPageRoute(
 
         MyPageDestination.AppInfo -> AppInfoScreen(
             onBackClick = { destination = MyPageDestination.MyPage },
+            onNoticeClick = { destination = MyPageDestination.NoticeList },
+            onInquiryClick = {
+                Toast.makeText(context, InquiryComingSoonMessage, Toast.LENGTH_SHORT).show()
+            },
+            onTermsOfServiceClick = { destination = MyPageDestination.TermsOfService },
+            onPrivacyPolicyClick = { destination = MyPageDestination.PrivacyPolicy },
+            onCoinRefundPolicyClick = { destination = MyPageDestination.CoinRefundPolicy },
+            onReportPolicyClick = { destination = MyPageDestination.ReportPolicy },
+            onOpenSourceLicenseClick = { destination = MyPageDestination.OpenSourceLicense },
+            modifier = modifier,
+        )
+
+        MyPageDestination.NoticeList -> NoticeListScreen(
+            onBackClick = { destination = MyPageDestination.AppInfo },
+            onNoticeClick = { noticeId ->
+                selectedNoticeId = noticeId
+                destination = MyPageDestination.NoticeDetail
+            },
+            modifier = modifier,
+        )
+
+        MyPageDestination.NoticeDetail -> {
+            val notice = SampleNotices.firstOrNull { it.id == selectedNoticeId }
+            if (notice == null) {
+                // selectedNoticeId가 목록에 없는 상태(예: 프로세스 복원 후 목록이 바뀐 경우) —
+                // 크래시 대신 목록으로 되돌린다.
+                LaunchedEffect(selectedNoticeId) { destination = MyPageDestination.NoticeList }
+            } else {
+                NoticeDetailScreen(
+                    notice = notice,
+                    onBackClick = { destination = MyPageDestination.NoticeList },
+                    modifier = modifier,
+                )
+            }
+        }
+
+        MyPageDestination.TermsOfService -> PolicyTextScreen(
+            topBarTitle = "이용 약관",
+            lines = TermsOfServiceLines,
+            onBackClick = { destination = MyPageDestination.AppInfo },
+            modifier = modifier,
+        )
+
+        MyPageDestination.PrivacyPolicy -> PolicyTextScreen(
+            topBarTitle = "개인정보 처리방침",
+            lines = PrivacyPolicyLines,
+            onBackClick = { destination = MyPageDestination.AppInfo },
+            modifier = modifier,
+        )
+
+        MyPageDestination.ReportPolicy -> PolicyTextScreen(
+            topBarTitle = "신고 및 운영 정책",
+            lines = ReportPolicyLines,
+            onBackClick = { destination = MyPageDestination.AppInfo },
+            modifier = modifier,
+        )
+
+        MyPageDestination.OpenSourceLicense -> PolicyTextScreen(
+            topBarTitle = "오픈소스 라이선스",
+            lines = OpenSourceLicenseLines,
+            onBackClick = { destination = MyPageDestination.AppInfo },
+            modifier = modifier,
+        )
+
+        MyPageDestination.CoinRefundPolicy -> PolicyTextScreen(
+            topBarTitle = "코인 및 환불 정책",
+            lines = CoinRefundPolicyLines,
+            onBackClick = { destination = MyPageDestination.AppInfo },
             modifier = modifier,
         )
 

@@ -68,8 +68,8 @@ private val NicknameToBubbleGap = 4.dp
 private val BubbleStartOffset = LeftMargin + AvatarSize + AvatarToNicknameGap
 
 // 말풍선을 스와이프하면 답장 대상으로 지정한다 — 최대 64dp까지만 밀리고, 48dp를 넘겨야
-// 답장이 확정된다(안 넘기고 손을 떼면 스프링으로 원위치 복귀). 상대 메시지는 왼쪽으로,
-// 내 메시지는 반대로 오른쪽으로 밀어야 한다([replySwipeGesture]의 dragToRight).
+// 답장이 확정된다(안 넘기고 손을 떼면 스프링으로 원위치 복귀). 내 메시지/상대 메시지 모두
+// 오른쪽에서 왼쪽으로 밀어야 한다([replySwipeGesture]의 dragToRight = false).
 private val ReplySwipeMaxOffset = 64.dp
 private val ReplySwipeTriggerThreshold = 48.dp
 
@@ -229,8 +229,9 @@ fun ChatDateDivider(sentAtMillis: Long, modifier: Modifier = Modifier) {
 }
 
 /**
- * 답장 스와이프 제스처를 붙인다. [dragToRight]가 true면 오른쪽으로(내 메시지), false면
- * 왼쪽으로(상대 메시지) 밀 때만 [ReplySwipeTriggerThreshold]를 넘겨 [onReplySwipe]가 불린다.
+ * 답장 스와이프 제스처를 붙인다. [dragToRight]가 true면 오른쪽으로, false면 왼쪽으로 밀 때만
+ * [ReplySwipeTriggerThreshold]를 넘겨 [onReplySwipe]가 불린다 — 내 메시지/상대 메시지 모두
+ * dragToRight = false(왼쪽으로 밀기)로 통일해서 쓴다.
  * 이모티콘 메시지는 답장에 실을 텍스트가 없으므로 스와이프 자체를 받지 않는다.
  */
 @Composable
@@ -290,8 +291,8 @@ private fun Modifier.replySwipeGesture(
  * 프로필/닉네임 없이 같은 64dp 지점에 말풍선만 이어붙는다 — 세로 간격은 이 컴포저블이 아니라
  * 메시지 리스트를 그리는 쪽(LazyColumn의 verticalArrangement)에서 10dp로 통일해서 준다.
  *
- * 두 종류 모두 스와이프하면 답장 대상으로 지정된다([replySwipeGesture]) — 상대 메시지는
- * 왼쪽으로, 내 메시지는 반대로 오른쪽으로 밀어야 한다. 말풍선을 꾹 누르면(길게 누르기)
+ * 두 종류 모두 스와이프하면 답장 대상으로 지정된다([replySwipeGesture]) — 내 메시지/상대
+ * 메시지 모두 오른쪽에서 왼쪽으로 밀어야 한다. 말풍선을 꾹 누르면(길게 누르기)
  * "복사하기"/"답장하기" 메뉴가 뜨고([ChatMessageActionMenu]), 답장으로 보낸 메시지는 말풍선
  * 위에 원본 인용이 함께 보이며 탭하면 [onReplyPreviewClick]으로 원본 메시지 id를 알려준다.
  *
@@ -324,7 +325,7 @@ fun ChatBox(
             Row(
                 modifier = Modifier.replySwipeGesture(
                     message = message,
-                    dragToRight = true,
+                    dragToRight = false,
                     onReplySwipe = onReplySwipe,
                 ),
                 verticalAlignment = Alignment.Bottom,

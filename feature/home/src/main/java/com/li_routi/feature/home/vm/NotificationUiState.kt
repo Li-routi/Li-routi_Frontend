@@ -89,7 +89,7 @@ val NotificationSettingItems: List<NotificationSettingUiModel> = listOf(
     ),
     NotificationSettingUiModel(
         key = NotificationSettingKey.Like,
-        title = "좋아요 알림",
+        title = "챌린지 좋아요 알림",
         description = "좋아요를 받으면 알려드려요",
     ),
 )

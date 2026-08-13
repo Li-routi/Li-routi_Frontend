@@ -296,6 +296,15 @@ fun RoutineChecklistSection(
             }
         }
     }
+    // 그룹 루틴 탭은 각 그룹이 자기 안에서 설정한 카테고리 색이 아니라, "전체" + 그룹 필터
+    // 목록에서 몇 번째 자리인지로 색이 정해진다 — 전체=파랑, 첫 번째 그룹=빨강, 두 번째=주황…
+    // 카테고리 색 팔레트가 정확히 7개(파랑/빨강/주황/노랑/초록/마젠타/검정)이고, "전체" + 최대
+    // 6개 그룹도 정확히 7개라 자리마다 하나씩 겹치지 않게 배정된다.
+    val groupFilterColorByName = remember(groupRoomFilters) {
+        groupRoomFilters.withIndex().associate { (index, label) ->
+            label to CategoryColor.entries[index % CategoryColor.entries.size]
+        }
+    }
     val displayedItems = remember(
         isGroupTab,
         hasGroupRoom,
@@ -340,7 +349,9 @@ fun RoutineChecklistSection(
             ) {
                 itemsIndexed(currentFilters) { _, label ->
                     val canEdit = !isGroupTab && label != AllCategoryFilterLabel
-                    val selectedColor = if (!isGroupTab && label != AllCategoryFilterLabel) {
+                    val selectedColor = if (isGroupTab) {
+                        groupFilterColorByName[label]?.swatch
+                    } else if (label != AllCategoryFilterLabel) {
                         categoryColorByName[label]?.swatch
                     } else {
                         null
@@ -385,9 +396,18 @@ fun RoutineChecklistSection(
                     .padding(bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(8.dp),
             ) {
+                // 그룹 탭에선 지금 선택된 필터의 자리색을 모든 표시 항목에 그대로 쓴다 — "전체"를
+                // 누르면 서로 다른 그룹의 루틴이 섞여 보여도 전부 "전체"의 색(파랑)으로,
+                // 특정 그룹을 누르면 그 그룹의 색으로 통일해서 보여준다.
+                val groupAccentColor = if (isGroupTab) {
+                    groupFilterColorByName[selectedFilterName]?.swatch
+                } else {
+                    null
+                }
                 sortedItems.forEach { item ->
                     RoutineChecklistItemRow(
                         item = item,
+                        accentColorOverride = groupAccentColor,
                         onCameraClick = { onRoutineCameraClick(item.id) },
                     )
                 }
@@ -426,8 +446,11 @@ private fun RoutineChecklistItemRow(
     item: RoutineChecklistItemUiModel,
     onCameraClick: () -> Unit,
     modifier: Modifier = Modifier,
+    /** 그룹 루틴 탭에서 지금 선택된 필터의 자리색으로 강제할 때 넘긴다. null이면 [item]의 자체 색을 쓴다. */
+    accentColorOverride: Color? = null,
 ) {
-    val accentColor = item.categoryColor?.swatch
+    val accentColor = accentColorOverride
+        ?: item.categoryColor?.swatch
         ?: LiroutiTheme.colors.primaryNormal
 
     Row(

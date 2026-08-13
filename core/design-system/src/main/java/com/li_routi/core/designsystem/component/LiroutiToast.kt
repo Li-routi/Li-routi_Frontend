@@ -12,6 +12,9 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
@@ -27,6 +30,7 @@ import com.li_routi.core.designsystem.foundation.color.Neutral96
 import com.li_routi.core.designsystem.foundation.typography.Pretendard
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import kotlinx.coroutines.delay
 
 enum class LiroutiToastStyle {
     Black,
@@ -42,6 +46,8 @@ private val MessageTextStyle = TextStyle(
     letterSpacing = (-0.025f).em,
 )
 
+private const val AutoDismissMillis = 3000L
+
 @Composable
 fun LiroutiToast(
     message: String,
@@ -50,6 +56,16 @@ fun LiroutiToast(
     onCloseClick: (() -> Unit)? = null,
     contentPadding: PaddingValues = PaddingValues(20.dp),
 ) {
+    // 앱 전역 규칙: 토스트는 X를 안 눌러도 3초 뒤 저절로 사라진다. onCloseClick을 그대로
+    // 재사용해서(호출부는 전부 이 콜백으로 메시지 상태를 null로 지움) 호출부마다 따로
+    // 타이머를 만들 필요가 없다. rememberUpdatedState로 감싸 콜백이 매 리컴포지션마다
+    // 새 람다로 바뀌어도 LaunchedEffect가 불필요하게 재시작되지 않게 한다.
+    val currentOnCloseClick by rememberUpdatedState(onCloseClick)
+    LaunchedEffect(message) {
+        delay(AutoDismissMillis)
+        currentOnCloseClick?.invoke()
+    }
+
     val backgroundColor = when (style) {
         LiroutiToastStyle.Black -> LiroutiTheme.colors.surfaceInverse
         LiroutiToastStyle.Gray -> Neutral96

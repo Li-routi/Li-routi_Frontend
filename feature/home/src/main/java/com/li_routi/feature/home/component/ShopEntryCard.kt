@@ -42,19 +42,24 @@ private val RepresentativeBadgeText = Color(0xFF3A8009)
 /** Figma `comp/myVehicle` 그라데이션 끝색 `rgba(207,228,255,0.2)`. */
 private val CharacterCardGradientEnd = Color(0x33CFE4FF)
 
-private val CharacterWidth = 220.dp
-private val CharacterHeight = 180.dp
+// default_character.png가 (아직 로컬엔 안 받았지만) 원격 develop에서 400x400px 정사각형으로
+// 교체돼서 미리 맞춰둔다(상점(ShopScreen.kt)은 이 값을 공유하지 않고 자기 파일에 똑같은 이름으로
+// 따로 두고 있어 여기만 바꿔도 영향 없음). git pull 직후 바로 맞게 반영되도록 값만 먼저 바꿔둔다.
+private val CharacterWidth = 400.dp
+private val CharacterHeight = 400.dp
 
 /**
  * 홈 화면의 닉네임/캐릭터/상점가기 영역 (Figma Design Page [1.1] `comp/myVehicle`).
  *
- * Figma는 이 영역이 바텀시트 상단까지 그라데이션이 꽉 차게 채워지고, 그 안에서 콘텐츠(닉네임 줄 +
- * 캐릭터)가 세로로 가운데 정렬된다 — 그래서 [modifier]로 상위(HomeScreen)가 남는 공간을 그대로
- * 채우도록 넘기고, 여기서는 fillMaxSize + Arrangement.Center로 받는다.
+ * Figma는 이 영역이 바텀시트 상단까지 그라데이션이 꽉 차게 채워지지만, 콘텐츠(닉네임 줄 + 캐릭터)는
+ * 세로로 가운데가 아니라 위쪽에 붙는다 — 상단 바로 아래 닉네임 줄이 바로 오고, 그 아래 캐릭터,
+ * 나머지 여백은 바텀시트 쪽으로 남는다(Figma node 3962:11620 확인). 그래서 [modifier]로 상위
+ * (HomeScreen)가 남는 공간을 그대로 채우도록 넘기고, 여기서는 fillMaxSize + Arrangement.Top으로
+ * 받는다.
  *
  * verticalScroll을 같이 둬서, 화면이 짧거나(작은 기기) 시스템 폰트 크기가 커서 닉네임 줄 + 캐릭터
- * 박스(220x180) 높이가 남는 공간보다 커지는 경우에도 위아래가 그냥 잘리지 않고 스크롤로 볼 수 있게
- * 한다 — 공간이 충분할 땐 스크롤할 게 없어 기존처럼 그대로 가운데 정렬로 보인다.
+ * 박스(400x400) 높이가 남는 공간보다 커지는 경우에도 위아래가 그냥 잘리지 않고 스크롤로 볼 수 있게
+ * 한다.
  */
 @Composable
 fun ShopEntryCard(
@@ -80,7 +85,7 @@ fun ShopEntryCard(
             )
             .verticalScroll(rememberScrollState())
             .padding(16.dp),
-        verticalArrangement = Arrangement.Center,
+        verticalArrangement = Arrangement.Top,
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Row(

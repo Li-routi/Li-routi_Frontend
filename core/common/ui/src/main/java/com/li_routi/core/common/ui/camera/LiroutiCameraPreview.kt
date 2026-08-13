@@ -1,13 +1,17 @@
 package com.li_routi.core.common.ui.camera
 
 import android.content.Context
+import android.graphics.Rect
 import android.net.Uri
+import android.view.View
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import androidx.camera.core.UseCaseGroup
+import androidx.camera.core.ViewPort
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
@@ -23,6 +27,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -48,6 +53,7 @@ import kotlin.coroutines.suspendCoroutine
 import kotlin.math.roundToInt
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * CameraX Preview + ImageCapture 바인딩. 루틴/그룹 루틴/챌린지 인증 촬영 화면에서 공용으로 쓴다.
@@ -75,6 +81,28 @@ fun LiroutiCameraPreview(
     // (offset이 같아 key가 안 바뀌어 애니메이션이 재시작 안 되는 문제를 막기 위해) 매번 값을 바꿔준다.
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
     var focusRequestId by remember { mutableIntStateOf(0) }
+    // PreviewView의 실제 배치(회전/리사이즈 등)가 바뀔 때마다 증가하는 토큰. 아래 바인딩
+    // LaunchedEffect의 키에 넣어서 ViewPort가 바뀔 때마다 새 UseCaseGroup으로 재바인딩한다 —
+    // 이게 없으면 최초 1회 바인딩 때의 ViewPort로 고정돼서, 이후 회전 등으로 프리뷰 실제 크기가
+    // 바뀌어도 촬영 결과 크롭은 예전 프리뷰 크기 기준으로 남는다.
+    var viewportEpoch by remember { mutableIntStateOf(0) }
+
+    DisposableEffect(previewView) {
+        var lastBounds: Rect? = null
+        val listener = View.OnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
+            val bounds = Rect(left, top, right, bottom)
+            val previous = lastBounds
+            lastBounds = bounds
+            // 최초 레이아웃 확정은 이미 아래 바인딩 이펙트가 awaitViewPort()로 기다리고 있으므로
+            // 여기서 또 세면 시작하자마자 불필요한 재바인딩이 한 번 더 일어난다. 실제로 크기/위치가
+            // "바뀐" 경우에만 센다.
+            if (previous != null && previous != bounds) {
+                viewportEpoch++
+            }
+        }
+        previewView.addOnLayoutChangeListener(listener)
+        onDispose { previewView.removeOnLayoutChangeListener(listener) }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
@@ -124,8 +152,8 @@ fun LiroutiCameraPreview(
         }
     }
 
-    // lens/active만 재바인딩. flash·torch 토글은 아래에서 setter로 처리한다.
-    LaunchedEffect(lensFacing, isActive, lifecycleOwner) {
+    // lens/active/viewportEpoch가 바뀔 때 재바인딩. flash·torch 토글은 아래에서 setter로 처리한다.
+    LaunchedEffect(lensFacing, isActive, lifecycleOwner, viewportEpoch) {
         if (!isActive) {
             boundCamera = null
             boundImageCapture = null
@@ -145,13 +173,24 @@ fun LiroutiCameraPreview(
             .requireLensFacing(lensFacing)
             .build()
 
+        // Preview/ImageCapture를 따로 바인딩하면 CameraX가 유스케이스별로 서로 다른
+        // 해상도·화각을 고를 수 있다 — PreviewView는 자기 비율에 맞게 크롭해서 보여주지만
+        // 실제 촬영 결과는 그 크롭이 적용되지 않아, 화면(프리뷰)에 안 보이던 좌우 영역까지
+        // 더 넓게 찍히는 문제가 있었다. PreviewView의 실제 화면 크기를 기준으로 한 ViewPort로
+        // 두 유스케이스를 묶어 바인딩하면 촬영 결과가 항상 프리뷰와 같은 화각으로 크롭된다.
+        val viewPort = previewView.awaitViewPort()
+        val useCaseGroup = UseCaseGroup.Builder()
+            .setViewPort(viewPort)
+            .addUseCase(preview)
+            .addUseCase(imageCapture)
+            .build()
+
         try {
             cameraProvider.unbindAll()
             val camera = cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 selector,
-                preview,
-                imageCapture,
+                useCaseGroup,
             )
             boundCamera = camera
             boundImageCapture = imageCapture
@@ -260,3 +299,33 @@ private suspend fun Context.awaitCameraProvider(): ProcessCameraProvider =
             ContextCompat.getMainExecutor(this),
         )
     }
+
+/**
+ * [PreviewView.getViewPort]는 뷰가 실제로 측정/배치(너비·높이 확정)된 뒤에만 null이 아니다.
+ * 이 함수가 보통 컴포지션 직후(레이아웃 전)에 호출되므로, 이미 값이 있으면 바로 쓰고 없으면
+ * 레이아웃이 끝날 때까지 기다렸다가 돌려준다.
+ */
+private suspend fun PreviewView.awaitViewPort(): ViewPort {
+    viewPort?.let { return it }
+    return suspendCancellableCoroutine { continuation ->
+        val listener = object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View?,
+                left: Int,
+                top: Int,
+                right: Int,
+                bottom: Int,
+                oldLeft: Int,
+                oldTop: Int,
+                oldRight: Int,
+                oldBottom: Int,
+            ) {
+                val currentViewPort = viewPort ?: return
+                removeOnLayoutChangeListener(this)
+                continuation.resume(currentViewPort)
+            }
+        }
+        addOnLayoutChangeListener(listener)
+        continuation.invokeOnCancellation { removeOnLayoutChangeListener(listener) }
+    }
+}

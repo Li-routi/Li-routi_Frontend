@@ -77,11 +77,20 @@ enum class CategoryColor(
 /** API `color` 필드용 (RED, ORANGE, …). */
 fun CategoryColor.toApiColor(): String = name.uppercase()
 
-/** 서버 color 문자열 → [CategoryColor]. 알 수 없으면 null. */
+/**
+ * 서버 color 문자열 → [CategoryColor]. 알 수 없으면 null.
+ *
+ * 보내는 값([toApiColor], 영문 대문자)뿐 아니라 한글 라벨(카테고리 색 선택 시트에 쓰는 "파랑" 등)로
+ * 와도 매칭한다 — 홈 화면 카테고리 칩을 눌러도 항상 기본(파란) 색으로만 보이는 문제가 있었는데,
+ * 서버가 저장/응답 형식을 영문이 아닌 한글 라벨로 내려주는 경우 기존 매칭(영문 대문자만 비교)이
+ * 전부 실패해 매번 null이 되고, 그 결과 선택 시 카테고리 고유색 대신 기본색으로만 표시됐다.
+ */
 fun String?.toCategoryColor(): CategoryColor? {
-    val key = this?.trim()?.uppercase().orEmpty()
-    if (key.isEmpty()) return null
-    return CategoryColor.entries.firstOrNull { it.toApiColor() == key }
+    val trimmed = this?.trim().orEmpty()
+    if (trimmed.isEmpty()) return null
+    val upperKey = trimmed.uppercase()
+    return CategoryColor.entries.firstOrNull { it.toApiColor() == upperKey }
+        ?: CategoryColor.entries.firstOrNull { it.label == trimmed }
 }
 
 /**
