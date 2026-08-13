@@ -90,6 +90,9 @@ fun ShopScreen(
             )
         },
         bottomBar = {
+            // 안 산 걸 골랐으면 결제라는 게 분명하도록 파란 버튼 + 개수·합계를 보여주고, 고른 게
+            // 없으면(=지금 착장 그대로) "현재 모습"이라는 문구와 함께 비활성처럼 보이는 회색으로
+            // 바꾼다(Figma node `6057:20321` 등).
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -97,17 +100,22 @@ fun ShopScreen(
                     .padding(16.dp)
                     .height(44.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(LiroutiTheme.colors.primaryNormal)
+                    .background(
+                        if (purchaseTargets.isEmpty()) {
+                            LiroutiTheme.colors.backgroundAlternative
+                        } else {
+                            LiroutiTheme.colors.primaryNormal
+                        },
+                    )
                     .clickable(onClick = actions::onSaveClick),
                 contentAlignment = Alignment.Center,
             ) {
-                // 안 산 걸 골랐으면 결제라는 게 분명하도록 개수와 합계를 보여줌
                 if (purchaseTargets.isEmpty()) {
                     Text(
-                        text = "저장하기",
+                        text = "현재 모습",
                         // Figma: Medium 16/24
                         style = LiroutiTheme.typography.body1Medium,
-                        color = LiroutiTheme.colors.labelReverse,
+                        color = LiroutiTheme.colors.labelInfo,
                     )
                 } else {
                     PurchaseButtonLabel(targets = purchaseTargets)

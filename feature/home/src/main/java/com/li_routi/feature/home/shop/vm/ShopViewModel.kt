@@ -271,20 +271,41 @@ class ShopViewModel(
     }
 
     /**
-     * 하단 버튼. 고른 것 중 안 산 게 있으면 그것들을 사고, 다 샀으면 착장을 저장함.
-     *
-     * 구매는 가격·결제 재화를 서버가 갖고 있어서 body가 없음
+     * 하단 버튼. 고른 것 중 안 산 게 있으면 구매 확인 다이얼로그를 띄우고, 다 샀으면(=구매 대상이
+     * 없으면) 바로 착장을 저장함 — 저장은 결제가 아니라 확인이 필요 없음.
      */
     override fun onSaveClick() {
         val state = _uiState.value
         if (state.isPurchasing || state.isEquipping) return
-        persistPreviewCharacter()
-        val targets = state.purchaseTargets
-        if (targets.isEmpty()) {
-            equipSelected()
+        if (state.purchaseTargets.isNotEmpty()) {
+            _uiState.update { it.copy(isPurchaseConfirmVisible = true) }
             return
         }
-        purchaseAll(targets)
+        persistPreviewCharacter()
+        equipSelected()
+    }
+
+    /** 구매 확인 다이얼로그의 "취소" 또는 바깥 탭 — 선택은 그대로 두고 다이얼로그만 닫음 */
+    fun onPurchaseDialogDismiss() {
+        _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
+    }
+
+    /** 구매 확인 다이얼로그의 "구매하기" — 실제 결제를 진행함 */
+    fun onPurchaseConfirmClick() {
+        val state = _uiState.value
+        _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
+        persistPreviewCharacter()
+        purchaseAll(state.purchaseTargets)
+    }
+
+    /**
+     * 구매 확인 다이얼로그의 "충전하러 가기" — 잔액이 모자란 재화의 충전 탭으로 보냄.
+     * 둘 다 모자라면 블루젬(GEM) 탭을 우선 보여줌.
+     */
+    fun onPurchaseChargeClick() {
+        val state = _uiState.value
+        _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
+        emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = if (state.isGemShort) 1 else 0))
     }
 
     /**

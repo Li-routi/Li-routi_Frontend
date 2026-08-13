@@ -74,7 +74,16 @@ fun LiroutiCameraPreview(
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
-    val previewView = remember { PreviewView(context) }
+    val previewView = remember {
+        PreviewView(context).apply {
+            // 기본(PERFORMANCE)은 가능하면 SurfaceView를 쓰는데, SurfaceView는 별도 하드웨어
+            // 레이어로 직접 합성돼 Compose의 Modifier.blur() 등 일반 View 캡처/렌더 이펙트가
+            // 전혀 먹지 않는다. COMPATIBLE로 강제해 TextureView를 쓰면 일반 View처럼 캡처/블러가
+            // 가능해진다(루틴 인증하기 카메라의 크롭 밴드 블러 참고). 단순 정지사진 촬영 화면이라
+            // TextureView의 약간의 성능 비용은 무시할 만하다.
+            implementationMode = PreviewView.ImplementationMode.COMPATIBLE
+        }
+    }
     var boundCamera by remember { mutableStateOf<Camera?>(null) }
     var boundImageCapture by remember { mutableStateOf<ImageCapture?>(null) }
     // 탭한 지점에 초점 링을 잠깐 보여주기 위한 상태. requestId는 같은 좌표를 연달아 탭해도

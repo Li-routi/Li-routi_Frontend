@@ -38,6 +38,7 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.NotificationUnreadBackground
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -112,19 +113,23 @@ private fun ShopItemCell(
 ) {
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
-    // 보유중은 눌러 있는 동안만 파란 테두리. 안 산 아이템은 고른 동안 유지
-    val showBlueBorder = selected || (item.owned && pressed)
+    // 지금 장착 중인 아이템은 계속 파란 테두리+연한 파란 배경을 유지한다(Figma `background/alram`
+    // #F2F8FF — 알림 미읽음 배경과 같은 토큰을 재사용). 그 외 보유중은 눌러 있는 동안만, 안 산
+    // 아이템은 구매 대상으로 고른 동안만 파란 테두리가 보인다.
+    val showBlueBorder = equipped || selected || (item.owned && pressed)
     val borderWidth = if (showBlueBorder) 1.5.dp else 1.dp
     val borderColor = if (showBlueBorder) {
         LiroutiTheme.colors.primaryNormal
     } else {
         LiroutiTheme.colors.borderSub
     }
+    val backgroundColor = if (equipped) NotificationUnreadBackground else LiroutiTheme.colors.backgroundDefault
 
     Column(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(6.dp))
+            .background(backgroundColor)
             .border(
                 border = BorderStroke(borderWidth, borderColor),
                 shape = RoundedCornerShape(6.dp),
@@ -164,7 +169,7 @@ private fun ShopItemCell(
         // 이미 산 아이템은 다시 살 수 없어서 가격 대신 보유/착용 상태를 보여줌
         if (item.owned) {
             Text(
-                text = if (equipped) "착용중" else "보유중",
+                text = if (equipped) "장착 중" else "보유 중",
                 style = LiroutiTheme.typography.body3SemiBold.copy(lineHeight = 16.sp),
                 color = if (equipped) {
                     LiroutiTheme.colors.primaryNormal

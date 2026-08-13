@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.component.LiroutiToast
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.li_routi.feature.home.shop.component.PurchaseConfirmDialog
 import com.li_routi.feature.home.shop.screen.ShopScreen
 import com.li_routi.feature.home.shop.vm.ShopUiEvent
 import com.li_routi.feature.home.shop.vm.ShopUiState
@@ -71,6 +72,18 @@ fun ShopRoute(
             previewCharacterId = uiState.previewCharacterId,
             savedCharacterId = uiState.savedCharacterId,
         )
+
+        if (uiState.isPurchaseConfirmVisible) {
+            PurchaseConfirmDialog(
+                targets = uiState.purchaseTargets,
+                coinBalance = uiState.coinBalance,
+                gemBalance = uiState.gemBalance,
+                onRemoveItem = viewModel::onItemClick,
+                onDismissRequest = viewModel::onPurchaseDialogDismiss,
+                onConfirmPurchase = viewModel::onPurchaseConfirmClick,
+                onChargeClick = viewModel::onPurchaseChargeClick,
+            )
+        }
 
         // 구매 실패(잔액 부족 등) 사유를 서버 메시지 그대로 보여줌
         uiState.message?.let { message ->

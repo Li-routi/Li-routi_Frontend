@@ -78,11 +78,29 @@ data class ShopUiState(
     val isLoading: Boolean = false,
     /** 구매 요청 중. 따닥으로 두 번 사는 것 방지 */
     val isPurchasing: Boolean = false,
+    /** 하단 "N개 구매" 버튼을 눌러 확인 다이얼로그가 떠 있는지 */
+    val isPurchaseConfirmVisible: Boolean = false,
     val message: String? = null,
 ) {
     /** 고른 것 중 아직 안 산 아이템. 하단 버튼이 구매냐 저장이냐를 이걸로 가름 */
     val purchaseTargets: List<ShopItemUiModel>
         get() = selectedItems.values.filterNot { it.owned }
+
+    /** 구매 대상 중 GEM(블루젬)으로 결제할 것들의 합계 */
+    val purchaseGemTotal: Int
+        get() = purchaseTargets.filter { it.currency == "GEM" }.sumOf { it.price }
+
+    /** 구매 대상 중 TOPAZ(오렌지젬)로 결제할 것들의 합계 */
+    val purchaseTopazTotal: Int
+        get() = purchaseTargets.filter { it.currency == "TOPAZ" }.sumOf { it.price }
+
+    /** 블루젬(GEM)이 모자란지 — 부족분 계산에도 씀 */
+    val isGemShort: Boolean
+        get() = purchaseGemTotal > gemBalance
+
+    /** 오렌지젬(TOPAZ)이 모자란지 — 부족분 계산에도 씀 */
+    val isTopazShort: Boolean
+        get() = purchaseTopazTotal > coinBalance
 }
 
 /**

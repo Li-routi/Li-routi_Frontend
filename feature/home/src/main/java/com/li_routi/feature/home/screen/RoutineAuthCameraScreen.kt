@@ -39,14 +39,23 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.graphics.GraphicsContext
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.graphics.layer.GraphicsLayer
+import androidx.compose.ui.graphics.layer.drawLayer
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalGraphicsContext
 import androidx.compose.ui.platform.LocalInspectionMode
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
@@ -181,23 +190,49 @@ fun RoutineAuthCameraScreen(
     )
 }
 
-// Figma node 5562:14552(Subtract): 360x800 기준 프레임에서 상단 0–94dp(94/800), 하단
-// 614–800dp(186/800) 구간이 최종 인증 사진 크롭 시 잘려나간다. 실제 화면 높이에 이 비율을
-// 곱해 "나중에 잘리는 영역"을 촬영 전에 스크림으로 미리 보여준다.
-private const val CropIndicatorTopFraction = 94f / 800f
-private const val CropIndicatorBottomFraction = 186f / 800f
+// Figma node 5562:14552(Subtract): 360x800 기준 프레임에서 상단 0–88dp(88/800), 하단
+// 620–800dp(180/800) 구간이 최종 인증 사진 크롭 시 잘려나간다. 실제 화면 높이에 이 비율을
+// 곱해 "나중에 잘리는 영역"을 촬영 전에 블러+스크림으로 미리 보여준다. (가운데 선명하게 찍히는
+// 영역을 살짝 더 넓혀달라는 요청으로 원래 Figma 값인 94/800, 186/800에서 각각 6dp씩 줄임)
+private const val CropIndicatorTopFraction = 88f / 800f
+private const val CropIndicatorBottomFraction = 180f / 800f
 
 // Figma `backdrop-blur(5px)` + rgba(93,93,93,0.6) — minSdk 24라 실제 backdrop blur(API 31+)를
 // 못 써서 ChatBox.ChatDateDividerBackground와 동일한 값의 반투명 단색으로 대체한다.
 private val HintPillScrimColor = ScrimStrong
 private val HintPillShape = RoundedCornerShape(percent = 50)
 
+/** 상/하단 크롭 밴드에 적용하는 블러 반경. Figma `backdrop-blur(5px)`과 동일. */
+private val CropBandBlurRadius = 5.dp
+
+/**
+ * [GraphicsContext.createGraphicsLayer]로 만든 [GraphicsLayer]를 컴포지션 생명주기에 묶어
+ * 관리한다. 카메라 프리뷰(또는 권한 거부 화면)를 한 번 그린 결과를 캡처해뒀다가, 상/하단 크롭
+ * 밴드에서 그 프레임에 블러를 씌워 다시 그리는 데 쓴다 — CameraX 바인딩은
+ * [com.li_routi.core.common.ui.camera.LiroutiCameraPreview] 하나만 써야 해서(같은 화면에
+ * 두 번째 프리뷰를 더 얹으면 새 바인딩이 `unbindAll()`을 부르며 첫 번째 바인딩을 끊어버린다)
+ * 실제 카메라를 두 번 그리는 대신 이미 그려진 프레임을 재사용한다.
+ */
+@Composable
+private fun rememberCameraGraphicsLayer(): GraphicsLayer {
+    val graphicsContext = LocalGraphicsContext.current
+    val layer = remember(graphicsContext) { graphicsContext.createGraphicsLayer() }
+    DisposableEffect(graphicsContext, layer) {
+        onDispose { graphicsContext.releaseGraphicsLayer(layer) }
+    }
+    return layer
+}
+
 /**
  * Figma node `4734:42024`/`5562:14547`: 프리뷰가 화면 전체(상태바/내비게이션 바 영역까지)를 꽉
  * 채우고, 닫기·안내 문구·하단 컨트롤은 그 위에 얹힌 오버레이다 — 흰 배경의 별도 상단/하단 바가
- * 아니다. 상/하단에는 실제 인증 사진 크롭 시 잘려나갈 영역을 미리 보여주는 스크림을 깔아 오버레이
- * 가독성과 크롭 안내를 함께 담당한다. minSdk 24라 Figma의 backdrop blur는 못 쓰고 반투명 단색으로
- * 대체했다(다른 화면의 blur→scrim 대체 전례와 동일). 아이콘·텍스트는 흰색(labelReverse)을 쓴다.
+ * 아니다. 상/하단에는 실제 인증 사진 크롭 시 잘려나갈 영역을 미리 보여주는 블러+스크림을 깔아
+ * 오버레이 가독성과 크롭 안내를 함께 담당한다(Figma `backdrop-blur(5px)`).
+ * [com.li_routi.core.common.ui.camera.LiroutiCameraPreview]가 내부 `PreviewView`를
+ * `ImplementationMode.COMPATIBLE`(TextureView)로 강제해둔 덕에 API 31+ 기기에서는 실제 블러가
+ * 걸리고, 그 아래(minSdk 24까지)에서는 [androidx.compose.ui.draw.blur]가 조용히 no-op이라
+ * 자동으로 스크림만 남는다(PendingVerificationCard와 동일한 전례). 아이콘·텍스트는 흰색
+ * (labelReverse)을 쓴다.
  */
 @Composable
 private fun RoutineAuthCameraLayout(
@@ -212,30 +247,56 @@ private fun RoutineAuthCameraLayout(
     modifier: Modifier = Modifier,
     onRequestPermission: () -> Unit = {},
 ) {
+    val cameraLayer = rememberCameraGraphicsLayer()
+    val dimmerColor = LiroutiTheme.colors.dimmerDefault
+
     BoxWithConstraints(
         modifier = modifier
             .fillMaxSize()
             .background(Color.Black),
     ) {
-        val topBandHeight = maxHeight * CropIndicatorTopFraction
-        val bottomBandHeight = maxHeight * CropIndicatorBottomFraction
+        val screenHeight = maxHeight
+        val topBandHeight = screenHeight * CropIndicatorTopFraction
+        val bottomBandHeight = screenHeight * CropIndicatorBottomFraction
 
-        if (hasCameraPermission) {
-            cameraContent()
-        } else {
-            CameraPermissionDenied(
-                onRequestPermission = onRequestPermission,
-                modifier = Modifier.fillMaxSize(),
-            )
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                // 실제 화면에 그려질 프레임(카메라 또는 권한 거부 화면)을 그대로 캡처해둔다 —
+                // 이 레이어는 아래 밴드들에서 블러를 씌워 재사용한다.
+                .drawWithContent {
+                    cameraLayer.record(this, layoutDirection, IntSize(size.width.toInt(), size.height.toInt())) {
+                        this@drawWithContent.drawContent()
+                    }
+                    drawLayer(cameraLayer)
+                },
+        ) {
+            if (hasCameraPermission) {
+                cameraContent()
+            } else {
+                CameraPermissionDenied(
+                    onRequestPermission = onRequestPermission,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
         }
 
-        // 상단 크롭 아웃 스크림 — 닫기 버튼 가독성 확보 + 잘려나갈 영역 안내를 겸한다.
+        // 상단 크롭 아웃 블러 — 닫기 버튼 가독성 확보 + 잘려나갈 영역 안내를 겸한다. 위에서
+        // 캡처해둔 같은 프레임을 밴드 높이만큼 잘라 블러를 씌우고 그 위에 스크림 틴트를 얹는다.
+        // 캡처 원점과 이 밴드의 원점이 같은(화면 맨 위) 좌표라 별도 오프셋이 필요 없다.
         Box(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .height(topBandHeight)
-                .background(LiroutiTheme.colors.dimmerDefault),
+                .clipToBounds()
+                .blur(CropBandBlurRadius)
+                .drawWithContent {
+                    drawLayer(cameraLayer)
+                    // 스크림도 같은 blur 레이어 안에서 그려지지만 단색이라 블러 유무가 눈에
+                    // 띄지 않는다 — 별도로 안 그려도 되지만 명시적으로 남겨 의도를 분명히 한다.
+                    drawRect(color = dimmerColor)
+                },
         )
         Image(
             painter = painterResource(id = R.drawable.close),
@@ -252,72 +313,104 @@ private fun RoutineAuthCameraLayout(
             colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelReverse),
         )
 
-        // 안내 문구 + 컨트롤(전환/셔터/플래시). 스크림 배경을 Column 자신에 둬서 내비게이션
-        // 바 인셋 등으로 실제 컨텐츠가 bottomBandHeight보다 커져도 스크림이 항상 컨트롤
-        // 전체를 덮는다(Figma 크롭 비율은 heightIn min으로 하한만 보장).
-        Column(
+        // 안내 문구 + 컨트롤(전환/셔터/플래시). heightIn min으로 하단 밴드 높이 하한만 보장하고
+        // (Figma 크롭 비율), 실제 컨텐츠가 그보다 커지면(내비게이션 바 인셋 등) 자연히 늘어난다.
+        // 블러 배경(캡처된 프레임 재사용) + 스크림 틴트 + 실제 컨트롤을 이 순서로 겹쳐서, 컨트롤
+        // 자체(텍스트/버튼)는 블러 레이어 밖에 있어 흐려지지 않고 선명하게 남는다.
+        Box(
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
                 .heightIn(min = bottomBandHeight)
-                .background(LiroutiTheme.colors.dimmerDefault)
-                .navigationBarsPadding()
-                .padding(top = 24.dp, bottom = 24.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
+                .clipToBounds(),
         ) {
-            if (hasCameraPermission) {
-                Text(
-                    text = "가로로 촬영해 주세요",
-                    style = LiroutiTheme.typography.body2LongMedium,
-                    // 어두운 프리뷰 위에서도 읽히도록 reverse + scrim
-                    color = LiroutiTheme.colors.labelReverse,
-                    modifier = Modifier
-                        .background(
-                            color = HintPillScrimColor,
-                            shape = HintPillShape,
-                        )
-                        .padding(horizontal = 12.dp, vertical = 8.dp),
-                )
-                Spacer(modifier = Modifier.height(20.dp))
-            }
-            Row(
+            // matchParentSize(): fillMaxSize()를 쓰면 이 Box가 부모 Box의 크기를 "정하는"
+            // 자식이 돼버려서, heightIn(min=...)로 하한만 두려던 부모가 화면 전체 높이로
+            // 부풀어 오르고(다른 fillMaxSize 자식이 화면을 가득 채우라고 요구하므로) 그 안의
+            // Column(안내문구+버튼)이 기본 정렬(TopStart)로 밀려 화면 맨 위에 나타나는 버그가
+            // 있었다. matchParentSize는 부모 크기 결정에 관여하지 않고 "부모가 정해진 뒤" 그
+            // 크기에 맞춰지므로, 부모 크기는 여전히 Column 실제 높이(또는 하한값 중 큰 쪽)를
+            // 따르고 배경만 그 크기에 맞게 채워진다.
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .blur(CropBandBlurRadius)
+                    .drawWithContent {
+                        // 캡처된 프레임은 화면 맨 위를 원점으로 하는데, 이 밴드는 화면 아래쪽에
+                        // 있으므로 (전체 화면 높이 - 이 밴드 높이)만큼 위로 당겨 그려야 실제
+                        // "화면 하단" 부분이 이 밴드 안에 나타난다(안 당기면 화면 맨 위 쪽이
+                        // 잘못 나타남). DrawScope 안이라 Dp.toPx()를 바로 쓸 수 있다.
+                        translate(top = -(screenHeight.toPx() - size.height)) {
+                            drawLayer(cameraLayer)
+                        }
+                    },
+            )
+            Box(
+                modifier = Modifier
+                    .matchParentSize()
+                    .background(dimmerColor),
+            )
+            Column(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 40.dp),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically,
+                    .navigationBarsPadding()
+                    .padding(top = 24.dp, bottom = 24.dp),
+                horizontalAlignment = Alignment.CenterHorizontally,
             ) {
-                CameraControlAction(
-                    iconResId = R.drawable.cameraswitch,
-                    label = "전환",
-                    onClick = onToggleLens,
-                )
-                Box(
-                    modifier = Modifier
-                        .size(64.dp)
-                        .clickable(
-                            enabled = !isCapturing && hasCameraPermission,
-                            onClick = onShutterClick,
-                        ),
-                    contentAlignment = Alignment.Center,
-                ) {
-                    Image(
-                        painter = painterResource(id = R.drawable.shutter__outer),
-                        contentDescription = null,
-                        modifier = Modifier.size(64.dp),
+                if (hasCameraPermission) {
+                    Text(
+                        text = "가로로 촬영해 주세요",
+                        style = LiroutiTheme.typography.body2LongMedium,
+                        // 어두운 프리뷰 위에서도 읽히도록 reverse + scrim
+                        color = LiroutiTheme.colors.labelReverse,
+                        modifier = Modifier
+                            .background(
+                                color = HintPillScrimColor,
+                                shape = HintPillShape,
+                            )
+                            .padding(horizontal = 12.dp, vertical = 8.dp),
                     )
-                    Image(
-                        painter = painterResource(id = R.drawable.shutter),
-                        contentDescription = "촬영",
-                        modifier = Modifier.size(52.dp),
+                    Spacer(modifier = Modifier.height(20.dp))
+                }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 40.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    CameraControlAction(
+                        iconResId = R.drawable.cameraswitch,
+                        label = "전환",
+                        onClick = onToggleLens,
+                    )
+                    Box(
+                        modifier = Modifier
+                            .size(64.dp)
+                            .clickable(
+                                enabled = !isCapturing && hasCameraPermission,
+                                onClick = onShutterClick,
+                            ),
+                        contentAlignment = Alignment.Center,
+                    ) {
+                        Image(
+                            painter = painterResource(id = R.drawable.shutter__outer),
+                            contentDescription = null,
+                            modifier = Modifier.size(64.dp),
+                        )
+                        Image(
+                            painter = painterResource(id = R.drawable.shutter),
+                            contentDescription = "촬영",
+                            modifier = Modifier.size(52.dp),
+                        )
+                    }
+                    CameraControlAction(
+                        iconResId = R.drawable.flash,
+                        // 폭 고정 + 짧은 라벨로 토글 시 셔터가 밀리지 않게 한다.
+                        label = if (isTorchOn) "켜짐" else "플래시",
+                        onClick = onToggleFlash,
                     )
                 }
-                CameraControlAction(
-                    iconResId = R.drawable.flash,
-                    // 폭 고정 + 짧은 라벨로 토글 시 셔터가 밀리지 않게 한다.
-                    label = if (isTorchOn) "켜짐" else "플래시",
-                    onClick = onToggleFlash,
-                )
             }
         }
     }
