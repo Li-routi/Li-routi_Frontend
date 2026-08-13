@@ -29,24 +29,19 @@
         <!-- launcher가 아니므로 Android Studio에서 실행 구성으로 직접 지정해야 켜진다.
              exported=true는 adb/Android Studio에서 바로 실행해 테스트하기 위한 설정이다. -->
         <activity
-            android:name="com.li_routi.feature.grouproutine.GroupRoutineActivity"
-            android:exported="true"
-            android:label="@string/app_name"
-            android:theme="@style/Theme.LiroutiFrontend" />
-
-        <!-- launcher가 아니므로 Android Studio에서 실행 구성으로 직접 지정해야 켜진다.
-             exported=true는 adb/Android Studio에서 바로 실행해 테스트하기 위한 설정이다. -->
-        <activity
             android:name="com.li_routi.feature.login.LoginActivity"
             android:exported="true"
             android:label="@string/app_name"
+            android:screenOrientation="portrait"
             android:theme="@style/Theme.LiroutiFrontend" />
 
         <activity
             android:name=".MainActivity"
             android:exported="true"
             android:label="@string/app_name"
-            android:theme="@style/Theme.LiroutiFrontend">
+            android:screenOrientation="portrait"
+            android:theme="@style/Theme.LiroutiFrontend"
+            android:windowSoftInputMode="adjustResize">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
 
@@ -77,7 +72,8 @@
         <!-- 카카오 로그인 리다이렉트 수신용. scheme은 build.gradle.kts의 manifestPlaceholders["kakaoAppId"]로 주입된다. -->
         <activity
             android:name="com.kakao.sdk.auth.AuthCodeHandlerActivity"
-            android:exported="true">
+            android:exported="true"
+            android:screenOrientation="portrait">
             <intent-filter android:label="login">
                 <action android:name="android.intent.action.VIEW" />
 

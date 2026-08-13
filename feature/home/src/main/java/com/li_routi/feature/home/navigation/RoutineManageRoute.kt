@@ -33,8 +33,10 @@ import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.designsystem.component.LiroutiClockTime
 import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.feature.home.vm.RegisteredCustomIdPrefix
 import com.li_routi.feature.home.vm.RoutineManageUiEvent
 import com.li_routi.feature.home.vm.RoutineManageViewModel
+import com.li_routi.feature.home.vm.toDayIndexes
 
 /** LiroutiDaySelector 인덱스: 0=일 … 6=토 */
 private val DayIndexToApi = listOf(
@@ -70,6 +72,7 @@ fun RoutineManageRoute(
             getMemberRoutinesUseCase = RoutineContainer.getMemberRoutinesUseCase,
             getHomeSummaryUseCase = HomeContainer.getHomeSummaryUseCase,
             createMemberRoutinesUseCase = RoutineContainer.createMemberRoutinesUseCase,
+            updateMemberRoutineUseCase = RoutineContainer.updateMemberRoutineUseCase,
             deleteMemberRoutineUseCase = RoutineContainer.deleteMemberRoutineUseCase,
         )
     },
@@ -85,6 +88,8 @@ fun RoutineManageRoute(
     var editingCategoryId by rememberSaveable { mutableStateOf<Long?>(null) }
     var categoryName by rememberSaveable { mutableStateOf("") }
     var categoryColor by rememberSaveable { mutableStateOf<CategoryColor?>(null) }
+    // null이면 새 커스텀 루틴 추가, 아니면 이미 등록된 커스텀 루틴(routineId) 수정 중.
+    var editingRoutineId by rememberSaveable { mutableStateOf<Long?>(null) }
     var routineName by rememberSaveable { mutableStateOf("") }
     var selectedDays by rememberSaveable { mutableStateOf(emptySet<Int>()) }
     var startTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
@@ -93,12 +98,23 @@ fun RoutineManageRoute(
     var endTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
         mutableStateOf(LiroutiClockTime.DefaultEvening)
     }
+    // 수정 모드로 열면(onItemClick) 기존 루틴 값이 그대로 채워져 들어오므로, 빈 기본값과 비교하면
+    // 열자마자 "변경됨"으로 잡힌다. 시트를 열 때의 값을 기준선으로 따로 들고, draft 여부는 이
+    // 기준선과의 차이로 판단한다.
+    var baselineRoutineName by rememberSaveable { mutableStateOf("") }
+    var baselineSelectedDays by rememberSaveable { mutableStateOf(emptySet<Int>()) }
+    var baselineStartTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
+        mutableStateOf(LiroutiClockTime.DefaultMorning)
+    }
+    var baselineEndTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
+        mutableStateOf(LiroutiClockTime.DefaultEvening)
+    }
 
     val hasRoutineSheetDraft =
-        routineName.isNotBlank() ||
-            selectedDays.isNotEmpty() ||
-            startTime != LiroutiClockTime.DefaultMorning ||
-            endTime != LiroutiClockTime.DefaultEvening
+        routineName != baselineRoutineName ||
+            selectedDays != baselineSelectedDays ||
+            startTime != baselineStartTime ||
+            endTime != baselineEndTime
 
     fun askDiscardConfirm(onConfirm: () -> Unit) {
         pendingExitAction = onConfirm
@@ -108,10 +124,15 @@ fun RoutineManageRoute(
     fun closeRoutineSheet() {
         showRoutineSheet = false
         showSheetDeleteDialog = false
+        editingRoutineId = null
         routineName = ""
         selectedDays = emptySet()
         startTime = LiroutiClockTime.DefaultMorning
         endTime = LiroutiClockTime.DefaultEvening
+        baselineRoutineName = ""
+        baselineSelectedDays = emptySet()
+        baselineStartTime = LiroutiClockTime.DefaultMorning
+        baselineEndTime = LiroutiClockTime.DefaultEvening
     }
 
     fun requestExit() {
@@ -148,6 +169,9 @@ fun RoutineManageRoute(
                     showCategoryDeleteDialog = false
                     editingCategoryId = null
                 }
+                RoutineManageUiEvent.CustomRoutineSaved,
+                RoutineManageUiEvent.CustomRoutineDeleted,
+                -> closeRoutineSheet()
             }
         }
     }
@@ -185,10 +209,15 @@ fun RoutineManageRoute(
             allSelected = uiState.allSelectableSelected,
             onSelectAllChange = viewModel::onSelectAllChange,
             onAddRoutineClick = {
+                editingRoutineId = null
                 routineName = ""
                 selectedDays = emptySet()
                 startTime = LiroutiClockTime.DefaultMorning
                 endTime = LiroutiClockTime.DefaultEvening
+                baselineRoutineName = ""
+                baselineSelectedDays = emptySet()
+                baselineStartTime = LiroutiClockTime.DefaultMorning
+                baselineEndTime = LiroutiClockTime.DefaultEvening
                 showRoutineSheet = true
             },
             primaryButtonText = if (uiState.isSubmitting) "등록 중..." else "완료",
@@ -196,6 +225,23 @@ fun RoutineManageRoute(
             onPrimaryButtonClick = viewModel::onSubmit,
             onBackClick = ::requestExit,
             onCloseClick = ::requestExit,
+            warningText = uiState.overLimitMessage,
+            onItemClick = { id ->
+                val routineId = id.removePrefix(RegisteredCustomIdPrefix).toLongOrNull()
+                val routine = uiState.registeredCustomRoutines.firstOrNull { it.routineId == routineId }
+                if (routine != null) {
+                    editingRoutineId = routine.routineId
+                    routineName = routine.name
+                    selectedDays = routine.toDayIndexes()
+                    startTime = LiroutiClockTime.DefaultMorning
+                    endTime = LiroutiClockTime.fromApiHHmm(routine.endTime ?: "23:59")
+                    baselineRoutineName = routineName
+                    baselineSelectedDays = selectedDays
+                    baselineStartTime = startTime
+                    baselineEndTime = endTime
+                    showRoutineSheet = true
+                }
+            },
         )
 
         if (uiState.isLoading) {
@@ -205,7 +251,9 @@ fun RoutineManageRoute(
             )
         }
 
-        uiState.errorMessage?.takeIf { !showCategorySheet }?.let { message ->
+        // 카테고리/루틴 시트가 열려 있으면 각 시트 안에서 에러를 보여준다(ModalBottomSheet는 별도
+        // 창이라 이 Box에 그려도 시트에 가려 안 보임) — 여기서는 두 시트가 다 닫혀 있을 때만 보여준다.
+        uiState.errorMessage?.takeIf { !showCategorySheet && !showRoutineSheet }?.let { message ->
             Text(
                 text = message,
                 style = LiroutiTheme.typography.caption,
@@ -283,16 +331,29 @@ fun RoutineManageRoute(
             },
             showAlarmSection = false,
             showRoomInfo = false,
+            hasDraft = hasRoutineSheetDraft,
+            errorMessage = uiState.errorMessage,
             onDeleteClick = { showSheetDeleteDialog = true },
             onConfirm = {
-                val accepted = viewModel.onAddCustomRoutine(
-                    name = routineName,
-                    categoryId = uiState.selectedCategoryId,
-                    endTime = endTime.toApiHHmm(),
-                    repeatDays = selectedDays.toApiRepeatDays(),
-                )
-                if (accepted) {
-                    closeRoutineSheet()
+                val routineId = editingRoutineId
+                if (routineId == null) {
+                    val accepted = viewModel.onAddCustomRoutine(
+                        name = routineName,
+                        categoryId = uiState.selectedCategoryId,
+                        endTime = endTime.toApiHHmm(),
+                        repeatDays = selectedDays.toApiRepeatDays(),
+                    )
+                    if (accepted) {
+                        closeRoutineSheet()
+                    }
+                } else {
+                    // 성공 시 CustomRoutineSaved 이벤트에서 closeRoutineSheet()가 불린다.
+                    viewModel.onUpdateCustomRoutine(
+                        routineId = routineId,
+                        name = routineName,
+                        endTime = endTime.toApiHHmm(),
+                        repeatDays = selectedDays.toApiRepeatDays(),
+                    )
                 }
             },
             onDismissRequest = ::requestRoutineSheetDismiss,
@@ -304,7 +365,13 @@ fun RoutineManageRoute(
             onDismissRequest = { showSheetDeleteDialog = false },
             onConfirmDelete = {
                 showSheetDeleteDialog = false
-                closeRoutineSheet()
+                val routineId = editingRoutineId
+                if (routineId == null) {
+                    closeRoutineSheet()
+                } else {
+                    // 성공 시 CustomRoutineDeleted 이벤트에서 closeRoutineSheet()가 불린다.
+                    viewModel.onDeleteCustomRoutine(routineId)
+                }
             },
         )
     }

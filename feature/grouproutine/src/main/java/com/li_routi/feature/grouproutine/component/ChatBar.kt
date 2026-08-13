@@ -53,8 +53,11 @@ private val ChatBarTextStyle = TextStyle(
     letterSpacing = 0.sp,
 )
 
+private val ChatBarShape = RoundedCornerShape(6.dp)
 private val ReplyHeaderHeight = 44.dp
-private val ChatBarBackground = Color(0xFFD9D9D9)
+// Figma는 rgba(238,238,238,0.8) 위에 backdrop-blur(6px)를 얹지만, 이 프로젝트에서 실제
+// backdrop blur는 API 31+ 전용이라(minSdk 24) ChatDateDivider와 같은 방식으로 반투명 색으로 대체한다.
+private val ChatBarBackground = Color(0xFFEEEEEE).copy(alpha = 0.8f)
 private val ReplyHeaderTextStartPadding = 16.dp
 private val ReplyHeaderTopTextTopPadding = 4.dp
 private val ReplyHeaderBottomTextBottomPadding = 4.dp
@@ -95,21 +98,24 @@ fun ChatBar(
     onEmojiClick: () -> Unit = {},
     onSendClick: () -> Unit = {},
 ) {
-    Column(modifier = modifier.fillMaxWidth()) {
+    Column(
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(horizontal = ChatBarHorizontalMargin)
+            .clip(ChatBarShape)
+            .background(ChatBarBackground),
+    ) {
         if (replyTarget != null) {
             ChatReplyHeader(
                 nickname = replyTarget.senderName,
                 messagePreview = replyTarget.message,
                 onCancelClick = onReplyCancelClick,
-                modifier = Modifier.padding(horizontal = ChatBarHorizontalMargin),
             )
         }
         Box(
             modifier = Modifier
-                .padding(horizontal = ChatBarHorizontalMargin)
                 .fillMaxWidth()
-                .height(44.dp)
-                .background(ChatBarBackground),
+                .height(44.dp),
         ) {
             Row(
                 modifier = Modifier
@@ -205,8 +211,7 @@ private fun ChatReplyHeader(
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(ReplyHeaderHeight)
-            .background(ChatBarBackground),
+            .height(ReplyHeaderHeight),
     ) {
         Text(
             text = "${nickname}에게 답장",

@@ -36,6 +36,7 @@ class FindChallengeViewModel(
     // 카테고리 변경/디바운스된 검색/재시도가 겹치면 먼저 시작된 느린 요청이 나중에 끝나 최신 상태를
     // 덮어쓸 수 있다. 새 조회를 시작할 때마다 이전 조회 job을 취소해 항상 마지막 요청만 반영되게 한다.
     private var loadJob: Job? = null
+    private var loadMoreJob: Job? = null
 
     init {
         loadChallenges(category = null, keyword = null)
@@ -63,7 +64,18 @@ class FindChallengeViewModel(
 
     private fun loadChallenges(category: ChallengeCategory?, keyword: String?) {
         loadJob?.cancel()
-        _uiState.update { it.copy(isLoading = true, selectedCategory = category, errorMessage = null) }
+        // 필터/검색이 바뀌면 목록이 통째로 교체되므로, 이전 목록 기준으로 진행 중이던 다음 페이지
+        // 요청은 더 이상 의미가 없다 — 같이 취소해 그 응답이 늦게 도착해 새 목록 뒤에 잘못 이어붙는 걸 막는다.
+        loadMoreJob?.cancel()
+        _uiState.update {
+            it.copy(
+                isLoading = true,
+                isLoadingMore = false,
+                selectedCategory = category,
+                errorMessage = null,
+                loadMoreError = null,
+            )
+        }
         loadJob = viewModelScope.launch {
             when (
                 val result = getChallengesUseCase(
@@ -77,10 +89,47 @@ class FindChallengeViewModel(
                         isLoading = false,
                         challenges = result.data.challenges.map { it.toCardUiModel() },
                         errorMessage = null,
+                        nextCursor = result.data.nextCursor,
+                        hasNext = result.data.hasNext,
                     )
                 }
                 is ResultState.Error -> _uiState.update { state ->
                     state.copy(isLoading = false, errorMessage = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    override fun onLoadMore() {
+        val state = _uiState.value
+        val cursor = state.nextCursor
+        if (state.isLoading || state.isLoadingMore || !state.hasNext || cursor == null) return
+
+        loadMoreJob?.cancel()
+        _uiState.update { it.copy(isLoadingMore = true, loadMoreError = null) }
+        loadMoreJob = viewModelScope.launch {
+            when (
+                val result = getChallengesUseCase(
+                    category = state.selectedCategory,
+                    keyword = state.searchQuery.trim().takeIf { it.isNotEmpty() },
+                    cursor = cursor,
+                    size = PageSize,
+                )
+            ) {
+                is ResultState.Success -> _uiState.update { s ->
+                    s.copy(
+                        isLoadingMore = false,
+                        challenges = s.challenges + result.data.challenges.map { it.toCardUiModel() },
+                        nextCursor = result.data.nextCursor,
+                        hasNext = result.data.hasNext,
+                    )
+                }
+                // 다음 페이지 실패는 기존 목록을 지우지 않고 조용히 멈춘다. hasNext는 끄지 않는다 —
+                // 이 실패가 서버에 더 이상 페이지가 없다는 뜻은 아니므로, 재시도하면 다시 불러올 수 있어야
+                // 한다. 대신 loadMoreError로 목록 하단에 재시도 UI를 보여준다.
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isLoadingMore = false, loadMoreError = result.message)
                 }
                 ResultState.Loading -> Unit
             }

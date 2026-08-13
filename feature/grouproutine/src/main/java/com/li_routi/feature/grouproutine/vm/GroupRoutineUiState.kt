@@ -146,6 +146,10 @@ data class GroupRoutineUiState(
     val replyTarget: ChatMessageUiModel? = null,
     val chatEmoticons: List<ChatEmoticonUiModel> = emptyList(),
     val isChatLoading: Boolean = false,
+    /** 채팅방 진입 후 최신 메시지 REST 조회(최초 1회)가 끝났는지. 소켓 구독이 이 조회보다 먼저
+     * 시작되므로, 이력이 오기 전에 실시간 메시지가 먼저 도착해도 화면이 "맨 아래로 스크롤"을
+     * 섣불리 소모하지 않도록 화면 쪽에서 이 값과 함께 확인한다. */
+    val isChatHistoryLoaded: Boolean = false,
     val newCertifications: List<NewCertificationUiModel> = SampleNewCertifications,
     val routines: List<GroupRoutineUiModel> = emptyList(),
     val members: List<GroupMemberUiModel> = SampleGroupMembers,

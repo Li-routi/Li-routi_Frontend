@@ -21,9 +21,14 @@ class LoginActivity : ComponentActivity() {
             navigationBarStyle = SystemBarStyle.light(Color.WHITE, Color.WHITE),
         )
         val startAtProfileSetup = intent.getBooleanExtra(ExtraStartAtProfileSetup, false)
+        val initialNickname = intent.getStringExtra(ExtraInitialNickname)
         setContent {
             LiroutiFrontendTheme(darkTheme = false) {
-                LoginRoute(modifier = Modifier.fillMaxSize(), startAtProfileSetup = startAtProfileSetup)
+                LoginRoute(
+                    modifier = Modifier.fillMaxSize(),
+                    startAtProfileSetup = startAtProfileSetup,
+                    initialNickname = initialNickname,
+                )
             }
         }
     }
@@ -36,8 +41,20 @@ class LoginActivity : ComponentActivity() {
          */
         const val ExtraStartAtProfileSetup = "extra_start_at_profile_setup"
 
-        fun createIntent(context: Context, startAtProfileSetup: Boolean = false): Intent =
-            Intent(context, LoginActivity::class.java).putExtra(ExtraStartAtProfileSetup, startAtProfileSetup)
+        /**
+         * [MainActivity][com.cmc.li_routi_frontend.MainActivity]가 이미 조회해 둔 내 정보의
+         * 닉네임(소셜 프로필 기반 초기값)을 프로필 설정 화면 입력창에 미리 채워주기 위해 넘긴다.
+         */
+        const val ExtraInitialNickname = "extra_initial_nickname"
+
+        fun createIntent(
+            context: Context,
+            startAtProfileSetup: Boolean = false,
+            initialNickname: String? = null,
+        ): Intent =
+            Intent(context, LoginActivity::class.java)
+                .putExtra(ExtraStartAtProfileSetup, startAtProfileSetup)
+                .putExtra(ExtraInitialNickname, initialNickname)
     }
 }
 

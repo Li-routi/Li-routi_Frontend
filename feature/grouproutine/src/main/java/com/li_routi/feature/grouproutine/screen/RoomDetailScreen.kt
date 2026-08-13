@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
+import androidx.compose.foundation.layout.imePadding
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -43,21 +44,22 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.li_routi.core.common.ui.calendar.LiroutiCalendarBottomSheet
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
-import com.li_routi.feature.grouproutine.component.CalendarSheet
 import com.li_routi.feature.grouproutine.component.ChatBar
 import com.li_routi.feature.grouproutine.component.ChatBox
 import com.li_routi.feature.grouproutine.component.ChatDateDivider
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 import com.li_routi.feature.grouproutine.component.EmojiPannel
+import com.li_routi.feature.grouproutine.component.isGroupEnd
 import com.li_routi.feature.grouproutine.component.isGroupStart
 import com.li_routi.feature.grouproutine.component.isNewDate
 import com.li_routi.feature.grouproutine.component.toLocalDate
-import java.time.YearMonth
+import java.time.LocalDate
 import kotlinx.coroutines.launch
 
 /** 채팅바 하단에 무엇이 떠 있는지: 아무것도 없음 / 소프트 키보드 / 이모지 패널. */
@@ -96,6 +98,7 @@ fun RoomDetailScreen(
     onEmojiSelected: (ChatEmoticonUiModel) -> Unit = {},
     onCalendarClick: () -> Unit = {},
     onLoadMore: () -> Unit = {},
+    isInitialHistoryLoaded: Boolean = true,
 ) {
     var chatInputMode by remember { mutableStateOf(ChatInputMode.NONE) }
     val chatFieldFocusRequester = remember { FocusRequester() }
@@ -111,7 +114,7 @@ fun RoomDetailScreen(
     var emojiSize by remember { mutableStateOf(DefaultEmojiSize) }
 
     var isCalendarSheetVisible by remember { mutableStateOf(false) }
-    var calendarYearMonth by remember { mutableStateOf(YearMonth.now()) }
+    var calendarSelectedDate by remember { mutableStateOf(LocalDate.now()) }
     val listState = rememberLazyListState()
     val coroutineScope = rememberCoroutineScope()
 
@@ -121,10 +124,30 @@ fun RoomDetailScreen(
             .collect { index -> if (index <= 3) onLoadMore() }
     }
 
+    // 채팅방 진입 시 맨 위(가장 오래된 메시지) 기준으로 보이던 문제 — 메시지가 처음 채워지는 순간
+    // 딱 한 번 최신(맨 아래) 메시지로 이동한다. 이후(과거 메시지 이어붙이기 등) 재실행되지 않도록
+    // hasScrolledToLatest로 막는다.
+    //
+    // isInitialHistoryLoaded도 함께 확인해야 한다 — 소켓 구독이 REST 이력 조회보다 먼저 시작되므로,
+    // 이력이 오기 전에 실시간 메시지 하나가 먼저 도착하면 messages가 그 한 건만으로 비어있지 않게
+    // 되어 이 이펙트가 그 시점(맨 위=맨 아래인 index 0)에서 소모돼버린다. 이후 이력이 앞에 붙어도
+    // "딱 한 번"은 이미 써버렸으니 다시 스크롤되지 않는다.
+    var hasScrolledToLatest by remember { mutableStateOf(false) }
+    LaunchedEffect(messages.isNotEmpty(), isInitialHistoryLoaded) {
+        if (!hasScrolledToLatest && isInitialHistoryLoaded && messages.isNotEmpty()) {
+            hasScrolledToLatest = true
+            listState.scrollToItem(messages.lastIndex)
+        }
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                // 키보드가 올라올 때 상단 바까지 통째로 밀리지 않도록, 바닥 패딩만 여기서 흡수한다 —
+                // fillMaxSize()로 이미 전체 높이를 잡은 뒤라 첫 자식(상단 바)은 그대로 고정되고,
+                // weight(1f)인 메시지 영역만 줄어들며 마지막 자식(채팅바)이 키보드 위로 따라 올라온다.
+                .imePadding()
                 .background(LiroutiTheme.colors.backgroundDefault),
         ) {
             Box(
@@ -199,6 +222,7 @@ fun RoomDetailScreen(
                 ) {
                     itemsIndexed(items = messages, key = { _, message -> message.id }) { index, message ->
                         val previous = messages.getOrNull(index - 1)
+                        val next = messages.getOrNull(index + 1)
                         Column {
                             if (message.isNewDate(previous)) {
                                 ChatDateDivider(sentAtMillis = message.sentAtMillis)
@@ -206,6 +230,7 @@ fun RoomDetailScreen(
                             ChatBox(
                                 message = message,
                                 isGroupStart = message.isGroupStart(previous),
+                                isGroupEnd = message.isGroupEnd(next),
                                 emojiSize = emojiSize,
                                 onReplySwipe = onReplySwipe,
                             )
@@ -264,12 +289,12 @@ fun RoomDetailScreen(
         }
 
         if (isCalendarSheetVisible) {
-            CalendarSheet(
-                yearMonth = calendarYearMonth,
-                onConfirm = { calendarYearMonth = it },
-                onCancel = { isCalendarSheetVisible = false },
-                onDateConfirmed = { date ->
+            LiroutiCalendarBottomSheet(
+                initialDate = calendarSelectedDate,
+                onDismissRequest = { isCalendarSheetVisible = false },
+                onDateSelected = { date ->
                     isCalendarSheetVisible = false
+                    calendarSelectedDate = date
                     val targetIndex = messages.indexOfFirst { it.sentAtMillis.toLocalDate() == date }
                     if (targetIndex >= 0) {
                         coroutineScope.launch {
@@ -277,7 +302,6 @@ fun RoomDetailScreen(
                         }
                     }
                 },
-                modifier = Modifier.align(Alignment.BottomCenter),
             )
         }
     }

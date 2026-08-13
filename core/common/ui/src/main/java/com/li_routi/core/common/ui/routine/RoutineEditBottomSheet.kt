@@ -15,6 +15,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -22,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -51,6 +53,40 @@ private enum class RoutineEditExpandedSection {
 }
 
 /**
+ * 바깥 탭·시스템 뒤로가기로 [SheetValue.Hidden]으로 전환되려 할 때, 초안이 있으면
+ * `confirmValueChange`에서 전환을 막고(false 반환) 대신 [onDismissRequest]만 호출한다
+ * (실제 닫기 여부는 그쪽의 이탈 확인 다이얼로그가 결정). 초안이 없으면 평소처럼 닫히게 둔다.
+ *
+ * `confirmValueChange` 람다는 [rememberModalBottomSheetState] 내부에서 `rememberSaveable`의
+ * key로도 쓰이므로, 매 재구성마다 새 람다를 넘기면 SheetState가 계속 재생성돼 애니메이션이 깨진다.
+ * 그래서 람다 자체는 `remember`로 한 번만 만들고, 최신 [hasDraft]/[onDismissRequest] 값은
+ * [rememberUpdatedState]로 참조한다.
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun rememberRoutineEditSheetState(
+    hasDraft: Boolean,
+    onDismissRequest: () -> Unit,
+): SheetState {
+    val currentHasDraft = rememberUpdatedState(hasDraft)
+    val currentOnDismissRequest = rememberUpdatedState(onDismissRequest)
+    val confirmValueChange = remember {
+        { target: SheetValue ->
+            if (target == SheetValue.Hidden && currentHasDraft.value) {
+                currentOnDismissRequest.value()
+                false
+            } else {
+                true
+            }
+        }
+    }
+    return rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = confirmValueChange,
+    )
+}
+
+/**
  * 루틴 생성/편집 Bottom Sheet.
  *
  * Figma `루틴 추가` 편집 시트: 이름 + 시작시간/마감시간(인라인 휠) + 반복(요일) + 확인.
@@ -72,12 +108,23 @@ fun RoutineEditBottomSheet(
     onConfirm: () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    /**
+     * 작성 중인 이름/시간/반복 등 초안이 있는지. true인 상태로 바깥 탭·시스템 뒤로가기가 들어오면
+     * 시트가 그대로 닫히지 않고 [onDismissRequest](이탈 확인 다이얼로그 분기)만 호출한다.
+     */
+    hasDraft: Boolean = false,
+    sheetState: SheetState = rememberRoutineEditSheetState(hasDraft, onDismissRequest),
     namePlaceholder: String = "루틴 이름",
     alarmText: String = "없음",
     onAlarmClick: (() -> Unit)? = null,
     showAlarmSection: Boolean = false,
     showRoomInfo: Boolean = false,
+    /**
+     * 저장/삭제 실패 메시지. ModalBottomSheet는 별도 창(Popup)에 떠서 화면의 다른 영역(예: 바깥
+     * Box에 그리는 에러 텍스트)에 뭘 그려도 가려지므로, 실패 메시지는 이 시트 자신의 콘텐츠 안에서
+     * 보여줘야 실제로 눈에 띈다.
+     */
+    errorMessage: String? = null,
 ) {
     // design-system LiroutiBottomSheet radius(6)와 달리 Figma `3610:26830`은 top 20
     ModalBottomSheet(
@@ -111,13 +158,29 @@ fun RoutineEditBottomSheet(
                 showAlarmSection = showAlarmSection,
                 showRoomInfo = showRoomInfo,
             )
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    style = LiroutiTheme.typography.caption,
+                    color = LiroutiTheme.colors.dangerText,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
+            // 반복 요일을 하나도 고르지 않으면 저장할 수 없으므로 확인 버튼을 비활성화한다.
+            val confirmEnabled = name.isNotBlank() && selectedDays.isNotEmpty()
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
                     .height(44.dp)
                     .clip(RoundedCornerShape(6.dp))
-                    .background(LiroutiTheme.colors.primaryNormal)
-                    .clickable(onClick = onConfirm),
+                    .background(
+                        if (confirmEnabled) {
+                            LiroutiTheme.colors.primaryNormal
+                        } else {
+                            LiroutiTheme.colors.primaryDisabled
+                        },
+                    )
+                    .clickable(enabled = confirmEnabled, onClick = onConfirm),
                 contentAlignment = Alignment.Center,
             ) {
                 Text(

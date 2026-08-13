@@ -1,5 +1,6 @@
-package com.li_routi.feature.mypage.component
+package com.li_routi.core.common.ui.calendar
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -15,7 +16,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -24,89 +24,27 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.component.WheelNumberPicker
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
-import java.util.Calendar
+import java.time.LocalDate
+import java.time.YearMonth
 import java.util.Locale
-import java.util.TimeZone
 import kotlinx.coroutines.launch
 
-/** 연-월-일. [month]는 1..12. */
-data class SimpleDate(val year: Int, val month: Int, val day: Int) {
-    fun toDisplayLabel(): String = "${year}년 ${month}월 ${day}일"
-}
-
-/**
- * 기기 시간대가 아니라 KST 기준 오늘 날짜를 반환한다. `GET /api/members/me/verifications`가 date
- * 생략 시 오늘(KST) 기준으로 조회하는 것과 기준을 맞춰야, 기기 시간대가 KST와 다를 때(예: 해외 로밍)
- * 서버와 다른 날짜를 요청하는 걸 막을 수 있다.
- */
-fun todaySimpleDate(): SimpleDate {
-    val calendar = Calendar.getInstance(TimeZone.getTimeZone("Asia/Seoul"))
-    return SimpleDate(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.DAY_OF_MONTH))
-}
-
-/** `GET /api/members/me/verifications`의 `date` 쿼리 파라미터용 "yyyy-MM-dd" 포맷. */
-fun SimpleDate.toApiDateString(): String = String.format(Locale.US, "%04d-%02d-%02d", year, month, day)
-
-fun SimpleDate.plusDays(delta: Int): SimpleDate {
-    val calendar = Calendar.getInstance().apply {
-        set(year, month - 1, day)
-        add(Calendar.DAY_OF_MONTH, delta)
-    }
-    return SimpleDate(calendar.get(Calendar.YEAR), calendar.get(Calendar.MONTH) + 1, calendar.get(Calendar.DAY_OF_MONTH))
-}
-
-private fun stepMonth(year: Int, month: Int, delta: Int): Pair<Int, Int> {
-    var y = year
-    var m = month + delta
-    while (m > 12) {
-        m -= 12
-        y += 1
-    }
-    while (m < 1) {
-        m += 12
-        y -= 1
-    }
-    return y to m
-}
-
-private fun daysInMonth(year: Int, month: Int): Int =
-    Calendar.getInstance().apply { set(year, month - 1, 1) }.getActualMaximum(Calendar.DAY_OF_MONTH)
-
-/** 해당 월 1일의 요일(0=일 .. 6=토). */
-private fun firstWeekday(year: Int, month: Int): Int =
-    Calendar.getInstance().apply { set(year, month - 1, 1) }.get(Calendar.DAY_OF_WEEK) - 1
-
-private const val MonthGridWeekCount = 6
-private const val MonthGridCellCount = MonthGridWeekCount * 7
-
-/**
- * 달력 그리드용 셀 목록. 월에 따라 실제 필요한 주가 4~6주로 달라지는데, 그대로 두면 주 수만큼 시트
- * 높이가 들쭉날쭉해진다 — 항상 [MonthGridWeekCount]주(42칸)로 맞춰서 남는 주는 빈 칸(null)으로 채우면
- * 행 간격(spacedBy)은 그대로 유지하면서 시트 높이만 월과 무관하게 고정된다.
- */
-private fun buildMonthCells(year: Int, month: Int): List<Int?> {
-    val leading = firstWeekday(year, month)
-    val total = daysInMonth(year, month)
-    val cells = ArrayList<Int?>(MonthGridCellCount)
-    repeat(leading) { cells.add(null) }
-    (1..total).forEach { cells.add(it) }
-    while (cells.size < MonthGridCellCount) cells.add(null)
-    return cells
-}
-
-private enum class PickerMode { Day, MonthYear }
+private enum class CalendarPickerMode { Day, MonthYear }
 
 private val DayCellTextStyle = TextStyle(fontSize = 14.sp, lineHeight = 22.sp, letterSpacing = (-0.35).sp)
 private val SelectedDayCellTextStyle = DayCellTextStyle.copy(fontWeight = FontWeight.SemiBold)
+private val WeekdayLabelTextStyle = TextStyle(fontWeight = FontWeight.Medium, fontSize = 11.sp, lineHeight = 14.sp)
 private val DayCellSize = 28.dp
 
 /** Figma node `4869:37484` 기준 — 시트 상단 모서리 20dp (design-system 기본 [LiroutiBottomSheet] 6dp보다 큼). */
@@ -121,8 +59,12 @@ private val SheetTopRoundedShape = RoundedCornerShape(topStart = 20.dp, topEnd =
 private val YearMonthWheelHeight = 220.dp
 private val YearMonthWheelRowsHeight = 90.dp
 
+private const val MonthGridWeekCount = 6
+private const val MonthGridCellCount = MonthGridWeekCount * 7
+
 /**
- * "내 인증" 날짜 선택 바텀시트. Figma node `4869:37021`(일자 선택)/`4869:37419`(월 선택) 기준.
+ * 날짜 선택 바텀시트. 마이페이지 "내 인증" 날짜 필터(Figma node `4869:37021`/`4869:37419`)와 그룹
+ * 채팅의 "날짜로 이동" 캘린더가 함께 쓰는 공용 컴포넌트다.
  *
  * 헤더의 "YYYY년 MM월" 라벨을 탭하면 달력 그리드(일자 선택)와 연/월 휠(월 선택) 모드를 오간다.
  * 일자 선택은 탭 즉시 확정돼 시트가 닫히고, 연/월 선택은 취소/확인 버튼으로 명시적으로 확정한다
@@ -130,17 +72,15 @@ private val YearMonthWheelRowsHeight = 90.dp
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyVerificationDatePickerBottomSheet(
-    initialDate: SimpleDate,
+fun LiroutiCalendarBottomSheet(
+    initialDate: LocalDate,
     onDismissRequest: () -> Unit,
-    onDateSelected: (SimpleDate) -> Unit,
+    onDateSelected: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    var mode by remember { mutableStateOf(PickerMode.Day) }
-    var displayYear by remember { mutableIntStateOf(initialDate.year) }
-    var displayMonth by remember { mutableIntStateOf(initialDate.month) }
-    var wheelYear by remember { mutableIntStateOf(initialDate.year) }
-    var wheelMonth by remember { mutableIntStateOf(initialDate.month) }
+    var mode by remember { mutableStateOf(CalendarPickerMode.Day) }
+    var displayYearMonth by remember { mutableStateOf(YearMonth.from(initialDate)) }
+    var wheelYearMonth by remember { mutableStateOf(displayYearMonth) }
 
     // 일자 탭처럼 코드에서 직접 닫을 때 onDismissRequest()를 바로 부르면(= sheetState를 거치지 않고
     // 시트를 컴포지션에서 즉시 제거) ModalBottomSheet 내부 애니메이션/윈도우 상태가 미처 정리되지 않아
@@ -158,74 +98,135 @@ fun MyVerificationDatePickerBottomSheet(
         sheetState = sheetState,
         modifier = modifier,
         shape = SheetTopRoundedShape,
-        primaryButtonText = if (mode == PickerMode.MonthYear) "확인" else null,
+        primaryButtonText = if (mode == CalendarPickerMode.MonthYear) "확인" else null,
         onPrimaryButtonClick = {
-            displayYear = wheelYear
-            displayMonth = wheelMonth
-            mode = PickerMode.Day
+            displayYearMonth = wheelYearMonth
+            mode = CalendarPickerMode.Day
         },
-        secondaryButtonText = if (mode == PickerMode.MonthYear) "취소" else null,
+        secondaryButtonText = if (mode == CalendarPickerMode.MonthYear) "취소" else null,
         onSecondaryButtonClick = {
-            wheelYear = displayYear
-            wheelMonth = displayMonth
-            mode = PickerMode.Day
+            wheelYearMonth = displayYearMonth
+            mode = CalendarPickerMode.Day
         },
     ) {
         Column(
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
-            ReportPeriodHeader(
-                label = String.format(Locale.KOREA, "%d년 %02d월", displayYear, displayMonth),
+            CalendarPeriodHeader(
+                label = String.format(Locale.KOREA, "%d년 %02d월", displayYearMonth.year, displayYearMonth.monthValue),
                 onPreviousClick = {
-                    val (y, m) = stepMonth(displayYear, displayMonth, -1)
-                    displayYear = y
-                    displayMonth = m
-                    wheelYear = y
-                    wheelMonth = m
+                    displayYearMonth = displayYearMonth.minusMonths(1)
+                    wheelYearMonth = displayYearMonth
                 },
                 onNextClick = {
-                    val (y, m) = stepMonth(displayYear, displayMonth, 1)
-                    displayYear = y
-                    displayMonth = m
-                    wheelYear = y
-                    wheelMonth = m
+                    displayYearMonth = displayYearMonth.plusMonths(1)
+                    wheelYearMonth = displayYearMonth
                 },
-                onLabelClick = { mode = if (mode == PickerMode.Day) PickerMode.MonthYear else PickerMode.Day },
+                onLabelClick = {
+                    mode = if (mode == CalendarPickerMode.Day) {
+                        CalendarPickerMode.MonthYear
+                    } else {
+                        CalendarPickerMode.Day
+                    }
+                },
             )
 
-            if (mode == PickerMode.Day) {
-                DayGrid(
-                    year = displayYear,
-                    month = displayMonth,
-                    selectedDay = initialDate.day.takeIf { displayYear == initialDate.year && displayMonth == initialDate.month },
+            if (mode == CalendarPickerMode.Day) {
+                CalendarDayGrid(
+                    yearMonth = displayYearMonth,
+                    selectedDay = initialDate.dayOfMonth.takeIf { YearMonth.from(initialDate) == displayYearMonth },
                     onDayClick = { day ->
-                        onDateSelected(SimpleDate(displayYear, displayMonth, day))
+                        onDateSelected(displayYearMonth.atDay(day))
                         dismiss()
                     },
                 )
             } else {
-                YearMonthWheel(
-                    year = wheelYear,
-                    month = wheelMonth,
-                    onYearChange = { wheelYear = it },
-                    onMonthChange = { wheelMonth = it },
+                CalendarYearMonthWheel(
+                    yearMonth = wheelYearMonth,
+                    onYearMonthChange = { wheelYearMonth = it },
                 )
             }
         }
     }
 }
 
+/** "◀ YYYY년 MM월 ▶" 이전/다음 이동 행. 라벨을 탭하면 [onLabelClick]으로 연/월 휠 모드로 전환한다. */
 @Composable
-private fun DayGrid(
-    year: Int,
-    month: Int,
+private fun CalendarPeriodHeader(
+    label: String,
+    onPreviousClick: () -> Unit,
+    onNextClick: () -> Unit,
+    onLabelClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Image(
+            painter = painterResource(id = R.drawable.chevron__left),
+            contentDescription = "이전",
+            modifier = Modifier.size(16.dp).clickable(onClick = onPreviousClick),
+        )
+        Text(
+            text = label,
+            style = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = (-0.08).sp),
+            color = LiroutiTheme.colors.labelStrong,
+            modifier = Modifier.clickable(onClick = onLabelClick),
+        )
+        Image(
+            painter = painterResource(id = R.drawable.chevron__right),
+            contentDescription = "다음",
+            modifier = Modifier.size(16.dp).clickable(onClick = onNextClick),
+        )
+    }
+}
+
+@Composable
+private fun CalendarWeekdayLabelsRow(modifier: Modifier = Modifier) {
+    val labels = listOf(
+        "일" to LiroutiTheme.colors.dangerText,
+        "월" to LiroutiTheme.colors.labelDefault,
+        "화" to LiroutiTheme.colors.labelDefault,
+        "수" to LiroutiTheme.colors.labelDefault,
+        "목" to LiroutiTheme.colors.labelDefault,
+        "금" to LiroutiTheme.colors.labelDefault,
+        "토" to LiroutiTheme.colors.primaryNormal,
+    )
+    Row(modifier = modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        labels.forEach { (label, color) ->
+            Text(text = label, style = WeekdayLabelTextStyle, color = color)
+        }
+    }
+}
+
+/**
+ * 달력 그리드용 셀 목록. 월에 따라 실제 필요한 주가 4~6주로 달라지는데, 그대로 두면 주 수만큼 시트
+ * 높이가 들쭉날쭉해진다 — 항상 [MonthGridWeekCount]주(42칸)로 맞춰서 남는 주는 빈 칸(null)으로 채우면
+ * 행 간격(spacedBy)은 그대로 유지하면서 시트 높이만 월과 무관하게 고정된다.
+ */
+private fun buildMonthCells(yearMonth: YearMonth): List<Int?> {
+    // DayOfWeek.value: 월=1 ... 일=7 이라 %7 하면 일=0으로 바뀌어 "일요일 시작" 오프셋이 된다.
+    val leading = yearMonth.atDay(1).dayOfWeek.value % 7
+    val total = yearMonth.lengthOfMonth()
+    val cells = ArrayList<Int?>(MonthGridCellCount)
+    repeat(leading) { cells.add(null) }
+    (1..total).forEach { cells.add(it) }
+    while (cells.size < MonthGridCellCount) cells.add(null)
+    return cells
+}
+
+@Composable
+private fun CalendarDayGrid(
+    yearMonth: YearMonth,
     selectedDay: Int?,
     onDayClick: (Int) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        ReportWeekdayLabelsRow()
-        val cells = remember(year, month) { buildMonthCells(year, month) }
+        CalendarWeekdayLabelsRow()
+        val cells = remember(yearMonth) { buildMonthCells(yearMonth) }
         Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
             cells.chunked(7).forEach { week ->
                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(18.dp)) {
@@ -235,7 +236,7 @@ private fun DayGrid(
                         // 찌그러져서, 6주로 패딩해도 시트 높이가 완전히 통일되지 않는다.
                         Box(modifier = Modifier.weight(1f).height(DayCellSize), contentAlignment = Alignment.Center) {
                             if (day != null) {
-                                DayCell(
+                                CalendarDayCell(
                                     day = day,
                                     columnIndex = columnIndex,
                                     isSelected = day == selectedDay,
@@ -251,7 +252,7 @@ private fun DayGrid(
 }
 
 @Composable
-private fun DayCell(day: Int, columnIndex: Int, isSelected: Boolean, onClick: () -> Unit) {
+private fun CalendarDayCell(day: Int, columnIndex: Int, isSelected: Boolean, onClick: () -> Unit) {
     val textColor = when {
         isSelected -> LiroutiTheme.colors.labelReverse
         columnIndex == 0 -> LiroutiTheme.colors.dangerText
@@ -270,18 +271,25 @@ private fun DayCell(day: Int, columnIndex: Int, isSelected: Boolean, onClick: ()
     }
 }
 
+/** 연도 휠의 기본 범위. 예전엔 휠이 열릴 때 표시 연도 기준 ±10년으로 잡았는데, 그러면 헤더로
+ * 연도를 이동한 뒤 다시 휠을 열 때마다 범위 자체가 같이 밀렸다(예: 2016년으로 이동 후 재오픈하면
+ * 2006~2026년으로 범위가 바뀜). 기본값을 고정해 몇 번을 열어도 범위가 그대로 유지되게 한다. */
+private const val CalendarPickerMinYear = 2026
+private const val CalendarPickerMaxYear = 2046
+
 @Composable
-private fun YearMonthWheel(
-    year: Int,
-    month: Int,
-    onYearChange: (Int) -> Unit,
-    onMonthChange: (Int) -> Unit,
+private fun CalendarYearMonthWheel(
+    yearMonth: YearMonth,
+    onYearMonthChange: (YearMonth) -> Unit,
 ) {
-    // 오늘 날짜가 아니라 휠이 열릴 때의 실제 표시 연도([year])를 기준으로 ±10년 범위를 잡는다 —
-    // 오늘 기준으로 고정하면 헤더 이전/다음으로 10년 넘게 이동한 뒤 휠을 열었을 때 선택 연도가
-    // 범위 밖으로 나가 `indexOf(...).coerceAtLeast(0)`가 엉뚱한 연도(범위 맨 앞)로 조용히 폴백했다.
-    val baseYear = remember { year }
-    val years = remember { (baseYear - 10..baseYear + 10).map { "${it}년" }.toTypedArray() }
+    // 헤더의 ◀/▶은 연도 제한 없이 자유롭게 이동하므로, 휠을 열 때의 실제 연도가 기본 범위 밖일 수
+    // 있다(예: 그룹 채팅에서 2026년 이전 메시지로 이동한 뒤 휠을 여는 경우). 이때 기본 범위만 쓰면
+    // `indexOf`가 -1이 되어 실제 연도와 다른 값이 하이라이트된다 — 기본 범위를 실제 연도 쪽으로만
+    // 넓혀서 항상 포함되게 한다. 휠이 열려 있는 동안(remember, 키 없음)은 스크롤해도 범위가 다시
+    // 좁아지지 않고, 다음에 다시 열 때 그 시점 연도 기준으로 새로 계산된다.
+    val minYear = remember { minOf(CalendarPickerMinYear, yearMonth.year) }
+    val maxYear = remember { maxOf(CalendarPickerMaxYear, yearMonth.year) }
+    val years = remember { (minYear..maxYear).map { "${it}년" }.toTypedArray() }
     val months = remember { (1..12).map { "${it}월" }.toTypedArray() }
     val selectedTextColorArgb = LiroutiTheme.colors.labelDefault.toArgb()
 
@@ -303,16 +311,18 @@ private fun YearMonthWheel(
             Row(modifier = Modifier.fillMaxWidth()) {
                 WheelNumberPicker(
                     values = years,
-                    selectedIndex = years.indexOf("${year}년").coerceAtLeast(0),
-                    onSelectedIndexChange = { index -> onYearChange(baseYear - 10 + index) },
+                    selectedIndex = years.indexOf("${yearMonth.year}년").coerceAtLeast(0),
+                    onSelectedIndexChange = { index ->
+                        onYearMonthChange(YearMonth.of(CalendarPickerMinYear + index, yearMonth.monthValue))
+                    },
                     selectedTextColorArgb = selectedTextColorArgb,
                     modifier = Modifier.weight(1f),
                     height = YearMonthWheelRowsHeight,
                 )
                 WheelNumberPicker(
                     values = months,
-                    selectedIndex = (month - 1).coerceIn(0, 11),
-                    onSelectedIndexChange = { index -> onMonthChange(index + 1) },
+                    selectedIndex = (yearMonth.monthValue - 1).coerceIn(0, 11),
+                    onSelectedIndexChange = { index -> onYearMonthChange(YearMonth.of(yearMonth.year, index + 1)) },
                     selectedTextColorArgb = selectedTextColorArgb,
                     modifier = Modifier.weight(1f),
                     height = YearMonthWheelRowsHeight,
@@ -325,10 +335,10 @@ private fun YearMonthWheel(
 @OptIn(ExperimentalMaterial3Api::class)
 @Preview(showBackground = true, heightDp = 700)
 @Composable
-private fun MyVerificationDatePickerBottomSheetPreview() {
+private fun LiroutiCalendarBottomSheetPreview() {
     LiroutiFrontendTheme {
-        MyVerificationDatePickerBottomSheet(
-            initialDate = SimpleDate(2026, 9, 2),
+        LiroutiCalendarBottomSheet(
+            initialDate = LocalDate.of(2026, 9, 2),
             onDismissRequest = {},
             onDateSelected = {},
         )

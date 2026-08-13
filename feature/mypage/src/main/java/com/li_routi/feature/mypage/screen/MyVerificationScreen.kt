@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -29,25 +30,27 @@ import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.common.ui.calendar.LiroutiCalendarBottomSheet
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.mypage.component.EditProfileTopBar
 import com.li_routi.feature.mypage.component.MyVerificationCard
 import com.li_routi.feature.mypage.component.MyVerificationCardUiModel
-import com.li_routi.feature.mypage.component.MyVerificationDatePickerBottomSheet
 import com.li_routi.feature.mypage.component.PendingVerificationCard
 import com.li_routi.feature.mypage.component.PendingVerificationCountLabel
 import com.li_routi.feature.mypage.component.PendingVerificationUiModel
 import com.li_routi.feature.mypage.component.ReportPeriodHeader
 import com.li_routi.feature.mypage.component.SimpleDate
 import com.li_routi.feature.mypage.component.plusDays
+import com.li_routi.feature.mypage.component.toLocalDate
+import com.li_routi.feature.mypage.component.toSimpleDate
 
 /**
  * "내 인증" 화면. Figma node `4869:36868`("내인증") 기준 — 마이페이지 "내 인증" 메뉴로 진입한다.
  *
  * 날짜 네비게이션(◀ 날짜 ▶) + AI 검증 대기 중인 인증 가로 목록 + 그 날 확정된 루틴 인증 카드 목록으로
- * 구성된다. 날짜 라벨을 탭하면 [MyVerificationDatePickerBottomSheet](일자/월 선택)가 뜬다.
+ * 구성된다. 날짜 라벨을 탭하면 [com.li_routi.core.common.ui.calendar.LiroutiCalendarBottomSheet](일자/월 선택)가 뜬다.
  *
  * 날짜 선택 상태는 `GET /api/members/me/verifications`를 다시 호출해야 해서(
  * [com.li_routi.feature.mypage.vm.MyVerificationViewModel]) 화면이 직접 들고 있지 않고
@@ -73,7 +76,7 @@ fun MyVerificationScreen(
             .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         EditProfileTopBar(
-            title = "내인증",
+            title = "내 인증",
             onBackClick = onBackClick,
             trailingContent = {
                 Image(
@@ -123,7 +126,8 @@ fun MyVerificationScreen(
                     .weight(1f)
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(top = 20.dp),
+                    .padding(top = 20.dp, bottom = 20.dp)
+                    .navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 if (pendingVerifications.isNotEmpty()) {
@@ -158,10 +162,10 @@ fun MyVerificationScreen(
     }
 
     if (showDatePicker) {
-        MyVerificationDatePickerBottomSheet(
-            initialDate = selectedDate,
+        LiroutiCalendarBottomSheet(
+            initialDate = selectedDate.toLocalDate(),
             onDismissRequest = { showDatePicker = false },
-            onDateSelected = onDateChange,
+            onDateSelected = { date -> onDateChange(date.toSimpleDate()) },
         )
     }
 }

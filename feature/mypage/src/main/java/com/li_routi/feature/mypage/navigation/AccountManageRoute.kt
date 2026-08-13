@@ -27,6 +27,7 @@ private const val LogoutToastDurationMillis = 1200L
 @Composable
 fun AccountManageRoute(
     onBackClick: () -> Unit,
+    loginInfo: String,
     modifier: Modifier = Modifier,
     viewModel: AccountManageViewModel = viewModel { AccountManageViewModel() },
 ) {
@@ -56,6 +57,7 @@ fun AccountManageRoute(
 
     AccountManageScreen(
         onBackClick = onBackClick,
+        loginInfo = loginInfo,
         onLogoutConfirmed = viewModel::onLogoutConfirmed,
         showLogoutToast = showLogoutToast,
         onDismissLogoutToast = { showLogoutToast = false },

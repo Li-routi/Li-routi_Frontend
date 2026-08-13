@@ -1,6 +1,7 @@
 package com.li_routi.feature.home.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.ui.Modifier
@@ -47,9 +48,22 @@ fun HomeNavHost(
     onNavigateToChallengeHome: () -> Unit = {},
     /** 알림 탭에서 챌린지 id를 특정할 수 있는 알림을 눌렀을 때 해당 상세로 이동해 달라는 요청. */
     onNavigateToChallengeDetail: (challengeId: Long) -> Unit = {},
+    /** 다른 탭(마이페이지 알림벨/설정)에서 진입했을 때 바로 열어야 할 화면. null이면 홈 메인부터 시작. */
+    initialEntryPoint: HomeEntryPoint? = null,
+    /** [initialEntryPoint] 처리가 끝났음을 알리는 콜백 — 처리 후 값을 null로 되돌려 재진입 시 재실행을 막는다. */
+    onInitialEntryPointConsumed: () -> Unit = {},
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
+    LaunchedEffect(initialEntryPoint) {
+        when (initialEntryPoint) {
+            HomeEntryPoint.Notification -> navController.navigate(RouteNotification)
+            HomeEntryPoint.NotificationSettings -> navController.navigate(RouteNotificationSettings)
+            null -> Unit
+        }
+        if (initialEntryPoint != null) onInitialEntryPointConsumed()
+    }
+
     NavHost(
         navController = navController,
         startDestination = RouteHomeMain,

@@ -13,11 +13,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.domain.auth.SocialProvider
 import com.li_routi.feature.mypage.screen.AppInfoScreen
 import com.li_routi.feature.mypage.screen.EditProfileScreen
 import com.li_routi.feature.mypage.screen.MyPageScreen
 import com.li_routi.feature.mypage.vm.MyPageUiEvent
 import com.li_routi.feature.mypage.vm.MyPageViewModel
+
+/** 계정 관리 화면의 "로그인 정보" 문구로 변환한다. */
+private fun SocialProvider.toLoginInfoText(): String = when (this) {
+    SocialProvider.KAKAO -> "카카오 계정으로 로그인 중"
+    SocialProvider.GOOGLE -> "구글 계정으로 로그인 중"
+    SocialProvider.Unknown -> "소셜 계정으로 로그인 중"
+}
 
 /** 마이페이지 내부에서 전환되는 화면들. */
 private enum class MyPageDestination {
@@ -40,12 +48,27 @@ private enum class MyPageDestination {
 @Composable
 fun MyPageRoute(
     onTabSelected: (AppBottomTab) -> Unit = {},
+    /**
+     * 마이 탭을 다시 눌러 들어올 때마다 증가하는 값(HomeRoute의 requestRefreshTick과 동일한 패턴).
+     * 0보다 커지면(=탭 재진입) 프로필을 다시 불러온다.
+     */
+    refreshTick: Int = 0,
+    /** 상단 바 알림벨 아이콘 탭 — 목적지(홈의 알림 목록)가 다른 feature라 app 모듈에 위임한다. */
+    onNotificationClick: () -> Unit = {},
+    /** 상단 바 설정 아이콘 탭 — 목적지(홈의 알림 설정)가 다른 feature라 app 모듈에 위임한다. */
+    onSettingsClick: () -> Unit = {},
     modifier: Modifier = Modifier,
     viewModel: MyPageViewModel = viewModel { MyPageViewModel() },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     var destination by rememberSaveable { mutableStateOf(MyPageDestination.MyPage) }
     val context = LocalContext.current
+
+    LaunchedEffect(refreshTick) {
+        if (refreshTick > 0) {
+            viewModel.refresh()
+        }
+    }
 
     // Nav 백스택이 아니라 로컬 전환이므로, 시스템 Back이 마이페이지 하위 화면을 건너뛰고
     // 곧바로 홈 탭으로 넘어가지 않게 가로챈다.
@@ -62,6 +85,8 @@ fun MyPageRoute(
                 MyPageUiEvent.NavigateToReport -> destination = MyPageDestination.Report
                 MyPageUiEvent.NavigateToAppInfo -> destination = MyPageDestination.AppInfo
                 MyPageUiEvent.NavigateToAccountManage -> destination = MyPageDestination.AccountManage
+                MyPageUiEvent.NavigateToNotification -> onNotificationClick()
+                MyPageUiEvent.NavigateToNotificationSettings -> onSettingsClick()
                 MyPageUiEvent.ProfileSaved -> destination = MyPageDestination.MyPage
                 is MyPageUiEvent.ShowError -> Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
             }
@@ -118,6 +143,7 @@ fun MyPageRoute(
 
         MyPageDestination.AccountManage -> AccountManageRoute(
             onBackClick = { destination = MyPageDestination.MyPage },
+            loginInfo = uiState.socialProvider.toLoginInfoText(),
             modifier = modifier,
         )
     }

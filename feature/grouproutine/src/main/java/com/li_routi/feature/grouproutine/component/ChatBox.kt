@@ -31,9 +31,11 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
@@ -88,9 +90,32 @@ fun ChatMessageUiModel.isGroupStart(previous: ChatMessageUiModel?): Boolean {
     return previous.sentAtMillis / 60_000 != sentAtMillis / 60_000
 }
 
+/**
+ * 이 메시지가 자신이 속한 그룹의 마지막 말풍선인지 판단한다 — [isGroupStart]와 반대 방향으로,
+ * 다음 메시지와 비교한다. 같은 사람이 같은 분 안에 연달아 보낸 그룹에서는 마지막 말풍선에만
+ * 시간(오후 1:00 등)을 붙여서 보여준다.
+ */
+fun ChatMessageUiModel.isGroupEnd(next: ChatMessageUiModel?): Boolean {
+    if (next == null) return true
+    if (next.isMine != isMine) return true
+    if (!isMine && next.senderName != senderName) return true
+    return next.sentAtMillis / 60_000 != sentAtMillis / 60_000
+}
+
 /** [sentAtMillis]를 기기 로컬 타임존 기준 날짜로 변환한다. */
 internal fun Long.toLocalDate(): LocalDate =
     Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalDate()
+
+/** [sentAtMillis]를 "오후 1:00" 형식의 한국어 12시간제 시각으로 변환한다. */
+internal fun Long.toKoreanTimeLabel(): String {
+    val time = Instant.ofEpochMilli(this).atZone(ZoneId.systemDefault()).toLocalTime()
+    val hour12 = when (val hour = time.hour % 12) {
+        0 -> 12
+        else -> hour
+    }
+    val period = if (time.hour < 12) "오전" else "오후"
+    return "%s %d:%02d".format(period, hour12, time.minute)
+}
 
 /**
  * 이 메시지 앞에 날짜 구분선([ChatDateDivider])을 새로 보여줘야 하는지 판단한다.
@@ -115,6 +140,12 @@ private val ChatDateDividerPadding = PaddingValues(start = 12.dp, top = 8.dp, en
 // 20dp를 그대로 준다.
 private val ChatDateDividerTopPadding = 10.dp
 private val ChatDateDividerBottomPadding = 20.dp
+
+private val ChatTimestampGap = 4.dp
+private val ChatTimestampTextStyle = TextStyle(
+    fontSize = 11.sp,
+    lineHeight = 14.sp,
+)
 
 /**
  * 채팅 목록 중간에 들어가는 날짜 구분선. [ChatMessageUiModel.isNewDate]가 true인 메시지
@@ -164,6 +195,7 @@ fun ChatBox(
     message: ChatMessageUiModel,
     isGroupStart: Boolean,
     modifier: Modifier = Modifier,
+    isGroupEnd: Boolean = true,
     emojiSize: Dp = 40.dp,
     onReplySwipe: (ChatMessageUiModel) -> Unit = {},
 ) {
@@ -173,7 +205,16 @@ fun ChatBox(
                 .fillMaxWidth()
                 .padding(end = LeftMargin),
             horizontalArrangement = Arrangement.End,
+            verticalAlignment = Alignment.Bottom,
         ) {
+            if (isGroupEnd) {
+                Text(
+                    text = message.sentAtMillis.toKoreanTimeLabel(),
+                    style = ChatTimestampTextStyle,
+                    color = LiroutiTheme.colors.labelDefault,
+                )
+                Spacer(modifier = Modifier.width(ChatTimestampGap))
+            }
             if (message.emojiUrl != null) {
                 AsyncImage(
                     model = message.emojiUrl,
@@ -181,7 +222,7 @@ fun ChatBox(
                     modifier = Modifier.size(emojiSize),
                 )
             } else {
-                ChatBubble(text = message.message)
+                ChatBubble(text = message.message, isMine = true)
             }
         }
         return
@@ -254,6 +295,7 @@ fun ChatBox(
                         Modifier
                     },
                 ),
+            verticalAlignment = Alignment.Bottom,
         ) {
             if (message.emojiUrl != null) {
                 AsyncImage(
@@ -262,21 +304,29 @@ fun ChatBox(
                     modifier = Modifier.size(emojiSize),
                 )
             } else {
-                ChatBubble(text = message.message)
+                ChatBubble(text = message.message, isMine = false)
+            }
+            if (isGroupEnd) {
+                Spacer(modifier = Modifier.width(ChatTimestampGap))
+                Text(
+                    text = message.sentAtMillis.toKoreanTimeLabel(),
+                    style = ChatTimestampTextStyle,
+                    color = LiroutiTheme.colors.labelDefault,
+                )
             }
         }
     }
 }
 
 @Composable
-private fun ChatBubble(text: String, modifier: Modifier = Modifier) {
+private fun ChatBubble(text: String, isMine: Boolean, modifier: Modifier = Modifier) {
     Text(
         text = text,
-        color = ChatBubbleTextColor,
+        color = if (isMine) LiroutiTheme.colors.labelReverse else ChatBubbleTextColor,
         style = LiroutiTheme.typography.body3,
         modifier = modifier
             .clip(RoundedCornerShape(6.dp))
-            .background(LiroutiTheme.colors.backgroundDefault)
+            .background(if (isMine) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
             .padding(horizontal = 16.dp, vertical = 8.dp),
     )
 }

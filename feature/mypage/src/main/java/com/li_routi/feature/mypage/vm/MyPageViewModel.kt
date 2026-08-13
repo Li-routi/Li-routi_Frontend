@@ -25,8 +25,10 @@ import kotlinx.coroutines.withContext
 /**
  * 마이페이지 ViewModel.
  *
- * 메뉴 탭의 실제 화면 전환은 다른 담당자가 [MyPageScreenActions] 구현을 연결한다 —
- * "프로필 수정"/"업적"/"리포트"/"앱 정보"/"계정 관리"만 [MyPageUiEvent]로 이 모듈 안에서 직접 연결한다.
+ * "프로필 수정"/"업적"/"리포트"/"앱 정보"/"계정 관리"는 [MyPageUiEvent]로 이 모듈 안에서 직접
+ * 화면을 전환한다. 알림벨/설정은 목적지 화면(알림 목록/알림 설정)이 `feature/home`에 있어 이 모듈이
+ * 직접 전환할 수 없으므로, 이벤트만 emit하고 실제 전환은 [MyPageRoute]가 외부(app 모듈)로부터 받은
+ * 콜백에 위임한다.
  */
 class MyPageViewModel(
     initialState: MyPageUiState = MyPageUiState(),
@@ -44,6 +46,11 @@ class MyPageViewModel(
         loadMyInfo()
     }
 
+    /** 마이 탭을 다시 눌러 들어올 때 등, 외부에서 프로필을 다시 불러오라는 신호가 왔을 때 호출한다. */
+    fun refresh() {
+        loadMyInfo()
+    }
+
     private fun loadMyInfo() {
         viewModelScope.launch {
             when (val result = getMyInfoUseCase()) {
@@ -52,6 +59,7 @@ class MyPageViewModel(
                         nickname = result.data.nickname,
                         email = result.data.email,
                         profileImageUrl = result.data.profileImageUrl,
+                        socialProvider = result.data.socialProvider,
                         isProfileLoaded = true,
                     )
                 }
@@ -110,8 +118,12 @@ class MyPageViewModel(
         }
     }
 
-    override fun onNotificationClick() = Unit
-    override fun onSettingsClick() = Unit
+    override fun onNotificationClick() {
+        viewModelScope.launch { _uiEvent.emit(MyPageUiEvent.NavigateToNotification) }
+    }
+    override fun onSettingsClick() {
+        viewModelScope.launch { _uiEvent.emit(MyPageUiEvent.NavigateToNotificationSettings) }
+    }
 
     // 조회 응답이 오기 전엔 진입을 막는다 — MyPageUiState.isProfileLoaded 문서 참고.
     override fun onEditProfileClick() {

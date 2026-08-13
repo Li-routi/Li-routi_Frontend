@@ -138,9 +138,23 @@ class LoginViewModel(
 
     private suspend fun socialLogin(provider: SocialProvider, providerToken: String, nonce: String?) {
         when (val result = AuthContainer.socialLoginUseCase(provider, providerToken, nonce)) {
-            is ResultState.Success -> emitEvent(LoginUiEvent.LoginSucceeded(result.data))
+            is ResultState.Success -> {
+                if (!result.data.onboardingCompleted) {
+                    // 프로필 설정 화면에 서버가 아는 초기 닉네임(소셜 프로필 기반)을 미리 채워준다.
+                    // 조회에 실패해도 화면 진입은 막지 않는다 — ProfileScreen이 기본 닉네임으로 대체한다.
+                    loadNicknameForProfileSetup()
+                }
+                emitEvent(LoginUiEvent.LoginSucceeded(result.data))
+            }
             is ResultState.Error -> emitEvent(LoginUiEvent.ShowError(result.message))
             ResultState.Loading -> Unit
+        }
+    }
+
+    private suspend fun loadNicknameForProfileSetup() {
+        val myInfo = AuthContainer.getMyInfoUseCase()
+        if (myInfo is ResultState.Success) {
+            _uiState.value = _uiState.value.copy(nickname = myInfo.data.nickname)
         }
     }
 
