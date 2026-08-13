@@ -1,6 +1,5 @@
 package com.li_routi.feature.home.shop.screen
 
-import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -12,61 +11,43 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
-import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.widthIn
-import androidx.compose.foundation.layout.wrapContentWidth
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.compose.ui.zIndex
 import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.component.LiroutiSwitch
 import androidx.compose.foundation.Image
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
-import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.shop.component.SampleShopItems
 import com.li_routi.feature.home.shop.component.ShopItemGrid
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 import com.li_routi.feature.home.shop.component.ShopTopBar
+import com.li_routi.feature.home.shop.component.currencyIconOf
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
 import com.li_routi.feature.home.component.AvatarCharacter
 import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.feature.home.shop.vm.EquippedUiModel
 import com.li_routi.feature.home.shop.vm.ShopCategoryUiModel
 
-/** Figma `Tooltip/Tooltip` — 홈 `ShopEntryCard`와 동일 (`neutral22` #2E2F33 @ 88%). */
-private val ShopTooltipFill = Color(0xFF2E2F33).copy(alpha = 0.88f)
 private val CharacterWidth = 220.dp
 private val CharacterHeight = 180.dp
-private val TooltipArrowWidth = 20.dp
-private val TooltipArrowHeight = 8.dp
-private val TooltipArrowStartPadding = 8.dp
-/** Figma tooltip `mb-[-12px]` — 말풍선이 캐릭터 위로 12dp 겹침. */
-private val TooltipCharacterOverlap = 12.dp
 
 /**
  * 상점(아이템 상점) 화면 (Figma node `2222:25595` / Design Page [1.1] 상점).
  *
- * 아이템 선택은 [actions.onItemClick] → ViewModel [selectedItemId]로 관리한다.
+ * 아이템 선택은 [actions.onItemClick] → ViewModel `selectedItems`로 관리한다.
  *
  * 카테고리 탭은 `GET /api/shop/categories`로 받아 순서대로 그린다 — 이름으로 분기하지 않는다.
  * 탭/보유 토글을 바꾸면 그 조건으로 목록을 다시 조회한다.
@@ -84,7 +65,9 @@ fun ShopScreen(
     selectedCategoryIndex: Int = 0,
     showOwnedOnly: Boolean = false,
     items: List<ShopItemUiModel> = SampleShopItems,
-    selectedItemId: String? = null,
+    selectedItemIds: Set<String> = emptySet(),
+    /** 고른 것 중 안 산 아이템. 다른 탭에서 고른 것도 섞여 있어서 [items]와 따로 받음 */
+    purchaseTargets: List<ShopItemUiModel> = emptyList(),
     modifier: Modifier = Modifier,
 ) {
 
@@ -112,18 +95,17 @@ fun ShopScreen(
                     .clickable(onClick = actions::onSaveClick),
                 contentAlignment = Alignment.Center,
             ) {
-                // 아직 안 산 아이템을 골랐으면 가격을 보여줘서 결제라는 걸 분명히 함
-                val selected = items.firstOrNull { it.id == selectedItemId }
-                Text(
-                    text = if (selected != null && !selected.owned) {
-                        "${selected.price} 구매"
-                    } else {
-                        "저장하기"
-                    },
-                    // Figma: Medium 16/24
-                    style = LiroutiTheme.typography.body1Medium,
-                    color = LiroutiTheme.colors.labelReverse,
-                )
+                // 안 산 걸 골랐으면 결제라는 게 분명하도록 개수와 합계를 보여줌
+                if (purchaseTargets.isEmpty()) {
+                    Text(
+                        text = "저장하기",
+                        // Figma: Medium 16/24
+                        style = LiroutiTheme.typography.body1Medium,
+                        color = LiroutiTheme.colors.labelReverse,
+                    )
+                } else {
+                    PurchaseButtonLabel(targets = purchaseTargets)
+                }
             }
         },
     ) { innerPadding ->
@@ -148,19 +130,10 @@ fun ShopScreen(
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(modifier = Modifier.height(20.dp))
-                // Figma `comp/myVehicle` 말풍선 — 홈 ShopEntryCard와 동일 스펙
-                Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                    ShopCharacterTooltip(
-                        message = "의상을 선택해 주세요!",
-                        modifier = Modifier.zIndex(1f),
-                    )
-                    AvatarCharacter(
-                        equippedImageUrls = equippedImageUrlsOf(equipped.mapValues { it.value.imageUrl }),
-                        modifier = Modifier
-                            .offset(y = -TooltipCharacterOverlap)
-                            .size(width = CharacterWidth, height = CharacterHeight),
-                    )
-                }
+                AvatarCharacter(
+                    equippedImageUrls = equippedImageUrlsOf(equipped.mapValues { it.value.imageUrl }),
+                    modifier = Modifier.size(width = CharacterWidth, height = CharacterHeight),
+                )
             }
 
             Spacer(modifier = Modifier.height(20.dp))
@@ -198,7 +171,7 @@ fun ShopScreen(
 
             ShopItemGrid(
                 items = items,
-                selectedItemId = selectedItemId,
+                selectedItemIds = selectedItemIds,
                 onItemClick = actions::onItemClick,
                 modifier = Modifier.weight(1f),
                 equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() },
@@ -208,45 +181,38 @@ fun ShopScreen(
 }
 
 /**
- * Figma `Tooltip/Tooltip` (상점 캐릭터 영역).
- * 홈 [ShopEntryCard] 말풍선과 동일: radius 8, padding 12×8, 아래 꼬리 20×8.
+ * 구매 버튼 문구 — `주황 350 · 파랑 120 · 3개 구매` 꼴.
+ *
+ * 아이템마다 결제 재화가 달라서 재화별로 합계를 나눠 보여줌
  */
 @Composable
-private fun ShopCharacterTooltip(
-    message: String,
+private fun PurchaseButtonLabel(
+    targets: List<ShopItemUiModel>,
     modifier: Modifier = Modifier,
 ) {
-    Column(
-        modifier = modifier.wrapContentWidth(align = Alignment.Start),
-        horizontalAlignment = Alignment.Start,
+    Row(
+        modifier = modifier,
+        verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            modifier = Modifier
-                .widthIn(min = 64.dp, max = 256.dp)
-                .clip(RoundedCornerShape(8.dp))
-                .background(ShopTooltipFill)
-                .padding(horizontal = 12.dp, vertical = 8.dp),
-            contentAlignment = Alignment.CenterStart,
-        ) {
-            Text(
-                text = message,
-                style = LiroutiTheme.typography.body2LongMedium,
-                color = LiroutiTheme.colors.backgroundDefault,
+        targets.groupBy { it.currency }.forEach { (currency, sameCurrency) ->
+            Image(
+                painter = painterResource(id = currencyIconOf(currency)),
+                contentDescription = null,
+                modifier = Modifier.size(16.dp),
             )
+            Spacer(modifier = Modifier.width(4.dp))
+            Text(
+                text = sameCurrency.sumOf { it.price }.toString(),
+                style = LiroutiTheme.typography.body1Medium,
+                color = LiroutiTheme.colors.labelReverse,
+            )
+            Spacer(modifier = Modifier.width(8.dp))
         }
-        Canvas(
-            modifier = Modifier
-                .padding(start = TooltipArrowStartPadding)
-                .size(width = TooltipArrowWidth, height = TooltipArrowHeight),
-        ) {
-            val path = Path().apply {
-                moveTo(0f, 0f)
-                lineTo(size.width, 0f)
-                lineTo(size.width / 2f, size.height)
-                close()
-            }
-            drawPath(path = path, color = ShopTooltipFill)
-        }
+        Text(
+            text = "${targets.size}개 구매",
+            style = LiroutiTheme.typography.body1Medium,
+            color = LiroutiTheme.colors.labelReverse,
+        )
     }
 }
 
@@ -268,13 +234,15 @@ private fun ShopScreenPreview() {
     }
 }
 
-@Preview(showBackground = true, heightDp = 800, name = "선택됨")
+@Preview(showBackground = true, heightDp = 800, name = "여러 개 골라 일괄 구매")
 @Composable
 private fun ShopScreenSelectedPreview() {
     LiroutiFrontendTheme {
+        val selected = SampleShopItems.filter { it.id in setOf("item_1", "item_2", "item_3") }
         ShopScreen(
             actions = PreviewShopScreenActions,
-            selectedItemId = "item_1",
+            selectedItemIds = selected.mapTo(mutableSetOf()) { it.id },
+            purchaseTargets = selected,
         )
     }
 }
