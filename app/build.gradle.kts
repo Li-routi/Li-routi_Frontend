@@ -114,5 +114,7 @@ dependencies {
     implementation(libs.firebase.messaging.ktx)
 
     // feature:grouproutine이 java.time을 minSdk 24에서 쓰기 위해 요구하는 desugaring
+    // 포트원 결제 액티비티가 AppCompat 테마를 요구해서 필요함
+    implementation(libs.androidx.appcompat)
     coreLibraryDesugaring(libs.android.desugar.jdk.libs)
 }

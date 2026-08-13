@@ -136,6 +136,20 @@
                     android:scheme="kakao${kakaoAppId}" />
             </intent-filter>
         </activity>
+
+        <!--
+          포트원 결제 액티비티는 AppCompatActivity라 AppCompat 테마가 아니면 실행 시 죽음.
+          앱 전체 테마를 바꾸지 않고 이 액티비티만 덮어씀
+        -->
+        <activity
+            android:name="io.portone.sdk.android.payment.PaymentActivity"
+            android:theme="@style/Theme.LiroutiFrontend.Payment"
+            tools:replace="android:theme" />
+        <activity
+            android:name="io.portone.sdk.android.paymentui.LoadPaymentUIActivity"
+            android:theme="@style/Theme.LiroutiFrontend.Payment"
+            tools:replace="android:theme" />
+
     </application>
 
 </manifest>
