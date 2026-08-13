@@ -100,7 +100,8 @@ class HomeViewModel(
                         }
                         is ResultState.Error, ResultState.Loading -> Unit
                     }
-                    _uiState.value = next
+                    // 요약으로 상태를 새로 만들기 때문에 따로 불러온 착장은 옮겨 담아야 함
+                    _uiState.value = next.copy(equippedImageUrls = _uiState.value.equippedImageUrls)
                 }
                 is ResultState.Error -> {
                     _uiState.update { it.copy(isLoading = false, loadError = true) }
