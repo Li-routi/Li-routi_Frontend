@@ -4,6 +4,7 @@ import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.kotlin.util.safeApiCall
 import com.li_routi.core.data.mapper.toDomain
+import com.li_routi.core.data.network.dto.request.EquipAvatarRequest
 import com.li_routi.core.data.network.dto.request.ExchangeRequest
 import com.li_routi.core.data.network.dto.request.StartChargeRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
@@ -36,6 +37,14 @@ class ShopRepositoryImpl(
 
     override suspend fun getWalletBalances(): ResultState<List<CurrencyBalance>> = shopCall {
         api.getWalletBalances().unwrap().toDomain()
+    }
+
+    override suspend fun getMyAvatar(): ResultState<MemberAvatar> = shopCall {
+        api.getMyAvatar().unwrap().toDomain()
+    }
+
+    override suspend fun equipAvatar(itemIds: List<Long>): ResultState<MemberAvatar> = shopCall {
+        api.equipAvatar(EquipAvatarRequest(itemIds)).unwrap().toDomain()
     }
 
     override suspend fun getShopCategories(): ResultState<List<ShopCategory>> = shopCall {

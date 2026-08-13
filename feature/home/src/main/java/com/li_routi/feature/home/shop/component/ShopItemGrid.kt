@@ -39,6 +39,8 @@ data class ShopItemUiModel(
     val id: String,
     val name: String,
     val price: Int,
+    /** 차지하는 자리(HEAD/BODY/HAND). 한 자리엔 하나만 입을 수 있음 */
+    val slot: String = "",
     /** 결제 재화. 아이템마다 달라서 가격 옆 아이콘이 이 값으로 갈림 */
     val currency: String = "GEM",
     val imageUrl: String? = null,

@@ -7,6 +7,12 @@ import com.li_routi.feature.home.shop.component.ShopItemUiModel
  *
  * 이름으로 분기하지 않고 [slot]을 그대로 조회에 실어 보냄 — 탭이 늘어도 앱을 안 고치려는 것임
  */
+/** 캐릭터 위에 겹쳐 그릴 착용 아이템 한 건 */
+data class EquippedUiModel(
+    val itemId: Long,
+    val imageUrl: String?,
+)
+
 data class ShopCategoryUiModel(
     val key: String,
     val name: String,
@@ -30,6 +36,14 @@ data class ShopUiState(
     val selectedCategoryIndex: Int = 0,
     val showOwnedOnly: Boolean = false,
     val items: List<ShopItemUiModel> = emptyList(),
+    /**
+     * 지금 캐릭터에 올려둔 착장. 자리 → 아이템.
+     *
+     * 저장 전에도 화면에 바로 비치게 여기서 들고 있다가, 저장할 때 통째로 보냄
+     */
+    val equipped: Map<String, EquippedUiModel> = emptyMap(),
+    /** 착장 저장 중 */
+    val isEquipping: Boolean = false,
     /** 그리드에서 선택된 아이템. null이면 미선택. */
     val selectedItemId: String? = null,
     val isLoading: Boolean = false,

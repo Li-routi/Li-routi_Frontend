@@ -7,10 +7,13 @@ import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.data.di.ShopContainer
 import com.li_routi.core.domain.auth.GetMyInfoUseCase
 import com.li_routi.core.domain.shop.CurrencyBalance
+import com.li_routi.core.domain.shop.EquipAvatarUseCase
+import com.li_routi.core.domain.shop.GetMyAvatarUseCase
 import com.li_routi.core.domain.shop.GetShopAvatarItemsUseCase
 import com.li_routi.core.domain.shop.GetShopCategoriesUseCase
 import com.li_routi.core.domain.shop.GetWalletBalancesUseCase
 import com.li_routi.core.domain.shop.PurchaseShopAvatarItemUseCase
+import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
@@ -36,6 +39,8 @@ class ShopViewModel(
     private val purchaseShopAvatarItemUseCase: PurchaseShopAvatarItemUseCase = ShopContainer.purchaseShopAvatarItemUseCase,
     private val getWalletBalancesUseCase: GetWalletBalancesUseCase = ShopContainer.getWalletBalancesUseCase,
     private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
+    private val getMyAvatarUseCase: GetMyAvatarUseCase = ShopContainer.getMyAvatarUseCase,
+    private val equipAvatarUseCase: EquipAvatarUseCase = ShopContainer.equipAvatarUseCase,
 ) : BaseViewModel(), ShopScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -48,6 +53,7 @@ class ShopViewModel(
 
     init {
         loadNickname()
+        loadEquipped()
         loadCategories()
         loadItems()
         loadBalances()
@@ -88,6 +94,16 @@ class ShopViewModel(
         if (_uiState.value.showOwnedOnly == ownedOnly) return
         _uiState.update { it.copy(showOwnedOnly = ownedOnly, selectedItemId = null) }
         loadItems()
+    }
+
+    /** 지금 입고 있는 착장. 안 입은 자리는 응답에 실리지 않아서 그대로 비워둠 */
+    private fun loadEquipped() {
+        viewModelScope.launch {
+            val result = getMyAvatarUseCase()
+            if (result is ResultState.Success) {
+                _uiState.update { it.copy(equipped = result.data.toEquippedMap()) }
+            }
+        }
     }
 
     /** 상단 캐릭터 카드에 쓸 내 닉네임 */
@@ -159,28 +175,40 @@ class ShopViewModel(
         emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = 1))
     }
 
+    /**
+     * 셀 탭. 보유한 아이템이면 저장 전에도 캐릭터에 바로 올려서 보여줌.
+     *
+     * 같은 자리에는 하나만 입을 수 있어서 그 자리를 덮어씀. 다시 누르면 벗음
+     */
     override fun onItemClick(itemId: String) {
         _uiState.update { state ->
+            val unselecting = state.selectedItemId == itemId
+            val item = state.items.firstOrNull { it.id == itemId }
+            val equipped = when {
+                item == null || !item.owned || item.slot.isEmpty() -> state.equipped
+                unselecting -> state.equipped - item.slot
+                else -> state.equipped + (item.slot to EquippedUiModel(
+                    itemId = item.id.toLongOrNull() ?: return@update state,
+                    imageUrl = item.imageUrl,
+                ))
+            }
             state.copy(
-                selectedItemId = if (state.selectedItemId == itemId) null else itemId,
+                selectedItemId = if (unselecting) null else itemId,
+                equipped = equipped,
             )
         }
     }
 
     /**
-     * 고른 아이템을 구매함. 서버가 사자마자 그 자리에 입혀줌.
+     * 하단 버튼. 고른 아이템을 아직 안 샀으면 구매, 이미 샀으면 착장을 저장함.
      *
-     * 가격이랑 결제 재화는 서버가 갖고 있어서 요청 body가 없음
+     * 구매는 서버가 사자마자 그 자리에 입혀주고, 가격·결제 재화도 서버가 갖고 있어서 body가 없음
      */
     override fun onSaveClick() {
         val state = _uiState.value
         val selected = state.items.firstOrNull { it.id == state.selectedItemId }
-        if (selected == null) {
-            _uiState.update { it.copy(message = "아이템을 선택해주세요.") }
-            return
-        }
-        if (selected.owned) {
-            _uiState.update { it.copy(message = "이미 보유한 아이템이에요.") }
+        if (selected == null || selected.owned) {
+            equipSelected()
             return
         }
         val itemId = selected.id.toLongOrNull() ?: run {
@@ -194,7 +222,13 @@ class ShopViewModel(
             try {
                 when (val result = purchaseShopAvatarItemUseCase(itemId)) {
                     is ResultState.Success -> {
-                        _uiState.update { it.copy(message = "${selected.name}을(를) 구매했어요.") }
+                        // 구매하면 서버가 그 자리에 바로 입혀줘서 응답이 곧 새 착장임
+                        _uiState.update {
+                            it.copy(
+                                equipped = result.data.toEquippedMap(),
+                                message = "${selected.name}을(를) 구매했어요.",
+                            )
+                        }
                         // 갱신을 기다려야 함. 먼저 풀어주면 owned가 반영되기 전에 또 살 수 있음
                         refreshItems()
                         loadBalances()
@@ -206,6 +240,29 @@ class ShopViewModel(
                 }
             } finally {
                 _uiState.update { it.copy(isPurchasing = false) }
+            }
+        }
+    }
+
+    /** 지금 올려둔 착장을 통째로 저장함. 서버가 보낸 목록을 곧 전체 착장으로 봄 */
+    private fun equipSelected() {
+        val state = _uiState.value
+        if (state.isEquipping) return
+
+        _uiState.update { it.copy(isEquipping = true) }
+        viewModelScope.launch {
+            try {
+                when (val result = equipAvatarUseCase(state.equipped.values.map { it.itemId })) {
+                    is ResultState.Success -> _uiState.update {
+                        it.copy(equipped = result.data.toEquippedMap(), message = "저장했어요.")
+                    }
+
+                    // 서버가 부분 성공을 안 줘서 실패하면 저장 전 상태 그대로 둠
+                    is ResultState.Error -> _uiState.update { it.copy(message = result.message) }
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isEquipping = false) }
             }
         }
     }
@@ -223,10 +280,15 @@ private const val CharacterSource = "CHARACTER"
 private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =
     firstOrNull { it.currency == currency }?.balance
 
+/** 자리마다 하나씩이라 자리를 키로 씀 */
+private fun MemberAvatar.toEquippedMap(): Map<String, EquippedUiModel> =
+    equipped.associate { it.slot to EquippedUiModel(itemId = it.itemId, imageUrl = it.imageUrl) }
+
 private fun ShopAvatarItem.toUiModel(): ShopItemUiModel = ShopItemUiModel(
     id = id.toString(),
     name = name,
     price = price.toInt(),
+    slot = slot,
     currency = currency,
     imageUrl = imageUrl,
     owned = owned,
