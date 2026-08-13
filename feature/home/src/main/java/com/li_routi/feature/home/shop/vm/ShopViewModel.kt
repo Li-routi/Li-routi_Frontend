@@ -143,6 +143,14 @@ class ShopViewModel(
         itemsJob = viewModelScope.launch { refreshItems() }
     }
 
+    /** 구매 직후처럼 목록 갱신을 기다려야 하면 여기로 감. 탭을 옮기면 [itemsJob]이 취소돼 옛 응답이 덮지 않음 */
+    private suspend fun awaitItemsRefresh() {
+        itemsJob?.cancel()
+        val job = viewModelScope.launch { refreshItems() }
+        itemsJob = job
+        job.join()
+    }
+
     /** 목록 갱신을 기다려야 하는 곳(구매 직후)에서도 쓸 수 있게 suspend로 둠 */
     private suspend fun refreshItems() {
         val state = _uiState.value
@@ -179,23 +187,20 @@ class ShopViewModel(
     /**
      * 셀 탭. 안 산 것도 캐릭터에 바로 올려서 입어볼 수 있게 함.
      *
-     * 같은 자리에는 하나만 올라가므로 그 자리를 덮어씀. 이미 올라가 있는 걸 다시 누르면 벗음.
-     * 벗기와 고르기가 같은 탭이라 미리보기 기준으로 판단함 — 다른 탭에서 고른 것도 그대로 살아 있음
+     * 구매 선택은 선택한 집합으로 판단함. 같은 자리 미리보기는 마지막에 고른 것만 올라감 —
+     * 다른 옷을 고른 뒤 이전 옷을 다시 누르면 구매 목록에서만 빠지고, 미리보기는 그대로 둠
      */
     override fun onItemClick(itemId: String) {
         _uiState.update { state ->
             val item = state.items.firstOrNull { it.id == itemId } ?: return@update state
             val numericId = item.id.toLongOrNull() ?: return@update state
-            // 자리를 모르는 아이템은 캐릭터에 못 올려서 선택 여부로만 껐다 켬
-            val unselecting = if (item.slot.isEmpty()) {
-                itemId in state.selectedItems
-            } else {
-                state.equipped[item.slot]?.itemId == numericId
-            }
+            val unselecting = itemId in state.selectedItems
 
             val equipped = when {
                 item.slot.isEmpty() -> state.equipped
-                unselecting -> state.equipped - item.slot
+                unselecting && state.equipped[item.slot]?.itemId == numericId ->
+                    state.equipped - item.slot
+                unselecting -> state.equipped
                 else -> state.equipped + (item.slot to EquippedUiModel(
                     itemId = numericId,
                     imageUrl = item.imageUrl,
@@ -218,12 +223,12 @@ class ShopViewModel(
      */
     override fun onSaveClick() {
         val state = _uiState.value
+        if (state.isPurchasing || state.isEquipping) return
         val targets = state.purchaseTargets
         if (targets.isEmpty()) {
             equipSelected()
             return
         }
-        if (state.isPurchasing) return
         purchaseAll(targets)
     }
 
@@ -264,7 +269,7 @@ class ShopViewModel(
                 }
                 if (purchased.isNotEmpty()) {
                     // 갱신을 기다려야 함. 먼저 풀어주면 owned가 반영되기 전에 또 살 수 있음
-                    refreshItems()
+                    awaitItemsRefresh()
                     loadBalances()
                     emitEvent(ShopUiEvent.SaveSelectedItems)
                 }
