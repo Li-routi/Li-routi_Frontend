@@ -159,17 +159,46 @@ fun GroupRoutineRoute(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val clipboardManager = LocalClipboardManager.current
 
+    // 홈의 "방 만들기"/"초대코드로 참여" 바로가기로 들어온 경우(=initialEntryPoint), 그 첫
+    // 화면(CreateRoomName/JoinByCode)에서 뒤로가기를 누르면 홈으로 돌아가야 한다. 하지만
+    // viewModel.onBackClick()의 상태 전이는 항상 "그룹 루틴 목록"으로 돌아가도록만 되어 있어
+    // (List 탭 안에서 그 버튼을 눌러 들어온 일반적인 경우를 위한 것), 홈에서 바로 들어온
+    // 경우에도 똑같이 목록 화면에 떨어져 버리는 문제가 있었다. 그 첫 화면에 있는 동안만 이
+    // 플래그를 켜 두고 뒤로가기를 가로채 홈으로 보낸다.
+    var enteredViaExternalEntryPoint by remember { mutableStateOf(false) }
+    LaunchedEffect(uiState.screenMode) {
+        // 목록으로 돌아오면(정상 완료/다른 경로 등 어떤 식으로든) 더 이상 "홈에서 막 들어온
+        // 첫 화면"이 아니므로 플래그를 내려서, 이후 목록 화면 안에서 같은 버튼을 다시 눌러
+        // 들어갔을 때는 원래대로 뒤로가기가 목록으로 돌아가게 한다.
+        if (uiState.screenMode == GroupRoutineScreenMode.List) {
+            enteredViaExternalEntryPoint = false
+        }
+    }
+
     // 목록이 아닌 화면(상세/채팅/설정 등)에서는 시스템/제스처 뒤로가기도 화면 자체의 뒤로가기와
     // 똑같이 동작해야 한다. 이게 없으면 AppNavHost의 탭 전환용 BackHandler가 대신 받아서
     // 곧장 홈 탭으로 나가버린다(뒤로가기를 눌렀는데 이전 화면이 아니라 홈으로 튕기는 버그).
     BackHandler(enabled = uiState.screenMode != GroupRoutineScreenMode.List) {
-        viewModel.onBackClick()
+        val isEntryScreen = uiState.screenMode == GroupRoutineScreenMode.CreateRoomName ||
+            uiState.screenMode == GroupRoutineScreenMode.JoinByCode
+        if (enteredViaExternalEntryPoint && isEntryScreen) {
+            enteredViaExternalEntryPoint = false
+            onTabSelected(AppBottomTab.Home)
+        } else {
+            viewModel.onBackClick()
+        }
     }
 
     LaunchedEffect(initialEntryPoint) {
         when (initialEntryPoint) {
-            GrouproutineEntryPoint.CreateRoom -> viewModel.onCreateRoomClick()
-            GrouproutineEntryPoint.JoinWithInviteCode -> viewModel.onJoinByCodeClick()
+            GrouproutineEntryPoint.CreateRoom -> {
+                enteredViaExternalEntryPoint = true
+                viewModel.onCreateRoomClick()
+            }
+            GrouproutineEntryPoint.JoinWithInviteCode -> {
+                enteredViaExternalEntryPoint = true
+                viewModel.onJoinByCodeClick()
+            }
             null -> Unit
         }
         if (initialEntryPoint != null) onInitialEntryPointConsumed()

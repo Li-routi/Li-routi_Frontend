@@ -2,12 +2,15 @@ package com.li_routi.core.common.ui.camera
 
 import android.content.Context
 import android.net.Uri
+import android.view.View
 import androidx.camera.core.Camera
 import androidx.camera.core.CameraSelector
 import androidx.camera.core.FocusMeteringAction
 import androidx.camera.core.ImageCapture
 import androidx.camera.core.ImageCaptureException
 import androidx.camera.core.Preview
+import androidx.camera.core.UseCaseGroup
+import androidx.camera.core.ViewPort
 import androidx.camera.lifecycle.ProcessCameraProvider
 import androidx.camera.view.PreviewView
 import androidx.compose.animation.AnimatedVisibility
@@ -48,6 +51,7 @@ import kotlin.coroutines.suspendCoroutine
 import kotlin.math.roundToInt
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 /**
  * CameraX Preview + ImageCapture 바인딩. 루틴/그룹 루틴/챌린지 인증 촬영 화면에서 공용으로 쓴다.
@@ -145,13 +149,24 @@ fun LiroutiCameraPreview(
             .requireLensFacing(lensFacing)
             .build()
 
+        // Preview/ImageCapture를 따로 바인딩하면 CameraX가 유스케이스별로 서로 다른
+        // 해상도·화각을 고를 수 있다 — PreviewView는 자기 비율에 맞게 크롭해서 보여주지만
+        // 실제 촬영 결과는 그 크롭이 적용되지 않아, 화면(프리뷰)에 안 보이던 좌우 영역까지
+        // 더 넓게 찍히는 문제가 있었다. PreviewView의 실제 화면 크기를 기준으로 한 ViewPort로
+        // 두 유스케이스를 묶어 바인딩하면 촬영 결과가 항상 프리뷰와 같은 화각으로 크롭된다.
+        val viewPort = previewView.awaitViewPort()
+        val useCaseGroup = UseCaseGroup.Builder()
+            .setViewPort(viewPort)
+            .addUseCase(preview)
+            .addUseCase(imageCapture)
+            .build()
+
         try {
             cameraProvider.unbindAll()
             val camera = cameraProvider.bindToLifecycle(
                 lifecycleOwner,
                 selector,
-                preview,
-                imageCapture,
+                useCaseGroup,
             )
             boundCamera = camera
             boundImageCapture = imageCapture
@@ -260,3 +275,33 @@ private suspend fun Context.awaitCameraProvider(): ProcessCameraProvider =
             ContextCompat.getMainExecutor(this),
         )
     }
+
+/**
+ * [PreviewView.getViewPort]는 뷰가 실제로 측정/배치(너비·높이 확정)된 뒤에만 null이 아니다.
+ * 이 함수가 보통 컴포지션 직후(레이아웃 전)에 호출되므로, 이미 값이 있으면 바로 쓰고 없으면
+ * 레이아웃이 끝날 때까지 기다렸다가 돌려준다.
+ */
+private suspend fun PreviewView.awaitViewPort(): ViewPort {
+    viewPort?.let { return it }
+    return suspendCancellableCoroutine { continuation ->
+        val listener = object : View.OnLayoutChangeListener {
+            override fun onLayoutChange(
+                v: View?,
+                left: Int,
+                top: Int,
+                right: Int,
+                bottom: Int,
+                oldLeft: Int,
+                oldTop: Int,
+                oldRight: Int,
+                oldBottom: Int,
+            ) {
+                val currentViewPort = viewPort ?: return
+                removeOnLayoutChangeListener(this)
+                continuation.resume(currentViewPort)
+            }
+        }
+        addOnLayoutChangeListener(listener)
+        continuation.invokeOnCancellation { removeOnLayoutChangeListener(listener) }
+    }
+}
