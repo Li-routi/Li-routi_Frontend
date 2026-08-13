@@ -22,6 +22,9 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.BackgroundFill
+import com.li_routi.core.designsystem.foundation.color.KakaoBrandYellow
+import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 
 /**
@@ -76,15 +79,15 @@ private fun SocialLoginButtonPreview() {
             SocialLoginButton(
                 text = "카카오로 시작하기",
                 iconRes = R.drawable.kakao,
-                backgroundColor = Color(0xFFFEE500),
-                textColor = Color(0xFF171719),
+                backgroundColor = KakaoBrandYellow,
+                textColor = Neutral10,
                 onClick = {},
             )
             SocialLoginButton(
                 text = "Google로 시작하기",
                 iconRes = R.drawable.google,
-                backgroundColor = Color(0xFFFAFAFA),
-                textColor = Color(0xFF171719),
+                backgroundColor = BackgroundFill,
+                textColor = Neutral10,
                 onClick = {},
             )
         }

@@ -19,6 +19,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.li_routi.core.designsystem.foundation.color.Blue500
+import com.li_routi.core.designsystem.foundation.color.Neutral10
+import com.li_routi.core.designsystem.foundation.color.Red600
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -97,9 +100,9 @@ private fun MonthlyDayCell(cell: MonthlyDayUiModel) {
     }
 }
 
-internal val RedDay = Color(0xFFFF4242)
-internal val BlueDay = Color(0xFF338AFF)
-internal val BlackDay = Color(0xFF171719)
+internal val RedDay = Red600
+internal val BlueDay = Blue500
+internal val BlackDay = Neutral10
 
 /** Figma 목업(2026년 9월, 1일=화요일)을 그대로 옮긴 샘플 데이터. [ReportScreen]의 기본값으로도 재사용된다. */
 internal val SampleMonthlyDays = listOf(

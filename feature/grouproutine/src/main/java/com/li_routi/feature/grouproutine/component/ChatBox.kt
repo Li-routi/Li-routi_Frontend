@@ -48,6 +48,8 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.li_routi.core.designsystem.foundation.color.Neutral0
+import com.li_routi.core.designsystem.foundation.color.ScrimStrong
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.grouproutine.R
 import java.time.Instant
@@ -56,7 +58,7 @@ import java.time.ZoneId
 import kotlin.math.roundToInt
 import kotlinx.coroutines.launch
 
-private val ChatBubbleTextColor = Color(0xFF000000)
+private val ChatBubbleTextColor = Neutral0
 
 private val LeftMargin = 16.dp
 private val AvatarSize = 40.dp
@@ -179,7 +181,7 @@ fun ChatMessageUiModel.isNewDate(previous: ChatMessageUiModel?): Boolean {
 }
 
 private val ChatDateDividerShape = RoundedCornerShape(6.dp)
-private val ChatDateDividerBackground = Color(0xFF5D5D5D).copy(alpha = 0.60f)
+private val ChatDateDividerBackground = ScrimStrong
 
 // CSS padding: 8px 8px 8px 12px (top right bottom left)
 private val ChatDateDividerPadding = PaddingValues(start = 12.dp, top = 8.dp, end = 8.dp, bottom = 8.dp)

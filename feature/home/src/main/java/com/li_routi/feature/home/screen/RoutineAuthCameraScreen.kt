@@ -56,6 +56,7 @@ import androidx.lifecycle.compose.LocalLifecycleOwner
 import com.li_routi.core.common.ui.camera.LiroutiCameraPreview
 import com.li_routi.core.common.ui.camera.captureLiroutiCameraPhoto
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.ScrimStrong
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.navigation.RoutineAuthCameraScreenActions
@@ -188,7 +189,7 @@ private const val CropIndicatorBottomFraction = 186f / 800f
 
 // Figma `backdrop-blur(5px)` + rgba(93,93,93,0.6) — minSdk 24라 실제 backdrop blur(API 31+)를
 // 못 써서 ChatBox.ChatDateDividerBackground와 동일한 값의 반투명 단색으로 대체한다.
-private val HintPillScrimColor = Color(0xFF5D5D5D).copy(alpha = 0.60f)
+private val HintPillScrimColor = ScrimStrong
 private val HintPillShape = RoundedCornerShape(percent = 50)
 
 /**

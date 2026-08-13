@@ -32,7 +32,6 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
@@ -51,6 +50,7 @@ import com.li_routi.core.designsystem.component.LiroutiPullToRefreshBox
 import com.li_routi.core.designsystem.component.LiroutiRoutineStatsRow
 import com.li_routi.core.designsystem.component.LiroutiScrollToTopButton
 import com.li_routi.core.designsystem.component.LiroutiToast
+import com.li_routi.core.designsystem.foundation.color.ChallengeHeroBackground
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.core.domain.challenge.ReportType
@@ -64,7 +64,7 @@ import com.li_routi.feature.challenge.vm.toDisplayLabel
 import kotlinx.coroutines.launch
 
 // 챌린지 대표 이미지 자리의 배경. Figma 목업 기준 옅은 블루 톤(디자인 시스템에 대응하는 시맨틱 컬러 없음).
-private val HeroBg = Color(0xFFF3F6FF)
+private val HeroBg = ChallengeHeroBackground
 
 // Figma node: 2380:40108(참여 전) / 2372:49856(참여 후, 버튼 문구만 다름) / 2222:22836(더보기 바텀시트)
 // "챌린지 찾아보기" 카드를 눌렀을 때 넘어오는 챌린지 상세 화면. 헤더(뒤로가기/더보기)는 고정, 나머지만 스크롤된다(LazyColumn).
@@ -241,6 +241,19 @@ fun ChallengeDetailScreen(
                             onClick = { showSortSheet = true },
                         )
                     }
+                    if (
+                        uiState.selectedTab == CertificationTab.Mine &&
+                        uiState.visibleCertifications.isEmpty() &&
+                        !uiState.isLoading
+                    ) {
+                        item {
+                            MyCertificationEmptyState(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(top = 40.dp),
+                            )
+                        }
+                    }
                     items(uiState.visibleCertifications, key = { it.id }) { certification ->
                         CertificationCard(
                             certification = certification,
@@ -355,6 +368,24 @@ fun ChallengeDetailScreen(
             )
             MoreSheetActionRow(text = "닫기", onClick = { showSortSheet = false })
         }
+    }
+}
+
+/** "내 인증 보기" 탭에 아직 올린 인증이 하나도 없을 때 목록 자리에 보여주는 상태. */
+@Composable
+private fun MyCertificationEmptyState(modifier: Modifier = Modifier) {
+    Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
+        Image(
+            painter = painterResource(id = R.drawable.warning),
+            contentDescription = null,
+            modifier = Modifier.size(28.dp),
+        )
+        Text(
+            text = "아직 인증을 올리지 않았어요",
+            style = LiroutiTheme.typography.body2LongMedium,
+            color = LiroutiTheme.colors.labelInfo,
+            modifier = Modifier.padding(top = 8.dp),
+        )
     }
 }
 

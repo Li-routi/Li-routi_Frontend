@@ -87,3 +87,29 @@ val MemberHeroGradientEnd = Color(0x33CFE4FF)
 val ChatSendBackground = Color(0xFFD6E8FF)
 val EarlyBirdText = Color(0xFFD26D00)
 val EarlyBirdBackground = Color(0xFFFFDDB8)
+
+// 공용 UI 부속 요소(바텀시트 드래그 핸들, 스크림, 구분선 등) — 여러 feature에서 각자 하드코딩하던
+// 값을 하나로 모음.
+val DragHandleColor = Color(0xFFDEDEDE)
+val ScrimStrong = Color(0x995D5D5D)
+val ScrimMuted = Color(0x99505050)
+val ChatBarBackground = Color(0xCCEEEEEE)
+val KakaoBrandYellow = Color(0xFFFEE500)
+val DividerSoft = Color(0xFFEFF0F0)
+val NotificationUnreadBackground = Color(0xFFF2F8FF)
+
+// achievement (업적/등급 뱃지)
+val AchievementEyeColor = Color(0xFF205079)
+val AchievementSmileColor = Color(0xFF0075DB)
+val AchievementGradientStart = Color(0xFF28AFFF)
+val AchievementGradientEnd = Color(0xFF9EDBFF)
+val GradeEpicBackground = Color(0xFFEFE0F8)
+val GradeEpicText = Color(0xFF6903D6)
+val GradeUniqueBackground = Color(0xFFFFF6D8)
+val GradeUniqueText = Color(0xFFA67C00)
+val AchievementProgressCountColor = Color(0xFF81898E)
+
+// home / challenge 화면 전용 장식 색상
+val RepresentativeBadgeBackground = Color(0xFFF1F8E9)
+val RepresentativeBadgeText = Color(0xFF3A8009)
+val ChallengeHeroBackground = Color(0xFFF3F6FF)

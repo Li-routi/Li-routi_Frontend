@@ -18,6 +18,9 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.Blue500
+import com.li_routi.core.designsystem.foundation.color.Neutral10
+import com.li_routi.core.designsystem.foundation.color.Red600
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
 private val PeriodLabelTextStyle = TextStyle(fontWeight = FontWeight.Bold, fontSize = 16.sp, lineHeight = 24.sp, letterSpacing = (-0.08).sp)
@@ -71,11 +74,11 @@ fun ReportWeekdayLabelsRow(modifier: Modifier = Modifier) {
 }
 
 val ReportWeekdayLabels: List<Pair<String, Color>> = listOf(
-    "일" to Color(0xFFFF4242),
-    "월" to Color(0xFF171719),
-    "화" to Color(0xFF171719),
-    "수" to Color(0xFF171719),
-    "목" to Color(0xFF171719),
-    "금" to Color(0xFF171719),
-    "토" to Color(0xFF338AFF),
+    "일" to Red600,
+    "월" to Neutral10,
+    "화" to Neutral10,
+    "수" to Neutral10,
+    "목" to Neutral10,
+    "금" to Neutral10,
+    "토" to Blue500,
 )
