@@ -9,5 +9,6 @@ class GetChatMessagesUseCase(
         groupId: Long,
         cursor: Long? = null,
         size: Int? = null,
-    ): ResultState<ChatMessagePage> = repository.getChatMessages(groupId, cursor, size)
+        date: String? = null,
+    ): ResultState<ChatMessagePage> = repository.getChatMessages(groupId, cursor, size, date)
 }

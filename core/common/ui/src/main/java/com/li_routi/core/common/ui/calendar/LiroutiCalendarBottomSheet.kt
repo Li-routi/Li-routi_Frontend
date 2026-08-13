@@ -15,6 +15,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -69,6 +70,12 @@ private const val MonthGridCellCount = MonthGridWeekCount * 7
  * 헤더의 "YYYY년 MM월" 라벨을 탭하면 달력 그리드(일자 선택)와 연/월 휠(월 선택) 모드를 오간다.
  * 일자 선택은 탭 즉시 확정돼 시트가 닫히고, 연/월 선택은 취소/확인 버튼으로 명시적으로 확정한다
  * (확정해도 시트는 닫히지 않고 달력 그리드로 돌아간다 — 이어서 일자를 골라야 하기 때문).
+ *
+ * [isDaySelectable]이 false를 반환하는 날짜는 회색으로 흐리게 표시되고 탭해도 반응하지 않는다
+ * (예: 그룹 채팅에서 채팅 기록이 없는 날짜). 기본값은 모든 날짜를 선택 가능하게 둔다.
+ * [onDisplayedMonthChange]는 시트가 열릴 때 및 ◀/▶·연/월 휠로 표시 월이 바뀔 때마다 그 월을
+ * 알려준다 — 호출부가 그 달의 [isDaySelectable] 판단에 필요한 데이터(예: 채팅 날짜 목록)를
+ * 지연 조회하는 용도로 쓸 수 있다.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -77,10 +84,14 @@ fun LiroutiCalendarBottomSheet(
     onDismissRequest: () -> Unit,
     onDateSelected: (LocalDate) -> Unit,
     modifier: Modifier = Modifier,
+    isDaySelectable: (LocalDate) -> Boolean = { true },
+    onDisplayedMonthChange: (YearMonth) -> Unit = {},
 ) {
     var mode by remember { mutableStateOf(CalendarPickerMode.Day) }
     var displayYearMonth by remember { mutableStateOf(YearMonth.from(initialDate)) }
     var wheelYearMonth by remember { mutableStateOf(displayYearMonth) }
+
+    LaunchedEffect(displayYearMonth) { onDisplayedMonthChange(displayYearMonth) }
 
     // 일자 탭처럼 코드에서 직접 닫을 때 onDismissRequest()를 바로 부르면(= sheetState를 거치지 않고
     // 시트를 컴포지션에서 즉시 제거) ModalBottomSheet 내부 애니메이션/윈도우 상태가 미처 정리되지 않아
@@ -136,6 +147,7 @@ fun LiroutiCalendarBottomSheet(
                 CalendarDayGrid(
                     yearMonth = displayYearMonth,
                     selectedDay = initialDate.dayOfMonth.takeIf { YearMonth.from(initialDate) == displayYearMonth },
+                    isDaySelectable = { day -> isDaySelectable(displayYearMonth.atDay(day)) },
                     onDayClick = { day ->
                         onDateSelected(displayYearMonth.atDay(day))
                         dismiss()
@@ -222,6 +234,7 @@ private fun buildMonthCells(yearMonth: YearMonth): List<Int?> {
 private fun CalendarDayGrid(
     yearMonth: YearMonth,
     selectedDay: Int?,
+    isDaySelectable: (Int) -> Boolean,
     onDayClick: (Int) -> Unit,
 ) {
     Column(modifier = Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -240,6 +253,7 @@ private fun CalendarDayGrid(
                                     day = day,
                                     columnIndex = columnIndex,
                                     isSelected = day == selectedDay,
+                                    isSelectable = isDaySelectable(day),
                                     onClick = { onDayClick(day) },
                                 )
                             }
@@ -252,8 +266,15 @@ private fun CalendarDayGrid(
 }
 
 @Composable
-private fun CalendarDayCell(day: Int, columnIndex: Int, isSelected: Boolean, onClick: () -> Unit) {
+private fun CalendarDayCell(
+    day: Int,
+    columnIndex: Int,
+    isSelected: Boolean,
+    isSelectable: Boolean,
+    onClick: () -> Unit,
+) {
     val textColor = when {
+        !isSelectable -> LiroutiTheme.colors.labelInfo
         isSelected -> LiroutiTheme.colors.labelReverse
         columnIndex == 0 -> LiroutiTheme.colors.dangerText
         columnIndex == 6 -> LiroutiTheme.colors.primaryNormal
@@ -264,7 +285,7 @@ private fun CalendarDayCell(day: Int, columnIndex: Int, isSelected: Boolean, onC
             .size(DayCellSize)
             .clip(RoundedCornerShape(6.dp))
             .let { if (isSelected) it.background(LiroutiTheme.colors.primaryNormal) else it }
-            .clickable(onClick = onClick),
+            .clickable(enabled = isSelectable, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Text(text = day.toString(), style = if (isSelected) SelectedDayCellTextStyle else DayCellTextStyle, color = textColor)

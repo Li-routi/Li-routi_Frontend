@@ -5,4 +5,5 @@ data class SendChatMessageRequest(
     val type: String,
     val content: String?,
     val emoticonCode: String?,
+    val replyToMessageId: Long?,
 )
