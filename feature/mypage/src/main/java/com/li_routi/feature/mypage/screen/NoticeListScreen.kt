@@ -7,6 +7,8 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
@@ -38,7 +40,12 @@ fun NoticeListScreen(
             .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         EditProfileTopBar(title = "공지사항", onBackClick = onBackClick)
-        Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 16.dp),
+        ) {
             notices.forEachIndexed { index, notice ->
                 if (index > 0) {
                     LiroutiDivider(color = SettingsSectionDividerColor)

@@ -1,6 +1,7 @@
 package com.li_routi.core.common.ui.camera
 
 import android.content.Context
+import android.graphics.Rect
 import android.net.Uri
 import android.view.View
 import androidx.camera.core.Camera
@@ -26,6 +27,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
@@ -79,6 +81,28 @@ fun LiroutiCameraPreview(
     // (offset이 같아 key가 안 바뀌어 애니메이션이 재시작 안 되는 문제를 막기 위해) 매번 값을 바꿔준다.
     var focusPoint by remember { mutableStateOf<Offset?>(null) }
     var focusRequestId by remember { mutableIntStateOf(0) }
+    // PreviewView의 실제 배치(회전/리사이즈 등)가 바뀔 때마다 증가하는 토큰. 아래 바인딩
+    // LaunchedEffect의 키에 넣어서 ViewPort가 바뀔 때마다 새 UseCaseGroup으로 재바인딩한다 —
+    // 이게 없으면 최초 1회 바인딩 때의 ViewPort로 고정돼서, 이후 회전 등으로 프리뷰 실제 크기가
+    // 바뀌어도 촬영 결과 크롭은 예전 프리뷰 크기 기준으로 남는다.
+    var viewportEpoch by remember { mutableIntStateOf(0) }
+
+    DisposableEffect(previewView) {
+        var lastBounds: Rect? = null
+        val listener = View.OnLayoutChangeListener { _, left, top, right, bottom, _, _, _, _ ->
+            val bounds = Rect(left, top, right, bottom)
+            val previous = lastBounds
+            lastBounds = bounds
+            // 최초 레이아웃 확정은 이미 아래 바인딩 이펙트가 awaitViewPort()로 기다리고 있으므로
+            // 여기서 또 세면 시작하자마자 불필요한 재바인딩이 한 번 더 일어난다. 실제로 크기/위치가
+            // "바뀐" 경우에만 센다.
+            if (previous != null && previous != bounds) {
+                viewportEpoch++
+            }
+        }
+        previewView.addOnLayoutChangeListener(listener)
+        onDispose { previewView.removeOnLayoutChangeListener(listener) }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         AndroidView(
@@ -128,8 +152,8 @@ fun LiroutiCameraPreview(
         }
     }
 
-    // lens/active만 재바인딩. flash·torch 토글은 아래에서 setter로 처리한다.
-    LaunchedEffect(lensFacing, isActive, lifecycleOwner) {
+    // lens/active/viewportEpoch가 바뀔 때 재바인딩. flash·torch 토글은 아래에서 setter로 처리한다.
+    LaunchedEffect(lensFacing, isActive, lifecycleOwner, viewportEpoch) {
         if (!isActive) {
             boundCamera = null
             boundImageCapture = null

@@ -57,6 +57,25 @@ private enum class MyPageDestination {
 private const val InquiryComingSoonMessage = "아직 준비중인 서비스에요"
 
 /**
+ * 로컬 destination 전환의 상위 화면. 시스템/제스처 Back이 각 화면의 뒤로가기 버튼과 같은 곳으로
+ * 가도록 계층을 매핑한다 — 이게 없으면(모두 MyPage로 보내면) 공지사항 상세처럼 4단계 깊이인
+ * 화면에서 시스템 Back과 화면 안 뒤로가기 버튼이 서로 다른 곳으로 가버린다.
+ */
+private val MyPageDestination.parent: MyPageDestination?
+    get() = when (this) {
+        MyPageDestination.MyPage -> null
+        MyPageDestination.NoticeList -> MyPageDestination.AppInfo
+        MyPageDestination.NoticeDetail -> MyPageDestination.NoticeList
+        MyPageDestination.TermsOfService,
+        MyPageDestination.PrivacyPolicy,
+        MyPageDestination.ReportPolicy,
+        MyPageDestination.OpenSourceLicense,
+        MyPageDestination.CoinRefundPolicy,
+        -> MyPageDestination.AppInfo
+        else -> MyPageDestination.MyPage
+    }
+
+/**
  * 마이페이지 진입점. [MyPageViewModel]과 [MyPageScreen]을 연결한다.
  *
  * "프로필 수정"/"업적"/"리포트"/"앱 정보"/"계정 관리" 탭 시 각각 [EditProfileScreen]/
@@ -94,7 +113,7 @@ fun MyPageRoute(
     // Nav 백스택이 아니라 로컬 전환이므로, 시스템 Back이 마이페이지 하위 화면을 건너뛰고
     // 곧바로 홈 탭으로 넘어가지 않게 가로챈다.
     BackHandler(enabled = destination != MyPageDestination.MyPage) {
-        destination = MyPageDestination.MyPage
+        destination = destination.parent ?: MyPageDestination.MyPage
     }
 
     LaunchedEffect(viewModel) {
@@ -180,11 +199,20 @@ fun MyPageRoute(
             modifier = modifier,
         )
 
-        MyPageDestination.NoticeDetail -> NoticeDetailScreen(
-            notice = SampleNotices.firstOrNull { it.id == selectedNoticeId } ?: SampleNotices.first(),
-            onBackClick = { destination = MyPageDestination.NoticeList },
-            modifier = modifier,
-        )
+        MyPageDestination.NoticeDetail -> {
+            val notice = SampleNotices.firstOrNull { it.id == selectedNoticeId }
+            if (notice == null) {
+                // selectedNoticeId가 목록에 없는 상태(예: 프로세스 복원 후 목록이 바뀐 경우) —
+                // 크래시 대신 목록으로 되돌린다.
+                LaunchedEffect(selectedNoticeId) { destination = MyPageDestination.NoticeList }
+            } else {
+                NoticeDetailScreen(
+                    notice = notice,
+                    onBackClick = { destination = MyPageDestination.NoticeList },
+                    modifier = modifier,
+                )
+            }
+        }
 
         MyPageDestination.TermsOfService -> PolicyTextScreen(
             topBarTitle = "이용 약관",

@@ -175,18 +175,29 @@ fun GroupRoutineRoute(
         }
     }
 
-    // 목록이 아닌 화면(상세/채팅/설정 등)에서는 시스템/제스처 뒤로가기도 화면 자체의 뒤로가기와
-    // 똑같이 동작해야 한다. 이게 없으면 AppNavHost의 탭 전환용 BackHandler가 대신 받아서
-    // 곧장 홈 탭으로 나가버린다(뒤로가기를 눌렀는데 이전 화면이 아니라 홈으로 튕기는 버그).
-    BackHandler(enabled = uiState.screenMode != GroupRoutineScreenMode.List) {
+    // 화면 안의 뒤로가기 버튼(CreateRoomNameScreen/JoinByCodeScreen 등)과 시스템/제스처 뒤로가기가
+    // 서로 다른 동작을 하면 안 되므로 하나의 핸들러로 합쳐서 BackHandler와 onBackClick 파라미터
+    // 양쪽에 똑같이 전달한다 — 전엔 BackHandler에만 이 분기가 있어서 화면 안 뒤로가기 버튼을 누르면
+    // "홈에서 막 들어온 첫 화면" 판정을 건너뛰고 늘 그룹 루틴 목록으로 떨어졌다.
+    val handleGroupRoutineBackClick: () -> Unit = handle@{
         val isEntryScreen = uiState.screenMode == GroupRoutineScreenMode.CreateRoomName ||
             uiState.screenMode == GroupRoutineScreenMode.JoinByCode
         if (enteredViaExternalEntryPoint && isEntryScreen) {
             enteredViaExternalEntryPoint = false
+            // 탭 전환용 onTabSelected 분기(217번째 줄 근처)와 동일하게, 홈으로 나가기 전에
+            // 그룹 루틴 탭 상태를 정리한다.
+            viewModel.onGroupRoutineTabExit()
             onTabSelected(AppBottomTab.Home)
-        } else {
-            viewModel.onBackClick()
+            return@handle
         }
+        viewModel.onBackClick()
+    }
+
+    // 목록이 아닌 화면(상세/채팅/설정 등)에서는 시스템/제스처 뒤로가기도 화면 자체의 뒤로가기와
+    // 똑같이 동작해야 한다. 이게 없으면 AppNavHost의 탭 전환용 BackHandler가 대신 받아서
+    // 곧장 홈 탭으로 나가버린다(뒤로가기를 눌렀는데 이전 화면이 아니라 홈으로 튕기는 버그).
+    BackHandler(enabled = uiState.screenMode != GroupRoutineScreenMode.List) {
+        handleGroupRoutineBackClick()
     }
 
     LaunchedEffect(initialEntryPoint) {
@@ -218,7 +229,7 @@ fun GroupRoutineRoute(
             onTabSelected(tab)
         },
         onRoutineClick = viewModel::onRoutineClick,
-        onBackClick = viewModel::onBackClick,
+        onBackClick = handleGroupRoutineBackClick,
         onAddClick = viewModel::onAddClick,
         onSearchInputChange = viewModel::onSearchInputChange,
         onDismissActionSheet = viewModel::onDismissActionSheet,
