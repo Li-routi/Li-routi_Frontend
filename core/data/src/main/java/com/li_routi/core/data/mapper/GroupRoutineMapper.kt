@@ -9,6 +9,8 @@ import com.li_routi.core.data.network.dto.response.GroupJoinPreviewResponse
 import com.li_routi.core.data.network.dto.response.GroupJoinResultResponse
 import com.li_routi.core.data.network.dto.response.GroupMemberActivityResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineLikeResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineListItemResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineListResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryListResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
@@ -30,6 +32,7 @@ import com.li_routi.core.domain.grouproutine.GroupJoinResult
 import com.li_routi.core.domain.grouproutine.GroupMemberActivity
 import com.li_routi.core.domain.grouproutine.GroupRoutineDisappointment
 import com.li_routi.core.domain.grouproutine.GroupRoutineLike
+import com.li_routi.core.domain.grouproutine.GroupRoutineItem
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategory
 import com.li_routi.core.domain.grouproutine.GroupRoutineCategoryList
 import com.li_routi.core.domain.grouproutine.GroupRoutineVerificationFeed
@@ -79,6 +82,7 @@ fun GroupDetailResponse.toDomain(): GroupDetail = GroupDetail(
     groupId = groupId.requireId("groupId"),
     groupName = groupName.orEmpty(),
     inviteCode = inviteCode.orEmpty(),
+    isCurrentUserOwner = myRole == "OWNER",
     members = members.orEmpty().map { it.toDomain() },
 )
 
@@ -89,6 +93,7 @@ fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberAct
     statusMessage = statusMessage,
     currentStreak = currentStreak,
     totalLikeCount = totalLikeCount,
+    totalPokeCount = totalPokeCount,
     // 할당이 없는 구성원은 서버가 dailyProgress를 안 내려줄 수 있어서 0/0으로 채움
     completedCount = dailyProgress?.completedCount ?: 0L,
     totalCount = dailyProgress?.totalCount ?: 0L,
@@ -117,6 +122,17 @@ fun GroupRoutineScheduleResponse.toDomain(): GroupRoutineSchedule = GroupRoutine
     startTime = startTime,
     endTime = endTime,
 )
+
+fun GroupRoutineListItemResponse.toDomain(): GroupRoutineItem = GroupRoutineItem(
+    routineId = routineId.requireId("routineId"),
+    categoryId = categoryId.requireId("categoryId"),
+    categoryName = categoryName,
+    title = title,
+    description = description,
+    schedules = schedules.map { it.toDomain() },
+)
+
+fun GroupRoutineListResponse.toDomain(): List<GroupRoutineItem> = routines.map { it.toDomain() }
 
 // 그룹 생성 응답(CreatedRoutine)에는 groupId가 없어서 0으로 들어옴 — routineId만 검증함
 fun GroupRoutineUpdateResultResponse.toDomain(): GroupRoutineUpdateResult = GroupRoutineUpdateResult(

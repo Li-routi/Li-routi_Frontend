@@ -21,6 +21,7 @@ import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryListRespo
 import com.li_routi.core.data.network.dto.response.GroupStatusMessageResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineCategoryResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineFeedResponse
+import com.li_routi.core.data.network.dto.response.GroupRoutineListResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineUpdateResultResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineVerificationReadResponse
 import com.li_routi.core.data.network.dto.response.ParticipatingGroupListResponse
@@ -59,6 +60,11 @@ interface GroupRoutineApiService {
         @Path("routineId") routineId: Long,
         @Body request: UpdateGroupRoutineRequest,
     ): ApiResponse<GroupRoutineUpdateResultResponse>
+
+    @GET("api/groups/{groupId}/routines")
+    suspend fun getGroupRoutines(
+        @Path("groupId") groupId: Long,
+    ): ApiResponse<GroupRoutineListResponse>
 
     @GET("api/groups/{groupId}")
     suspend fun getGroupDetail(

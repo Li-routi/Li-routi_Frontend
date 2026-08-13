@@ -3,6 +3,11 @@
 import android.view.WindowManager
 import androidx.activity.compose.BackHandler
 import androidx.annotation.DrawableRes
+import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.ScrollState
@@ -53,6 +58,7 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -67,7 +73,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -77,6 +82,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalClipboardManager
@@ -96,7 +102,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
-import androidx.compose.ui.window.DialogWindowProvider
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
@@ -112,11 +117,13 @@ import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
+import com.li_routi.core.designsystem.component.LiroutiClockTime
 import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
 import com.li_routi.core.designsystem.component.LiroutiDaySelector
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.component.LiroutiSearchField
 import com.li_routi.core.designsystem.component.LiroutiSwitch
+import com.li_routi.core.designsystem.component.LiroutiTimeWheelPicker
 import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.component.LiroutiToastStyle
 import com.li_routi.core.designsystem.R as DesignSystemR
@@ -150,6 +157,7 @@ fun GroupRoutineRoute(
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val clipboardManager = LocalClipboardManager.current
 
     // 목록이 아닌 화면(상세/채팅/설정 등)에서는 시스템/제스처 뒤로가기도 화면 자체의 뒤로가기와
     // 똑같이 동작해야 한다. 이게 없으면 AppNavHost의 탭 전환용 BackHandler가 대신 받아서
@@ -176,7 +184,10 @@ fun GroupRoutineRoute(
 
     GroupRoutineScreen(
         uiState = uiState,
-        onTabSelected = onTabSelected,
+        onTabSelected = { tab ->
+            if (tab != AppBottomTab.GroupRoutine) viewModel.onGroupRoutineTabExit()
+            onTabSelected(tab)
+        },
         onRoutineClick = viewModel::onRoutineClick,
         onBackClick = viewModel::onBackClick,
         onAddClick = viewModel::onAddClick,
@@ -248,7 +259,14 @@ fun GroupRoutineRoute(
         onDismissMessageEditSheet = viewModel::onDismissMessageEditSheet,
         onMessageEditConfirmClick = viewModel::onMessageEditConfirmClick,
         onSettingsClick = viewModel::onSettingsClick,
-        onInviteCodeCopyClick = viewModel::onInviteCodeCopyClick,
+        onInviteCodeCopyClick = {
+            uiState.groupInviteCode
+                ?.takeIf(String::isNotBlank)
+                ?.let { inviteCode ->
+                    clipboardManager.setText(AnnotatedString(inviteCode))
+                    viewModel.onInviteCodeCopyClick()
+                }
+        },
         onGroupRoutineManageClick = viewModel::onGroupRoutineManageClick,
         onRoomNameEditClick = viewModel::onRoomNameEditClick,
         onLeaderSettingsClick = viewModel::onLeaderSettingsClick,
@@ -350,15 +368,21 @@ private fun GroupRoutineScreen(
 ) {
     Box(modifier = modifier.fillMaxSize()) {
         when (uiState.screenMode) {
-            GroupRoutineScreenMode.List -> GroupRoutineListScreen(
-                uiState = uiState,
-                onRoutineClick = onRoutineClick,
-                onAddClick = onAddClick,
-                onSearchInputChange = onSearchInputChange,
-                onTabSelected = onTabSelected,
-            )
+            GroupRoutineScreenMode.List -> if (uiState.isListLoading) {
+                GroupRoutineLoadingState()
+            } else {
+                GroupRoutineListScreen(
+                    uiState = uiState,
+                    onRoutineClick = onRoutineClick,
+                    onAddClick = onAddClick,
+                    onSearchInputChange = onSearchInputChange,
+                    onTabSelected = onTabSelected,
+                )
+            }
 
-            GroupRoutineScreenMode.Detail -> GroupRoutineDetailScreen(
+            GroupRoutineScreenMode.Detail -> if (uiState.isDetailLoading) {
+                GroupRoutineLoadingState()
+            } else GroupRoutineDetailScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
                 onTodoCheckedChange = onTodoCheckedChange,
@@ -378,7 +402,9 @@ private fun GroupRoutineScreen(
                 onTabSelected = onTabSelected,
             )
 
-            GroupRoutineScreenMode.CertificationCollection -> CertificationCollectionScreen(
+            GroupRoutineScreenMode.CertificationCollection -> if (uiState.isCertificationLoading) {
+                GroupRoutineLoadingState()
+            } else CertificationCollectionScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
                 onCertificationMemberClick = onCertificationMemberClick,
@@ -565,6 +591,7 @@ private fun GroupRoutineScreen(
             onColorSelected = onCategoryColorSelected,
             onConfirm = onCategoryConfirmClick,
             onDismissRequest = onDismissCategorySheet,
+            placeholder = "카테고리 이름을 입력해 주세요",
         )
     }
 
@@ -598,7 +625,7 @@ private fun GroupRoutineScreen(
     }
 
     uiState.actionMessage?.let { message ->
-        LaunchedEffect(message) {
+        LaunchedEffect(message, uiState.actionMessageId) {
             delay(4_000)
             onDismissActionMessage()
         }
@@ -613,35 +640,22 @@ private fun ActionMessageToastDialog(
     message: String,
     onDismiss: () -> Unit,
 ) {
-    Dialog(
-        onDismissRequest = onDismiss,
-        properties = DialogProperties(
-            usePlatformDefaultWidth = false,
-            decorFitsSystemWindows = false,
-        ),
+    Box(
+        modifier = Modifier.fillMaxSize(),
+        contentAlignment = Alignment.BottomCenter,
     ) {
-        val window = (LocalView.current.parent as? DialogWindowProvider)?.window
-        SideEffect {
-            window?.clearFlags(WindowManager.LayoutParams.FLAG_DIM_BEHIND)
-        }
-
-        Box(
-            modifier = Modifier.fillMaxSize(),
-            contentAlignment = Alignment.BottomCenter,
-        ) {
-            LiroutiToast(
-                message = message,
-                style = LiroutiToastStyle.Dimmer,
-                onCloseClick = onDismiss,
-                modifier = Modifier
-                    .navigationBarsPadding()
-                    .padding(bottom = 92.dp)
-                    .widthIn(max = 332.dp)
-                    .fillMaxWidth()
-                    .height(54.dp),
-                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
-            )
-        }
+        LiroutiToast(
+            message = message,
+            style = LiroutiToastStyle.Dimmer,
+            onCloseClick = onDismiss,
+            modifier = Modifier
+                .navigationBarsPadding()
+                .padding(bottom = 92.dp)
+                .widthIn(max = 332.dp)
+                .fillMaxWidth()
+                .height(54.dp),
+            contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
+        )
     }
 }
 
@@ -752,7 +766,7 @@ private fun CreateRoomNameScreen(
             BasicInputBox(
                 value = roomName,
                 onValueChange = onRoomNameChange,
-                placeholder = "최대 20자",
+                placeholder = "방 이름을 입력해 주세요",
                 showClear = false,
             )
         }
@@ -812,7 +826,7 @@ private fun JoinByCodeScreen(
             BasicInputBox(
                 value = inviteCode,
                 onValueChange = onInviteCodeChange,
-                placeholder = "초대코드 입력",
+                placeholder = "초대코드를 입력해 주세요",
                 showClear = inviteCode.isNotBlank(),
             )
         }
@@ -937,7 +951,7 @@ private fun CategoryChipRow(
                 val selectedColor = categoryColors[label]?.swatch ?: LiroutiTheme.colors.primaryNormal
                 Text(
                     text = if (selected) "✓ $label" else label,
-                    color = if (selected) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.labelSub,
+                    color = if (selected) selectedColor.readableContentColor() else LiroutiTheme.colors.labelSub,
                     style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                     modifier = Modifier
                         .clip(RoundedCornerShape(100.dp))
@@ -952,7 +966,7 @@ private fun CategoryChipRow(
             modifier = Modifier
                 .size(36.dp)
                 .clip(CircleShape)
-                .background(LiroutiTheme.colors.backgroundDefault)
+                .background(LiroutiTheme.colors.backgroundDefault.copy(alpha = 0.9f))
                 .border(1.dp, LiroutiTheme.colors.borderDefault, CircleShape)
                 .clickable(onClick = onCategoryAddClick),
             contentAlignment = Alignment.Center,
@@ -1403,7 +1417,7 @@ private fun RoutineSettingSheet(
             BasicInputBox(
                 value = routineName,
                 onValueChange = onNameChange,
-                placeholder = "루틴 이름",
+                placeholder = "루틴 이름을 입력해 주세요",
                 showClear = routineName.isNotEmpty(),
             )
             Column(
@@ -1554,44 +1568,11 @@ private fun RoutineTimePicker(
     onTimeChange: (String) -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val hour = time.substringBefore(":").toIntOrNull()?.coerceIn(0, 23) ?: 8
-    val minute = time.substringAfter(":", "00").toIntOrNull()?.coerceIn(0, 59) ?: 0
-    val hour12 = displayHour12(hour)
-    val isAm = hour < 12
-
-    Row(
-        modifier = modifier
-            .fillMaxWidth()
-            .background(LiroutiTheme.colors.backgroundFill)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        WheelPickerColumn(
-            items = listOf("오전", "오후"),
-            selectedIndex = if (isAm) 0 else 1,
-            onSelected = { index ->
-                val newHour = if (index == 0) hour12.to24Hour(isAm = true) else hour12.to24Hour(isAm = false)
-                onTimeChange(formatRoutineTime(newHour, minute))
-            },
-            modifier = Modifier.weight(1f),
-        )
-        WheelPickerColumn(
-            items = (1..12).map { it.toString() },
-            selectedIndex = hour12 - 1,
-            onSelected = { index ->
-                val newHour = (index + 1).to24Hour(isAm = isAm)
-                onTimeChange(formatRoutineTime(newHour, minute))
-            },
-            modifier = Modifier.weight(1f),
-        )
-        WheelPickerColumn(
-            items = (0..59).map { it.toString().padStart(2, '0') },
-            selectedIndex = minute,
-            onSelected = { index -> onTimeChange(formatRoutineTime(hour, index)) },
-            modifier = Modifier.weight(1f),
-        )
-    }
+    LiroutiTimeWheelPicker(
+        value = LiroutiClockTime.fromApiHHmm(time),
+        onValueChange = { selectedTime -> onTimeChange(selectedTime.toApiHHmm()) },
+        modifier = modifier,
+    )
 }
 
 @Composable
@@ -1731,7 +1712,7 @@ private fun RoutineCategoryRow(
             val selected = category == selectedCategory
             Text(
                 text = category,
-                color = if (selected) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.labelSub,
+                color = if (selected) LiroutiTheme.colors.primaryNormal.readableContentColor() else LiroutiTheme.colors.labelSub,
                 style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
                 modifier = Modifier
                     .clip(RoundedCornerShape(100.dp))
@@ -1796,6 +1777,9 @@ private fun displayHour12(hour: Int): Int {
 private fun formatRoutineTime(hour: Int, minute: Int): String {
     return "${hour.coerceIn(0, 23).toString().padStart(2, '0')}:${minute.coerceIn(0, 59).toString().padStart(2, '0')}"
 }
+
+private fun Color.readableContentColor(): Color =
+    if (luminance() < 0.5f) Color.White else Color(0xFF171719)
 
 @Composable
 private fun DeleteRoutineDialog(
@@ -1885,6 +1869,13 @@ private fun NewCertificationDialog(
 ) {
     if (certifications.isEmpty()) return
     val pagerState = rememberPagerState(pageCount = { certifications.size })
+    val currentPage = pagerState.currentPage.coerceIn(certifications.indices)
+
+    LaunchedEffect(certifications.size) {
+        if (pagerState.currentPage > certifications.lastIndex) {
+            pagerState.scrollToPage(certifications.lastIndex)
+        }
+    }
 
     Dialog(
         onDismissRequest = onDismissRequest,
@@ -1931,11 +1922,11 @@ private fun NewCertificationDialog(
                         modifier = Modifier
                             .size(8.dp)
                             .clip(CircleShape)
-                            .background(if (index == pagerState.currentPage) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.borderDefault),
+                            .background(if (index == currentPage) LiroutiTheme.colors.labelDefault else LiroutiTheme.colors.borderDefault),
                     )
                 }
             }
-            val current = certifications[pagerState.currentPage]
+            val current = certifications[currentPage]
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(
                     text = "${current.memberName} | ${current.routineName}",
@@ -2002,7 +1993,7 @@ private fun MessageEditSheet(
             BasicInputBox(
                 value = message,
                 onValueChange = onMessageChange,
-                placeholder = "최대 8자",
+                placeholder = "상태 메시지를 입력해 주세요",
                 showClear = false,
             )
             PrimaryButton(text = "확인", enabled = message.isNotBlank(), onClick = onConfirmClick)
@@ -2060,6 +2051,18 @@ private fun GroupRoutineSearchField(
 }
 
 @Composable
+private fun GroupRoutineLoadingState() {
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(LiroutiTheme.colors.backgroundDefault),
+        contentAlignment = Alignment.Center,
+    ) {
+        CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
+    }
+}
+
+@Composable
 private fun GroupRoutineEmptyState(
     modifier: Modifier = Modifier,
     message: String = "아직 만들어진 방이 없어요!",
@@ -2069,7 +2072,12 @@ private fun GroupRoutineEmptyState(
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
-        Text(text = "!", color = LiroutiTheme.colors.labelInfo, fontSize = 26.sp)
+        Icon(
+            painter = painterResource(id = DesignSystemR.drawable.warning),
+            contentDescription = null,
+            tint = LiroutiTheme.colors.labelInfo,
+            modifier = Modifier.size(28.dp),
+        )
         Text(
             text = message,
             color = LiroutiTheme.colors.labelInfo,
@@ -2283,7 +2291,11 @@ private fun GroupRoutineDetailScreen(
         )
 
         Column(modifier = Modifier.weight(1f)) {
-            if (!isRoutineSheetExpanded) {
+            AnimatedVisibility(
+                visible = !isRoutineSheetExpanded,
+                enter = fadeIn() + expandVertically(expandFrom = Alignment.Top),
+                exit = fadeOut() + shrinkVertically(shrinkTowards = Alignment.Top),
+            ) {
                 DetailMemberSection(
                     title = routine.title,
                     members = uiState.members,
@@ -2294,7 +2306,7 @@ private fun GroupRoutineDetailScreen(
                 )
             }
             DetailRoutineTabSheet(
-                title = "${routine.title}의 루틴",
+                title = "오늘의 루틴",
                 todos = uiState.todos,
                 categories = uiState.categories,
                 selectedCategory = uiState.selectedCategory,
@@ -2873,8 +2885,7 @@ private fun GroupSettingsScreen(
     onLeaveRoomClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
-    val isLeader = uiState.isCurrentUserLeader
-    val clipboardManager = LocalClipboardManager.current
+    val isLeader = uiState.isConfirmedOwner
 
     Column(
         modifier = modifier
@@ -2939,14 +2950,7 @@ private fun GroupSettingsScreen(
                 }
                 InviteCodeRow(
                     code = uiState.groupInviteCode.orEmpty(),
-                    onClick = {
-                        val code = uiState.groupInviteCode
-                        //코드가 실제로 존재할때만 클립보드에 복사
-                        if(!code.isNullOrBlank()) {
-                            clipboardManager.setText(AnnotatedString(code))
-                            onInviteCodeCopyClick()
-                        }
-                    },
+                    onClick = onInviteCodeCopyClick,
                 )
             }
         }
@@ -3093,7 +3097,7 @@ private fun RoomNameEditScreen(
             BasicInputBox(
                 value = roomName,
                 onValueChange = onRoomNameChange,
-                placeholder = "최대 20자",
+                placeholder = "방 이름을 입력해 주세요",
                 showClear = roomName.isNotBlank(),
             )
         }
@@ -3976,7 +3980,6 @@ private fun CertificationFeedCard(
             CertificationPostItem(
                 post = post,
                 onLikeClick = { onLikeClick(post.id, post.isLiked) },
-                onDisappointmentClick = { onDisappointmentClick(post.id, post.isDisappointed) },
             )
         }
     }
@@ -4028,7 +4031,6 @@ private fun FeedTab(
 private fun CertificationPostItem(
     post: CertificationPostUiModel,
     onLikeClick: () -> Unit,
-    onDisappointmentClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -4085,26 +4087,7 @@ private fun CertificationPostItem(
             ) {
                 Text(text = if (post.isLiked) "♥" else "♡", color = LiroutiTheme.colors.labelDefault, fontSize = 15.sp)
                 Text(
-                    text = "좋아요 ${post.likeCount}",
-                    color = LiroutiTheme.colors.labelDefault,
-                    style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
-                )
-            }
-            Row(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .clickable(onClick = onDisappointmentClick)
-                    .padding(end = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp),
-            ) {
-                Text(
-                    text = if (post.isDisappointed) "\uD83D\uDC94" else "\u2661",
-                    color = LiroutiTheme.colors.labelDefault,
-                    fontSize = 15.sp,
-                )
-                Text(
-                    text = "\uC544\uC26C\uC6CC\uC694 ${post.disappointmentCount}",
+                    text = post.likeCount.toString(),
                     color = LiroutiTheme.colors.labelDefault,
                     style = LiroutiTheme.typography.caption.copy(fontWeight = FontWeight.Medium),
                 )
