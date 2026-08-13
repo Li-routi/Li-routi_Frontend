@@ -13,6 +13,7 @@ import com.li_routi.core.domain.chat.ChatMessage
 import com.li_routi.core.domain.chat.ChatMessageType
 import com.li_routi.core.domain.chat.ConnectChatSocketUseCase
 import com.li_routi.core.domain.chat.DisconnectChatSocketUseCase
+import com.li_routi.core.domain.chat.GetChatDatesUseCase
 import com.li_routi.core.domain.chat.GetChatMessagesUseCase
 import com.li_routi.core.domain.chat.GetEmoticonsUseCase
 import com.li_routi.core.domain.chat.NewChatMessage
@@ -55,9 +56,12 @@ import com.li_routi.core.domain.grouproutine.UpdateGroupNameUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
+import com.li_routi.feature.grouproutine.component.ChatReplyPreviewUiModel
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -73,6 +77,9 @@ private data class ChatReadTarget(
     val groupId: Long,
     val lastReadMessageId: Long,
 )
+
+/** 답장 원본이 이모티콘이라 텍스트 미리보기가 없을 때 대신 보여줄 라벨. */
+private const val EmojiReplyPreviewLabel = "이모티콘"
 
 private const val MAX_ROOM_NAME_LENGTH = 20
 private const val MAX_ROUTINE_NAME_LENGTH = 20
@@ -110,6 +117,7 @@ class GroupRoutineViewModel(
     private val disappointGroupRoutineVerificationUseCase: DisappointGroupRoutineVerificationUseCase = GroupRoutineContainer.disappointGroupRoutineVerificationUseCase,
     private val undisappointGroupRoutineVerificationUseCase: UndisappointGroupRoutineVerificationUseCase = GroupRoutineContainer.undisappointGroupRoutineVerificationUseCase,
     private val getChatMessagesUseCase: GetChatMessagesUseCase = ChatContainer.getChatMessagesUseCase,
+    private val getChatDatesUseCase: GetChatDatesUseCase = ChatContainer.getChatDatesUseCase,
     private val updateChatReadPositionUseCase: UpdateChatReadPositionUseCase = ChatContainer.updateChatReadPositionUseCase,
     private val getEmoticonsUseCase: GetEmoticonsUseCase = ChatContainer.getEmoticonsUseCase,
     private val connectChatSocketUseCase: ConnectChatSocketUseCase = ChatContainer.connectChatSocketUseCase,
@@ -414,23 +422,14 @@ class GroupRoutineViewModel(
             return
         }
 
-        // 답장 대상이 있으면 원본 메시지 id를 본문 앞에 인코딩해 실어 보낸다 — 서버가 별도
-        // "답장" 필드를 지원하지 않아서다. 보낸 사람/미리보기 텍스트는 여기 싣지 않는다 — 그건
-        // "보내는" 클라이언트가 자유롭게 채우는 값이라 그대로 믿으면 위조될 수 있다. 받는 쪽은
-        // id만 신뢰하고, 실제 내용은 자기가 받은 메시지 목록에서 직접 찾는다
-        // (ChatMessage.toUiModel / resolveReplyPreview 참고).
         val replyTarget = _uiState.value.replyTarget
-        val content = if (replyTarget != null) {
-            encodeReplyContent(replyToMessageId = replyTarget.id, body = text)
-        } else {
-            text
-        }
 
         val message = NewChatMessage(
             clientMessageId = UUID.randomUUID().toString(),
             type = ChatMessageType.TEXT,
-            content = content,
+            content = text,
             emoticonCode = null,
+            replyToMessageId = replyTarget?.id,
         )
         viewModelScope.launch {
             when (val result = sendChatMessageUseCase(groupId, message)) {
@@ -451,21 +450,19 @@ class GroupRoutineViewModel(
         _uiState.update { it.copy(replyTarget = null) }
     }
 
-    // 이모티콘은 서버가 별도 answer/답장 필드를 지원하지 않고 content도 null로 보내 답장 정보를
-    // 실을 곳이 없다 — 답장 대상을 지정해 둔 채로 이모티콘을 보내면 답장 없이 그냥 전송되지만,
-    // 답장 대상 UI(채팅바 윗상자)는 텍스트 전송과 마찬가지로 정리해서 다음 메시지에 잘못 남지
-    // 않게 한다.
     fun onChatEmojiSelected(emoticon: ChatEmoticonUiModel) {
         val groupId = currentGroupId() ?: run {
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
             return
         }
 
+        val replyTarget = _uiState.value.replyTarget
         val message = NewChatMessage(
             clientMessageId = UUID.randomUUID().toString(),
             type = ChatMessageType.EMOTICON,
             content = null,
             emoticonCode = emoticon.code,
+            replyToMessageId = replyTarget?.id,
         )
         viewModelScope.launch {
             when (val result = sendChatMessageUseCase(groupId, message)) {
@@ -499,6 +496,7 @@ class GroupRoutineViewModel(
                 unreadChatCount = 0,
                 replyTarget = null,
                 chatDraftText = "",
+                selectedChatDate = null,
             )
         }
         chatSocketJob = viewModelScope.launch {
@@ -546,10 +544,15 @@ class GroupRoutineViewModel(
         viewModelScope.launch { disconnectChatSocketUseCase() }
     }
 
-    /** cursor가 null이면 최신 50개를, 값이 있으면 그 커서보다 오래된 과거 메시지 50개를 불러온다. */
-    private suspend fun loadChatMessages(groupId: Long, cursor: Long? = null) {
+    /**
+     * cursor가 null이면 최신 50개를, 값이 있으면 그 커서보다 오래된 과거 메시지 50개를 불러온다.
+     * [date]("yyyy-MM-dd")를 주면 그 날짜부터 과거로 조회한다 — 이후 이어지는 과거 스크롤
+     * ([onChatScrolledToTop])도 [GroupRoutineUiState.selectedChatDate]로 같은 date를 계속
+     * 함께 실어 보내야 한다.
+     */
+    private suspend fun loadChatMessages(groupId: Long, cursor: Long? = null, date: String? = null) {
         _uiState.update { it.copy(isChatLoading = true) }
-        when (val result = getChatMessagesUseCase(groupId = groupId, cursor = cursor, size = 50)) {
+        when (val result = getChatMessagesUseCase(groupId = groupId, cursor = cursor, size = 50, date = date)) {
             is ResultState.Success -> {
                 // 응답이 오는 사이 다른 방으로 이동했다면(현재 활성 방 ID != 요청 당시 방 ID) 상태 반영을 건너뛴다.
                 if (currentGroupId() != groupId) {
@@ -595,7 +598,47 @@ class GroupRoutineViewModel(
         if (state.isChatLoading || !state.hasMoreChatHistory) return
         val groupId = currentGroupId() ?: return
         chatHistoryJob?.cancel()
-        chatHistoryJob = viewModelScope.launch { loadChatMessages(groupId, cursor = state.chatNextCursor) }
+        chatHistoryJob = viewModelScope.launch {
+            loadChatMessages(groupId, cursor = state.chatNextCursor, date = state.selectedChatDate?.toString())
+        }
+    }
+
+    /**
+     * 캘린더에서 날짜를 골라 그 날짜부터 과거 채팅을 조회한다. 기존 목록/커서를 비우고 그 날짜를
+     * 새 앵커로 다시 불러온다 — 이후 [onChatScrolledToTop]도 이 [date]를 계속 함께 실어 보낸다.
+     */
+    fun onChatDateSelected(date: LocalDate) {
+        val groupId = currentGroupId() ?: return
+        chatHistoryJob?.cancel()
+        _uiState.update {
+            it.copy(
+                selectedChatDate = date,
+                chatMessages = emptyList(),
+                chatNextCursor = null,
+                hasMoreChatHistory = false,
+                isChatHistoryLoaded = false,
+            )
+        }
+        chatHistoryJob = viewModelScope.launch { loadChatMessages(groupId, date = date.toString()) }
+    }
+
+    /**
+     * 캘린더 시트에 표시 중인 달이 바뀔 때마다 그 달의 채팅 존재 날짜를 조회해 누적 캐시한다.
+     * 실패해도 조용히 무시한다 — 그 달의 날짜 제한만 못 걸릴 뿐 캘린더 자체는 계속 쓸 수 있다.
+     */
+    fun onCalendarMonthChange(yearMonth: YearMonth) {
+        val groupId = currentGroupId() ?: return
+        val from = yearMonth.atDay(1).toString()
+        val to = yearMonth.plusMonths(1).atDay(1).toString()
+        viewModelScope.launch {
+            when (val result = getChatDatesUseCase(groupId, from, to)) {
+                is ResultState.Success -> _uiState.update { state ->
+                    state.copy(chatDates = state.chatDates + result.data.mapNotNull(::parseIsoDateOrNull))
+                }
+                is ResultState.Error -> Unit
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     private fun markChatRead(groupId: Long, lastReadMessageId: Long) {
@@ -2516,19 +2559,29 @@ class GroupRoutineViewModel(
         }
     }
 
-    private fun ChatMessage.toUiModel(isMine: Boolean): ChatMessageUiModel {
-        val parsed = if (type == ChatMessageType.TEXT) content.parseReplyContent() else null
-        return ChatMessageUiModel(
-            id = id,
-            senderName = senderNickname,
-            message = parsed?.body ?: if (type == ChatMessageType.TEXT) content else "",
-            sentAtMillis = createdAt.toEpochMillisOrNow(),
-            isMine = isMine,
-            emojiUrl = if (type == ChatMessageType.EMOTICON) emoticon?.assetUrl else null,
-            replyToMessageId = parsed?.replyToMessageId,
-        )
-    }
+    private fun ChatMessage.toUiModel(isMine: Boolean): ChatMessageUiModel = ChatMessageUiModel(
+        id = id,
+        senderName = senderNickname,
+        message = if (type == ChatMessageType.TEXT) content else "",
+        sentAtMillis = createdAt.toEpochMillisOrNow(),
+        isMine = isMine,
+        emojiUrl = if (type == ChatMessageType.EMOTICON) emoticon?.assetUrl else null,
+        replyPreview = reply?.let { original ->
+            ChatReplyPreviewUiModel(
+                originalMessageId = original.id,
+                senderName = original.senderNickname,
+                previewText = if (original.type == ChatMessageType.EMOTICON) {
+                    EmojiReplyPreviewLabel
+                } else {
+                    original.content
+                },
+            )
+        },
+    )
 }
+
+/** 서버가 주는 "yyyy-MM-dd" 채팅 날짜 문자열을 [LocalDate]로 변환한다. 파싱 실패 시 그 날짜만 건너뛴다. */
+private fun parseIsoDateOrNull(isoDate: String): LocalDate? = runCatching { LocalDate.parse(isoDate) }.getOrNull()
 
 /**
  * 서버가 주는 createdAt 문자열을 epoch millis로 변환한다.

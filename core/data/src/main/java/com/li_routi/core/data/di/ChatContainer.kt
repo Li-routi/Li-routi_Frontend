@@ -6,6 +6,7 @@ import com.li_routi.core.data.repository.ChatRepositoryImpl
 import com.li_routi.core.domain.chat.ChatRepository
 import com.li_routi.core.domain.chat.ConnectChatSocketUseCase
 import com.li_routi.core.domain.chat.DisconnectChatSocketUseCase
+import com.li_routi.core.domain.chat.GetChatDatesUseCase
 import com.li_routi.core.domain.chat.GetChatMessagesUseCase
 import com.li_routi.core.domain.chat.GetEmoticonsUseCase
 import com.li_routi.core.domain.chat.ObserveChatMessagesUseCase
@@ -24,6 +25,10 @@ object ChatContainer {
 
     val getChatMessagesUseCase: GetChatMessagesUseCase by lazy {
         GetChatMessagesUseCase(repository)
+    }
+
+    val getChatDatesUseCase: GetChatDatesUseCase by lazy {
+        GetChatDatesUseCase(repository)
     }
 
     val updateChatReadPositionUseCase: UpdateChatReadPositionUseCase by lazy {

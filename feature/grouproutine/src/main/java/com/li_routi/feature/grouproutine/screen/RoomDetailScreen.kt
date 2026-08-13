@@ -59,9 +59,8 @@ import com.li_routi.feature.grouproutine.component.EmojiPannel
 import com.li_routi.feature.grouproutine.component.isGroupEnd
 import com.li_routi.feature.grouproutine.component.isGroupStart
 import com.li_routi.feature.grouproutine.component.isNewDate
-import com.li_routi.feature.grouproutine.component.resolveReplyPreview
-import com.li_routi.feature.grouproutine.component.toLocalDate
 import java.time.LocalDate
+import java.time.YearMonth
 import kotlinx.coroutines.launch
 
 /** 채팅바 하단에 무엇이 떠 있는지: 아무것도 없음 / 소프트 키보드 / 이모지 패널. */
@@ -101,6 +100,12 @@ fun RoomDetailScreen(
     onCalendarClick: () -> Unit = {},
     onLoadMore: () -> Unit = {},
     isInitialHistoryLoaded: Boolean = true,
+    /** 캘린더에서 선택 가능하게 표시할, 채팅이 존재하는 날짜. */
+    chatDates: Set<LocalDate> = emptySet(),
+    /** 캘린더 시트에 표시 중인 달이 바뀔 때마다 그 달의 [chatDates]를 조회하도록 호출부에 알린다. */
+    onCalendarMonthChange: (YearMonth) -> Unit = {},
+    /** 캘린더에서 날짜를 골랐을 때 그 날짜의 채팅을 실제로 불러오도록 호출부에 알린다. */
+    onChatDateSelected: (LocalDate) -> Unit = {},
 ) {
     var chatInputMode by remember { mutableStateOf(ChatInputMode.NONE) }
     val chatFieldFocusRequester = remember { FocusRequester() }
@@ -173,10 +178,10 @@ fun RoomDetailScreen(
         previousLastMessageId = lastId
     }
 
-    // 답장으로 보낸 메시지의 인용 미리보기를 탭하면 원본 메시지로 스크롤한다. resolveReplyPreview가
-    // messages에서 실제로 찾은 메시지만 인용 블록으로 보여주고 클릭 가능하게 만들기 때문에(원본을
-    // 못 찾으면 인용 자체가 안 보임), 여기 targetIndex가 -1일 일은 사실상 없다 — 그래도 방어적으로
-    // 둔다.
+    // 답장으로 보낸 메시지의 인용 미리보기를 탭하면 원본 메시지로 스크롤한다. 서버가 내려주는
+    // reply는 원본이 지금 로드된 목록에 없어도(과거 페이지 등) 항상 채워져 있으므로, targetIndex가
+    // -1인 경우(원본이 아직 안 불러와진 페이지에 있음)는 실제로 발생할 수 있다 — 그때는 조용히
+    // 아무 일도 하지 않는다(방어적 가드).
     val onReplyPreviewClick: (Long) -> Unit = { targetMessageId ->
         val targetIndex = messages.indexOfFirst { it.id == targetMessageId }
         if (targetIndex >= 0) {
@@ -281,11 +286,7 @@ fun RoomDetailScreen(
                                 isGroupStart = message.isGroupStart(previous),
                                 isGroupEnd = message.isGroupEnd(next),
                                 emojiSize = emojiSize,
-                                // 보낸 사람이 채워 넣은 값을 그대로 믿지 않고, 지금 받은
-                                // messages에서 replyToMessageId를 검증해 실제 내용으로 만든다
-                                // (resolveReplyPreview 문서 참고) — 못 찾으면 인용 없이 일반
-                                // 텍스트로만 보인다.
-                                replyPreview = resolveReplyPreview(message.replyToMessageId, messages),
+                                replyPreview = message.replyPreview,
                                 onReplySwipe = onReplySwipe,
                                 onReplyPreviewClick = onReplyPreviewClick,
                             )
@@ -356,15 +357,17 @@ fun RoomDetailScreen(
             LiroutiCalendarBottomSheet(
                 initialDate = calendarSelectedDate,
                 onDismissRequest = { isCalendarSheetVisible = false },
+                isDaySelectable = { date -> date in chatDates },
+                onDisplayedMonthChange = onCalendarMonthChange,
                 onDateSelected = { date ->
                     isCalendarSheetVisible = false
                     calendarSelectedDate = date
-                    val targetIndex = messages.indexOfFirst { it.sentAtMillis.toLocalDate() == date }
-                    if (targetIndex >= 0) {
-                        coroutineScope.launch {
-                            listState.animateScrollToItem(targetIndex)
-                        }
-                    }
+                    // 이제 messages를 그 날짜가 로드돼 있길 바라며 로컬로 뒤지는 대신, 그 날짜를
+                    // 새 앵커로 실제 서버 재조회를 요청한다(호출부가 목록을 통째로 교체함). 목록이
+                    // 바뀌므로 "맨 아래로 스크롤" 이펙트도 새 목록 기준으로 다시 한 번 동작해야 해서
+                    // hasScrolledToLatest를 리셋한다.
+                    hasScrolledToLatest = false
+                    onChatDateSelected(date)
                 },
             )
         }

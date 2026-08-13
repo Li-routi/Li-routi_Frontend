@@ -26,8 +26,17 @@ class ChatRepositoryImpl(
         groupId: Long,
         cursor: Long?,
         size: Int?,
+        date: String?,
     ): ResultState<ChatMessagePage> = safeApiCall {
-        apiCall { api.getChatMessages(groupId, cursor, size) }.toDomain()
+        apiCall { api.getChatMessages(groupId, date, cursor, size) }.toDomain()
+    }
+
+    override suspend fun getChatDates(
+        groupId: Long,
+        from: String,
+        to: String,
+    ): ResultState<List<String>> = safeApiCall {
+        apiCall { api.getChatDates(groupId, from, to) }.toDomain()
     }
 
     // 읽음 처리 응답은 result가 항상 비어 있어(성공해도 페이로드 없음) apiCall() 대신 isSuccess만 직접 확인한다.

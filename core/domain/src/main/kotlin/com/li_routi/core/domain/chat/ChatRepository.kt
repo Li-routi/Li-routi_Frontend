@@ -5,8 +5,20 @@ import kotlinx.coroutines.flow.Flow
 
 interface ChatRepository {
 
-    /** 커서 기반으로 그룹 채팅 메시지를 조회함. [cursor]가 null이면 최신 메시지부터 조회함. */
-    suspend fun getChatMessages(groupId: Long, cursor: Long?, size: Int?): ResultState<ChatMessagePage>
+    /**
+     * 커서 기반으로 그룹 채팅 메시지를 조회함. [cursor]가 null이면 최신 메시지부터 조회함.
+     * [date]("yyyy-MM-dd")를 주면 그 날짜부터 과거로 조회하며, 이후 [cursor] 페이지네이션도
+     * 같은 [date]와 함께 호출해야 함.
+     */
+    suspend fun getChatMessages(
+        groupId: Long,
+        cursor: Long?,
+        size: Int?,
+        date: String? = null,
+    ): ResultState<ChatMessagePage>
+
+    /** [from](포함)부터 [to](미포함, "yyyy-MM-dd")까지 채팅이 존재하는 날짜 목록을 조회함(KST 기준). */
+    suspend fun getChatDates(groupId: Long, from: String, to: String): ResultState<List<String>>
 
     /** 마지막으로 읽은 메시지 위치를 서버에 반영함. */
     suspend fun updateReadPosition(groupId: Long, lastReadMessageId: Long): ResultState<Unit>

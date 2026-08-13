@@ -81,9 +81,9 @@ private val ReplySwipeTriggerThreshold = 48.dp
  * [emojiUrl]이 있으면 이모티콘 메시지다 — 말풍선(텍스트) 없이 이모티콘 이미지만 그대로 보여주고,
  * 이때 [message]는 쓰이지 않는다(빈 문자열).
  *
- * [replyToMessageId]가 있으면 답장으로 보낸 메시지다. 보낸 사람이 채워 넣은 닉네임/미리보기
- * 텍스트는 신뢰하지 않고(변조 가능 — CodeRabbit 리뷰 지적) id만 들고 있다가, 실제 화면에 그릴
- * 때 [resolveReplyPreview]로 지금 받은 메시지 목록에서 진짜 내용을 찾아 보여준다.
+ * [replyPreview]가 있으면 답장으로 보낸 메시지다. 서버가 메시지 응답에 원본 메시지 미리보기를
+ * 함께 검증해 실어주므로(reply 필드), 클라이언트가 직접 받은 메시지 목록에서 원본을 찾아
+ * 재구성할 필요가 없다 — 원본이 지금 로드된 목록에 없어도(과거 페이지 등) 항상 미리보기가 보인다.
  */
 data class ChatMessageUiModel(
     val id: Long,
@@ -92,41 +92,15 @@ data class ChatMessageUiModel(
     val sentAtMillis: Long,
     val isMine: Boolean,
     val emojiUrl: String? = null,
-    val replyToMessageId: Long? = null,
+    val replyPreview: ChatReplyPreviewUiModel? = null,
 )
 
-/** 답장으로 보낸 메시지가 인용하는, 검증된 원본 메시지 정보. [resolveReplyPreview]가 만든다. */
+/** 답장으로 보낸 메시지가 인용하는 원본 메시지 정보. 서버 응답의 reply 필드에서 그대로 옮긴다. */
 data class ChatReplyPreviewUiModel(
     val originalMessageId: Long,
     val senderName: String,
     val previewText: String,
 )
-
-/** 원본 메시지가 이모티콘이라 텍스트 미리보기가 없을 때 대신 보여줄 라벨. */
-private const val EmojiReplyPreviewLabel = "이모티콘"
-
-/**
- * [replyToMessageId]가 가리키는 원본 메시지를 [messages](지금까지 받은 전체 메시지)에서 찾아
- * 답장 인용을 만든다.
- *
- * 보낸 사람이 content에 실어 보낸 닉네임/미리보기 텍스트를 그대로 믿지 않는다 — 변조된
- * 클라이언트가 실제로 하지 않은 말을 한 것처럼 가짜 인용을 위조해 보낼 수 있기 때문이다
- * (CodeRabbit 리뷰 지적). 대신 [replyToMessageId]로 실제 수신한 메시지를 찾아, 그 메시지의
- * 진짜 보낸 사람/내용에서 미리보기를 만든다.
- *
- * 원본을 찾지 못하면(아직 안 불러온 과거 메시지 등, 검증 불가) null을 반환해 인용 없이 일반
- * 텍스트로 보여준다 — 나중에 그 메시지를 불러오면(과거 채팅 스크롤 등) 같은 화면이 다시 그려질
- * 때 자연히 인용이 나타난다.
- */
-fun resolveReplyPreview(replyToMessageId: Long?, messages: List<ChatMessageUiModel>): ChatReplyPreviewUiModel? {
-    if (replyToMessageId == null) return null
-    val original = messages.firstOrNull { it.id == replyToMessageId } ?: return null
-    return ChatReplyPreviewUiModel(
-        originalMessageId = original.id,
-        senderName = original.senderName,
-        previewText = if (original.emojiUrl != null) EmojiReplyPreviewLabel else original.message,
-    )
-}
 
 /**
  * 이 메시지 앞에 프로필/닉네임을 새로 보여줘야 하는지 판단한다.
@@ -298,9 +272,8 @@ private fun Modifier.replySwipeGesture(
  * "복사하기"/"답장하기" 메뉴가 뜨고([ChatMessageActionMenu]), 답장으로 보낸 메시지는 말풍선
  * 위에 원본 인용이 함께 보이며 탭하면 [onReplyPreviewClick]으로 원본 메시지 id를 알려준다.
  *
- * [replyPreview]는 호출부(RoomDetailScreen)가 [resolveReplyPreview]로 미리 계산해 넘긴다 —
- * [ChatMessageUiModel.replyToMessageId] 자체는 검증되지 않은 값이라 이 컴포저블에서 직접
- * 신뢰하지 않는다.
+ * [replyPreview]는 [ChatMessageUiModel.replyPreview]를 그대로 넘겨받는다 — 서버가 검증해
+ * 내려준 값이라 이 컴포저블에서 별도로 원본을 다시 찾을 필요가 없다.
  *
  * [emojiSize]는 이모티콘 메시지([ChatMessageUiModel.emojiUrl])를 그릴 때 쓰는 크기로,
  * 이모지 패널에서 실제로 보였던 아이콘 크기를 그대로 넘겨받아 패널과 동일한 크기로 보이게 한다.
@@ -514,9 +487,9 @@ private val ChatBubbleReplyQuoteTintOnPrimary = Color.White.copy(alpha = 0.16f)
 
 /**
  * 답장으로 보낸 메시지의 말풍선 안, 실제 텍스트 위에 붙는 원본 메시지 인용 블록.
- * [replyPreview]는 [resolveReplyPreview]가 실제 수신한 메시지에서 검증해 만든 값이라 항상
- * [ChatReplyPreviewUiModel.originalMessageId]를 갖고 있으므로, 탭하면 바로 원본 메시지로
- * 이동할 수 있다.
+ * [replyPreview]는 서버가 내려준 값이라 항상 [ChatReplyPreviewUiModel.originalMessageId]를
+ * 갖고 있으므로, 탭하면 바로 원본 메시지로 이동할 수 있다(단, 원본이 지금 로드된 목록에 없으면
+ * 이동은 조용히 무시된다 — 호출부의 방어 로직 참고).
  */
 @Composable
 private fun ChatBubbleReplyQuote(

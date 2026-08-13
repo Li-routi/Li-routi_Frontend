@@ -4,6 +4,7 @@ import com.li_routi.core.common.ui.routine.CategoryColor
 
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
+import java.time.LocalDate
 
 enum class GroupRoutineScreenMode {
     List,
@@ -156,6 +157,10 @@ data class GroupRoutineUiState(
      * 시작되므로, 이력이 오기 전에 실시간 메시지가 먼저 도착해도 화면이 "맨 아래로 스크롤"을
      * 섣불리 소모하지 않도록 화면 쪽에서 이 값과 함께 확인한다. */
     val isChatHistoryLoaded: Boolean = false,
+    /** 캘린더에서 선택 가능하게 표시할, 채팅이 존재하는 날짜(달이 바뀔 때마다 조회해 누적 캐시). */
+    val chatDates: Set<LocalDate> = emptySet(),
+    /** 현재 조회 중인 채팅 날짜 필터. null이면 최신 메시지 기준(cursor 페이지네이션)이다. */
+    val selectedChatDate: LocalDate? = null,
     val newCertifications: List<NewCertificationUiModel> = SampleNewCertifications,
     val routines: List<GroupRoutineUiModel> = emptyList(),
     val members: List<GroupMemberUiModel> = SampleGroupMembers,
