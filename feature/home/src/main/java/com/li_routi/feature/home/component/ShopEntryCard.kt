@@ -15,7 +15,9 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -49,6 +51,10 @@ private val CharacterHeight = 180.dp
  * Figma는 이 영역이 바텀시트 상단까지 그라데이션이 꽉 차게 채워지고, 그 안에서 콘텐츠(닉네임 줄 +
  * 캐릭터)가 세로로 가운데 정렬된다 — 그래서 [modifier]로 상위(HomeScreen)가 남는 공간을 그대로
  * 채우도록 넘기고, 여기서는 fillMaxSize + Arrangement.Center로 받는다.
+ *
+ * verticalScroll을 같이 둬서, 화면이 짧거나(작은 기기) 시스템 폰트 크기가 커서 닉네임 줄 + 캐릭터
+ * 박스(220x180) 높이가 남는 공간보다 커지는 경우에도 위아래가 그냥 잘리지 않고 스크롤로 볼 수 있게
+ * 한다 — 공간이 충분할 땐 스크롤할 게 없어 기존처럼 그대로 가운데 정렬로 보인다.
  */
 @Composable
 fun ShopEntryCard(
@@ -68,6 +74,7 @@ fun ShopEntryCard(
                     ),
                 ),
             )
+            .verticalScroll(rememberScrollState())
             .padding(16.dp),
         verticalArrangement = Arrangement.Center,
         horizontalAlignment = Alignment.CenterHorizontally,

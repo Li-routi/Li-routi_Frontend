@@ -14,6 +14,8 @@ data class FindChallengeUiState(
     val errorMessage: String? = null,
     /** 다음 페이지 요청에 쓸 커서. 마지막 응답의 nextCursor. */
     val nextCursor: Long? = null,
-    /** 더 불러올 페이지가 남아있는지. */
+    /** 더 불러올 페이지가 남아있는지. 다음 페이지 요청이 실패해도 서버에 더 남아있을 수 있으므로 끄지 않는다. */
     val hasNext: Boolean = false,
+    /** 다음 페이지 요청 실패 메시지. null이 아니면 목록 하단에 재시도 UI를 보여준다. */
+    val loadMoreError: String? = null,
 )

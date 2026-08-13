@@ -210,6 +210,23 @@ fun FindChallengeScreen(
                                         CircularProgressIndicator(color = LiroutiTheme.colors.labelDefault)
                                     }
                                 }
+                            } else if (uiState.loadMoreError != null) {
+                                item {
+                                    Row(
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .height(56.dp)
+                                            .clickable(onClick = actions::onLoadMore),
+                                        horizontalArrangement = Arrangement.Center,
+                                        verticalAlignment = Alignment.CenterVertically,
+                                    ) {
+                                        Text(
+                                            text = "더 불러오지 못했어요. 다시 시도",
+                                            style = LiroutiTheme.typography.captionRegular,
+                                            color = LiroutiTheme.colors.labelDefault,
+                                        )
+                                    }
+                                }
                             }
                         }
                     }

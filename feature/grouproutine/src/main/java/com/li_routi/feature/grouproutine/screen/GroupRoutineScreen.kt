@@ -406,6 +406,7 @@ private fun GroupRoutineScreen(
                     replyTarget = uiState.replyTarget,
                     onReplySwipe = onReplySwipe,
                     onReplyCancelClick = onReplyCancelClick,
+                    isInitialHistoryLoaded = uiState.isChatHistoryLoaded,
                 )
             }
 

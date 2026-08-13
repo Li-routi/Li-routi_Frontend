@@ -119,6 +119,12 @@ fun RoutineEditBottomSheet(
     onAlarmClick: (() -> Unit)? = null,
     showAlarmSection: Boolean = false,
     showRoomInfo: Boolean = false,
+    /**
+     * 저장/삭제 실패 메시지. ModalBottomSheet는 별도 창(Popup)에 떠서 화면의 다른 영역(예: 바깥
+     * Box에 그리는 에러 텍스트)에 뭘 그려도 가려지므로, 실패 메시지는 이 시트 자신의 콘텐츠 안에서
+     * 보여줘야 실제로 눈에 띈다.
+     */
+    errorMessage: String? = null,
 ) {
     // design-system LiroutiBottomSheet radius(6)와 달리 Figma `3610:26830`은 top 20
     ModalBottomSheet(
@@ -152,6 +158,14 @@ fun RoutineEditBottomSheet(
                 showAlarmSection = showAlarmSection,
                 showRoomInfo = showRoomInfo,
             )
+            if (errorMessage != null) {
+                Text(
+                    text = errorMessage,
+                    style = LiroutiTheme.typography.caption,
+                    color = LiroutiTheme.colors.dangerText,
+                    modifier = Modifier.fillMaxWidth(),
+                )
+            }
             // 반복 요일을 하나도 고르지 않으면 저장할 수 없으므로 확인 버튼을 비활성화한다.
             val confirmEnabled = name.isNotBlank() && selectedDays.isNotEmpty()
             Box(

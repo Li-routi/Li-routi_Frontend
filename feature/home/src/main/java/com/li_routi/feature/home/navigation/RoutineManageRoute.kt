@@ -98,12 +98,23 @@ fun RoutineManageRoute(
     var endTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
         mutableStateOf(LiroutiClockTime.DefaultEvening)
     }
+    // 수정 모드로 열면(onItemClick) 기존 루틴 값이 그대로 채워져 들어오므로, 빈 기본값과 비교하면
+    // 열자마자 "변경됨"으로 잡힌다. 시트를 열 때의 값을 기준선으로 따로 들고, draft 여부는 이
+    // 기준선과의 차이로 판단한다.
+    var baselineRoutineName by rememberSaveable { mutableStateOf("") }
+    var baselineSelectedDays by rememberSaveable { mutableStateOf(emptySet<Int>()) }
+    var baselineStartTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
+        mutableStateOf(LiroutiClockTime.DefaultMorning)
+    }
+    var baselineEndTime by rememberSaveable(stateSaver = LiroutiClockTimeSaver) {
+        mutableStateOf(LiroutiClockTime.DefaultEvening)
+    }
 
     val hasRoutineSheetDraft =
-        routineName.isNotBlank() ||
-            selectedDays.isNotEmpty() ||
-            startTime != LiroutiClockTime.DefaultMorning ||
-            endTime != LiroutiClockTime.DefaultEvening
+        routineName != baselineRoutineName ||
+            selectedDays != baselineSelectedDays ||
+            startTime != baselineStartTime ||
+            endTime != baselineEndTime
 
     fun askDiscardConfirm(onConfirm: () -> Unit) {
         pendingExitAction = onConfirm
@@ -118,6 +129,10 @@ fun RoutineManageRoute(
         selectedDays = emptySet()
         startTime = LiroutiClockTime.DefaultMorning
         endTime = LiroutiClockTime.DefaultEvening
+        baselineRoutineName = ""
+        baselineSelectedDays = emptySet()
+        baselineStartTime = LiroutiClockTime.DefaultMorning
+        baselineEndTime = LiroutiClockTime.DefaultEvening
     }
 
     fun requestExit() {
@@ -199,6 +214,10 @@ fun RoutineManageRoute(
                 selectedDays = emptySet()
                 startTime = LiroutiClockTime.DefaultMorning
                 endTime = LiroutiClockTime.DefaultEvening
+                baselineRoutineName = ""
+                baselineSelectedDays = emptySet()
+                baselineStartTime = LiroutiClockTime.DefaultMorning
+                baselineEndTime = LiroutiClockTime.DefaultEvening
                 showRoutineSheet = true
             },
             primaryButtonText = if (uiState.isSubmitting) "등록 중..." else "완료",
@@ -216,6 +235,10 @@ fun RoutineManageRoute(
                     selectedDays = routine.toDayIndexes()
                     startTime = LiroutiClockTime.DefaultMorning
                     endTime = LiroutiClockTime.fromApiHHmm(routine.endTime ?: "23:59")
+                    baselineRoutineName = routineName
+                    baselineSelectedDays = selectedDays
+                    baselineStartTime = startTime
+                    baselineEndTime = endTime
                     showRoutineSheet = true
                 }
             },
@@ -228,7 +251,9 @@ fun RoutineManageRoute(
             )
         }
 
-        uiState.errorMessage?.takeIf { !showCategorySheet }?.let { message ->
+        // 카테고리/루틴 시트가 열려 있으면 각 시트 안에서 에러를 보여준다(ModalBottomSheet는 별도
+        // 창이라 이 Box에 그려도 시트에 가려 안 보임) — 여기서는 두 시트가 다 닫혀 있을 때만 보여준다.
+        uiState.errorMessage?.takeIf { !showCategorySheet && !showRoutineSheet }?.let { message ->
             Text(
                 text = message,
                 style = LiroutiTheme.typography.caption,
@@ -307,6 +332,7 @@ fun RoutineManageRoute(
             showAlarmSection = false,
             showRoomInfo = false,
             hasDraft = hasRoutineSheetDraft,
+            errorMessage = uiState.errorMessage,
             onDeleteClick = { showSheetDeleteDialog = true },
             onConfirm = {
                 val routineId = editingRoutineId

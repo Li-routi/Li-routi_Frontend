@@ -73,6 +73,7 @@ class FindChallengeViewModel(
                 isLoadingMore = false,
                 selectedCategory = category,
                 errorMessage = null,
+                loadMoreError = null,
             )
         }
         loadJob = viewModelScope.launch {
@@ -106,7 +107,7 @@ class FindChallengeViewModel(
         if (state.isLoading || state.isLoadingMore || !state.hasNext || cursor == null) return
 
         loadMoreJob?.cancel()
-        _uiState.update { it.copy(isLoadingMore = true) }
+        _uiState.update { it.copy(isLoadingMore = true, loadMoreError = null) }
         loadMoreJob = viewModelScope.launch {
             when (
                 val result = getChallengesUseCase(
@@ -124,8 +125,12 @@ class FindChallengeViewModel(
                         hasNext = result.data.hasNext,
                     )
                 }
-                // 다음 페이지 실패는 기존 목록을 지우지 않고 조용히 멈춘다 — hasNext를 꺼서 재시도 폭주를 막는다.
-                is ResultState.Error -> _uiState.update { it.copy(isLoadingMore = false, hasNext = false) }
+                // 다음 페이지 실패는 기존 목록을 지우지 않고 조용히 멈춘다. hasNext는 끄지 않는다 —
+                // 이 실패가 서버에 더 이상 페이지가 없다는 뜻은 아니므로, 재시도하면 다시 불러올 수 있어야
+                // 한다. 대신 loadMoreError로 목록 하단에 재시도 UI를 보여준다.
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isLoadingMore = false, loadMoreError = result.message)
+                }
                 ResultState.Loading -> Unit
             }
         }

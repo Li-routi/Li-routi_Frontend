@@ -433,6 +433,7 @@ class GroupRoutineViewModel(
         }
 
         chatSocketJob?.cancel()
+        _uiState.update { it.copy(isChatHistoryLoaded = false) }
         chatSocketJob = viewModelScope.launch {
             when (val result = connectChatSocketUseCase(groupId)) {
                 is ResultState.Error -> {
@@ -500,6 +501,7 @@ class GroupRoutineViewModel(
                         chatNextCursor = result.data.nextCursor,
                         hasMoreChatHistory = result.data.hasNext,
                         isChatLoading = false,
+                        isChatHistoryLoaded = state.isChatHistoryLoaded || cursor == null,
                         unreadChatCount = if (historyMessages.isEmpty()) 0 else state.unreadChatCount,
                     )
                 }
@@ -509,7 +511,13 @@ class GroupRoutineViewModel(
                 }
             }
 
-            is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message, isChatLoading = false) }
+            is ResultState.Error -> _uiState.update {
+                it.copy(
+                    actionMessage = result.message,
+                    isChatLoading = false,
+                    isChatHistoryLoaded = it.isChatHistoryLoaded || cursor == null,
+                )
+            }
             ResultState.Loading -> _uiState.update { it.copy(isChatLoading = false) }
         }
     }

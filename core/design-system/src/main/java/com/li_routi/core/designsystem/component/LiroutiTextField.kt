@@ -30,8 +30,8 @@ fun LiroutiTextField(
     modifier: Modifier = Modifier,
     // 호출부가 placeholder를 깜빡 빠뜨려도 영문 더미 문구가 실제 화면에 노출되지 않도록 기본값을 비워둔다.
     placeholder: String = "",
-    labelText: String = "Label",
-    helperText: String = "Helper Text",
+    labelText: String = "",
+    helperText: String = "",
     showLabel: Boolean = true,
     showHelper: Boolean = true,
     isError: Boolean = false,
@@ -55,7 +55,11 @@ fun LiroutiTextField(
                 .fillMaxWidth()
                 .height(44.dp)
                 .background(LiroutiTheme.colors.backgroundDefault, RoundedCornerShape(6.dp))
-                .border(1.dp, LiroutiTheme.colors.borderDefault, RoundedCornerShape(6.dp))
+                .border(
+                    1.dp,
+                    if (isError) LiroutiTheme.colors.dangerText else LiroutiTheme.colors.borderDefault,
+                    RoundedCornerShape(6.dp),
+                )
                 .padding(horizontal = 16.dp, vertical = 10.dp),
             contentAlignment = Alignment.CenterStart,
         ) {
@@ -97,7 +101,13 @@ fun LiroutiTextField(
 private fun LiroutiTextFieldPreview() {
     LiroutiFrontendTheme {
         Column(modifier = Modifier.padding(16.dp)) {
-            LiroutiTextField(value = "", onValueChange = {})
+            LiroutiTextField(
+                value = "",
+                onValueChange = {},
+                placeholder = "Placeholder",
+                labelText = "Label",
+                helperText = "Helper Text",
+            )
         }
     }
 }

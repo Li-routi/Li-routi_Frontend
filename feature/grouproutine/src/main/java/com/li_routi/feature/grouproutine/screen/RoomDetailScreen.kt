@@ -98,6 +98,7 @@ fun RoomDetailScreen(
     onEmojiSelected: (ChatEmoticonUiModel) -> Unit = {},
     onCalendarClick: () -> Unit = {},
     onLoadMore: () -> Unit = {},
+    isInitialHistoryLoaded: Boolean = true,
 ) {
     var chatInputMode by remember { mutableStateOf(ChatInputMode.NONE) }
     val chatFieldFocusRequester = remember { FocusRequester() }
@@ -126,9 +127,14 @@ fun RoomDetailScreen(
     // 채팅방 진입 시 맨 위(가장 오래된 메시지) 기준으로 보이던 문제 — 메시지가 처음 채워지는 순간
     // 딱 한 번 최신(맨 아래) 메시지로 이동한다. 이후(과거 메시지 이어붙이기 등) 재실행되지 않도록
     // hasScrolledToLatest로 막는다.
+    //
+    // isInitialHistoryLoaded도 함께 확인해야 한다 — 소켓 구독이 REST 이력 조회보다 먼저 시작되므로,
+    // 이력이 오기 전에 실시간 메시지 하나가 먼저 도착하면 messages가 그 한 건만으로 비어있지 않게
+    // 되어 이 이펙트가 그 시점(맨 위=맨 아래인 index 0)에서 소모돼버린다. 이후 이력이 앞에 붙어도
+    // "딱 한 번"은 이미 써버렸으니 다시 스크롤되지 않는다.
     var hasScrolledToLatest by remember { mutableStateOf(false) }
-    LaunchedEffect(messages.isNotEmpty()) {
-        if (!hasScrolledToLatest && messages.isNotEmpty()) {
+    LaunchedEffect(messages.isNotEmpty(), isInitialHistoryLoaded) {
+        if (!hasScrolledToLatest && isInitialHistoryLoaded && messages.isNotEmpty()) {
             hasScrolledToLatest = true
             listState.scrollToItem(messages.lastIndex)
         }

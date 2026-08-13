@@ -180,17 +180,32 @@ data class RoutineManageUiState(
             return newTemplateCount + newCustomCount
         }
 
+    /**
+     * 체크 해제된, 이미 등록된 템플릿 — [onSubmit]이 새로 만들기 전에 먼저 삭제하는 개수.
+     * [hasDraftChanges]의 "잠긴 항목이 해제됐는지" 판단과 같은 기준([knownAddedTemplateIds] 중
+     * [selectedIds]에서 빠진 것)이지만, 여기서는 실제 개수가 필요해 count로 센다.
+     */
+    val pendingDeleteCount: Int
+        get() = knownAddedTemplateIds.count { it.toString() !in selectedIds }
+
+    /**
+     * 제출 시 서버에 남을 실제 활성 루틴 수. [onSubmit]은 체크 해제한 등록 루틴을 먼저 지운 뒤에
+     * 새 루틴을 만들므로, 기존 개수에서 삭제 예정([pendingDeleteCount])을 빼고 생성 예정을 더해야 한다.
+     */
+    private val projectedActiveRoutineCount: Int
+        get() = existingActiveRoutineCount - pendingDeleteCount + pendingCreateCount
+
     /** 기존 + 새로 생성될 개수가 서버 한도(30개)를 넘으면 안내 문구, 아니면 null. */
     val overLimitMessage: String?
         get() {
-            val total = existingActiveRoutineCount + pendingCreateCount
+            val total = projectedActiveRoutineCount
             return "루틴은 최대 ${MaxActiveRoutines}개까지 등록할 수 있어요 (현재 ${total}개 선택됨)"
                 .takeIf { total > MaxActiveRoutines }
         }
 
     /** 등록 중이 아니고, 제출하면 30개 한도를 넘지 않을 때만 완료 버튼 활성. */
     val canSubmit: Boolean
-        get() = !isSubmitting && existingActiveRoutineCount + pendingCreateCount <= MaxActiveRoutines
+        get() = !isSubmitting && projectedActiveRoutineCount <= MaxActiveRoutines
 
     /**
      * 템플릿 선택·커스텀 추가·이미 등록된 항목 체크 해제 등 이탈 시 확인할 초안 변경.
@@ -259,6 +274,12 @@ class RoutineManageViewModel(
                 }
                 is RegisteredLoadResult.Failed -> {
                     registeredRoutineRefs = emptyList()
+                    // existingActiveRoutineCount/registeredCustomRoutines를 이전 값 그대로 두면,
+                    // 실제로는 더 이상 없는(혹은 확인 못한) 커스텀 루틴이 체크리스트에 계속 보이고
+                    // 탭하면 이제 무효한 routineId로 수정 시트가 열릴 수 있다 — 같이 비운다.
+                    _uiState.update {
+                        it.copy(existingActiveRoutineCount = 0, registeredCustomRoutines = emptyList())
+                    }
                 }
             }
             when (val categories = getRoutineCategoriesUseCase()) {
