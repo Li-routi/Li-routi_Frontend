@@ -133,6 +133,7 @@ import com.li_routi.feature.grouproutine.R
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
+import com.li_routi.feature.grouproutine.navigation.GroupRoutineVerificationTarget
 import com.li_routi.feature.grouproutine.vm.CertificationPostUiModel
 import com.li_routi.feature.grouproutine.vm.CreateRoutineOptionUiModel
 import com.li_routi.feature.grouproutine.vm.GroupMemberUiModel
@@ -153,7 +154,7 @@ fun GroupRoutineRoute(
     onInitialEntryPointConsumed: () -> Unit = {},
     viewModel: GroupRoutineViewModel = viewModel { GroupRoutineViewModel() },
     onTabSelected: (AppBottomTab) -> Unit = {},
-    onStartVerification: (String) -> Unit = {},
+    onStartVerification: (GroupRoutineVerificationTarget) -> Unit = {},
     verificationRefreshSignal: Int = 0,
     verifiedRoutineId: Long? = null,
     modifier: Modifier = Modifier,
@@ -220,7 +221,6 @@ fun GroupRoutineRoute(
     LaunchedEffect(verificationRefreshSignal) {
         if (verificationRefreshSignal > 0) {
             viewModel.markRoutineVerified(verifiedRoutineId)
-            viewModel.refreshSelectedGroup(refreshMemberDetail = true)
         }
     }
 
@@ -275,7 +275,18 @@ fun GroupRoutineRoute(
         onCategoryColorSelected = viewModel::onCategoryColorSelected,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
         onRoutineVerificationClick = { groupId, routineId ->
-            onStartVerification("group_${groupId}_${routineId}")
+            val todo = uiState.todos.firstOrNull { it.id == routineId } ?: return@GroupRoutineScreen
+            onStartVerification(
+                GroupRoutineVerificationTarget(
+                    groupId = groupId,
+                    routineId = routineId,
+                    roomName = uiState.selectedRoutine?.title.orEmpty(),
+                    title = todo.title,
+                    category = todo.category,
+                    deadline = todo.deadline,
+                    categoryColor = todo.categoryColor,
+                ),
+            )
         },
         onCertificationTabClick = viewModel::onCertificationTabClick,
         onCertificationMemberClick = viewModel::onCertificationMemberClick,
@@ -995,16 +1006,11 @@ private fun CategoryChipRow(
             items(categories) { label ->
                 val selected = label == selectedCategory
                 val selectedColor = categoryColors[label]?.swatch ?: LiroutiTheme.colors.primaryNormal
-                Text(
-                    text = if (selected) "✓ $label" else label,
-                    color = if (selected) selectedColor.readableContentColor() else LiroutiTheme.colors.labelSub,
-                    style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(100.dp))
-                        .background(if (selected) selectedColor else LiroutiTheme.colors.backgroundDefault)
-                        .border(1.dp, if (selected) selectedColor else LiroutiTheme.colors.borderDefault, RoundedCornerShape(100.dp))
-                        .clickable { onCategoryClick(label) }
-                        .padding(horizontal = 16.dp, vertical = 10.dp),
+                GroupRoutineCategoryChip(
+                    label = label,
+                    selected = selected,
+                    selectedColor = selectedColor,
+                    onClick = { onCategoryClick(label) },
                 )
             }
         }
@@ -1025,6 +1031,27 @@ private fun CategoryChipRow(
             )
         }
     }
+}
+
+@Composable
+private fun GroupRoutineCategoryChip(
+    label: String,
+    selected: Boolean,
+    selectedColor: Color,
+    onClick: () -> Unit,
+) {
+    val shape = RoundedCornerShape(100.dp)
+    Text(
+        text = if (selected) "✓ $label" else label,
+        color = if (selected) selectedColor.readableContentColor() else LiroutiTheme.colors.labelSub,
+        style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+        modifier = Modifier
+            .clip(shape)
+            .background(if (selected) selectedColor else LiroutiTheme.colors.backgroundDefault)
+            .border(1.dp, if (selected) selectedColor else LiroutiTheme.colors.borderDefault, shape)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 16.dp, vertical = 10.dp),
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -2617,17 +2644,11 @@ private fun DetailRoutineCategoryTabs(
         items(categories) { category ->
             val selected = category == selectedCategory
             val selectedColor = categoryColors[category]?.swatch ?: LiroutiTheme.colors.primaryNormal
-            Text(
-                text = if (selected) "✓ $category" else category,
-                color = if (selected) LiroutiTheme.colors.backgroundDefault else LiroutiTheme.colors.labelSub,
-                style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
-                modifier = Modifier
-                    .height(38.dp)
-                    .clip(RoundedCornerShape(100.dp))
-                    .background(if (selected) selectedColor else LiroutiTheme.colors.backgroundDefault)
-                    .border(1.dp, if (selected) selectedColor else LiroutiTheme.colors.borderDefault, RoundedCornerShape(100.dp))
-                    .clickable { onCategoryClick(category) }
-                    .padding(horizontal = 16.dp, vertical = 9.dp),
+            GroupRoutineCategoryChip(
+                label = category,
+                selected = selected,
+                selectedColor = selectedColor,
+                onClick = { onCategoryClick(category) },
             )
         }
     }

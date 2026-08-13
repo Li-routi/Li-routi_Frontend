@@ -30,14 +30,19 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.data.di.ChallengeContainer
+import com.li_routi.core.data.di.GroupRoutineContainer
 import com.li_routi.core.data.di.HomeContainer
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.core.domain.grouproutine.GroupRoutineStatus
+import com.li_routi.core.domain.grouproutine.TodayGroupRoutine
 import com.li_routi.core.domain.notification.NotificationNavigationTarget
 import com.li_routi.feature.challenge.navigation.ChallengeNavHost
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
 import com.li_routi.feature.grouproutine.navigation.GrouproutineRootNavHost
+import com.li_routi.feature.grouproutine.navigation.GroupRoutineVerificationTarget
 import com.li_routi.feature.home.navigation.HomeEntryPoint
 import com.li_routi.feature.home.navigation.HomeNavHost
 import com.li_routi.feature.home.navigation.RoutineAuthCameraRoute
@@ -51,6 +56,30 @@ import com.li_routi.feature.home.vm.toHomeUiState
 import com.li_routi.feature.mypage.navigation.MyPageRoute
 
 private const val DoubleBackPressIntervalMillis = 2000L
+
+private fun TodayGroupRoutine.toAuthSelectable() = RoutineAuthSelectableUiModel(
+    id = "group_${groupId}_$routineId",
+    title = title,
+    dueLabel = scheduledEndTime.takeIf { it.isNotBlank() }?.let { "마감 $it" },
+    subtitle = groupName,
+    categoryLabel = categoryName,
+    categoryColor = CategoryColor.entries[
+        (((categoryId % CategoryColor.entries.size) + CategoryColor.entries.size) % CategoryColor.entries.size).toInt()
+    ],
+    groupId = groupId,
+    groupRoutineId = routineId,
+)
+
+private fun GroupRoutineVerificationTarget.toAuthSelectable() = RoutineAuthSelectableUiModel(
+    id = "group_${groupId}_$routineId",
+    title = title,
+    dueLabel = deadline.takeIf(String::isNotBlank)?.let { "마감 $it" },
+    subtitle = roomName,
+    categoryLabel = category,
+    categoryColor = categoryColor,
+    groupId = groupId,
+    groupRoutineId = routineId,
+)
 
 /** [Uri]는 Bundle에 바로 못 넣으므로 문자열로 저장/복원한다(구성 변경 후에도 촬영 사진 유지). */
 private val NullableUriSaver = Saver<Uri?, String>(
@@ -166,6 +195,9 @@ fun AppNavHost(
     // 오버레이가 닫히지 않고 유지된다.
     var showVerificationFlow by rememberSaveable { mutableStateOf(false) }
     var verificationPreselectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var verificationPreselectedRoutine by remember {
+        mutableStateOf<RoutineAuthSelectableUiModel?>(null)
+    }
     var capturedVerificationPhotoUri by rememberSaveable(stateSaver = NullableUriSaver) {
         mutableStateOf(null)
     }
@@ -178,8 +210,12 @@ fun AppNavHost(
     var groupRoutineRefreshSignal by remember { mutableIntStateOf(0) }
     var verifiedGroupRoutineId by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    fun startVerificationFlow(preselectedId: String?) {
+    fun startVerificationFlow(
+        preselectedId: String?,
+        preselectedRoutine: RoutineAuthSelectableUiModel? = null,
+    ) {
         verificationPreselectedId = preselectedId
+        verificationPreselectedRoutine = preselectedRoutine
         capturedVerificationPhotoUri = null
         showVerificationFlow = true
     }
@@ -188,6 +224,7 @@ fun AppNavHost(
         showVerificationFlow = false
         capturedVerificationPhotoUri = null
         verificationPreselectedId = null
+        verificationPreselectedRoutine = null
     }
 
     // 개인 루틴 + 그룹 루틴(홈 요약) + 참여 중인 챌린지를 한 목록으로 합친다. 플로우가 열릴 때마다
@@ -197,9 +234,29 @@ fun AppNavHost(
         if (!showVerificationFlow) return@LaunchedEffect
         isLoadingVerificationRoutines = true
         verificationLoadError = false
+        val selectedGroupRoutine = verificationPreselectedRoutine?.takeIf { routine ->
+            verificationPreselectedId == routine.id &&
+                routine.groupId != null &&
+                routine.groupRoutineId != null
+        }
+        if (selectedGroupRoutine != null) {
+            verificationRoutines = listOf(selectedGroupRoutine)
+            isLoadingVerificationRoutines = false
+            return@LaunchedEffect
+        }
         val homeResult = HomeContainer.getHomeSummaryUseCase()
         val challengesResult = ChallengeContainer.getMyChallengesUseCase()
-        if (homeResult !is ResultState.Success || challengesResult !is ResultState.Success) {
+        val isGroupVerification = verificationPreselectedId?.startsWith("group_") == true
+        val groupRoutinesResult = if (isGroupVerification) {
+            GroupRoutineContainer.getTodayGroupRoutinesUseCase()
+        } else {
+            null
+        }
+        if (
+            homeResult !is ResultState.Success ||
+            challengesResult !is ResultState.Success ||
+            (isGroupVerification && groupRoutinesResult !is ResultState.Success)
+        ) {
             verificationLoadError = true
             isLoadingVerificationRoutines = false
             return@LaunchedEffect
@@ -207,8 +264,15 @@ fun AppNavHost(
         val homeItems = homeResult.data.toHomeUiState()
             .let { it.myRoutineItems + it.groupRoomItems }
             .toAuthSelectables()
+        val groupItems = (groupRoutinesResult as? ResultState.Success)
+            ?.data
+            .orEmpty()
+            .filter { it.status == GroupRoutineStatus.PENDING || it.status == GroupRoutineStatus.IN_PROGRESS }
+            .map(TodayGroupRoutine::toAuthSelectable)
         val challengeItems = challengesResult.data.toAuthSelectables()
-        verificationRoutines = homeItems + challengeItems
+        verificationRoutines = (
+            listOfNotNull(verificationPreselectedRoutine) + groupItems + homeItems + challengeItems
+        ).distinctBy { it.id }
         isLoadingVerificationRoutines = false
     }
 
@@ -243,7 +307,10 @@ fun AppNavHost(
                     initialEntryPoint = groupRoutineEntryPoint,
                     onInitialEntryPointConsumed = { groupRoutineEntryPoint = null },
                     onTabSelected = ::selectTab,
-                    onStartVerification = ::startVerificationFlow,
+                    onStartVerification = { target ->
+                        val selectable = target.toAuthSelectable()
+                        startVerificationFlow(selectable.id, selectable)
+                    },
                     verificationRefreshSignal = groupRoutineRefreshSignal,
                     verifiedRoutineId = verifiedGroupRoutineId,
                     modifier = Modifier.fillMaxSize(),
