@@ -32,8 +32,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.snapshotFlow
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -54,10 +54,12 @@ import com.li_routi.feature.grouproutine.component.ChatBox
 import com.li_routi.feature.grouproutine.component.ChatDateDivider
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
+import com.li_routi.feature.grouproutine.component.EmojiCellSizeProbe
 import com.li_routi.feature.grouproutine.component.EmojiPannel
 import com.li_routi.feature.grouproutine.component.isGroupEnd
 import com.li_routi.feature.grouproutine.component.isGroupStart
 import com.li_routi.feature.grouproutine.component.isNewDate
+import com.li_routi.feature.grouproutine.component.resolveReplyPreview
 import com.li_routi.feature.grouproutine.component.toLocalDate
 import java.time.LocalDate
 import kotlinx.coroutines.launch
@@ -68,11 +70,11 @@ private enum class ChatInputMode { NONE, KEYBOARD, EMOJI }
 /** 키보드를 한 번도 띄운 적이 없어 실제 높이를 측정 못 했을 때 [EmojiPannel]에 쓸 기본 높이. */
 private val DefaultEmojiPanelHeight = 250.dp
 
-/** [EmojiPannel]이 아직 실제 셀 크기를 측정해 알려주기 전(=한 번도 연 적 없음)에 쓸 기본 크기. */
+/**
+ * [EmojiCellSizeProbe]가 첫 측정을 마치기 전(아주 짧은 순간) 쓸 기본 크기.
+ * 실제 크기는 화면 진입 즉시 [EmojiCellSizeProbe]가 계산해 덮어쓴다.
+ */
 private val DefaultEmojiSize = 40.dp
-
-/** 상단 바/채팅바를 제외한 메시지 영역의 배경색. */
-private val MessageAreaBackground = Color(0xFFE8EAED)
 
 /**
  * 모임방 상세 화면 (Figma `ROOM_DETAIL`)의 최소 placeholder.
@@ -132,11 +134,55 @@ fun RoomDetailScreen(
     // 이력이 오기 전에 실시간 메시지 하나가 먼저 도착하면 messages가 그 한 건만으로 비어있지 않게
     // 되어 이 이펙트가 그 시점(맨 위=맨 아래인 index 0)에서 소모돼버린다. 이후 이력이 앞에 붙어도
     // "딱 한 번"은 이미 써버렸으니 다시 스크롤되지 않는다.
+    //
+    // hasScrolledToLatest는 스크롤이 "끝난 뒤"에 true로 바뀐다 — LazyColumn을 아래(alpha)에서
+    // 그 값이 true일 때만 보여줘서, 맨 위에서 시작했다가 맨 아래로 튀는 게 화면에 한 프레임이라도
+    // 비치는 걸 막는다.
     var hasScrolledToLatest by remember { mutableStateOf(false) }
     LaunchedEffect(messages.isNotEmpty(), isInitialHistoryLoaded) {
         if (!hasScrolledToLatest && isInitialHistoryLoaded && messages.isNotEmpty()) {
-            hasScrolledToLatest = true
             listState.scrollToItem(messages.lastIndex)
+            hasScrolledToLatest = true
+        }
+    }
+
+    // 새 메시지가 맨 뒤에 붙었을 때(내가 보냈든, 상대가 보냈든), 그 메시지가 오기 "직전"에 이미
+    // 맨 아래를 보고 있었을 때만 자동으로 맨 아래까지 따라 스크롤한다. 과거 메시지를 읽으려고
+    // 위로 스크롤해 둔 상태라면 새 메시지가 와도 보던 위치를 유지해야 하므로 스크롤하지 않는다.
+    //
+    // "직전에 맨 아래였는지"는 이 프레임(새 메시지가 이미 리스트에 반영된 뒤)의 layoutInfo로
+    // 판단하되, 새 메시지가 추가되기 전의 마지막 아이템(oldLastIndex)이 화면에 보이고 있었는지를
+    // 본다 — 뒤에 항목을 추가해도 그 앞 아이템들의 레이아웃 위치는 바뀌지 않으므로 이 값은
+    // 추가 전과 추가 후가 동일하게 유효하다.
+    var previousMessageCount by remember { mutableStateOf(messages.size) }
+    var previousLastMessageId by remember { mutableStateOf(messages.lastOrNull()?.id) }
+    LaunchedEffect(messages) {
+        val lastId = messages.lastOrNull()?.id
+        val isNewTailMessage = lastId != null &&
+            lastId != previousLastMessageId &&
+            messages.size > previousMessageCount
+        if (isNewTailMessage && hasScrolledToLatest) {
+            val oldLastIndex = previousMessageCount - 1
+            val lastVisibleIndex = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index ?: -1
+            val wasAtBottom = oldLastIndex < 0 || lastVisibleIndex >= oldLastIndex
+            if (wasAtBottom) {
+                listState.animateScrollToItem(messages.lastIndex)
+            }
+        }
+        previousMessageCount = messages.size
+        previousLastMessageId = lastId
+    }
+
+    // 답장으로 보낸 메시지의 인용 미리보기를 탭하면 원본 메시지로 스크롤한다. resolveReplyPreview가
+    // messages에서 실제로 찾은 메시지만 인용 블록으로 보여주고 클릭 가능하게 만들기 때문에(원본을
+    // 못 찾으면 인용 자체가 안 보임), 여기 targetIndex가 -1일 일은 사실상 없다 — 그래도 방어적으로
+    // 둔다.
+    val onReplyPreviewClick: (Long) -> Unit = { targetMessageId ->
+        val targetIndex = messages.indexOfFirst { it.id == targetMessageId }
+        if (targetIndex >= 0) {
+            coroutineScope.launch {
+                listState.animateScrollToItem(targetIndex)
+            }
         }
     }
 
@@ -189,7 +235,7 @@ fun RoomDetailScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
-                .background(MessageAreaBackground),
+                .background(LiroutiTheme.colors.backgroundSecondary),
         ) {
             if (messages.isEmpty()) {
                 Column(
@@ -216,7 +262,10 @@ fun RoomDetailScreen(
             } else {
                 LazyColumn(
                     state = listState,
-                    modifier = Modifier.fillMaxSize(),
+                    // 맨 아래로의 초기 스크롤이 끝나기 전까지는 맨 위 상태가 잠깐 비치지 않도록 숨긴다.
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .alpha(if (hasScrolledToLatest) 1f else 0f),
                     contentPadding = PaddingValues(vertical = 16.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp),
                 ) {
@@ -232,7 +281,13 @@ fun RoomDetailScreen(
                                 isGroupStart = message.isGroupStart(previous),
                                 isGroupEnd = message.isGroupEnd(next),
                                 emojiSize = emojiSize,
+                                // 보낸 사람이 채워 넣은 값을 그대로 믿지 않고, 지금 받은
+                                // messages에서 replyToMessageId를 검증해 실제 내용으로 만든다
+                                // (resolveReplyPreview 문서 참고) — 못 찾으면 인용 없이 일반
+                                // 텍스트로만 보인다.
+                                replyPreview = resolveReplyPreview(message.replyToMessageId, messages),
                                 onReplySwipe = onReplySwipe,
+                                onReplyPreviewClick = onReplyPreviewClick,
                             )
                         }
                     }
@@ -243,10 +298,19 @@ fun RoomDetailScreen(
         Column(
             modifier = Modifier
                 .fillMaxWidth()
+                // ChatBar 자체는 좌우 16dp 여백을 두고 그 안쪽만 칠해서(피그마 pill 모양), 그
+                // 여백(바깥쪽 양옆)은 이 배경이 그대로 비친다 — 메시지 영역과 같은 색으로 맞춘다.
+                .background(LiroutiTheme.colors.backgroundSecondary)
                 .navigationBarsPadding()
                 .padding(bottom = 3.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
+            // EmojiPannel을 실제로 연 적이 없어도 그 그리드 셀 크기를 미리 계산해 emojiSize에
+            // 반영한다 — 안 그러면 상대가 이모티콘을 처음 보냈을 때 기본값(DefaultEmojiSize)으로
+            // 작게 그려졌다가, 이모지 패널을 한 번 열어야(내가 보내거나) 정상 크기로 커지는
+            // 버그가 있었다.
+            EmojiCellSizeProbe(onMeasured = { emojiSize = it })
+
             ChatBar(
                 message = chatDraftText,
                 onMessageChange = onChatMessageChange,

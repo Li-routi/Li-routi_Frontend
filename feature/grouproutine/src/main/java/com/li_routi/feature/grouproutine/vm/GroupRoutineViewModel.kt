@@ -56,6 +56,9 @@ import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 import java.time.Instant
+import java.time.LocalDateTime
+import java.time.OffsetDateTime
+import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -411,11 +414,14 @@ class GroupRoutineViewModel(
             return
         }
 
-        // ??????????ㅼ굣?????源끹걬癲???????嶺뚮ㅎ??????쑩???繞???嚥▲꺆諭???獄?껫????怨뚮옖?雅??????筌먦끉裕??????볥윞 ??숆강筌?쑜??
-        // ???⑥щ뎁??????몄릇??癲ル슢?????????????????????ш끽維곮??DTO ?怨뚮뼚??????⑤챶?????????⑤９苑?嶺뚮ㅎ????筌먦끉??癲ル슪?ｇ몭????좊읈??濚왿몾???
+        // 답장 대상이 있으면 원본 메시지 id를 본문 앞에 인코딩해 실어 보낸다 — 서버가 별도
+        // "답장" 필드를 지원하지 않아서다. 보낸 사람/미리보기 텍스트는 여기 싣지 않는다 — 그건
+        // "보내는" 클라이언트가 자유롭게 채우는 값이라 그대로 믿으면 위조될 수 있다. 받는 쪽은
+        // id만 신뢰하고, 실제 내용은 자기가 받은 메시지 목록에서 직접 찾는다
+        // (ChatMessage.toUiModel / resolveReplyPreview 참고).
         val replyTarget = _uiState.value.replyTarget
         val content = if (replyTarget != null) {
-            "[답장] ${replyTarget.senderName}: ${replyTarget.message.take(30)}\n$text"
+            encodeReplyContent(replyToMessageId = replyTarget.id, body = text)
         } else {
             text
         }
@@ -445,7 +451,10 @@ class GroupRoutineViewModel(
         _uiState.update { it.copy(replyTarget = null) }
     }
 
-    // ????癲ル슣鍮뽳쭕??癲??????⑥????ш끽維뽬땻??筌먲퐢???????源놁졆 ??釉먮뻤???袁⑸즵???? ?????????㎣筌???⑥??????????몄툗 ??怨쀫뮛繞??筌믨퉭堉????덉쉐??????????勇싲짅援⒴퐲?덉쪎??삵렡.
+    // 이모티콘은 서버가 별도 answer/답장 필드를 지원하지 않고 content도 null로 보내 답장 정보를
+    // 실을 곳이 없다 — 답장 대상을 지정해 둔 채로 이모티콘을 보내면 답장 없이 그냥 전송되지만,
+    // 답장 대상 UI(채팅바 윗상자)는 텍스트 전송과 마찬가지로 정리해서 다음 메시지에 잘못 남지
+    // 않게 한다.
     fun onChatEmojiSelected(emoticon: ChatEmoticonUiModel) {
         val groupId = currentGroupId() ?: run {
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
@@ -460,13 +469,20 @@ class GroupRoutineViewModel(
         )
         viewModelScope.launch {
             when (val result = sendChatMessageUseCase(groupId, message)) {
+                is ResultState.Success -> _uiState.update { it.copy(replyTarget = null) }
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
-                else -> Unit
+                ResultState.Loading -> Unit
             }
         }
     }
 
-    /** ????????ㅼ뒦??????怨쀫뮛繞??筌믨퉭堉????덉쉐 ????㎣筌???筌믨퀣援???REST ??????釉뚰?????筌?留??癲ル슣???몄춿?? ???ㅼ뒦????熬곣뫖????癲ル슢?????????????袁ㅼ땡?堉온 ????낆툗?? */
+    /**
+     * 채팅 소켓에 연결하고 REST로 최근 메시지를 불러온다.
+     *
+     * 그룹이 바뀌었을 수도 있으므로(목록 → 다른 채팅방으로 재진입 포함), 이전 그룹의 채팅 상태
+     * (메시지 목록/페이지 커서/답장 대상/임시 입력 등)를 먼저 비운다 — 안 그러면 새 그룹의 이력과
+     * 이전에 보던 그룹의 메시지가 한 리스트에 섞여서 그룹별로 채팅이 분리되지 않는 버그가 있었다.
+     */
     private fun enterChatSocket() {
         val groupId = currentGroupId() ?: run {
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
@@ -474,7 +490,17 @@ class GroupRoutineViewModel(
         }
 
         chatSocketJob?.cancel()
-        _uiState.update { it.copy(isChatHistoryLoaded = false) }
+        _uiState.update {
+            it.copy(
+                isChatHistoryLoaded = false,
+                chatMessages = emptyList(),
+                chatNextCursor = null,
+                hasMoreChatHistory = false,
+                unreadChatCount = 0,
+                replyTarget = null,
+                chatDraftText = "",
+            )
+        }
         chatSocketJob = viewModelScope.launch {
             when (val result = connectChatSocketUseCase(groupId)) {
                 is ResultState.Error -> {
@@ -2490,20 +2516,37 @@ class GroupRoutineViewModel(
         }
     }
 
-    private fun ChatMessage.toUiModel(isMine: Boolean): ChatMessageUiModel = ChatMessageUiModel(
-        id = id,
-        senderName = senderNickname,
-        message = if (type == ChatMessageType.TEXT) content else "",
-        sentAtMillis = createdAt.toEpochMillisOrNow(),
-        isMine = isMine,
-        emojiUrl = if (type == ChatMessageType.EMOTICON) emoticon?.assetUrl else null,
-    )
+    private fun ChatMessage.toUiModel(isMine: Boolean): ChatMessageUiModel {
+        val parsed = if (type == ChatMessageType.TEXT) content.parseReplyContent() else null
+        return ChatMessageUiModel(
+            id = id,
+            senderName = senderNickname,
+            message = parsed?.body ?: if (type == ChatMessageType.TEXT) content else "",
+            sentAtMillis = createdAt.toEpochMillisOrNow(),
+            isMine = isMine,
+            emojiUrl = if (type == ChatMessageType.EMOTICON) emoticon?.assetUrl else null,
+            replyToMessageId = parsed?.replyToMessageId,
+        )
+    }
 }
 
-// ???源낆뱼癲????뽮덫???createdAt ???????怨뺣빰??좊읈? ???⑤９苑?ISO-8601(Instant)?????Β?띾쭡 ??좊읈??嶺뚮쮳?년봼?? ??????????됰꽡??嚥???
-// (??숆강筌?쓣爾????????獄????????됰꽡??????怨멸땀?쀫씛????ㅼ굣?얠쥉異?堉온 ???怨룔걬雅?퍔源??? ??ш끽維????癰?????⑥????癲ル슪???쀫눀??
-private fun String.toEpochMillisOrNow(): Long =
-    runCatching { Instant.parse(this).toEpochMilli() }.getOrDefault(System.currentTimeMillis())
+/**
+ * 서버가 주는 createdAt 문자열을 epoch millis로 변환한다.
+ *
+ * 정확한 포맷을 하나로 확신할 수 없어(오프셋 포함 Instant, 오프셋 없는 LocalDateTime 등) 순서대로
+ * 시도한다 - 예전에는 Instant.parse만 시도하고 실패하면 "지금"으로 대체했는데, 서버가 오프셋 없는
+ * 로컬 시각(KST)을 내려줄 때마다 매번 실패해서 모든 메시지의 시각이 화면에 그려지는 순간의
+ * 현재 시각으로 표시되는 버그가 있었다(새 메시지가 올 때마다 이전 메시지들도 방금 시각으로
+ * 보이는 것처럼 보임).
+ */
+private fun String.toEpochMillisOrNow(): Long {
+    runCatching { return Instant.parse(this).toEpochMilli() }
+    runCatching { return OffsetDateTime.parse(this).toInstant().toEpochMilli() }
+    runCatching {
+        return LocalDateTime.parse(this).atZone(ZoneId.of("Asia/Seoul")).toInstant().toEpochMilli()
+    }
+    return System.currentTimeMillis()
+}
 
 private val KoreanDayToRepeatDay = mapOf(
     "\uC77C" to RepeatDay.SUNDAY,

@@ -65,14 +65,16 @@ private val ReplyMessageTextEndReserve = 28.dp
 private val ReplyCancelIconSize = 16.dp
 private val ReplyCancelIconEndPadding = 16.dp
 
-private val ReplyNicknameTextStyle = TextStyle(
+// internal: 채팅바 윗상자(이 파일)뿐 아니라 답장으로 보낸 메시지의 인용 미리보기(ChatBox.kt)도
+// 같은 글꼴 스타일을 써서 두 UI가 시각적으로 통일되게 한다.
+internal val ReplyNicknameTextStyle = TextStyle(
     fontFamily = AstaSans,
     fontSize = 13.sp,
     fontWeight = FontWeight.Bold,
     lineHeight = 16.sp,
     letterSpacing = (-0.325).sp,
 )
-private val ReplyMessageTextStyle = ReplyNicknameTextStyle.copy(fontWeight = FontWeight.Normal)
+internal val ReplyMessageTextStyle = ReplyNicknameTextStyle.copy(fontWeight = FontWeight.Normal)
 
 /**
  * 모임방 상세 하단 채팅바 (텍스트 입력 + 이모티콘 버튼 + 전송 버튼).
