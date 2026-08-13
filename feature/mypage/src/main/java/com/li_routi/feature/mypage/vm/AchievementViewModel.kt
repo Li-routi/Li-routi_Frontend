@@ -8,6 +8,7 @@ import com.li_routi.core.domain.achievement.Achievement
 import com.li_routi.core.domain.achievement.AchievementCategory
 import com.li_routi.core.domain.achievement.GetAchievementsUseCase
 import com.li_routi.feature.mypage.component.AchievementBadgeUiModel
+import com.li_routi.feature.mypage.component.AchievementIcons
 import com.li_routi.feature.mypage.component.AchievementRarity
 import com.li_routi.feature.mypage.component.AchievementUiModel
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -41,7 +42,8 @@ class AchievementViewModel(
     private fun load() {
         viewModelScope.launch {
             _uiState.update { it.copy(isLoading = true, isError = false) }
-            when (val result = getAchievementsUseCase()) {
+            // TODO: GET /api/achievements 서버가 준비되면 목데이터 대신 getAchievementsUseCase() 호출로 되돌린다.
+            when (val result = ResultState.Success(AchievementMockData.groups)) {
                 is ResultState.Success -> {
                     val allAchievements = result.data.flatMap { group ->
                         group.achievements.map { it to group.category }
@@ -51,7 +53,14 @@ class AchievementViewModel(
                             achievements = allAchievements.map { (achievement, category) -> achievement.toUiModel(category) },
                             achievedBadges = allAchievements
                                 .filter { (achievement, _) -> achievement.isAchieved && achievement.badgeYn }
-                                .map { (achievement, category) -> AchievementBadgeUiModel(achievement.name, category.toAchievementRarity()) },
+                                .map { (achievement, category) ->
+                                    AchievementBadgeUiModel(
+                                        id = achievement.achievementId,
+                                        title = achievement.name,
+                                        rarity = category.toAchievementRarity(),
+                                        iconRes = AchievementIcons.resolve(achievement.code),
+                                    )
+                                },
                             isLoading = false,
                         )
                     }
@@ -78,6 +87,8 @@ private fun Achievement.toUiModel(category: AchievementCategory): AchievementUiM
     progress = if (progressTarget > 0) progressCurrent.toFloat() / progressTarget else 0f,
     rewardText = if (topazReward > 0) "+${topazReward}토파즈" else null,
     isInProgress = isInProgress,
+    isAchieved = isAchieved,
+    iconRes = AchievementIcons.resolve(code),
 )
 
 // UNIQUE로 취급할 값이 하나뿐이라 UNKNOWN도 같이 묶는다 — 화면에 존재하지 않는 4번째 등급을 만들 수 없다.

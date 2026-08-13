@@ -1,5 +1,7 @@
 package com.li_routi.feature.mypage.component
 
+import androidx.annotation.DrawableRes
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -18,6 +20,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -27,14 +30,11 @@ import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-/**
- * 업적 등급. Figma node `4201:34400`에는 레어/에픽 배지 색상만 예시가 있고 유니크는 예시가 없어서,
- * 노란색 계열로 임시 지정했다 — 실제 스펙이 나오면 교체해야 한다.
- */
+/** 업적 등급. Figma node `6008:31220`("전체")/`6008:31578`("레어")/`6008:31510`("에픽")/`6008:31459`("유니크") 기준. */
 enum class AchievementRarity(val label: String, val backgroundColor: Color, val textColor: Color) {
     Rare(label = "레어", backgroundColor = Color(0xFFF4F7FB), textColor = Color(0xFF00AAD2)),
     Epic(label = "에픽", backgroundColor = Color(0xFFEFE0F8), textColor = Color(0xFF6903D6)),
-    Unique(label = "유니크", backgroundColor = Color(0xFFFFF6D8), textColor = Color(0xFFA67C00)),
+    Unique(label = "유니크", backgroundColor = Color(0xFFFFF7C2), textColor = Color(0xFFB59806)),
 }
 
 data class AchievementUiModel(
@@ -45,17 +45,21 @@ data class AchievementUiModel(
     val progress: Float,
     val rewardText: String? = null,
     val isInProgress: Boolean = false,
+    val isAchieved: Boolean = false,
+    @param:DrawableRes val iconRes: Int? = null,
 )
 
-private val TitleTextStyle = TextStyle(fontWeight = FontWeight.SemiBold, fontSize = 14.sp, lineHeight = 22.sp, letterSpacing = (-0.35).sp)
+private val TitleTextStyle = TextStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 22.sp, letterSpacing = (-0.35).sp)
 private val RarityBadgeTextStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
 private val RewardTextStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
 private val DescriptionTextStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
 private val ProgressCountTextStyle = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 18.sp)
 
 private val CardBorderColor = Color(0xFFF4F4F5)
+private val AchievedBadgeBackgroundColor = Color(0xFFEAEBEC)
 private val ProgressCountColor = Color(0xFF81898E)
 private val CharacterIconSize = 60.dp
+private val IconImageSize = 44.dp
 
 /**
  * 업적 목록 카드 한 장. Figma node `4714:40629`("List") 기준 —
@@ -69,7 +73,10 @@ fun AchievementListItem(
     Row(
         modifier = modifier
             .fillMaxWidth()
-            .background(LiroutiTheme.colors.backgroundDefault, RoundedCornerShape(6.dp))
+            .background(
+                if (item.isAchieved) LiroutiTheme.colors.backgroundFill else LiroutiTheme.colors.backgroundDefault,
+                RoundedCornerShape(6.dp),
+            )
             .border(1.dp, CardBorderColor, RoundedCornerShape(6.dp))
             .padding(horizontal = 14.dp, vertical = 10.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
@@ -80,7 +87,15 @@ fun AchievementListItem(
                 .background(LiroutiTheme.colors.backgroundDefault, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            AchievementCharacterIcon(modifier = Modifier.size(width = 69.dp, height = 56.dp))
+            if (item.iconRes != null) {
+                Image(
+                    painter = painterResource(id = item.iconRes),
+                    contentDescription = null,
+                    modifier = Modifier.size(IconImageSize),
+                )
+            } else {
+                AchievementCharacterIcon(modifier = Modifier.size(width = 69.dp, height = 56.dp))
+            }
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -97,11 +112,14 @@ fun AchievementListItem(
                         Text(
                             text = item.title,
                             style = TitleTextStyle,
-                            color = LiroutiTheme.colors.labelDefault,
+                            color = LiroutiTheme.colors.labelSub,
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                         )
                         AchievementRarityBadge(rarity = item.rarity)
+                        if (item.isAchieved) {
+                            AchievedBadge()
+                        }
                     }
                     if (item.rewardText != null) {
                         Text(text = item.rewardText, style = RewardTextStyle, color = LiroutiTheme.colors.primaryNormal)
@@ -140,6 +158,18 @@ private fun AchievementRarityBadge(rarity: AchievementRarity, modifier: Modifier
     }
 }
 
+/** 달성 완료 배지. Figma node `6008:31319`("Badge") 기준 — 등급 배지 옆에 붙는다. */
+@Composable
+private fun AchievedBadge(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .background(AchievedBadgeBackgroundColor, RoundedCornerShape(6.dp))
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+    ) {
+        Text(text = "달성", style = RarityBadgeTextStyle, color = LiroutiTheme.colors.labelInfo)
+    }
+}
+
 @Preview(showBackground = true)
 @Composable
 private fun AchievementListItemPreview() {
@@ -174,6 +204,16 @@ private fun AchievementListItemPreview() {
                     description = "30일 연속 루틴을 달성하세요",
                     progressLabel = "27/30",
                     progress = 27f / 30f,
+                ),
+            )
+            AchievementListItem(
+                item = AchievementUiModel(
+                    title = "첫 방만들기",
+                    rarity = AchievementRarity.Rare,
+                    description = "모임방을 처음 만들어보세요",
+                    progressLabel = "1/1",
+                    progress = 1f,
+                    isAchieved = true,
                 ),
             )
         }
