@@ -23,6 +23,26 @@ class GetWalletBalancesUseCase(
         repository.getWalletBalances()
 }
 
+class GetMyAvatarUseCase(
+    private val repository: ShopRepository,
+) {
+    suspend operator fun invoke(): ResultState<MemberAvatar> = repository.getMyAvatar()
+}
+
+class EquipAvatarUseCase(
+    private val repository: ShopRepository,
+) {
+    /** [itemIds]가 곧 전체 착장임. 빈 목록이면 전부 벗음 */
+    suspend operator fun invoke(itemIds: List<Long>): ResultState<MemberAvatar> =
+        repository.equipAvatar(itemIds)
+}
+
+class GetShopCategoriesUseCase(
+    private val repository: ShopRepository,
+) {
+    suspend operator fun invoke(): ResultState<List<ShopCategory>> = repository.getShopCategories()
+}
+
 class GetShopAvatarItemsUseCase(
     private val repository: ShopRepository,
 ) {

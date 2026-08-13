@@ -6,7 +6,10 @@ import com.li_routi.core.domain.shop.ExchangeCurrencyUseCase
 import com.li_routi.core.domain.shop.GetChargeProductsUseCase
 import com.li_routi.core.domain.shop.GetExchangeProductsUseCase
 import com.li_routi.core.domain.shop.CompleteChargeUseCase
+import com.li_routi.core.domain.shop.EquipAvatarUseCase
+import com.li_routi.core.domain.shop.GetMyAvatarUseCase
 import com.li_routi.core.domain.shop.GetShopAvatarItemsUseCase
+import com.li_routi.core.domain.shop.GetShopCategoriesUseCase
 import com.li_routi.core.domain.shop.StartChargeUseCase
 import com.li_routi.core.domain.shop.GetWalletBalancesUseCase
 import com.li_routi.core.domain.shop.PurchaseShopAvatarItemUseCase
@@ -32,6 +35,18 @@ object ShopContainer {
 
     val getWalletBalancesUseCase: GetWalletBalancesUseCase by lazy {
         GetWalletBalancesUseCase(repository)
+    }
+
+    val getMyAvatarUseCase: GetMyAvatarUseCase by lazy {
+        GetMyAvatarUseCase(repository)
+    }
+
+    val equipAvatarUseCase: EquipAvatarUseCase by lazy {
+        EquipAvatarUseCase(repository)
+    }
+
+    val getShopCategoriesUseCase: GetShopCategoriesUseCase by lazy {
+        GetShopCategoriesUseCase(repository)
     }
 
     val getShopAvatarItemsUseCase: GetShopAvatarItemsUseCase by lazy {

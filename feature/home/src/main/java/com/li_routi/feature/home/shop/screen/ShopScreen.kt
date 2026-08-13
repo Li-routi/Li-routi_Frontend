@@ -37,6 +37,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.component.LiroutiSwitch
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.shop.component.SampleShopItems
@@ -44,8 +48,10 @@ import com.li_routi.feature.home.shop.component.ShopItemGrid
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 import com.li_routi.feature.home.shop.component.ShopTopBar
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
-
-private val ShopCategoryTabLabels = listOf("전체", "카테고리", "카테고리")
+import com.li_routi.feature.home.component.AvatarCharacter
+import com.li_routi.feature.home.component.equippedImageUrlsOf
+import com.li_routi.feature.home.shop.vm.EquippedUiModel
+import com.li_routi.feature.home.shop.vm.ShopCategoryUiModel
 
 /** Figma `Tooltip/Tooltip` — 홈 `ShopEntryCard`와 동일 (`neutral22` #2E2F33 @ 88%). */
 private val ShopTooltipFill = Color(0xFF2E2F33).copy(alpha = 0.88f)
@@ -62,7 +68,8 @@ private val TooltipCharacterOverlap = 12.dp
  *
  * 아이템 선택은 [actions.onItemClick] → ViewModel [selectedItemId]로 관리한다.
  *
- * API 연동 전: 카테고리 탭·보유 아이템 토글은 UI 선택만 반영하고 목록 필터는 하지 않는다.
+ * 카테고리 탭은 `GET /api/shop/categories`로 받아 순서대로 그린다 — 이름으로 분기하지 않는다.
+ * 탭/보유 토글을 바꾸면 그 조건으로 목록을 다시 조회한다.
  * 저장 버튼 실처리는 [ShopUiEvent.SaveSelectedItems] 수신 측(API)에서 연결한다.
  */
 @Composable
@@ -71,13 +78,15 @@ fun ShopScreen(
     nickname: String = "닉네임",
     coinBalance: Int = 450,
     gemBalance: Int = 30,
+    categories: List<ShopCategoryUiModel> = emptyList(),
+    equipped: Map<String, EquippedUiModel> = emptyMap(),
+    savedEquippedItemIds: Set<Long> = emptySet(),
+    selectedCategoryIndex: Int = 0,
+    showOwnedOnly: Boolean = false,
     items: List<ShopItemUiModel> = SampleShopItems,
     selectedItemId: String? = null,
     modifier: Modifier = Modifier,
 ) {
-    // API 연동 전: 선택 UI만. 목록 필터/서버 조회는 미연결.
-    var selectedCategoryIndex by remember { mutableIntStateOf(0) }
-    var showOwnedOnly by remember { mutableStateOf(false) }
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
@@ -103,8 +112,14 @@ fun ShopScreen(
                     .clickable(onClick = actions::onSaveClick),
                 contentAlignment = Alignment.Center,
             ) {
+                // 아직 안 산 아이템을 골랐으면 가격을 보여줘서 결제라는 걸 분명히 함
+                val selected = items.firstOrNull { it.id == selectedItemId }
                 Text(
-                    text = "저장하기",
+                    text = if (selected != null && !selected.owned) {
+                        "${selected.price} 구매"
+                    } else {
+                        "저장하기"
+                    },
                     // Figma: Medium 16/24
                     style = LiroutiTheme.typography.body1Medium,
                     color = LiroutiTheme.colors.labelReverse,
@@ -139,12 +154,11 @@ fun ShopScreen(
                         message = "의상을 선택해 주세요!",
                         modifier = Modifier.zIndex(1f),
                     )
-                    Box(
+                    AvatarCharacter(
+                        equippedImageUrls = equippedImageUrlsOf(equipped.mapValues { it.value.imageUrl }),
                         modifier = Modifier
                             .offset(y = -TooltipCharacterOverlap)
-                            .size(width = CharacterWidth, height = CharacterHeight)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(LiroutiTheme.colors.backgroundAlternative),
+                            .size(width = CharacterWidth, height = CharacterHeight),
                     )
                 }
             }
@@ -152,13 +166,16 @@ fun ShopScreen(
             Spacer(modifier = Modifier.height(20.dp))
 
             // Figma `2222:25595`: 카테고리 탭 → 보유 토글 → 아이템 그리드
-            LiroutiLineTab(
-                tabs = ShopCategoryTabLabels,
-                selectedIndex = selectedCategoryIndex,
-                onTabSelected = { selectedCategoryIndex = it },
-            )
+            // 탭을 못 받아오면 줄 자체를 빼서 빈 띠가 남지 않게 함
+            if (categories.isNotEmpty()) {
+                LiroutiLineTab(
+                    tabs = categories.map { it.name },
+                    selectedIndex = selectedCategoryIndex,
+                    onTabSelected = actions::onCategorySelected,
+                )
 
-            Spacer(modifier = Modifier.height(14.dp))
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             Row(
                 modifier = Modifier.fillMaxWidth(),
@@ -173,7 +190,7 @@ fun ShopScreen(
                 )
                 LiroutiSwitch(
                     checked = showOwnedOnly,
-                    onCheckedChange = { showOwnedOnly = it },
+                    onCheckedChange = actions::onOwnedOnlyChange,
                 )
             }
 
@@ -184,6 +201,7 @@ fun ShopScreen(
                 selectedItemId = selectedItemId,
                 onItemClick = actions::onItemClick,
                 modifier = Modifier.weight(1f),
+                equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() },
             )
         }
     }
@@ -236,6 +254,8 @@ private object PreviewShopScreenActions : ShopScreenActions {
     override fun onBackClick() = Unit
     override fun onOrangeGemClick() = Unit
     override fun onBlueGemClick() = Unit
+    override fun onCategorySelected(index: Int) = Unit
+    override fun onOwnedOnlyChange(ownedOnly: Boolean) = Unit
     override fun onItemClick(itemId: String) = Unit
     override fun onSaveClick() = Unit
 }

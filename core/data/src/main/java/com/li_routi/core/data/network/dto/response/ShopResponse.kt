@@ -31,6 +31,18 @@ data class WalletBalanceResponse(
 )
 
 /** GET /api/shop/items 응답 result. */
+/** GET /api/shop/categories 응답 result. 상점 상단 탭 목록. */
+data class ShopCategoriesResponse(
+    val categories: List<ShopCategoryResponse>?,
+)
+
+data class ShopCategoryResponse(
+    val key: String?,
+    val name: String?,
+    val source: String?,
+    val slot: String?,
+)
+
 data class ShopAvatarItemsResponse(
     val items: List<ShopAvatarItemResponse>?,
 )

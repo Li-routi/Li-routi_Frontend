@@ -18,6 +18,15 @@ interface ShopRepository {
     /** 내 재화 잔액을 조회함. 재화 종류마다 한 건씩 항상 전부 내려옴 */
     suspend fun getWalletBalances(): ResultState<List<CurrencyBalance>>
 
+    /** 지금 입고 있는 아이템을 자리별로 조회함. 안 입은 자리는 실리지 않음 */
+    suspend fun getMyAvatar(): ResultState<MemberAvatar>
+
+    /** 착장을 저장함. [itemIds]에 없는 자리는 벗겨지므로 항상 전체를 보내야 함 */
+    suspend fun equipAvatar(itemIds: List<Long>): ResultState<MemberAvatar>
+
+    /** 상점 상단 탭 목록을 조회함. 회원과 무관하게 같은 목록이 내려옴 */
+    suspend fun getShopCategories(): ResultState<List<ShopCategory>>
+
     /** 아바타 아이템 목록을 조회함. [slot]을 안 주면 전체 탭 */
     suspend fun getAvatarItems(slot: String?, ownedOnly: Boolean?): ResultState<List<ShopAvatarItem>>
 

@@ -3,21 +3,53 @@ package com.li_routi.feature.home.shop.vm
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 
 /**
- * 아이템 상점 화면 UI 상태.
+ * 상점 상단 탭 하나.
  *
- * 카테고리 탭/보유 아이템 토글은 Screen 로컬 state로 두고,
- * 잔액·아이템 목록처럼 외부 데이터가 필요한 값만 여기서 관리한다.
+ * 이름으로 분기하지 않고 [slot]을 그대로 조회에 실어 보냄 — 탭이 늘어도 앱을 안 고치려는 것임
+ */
+/** 캐릭터 위에 겹쳐 그릴 착용 아이템 한 건 */
+data class EquippedUiModel(
+    val itemId: Long,
+    val imageUrl: String?,
+)
+
+data class ShopCategoryUiModel(
+    val key: String,
+    val name: String,
+    val slot: String?,
+)
+
+/**
+ * 아이템 상점 화면 UI 상태.
  *
  * [items]는 `GET /api/shop/items` 결과로 채운다. 실패하면 빈 목록이라 샘플이 실제 상품처럼
  * 보이는 일이 없다 — 샘플 id로는 구매도 되지 않는다.
  *
- * 탭/토글 필터는 아직 미연결이다.
+ * 탭 선택과 보유 토글은 곧바로 서버 재조회로 이어져서 여기서 함께 관리한다.
  */
 data class ShopUiState(
     val nickname: String = "닉네임",
     val coinBalance: Int = 450,
     val gemBalance: Int = 30,
+    /** 서버가 내려준 탭. 받은 순서대로 그린다 */
+    val categories: List<ShopCategoryUiModel> = emptyList(),
+    val selectedCategoryIndex: Int = 0,
+    val showOwnedOnly: Boolean = false,
     val items: List<ShopItemUiModel> = emptyList(),
+    /**
+     * 지금 캐릭터에 올려둔 착장. 자리 → 아이템.
+     *
+     * 저장 전에도 화면에 바로 비치게 여기서 들고 있다가, 저장할 때 통째로 보냄
+     */
+    val equipped: Map<String, EquippedUiModel> = emptyMap(),
+    /**
+     * 서버에 저장된 착장. 목록의 `착용중` 표시는 이걸 따름.
+     *
+     * [equipped]를 쓰면 고르자마자 착용중이 돼서 저장한 것과 구분이 안 됨
+     */
+    val savedEquippedItemIds: Set<Long> = emptySet(),
+    /** 착장 저장 중 */
+    val isEquipping: Boolean = false,
     /** 그리드에서 선택된 아이템. null이면 미선택. */
     val selectedItemId: String? = null,
     val isLoading: Boolean = false,

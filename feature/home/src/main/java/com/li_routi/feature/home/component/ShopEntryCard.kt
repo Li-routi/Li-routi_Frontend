@@ -62,6 +62,8 @@ fun ShopEntryCard(
     onNavigateToShop: () -> Unit,
     modifier: Modifier = Modifier,
     showRepresentativeBadge: Boolean = false,
+    /** 착용 중인 아이템 이미지. 겹칠 순서대로 들어옴 */
+    equippedImageUrls: List<String> = emptyList(),
 ) {
     Column(
         modifier = modifier
@@ -138,7 +140,10 @@ fun ShopEntryCard(
 
         // 캐릭터 illustration (비-DS 이미지 자리). Figma 220×180 — 별도 배경/카드 없이
         // 그라데이션 위에 바로 얹힌다(캐릭터 전용 배경 박스를 두면 가운데가 네모나게 뚫려 보인다).
-        Box(modifier = Modifier.size(width = CharacterWidth, height = CharacterHeight))
+        AvatarCharacter(
+            equippedImageUrls = equippedImageUrls,
+            modifier = Modifier.size(width = CharacterWidth, height = CharacterHeight),
+        )
     }
 }
 

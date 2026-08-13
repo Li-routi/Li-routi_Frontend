@@ -87,6 +87,8 @@ fun HomeScreen(
     hasActiveRoutine: Boolean = false,
     hasGroupRoom: Boolean = false,
     nickname: String = "닉네임",
+    /** 홈 캐릭터에 겹쳐 그릴 착용 아이템 이미지 */
+    equippedImageUrls: List<String> = emptyList(),
     myRoutineItems: List<RoutineChecklistItemUiModel> = when {
         !hasActiveRoutine -> emptyList()
         hasGroupRoom -> SampleMyRoutineItems
@@ -306,6 +308,7 @@ fun HomeScreen(
                     onNavigateToShop = actions::onNavigateToShop,
                     // Figma `처음 진입 시` 포함 홈 메인에서 대표 배지 노출
                     showRepresentativeBadge = true,
+                    equippedImageUrls = equippedImageUrls,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

@@ -1,5 +1,20 @@
 package com.li_routi.core.domain.shop
 
+/**
+ * 상점 상단 탭 한 개. 받은 순서대로 그리면 됨 — 서버가 정렬해서 내려줌.
+ *
+ * 탭 이름으로 분기하면 안 됨. 탭이 늘거나 줄어도 앱을 안 고치려고 서버가 목록으로 내려주는 것임.
+ * [slot]이 비어 있는 탭이 `전체`와 `캐릭터` 둘이라 [source]로 갈라야 함
+ */
+data class ShopCategory(
+    val key: String,
+    val name: String,
+    /** `ITEM`이면 아이템 목록, `CHARACTER`면 캐릭터 목록 */
+    val source: String,
+    /** 아이템 목록을 요청할 때 같이 보낼 자리. 비어 있으면 전체 */
+    val slot: String?,
+)
+
 /** 상점 격자에 뿌릴 아바타 아이템. 보유한 것도 같이 내려와서 [owned]로 가름 */
 data class ShopAvatarItem(
     val id: Long,

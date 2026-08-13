@@ -16,6 +16,12 @@ interface ShopScreenActions {
     /** 상단 파란보석 잔액 chip 탭 → 재화 상점 파란 탭 */
     fun onBlueGemClick()
 
+    /** 상단 카테고리 탭 선택 */
+    fun onCategorySelected(index: Int)
+
+    /** "보유 중인 아이템만 보기" 토글 */
+    fun onOwnedOnlyChange(ownedOnly: Boolean)
+
     /** 아이템 그리드 셀 탭 (선택/해제) */
     fun onItemClick(itemId: String)
 

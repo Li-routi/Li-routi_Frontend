@@ -1,5 +1,6 @@
 package com.li_routi.core.data.network.service
 
+import com.li_routi.core.data.network.dto.request.EquipAvatarRequest
 import com.li_routi.core.data.network.dto.request.ExchangeRequest
 import com.li_routi.core.data.network.dto.request.StartChargeRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
@@ -10,10 +11,12 @@ import com.li_routi.core.data.network.dto.response.ExchangeProductsResponse
 import com.li_routi.core.data.network.dto.response.ExchangeResultResponse
 import com.li_routi.core.data.network.dto.response.MemberAvatarResponse
 import com.li_routi.core.data.network.dto.response.ShopAvatarItemsResponse
+import com.li_routi.core.data.network.dto.response.ShopCategoriesResponse
 import com.li_routi.core.data.network.dto.response.WalletBalancesResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.POST
+import retrofit2.http.PUT
 import retrofit2.http.Path
 import retrofit2.http.Query
 
@@ -32,6 +35,18 @@ interface ShopApiService {
 
     @GET("api/members/me/wallet")
     suspend fun getWalletBalances(): ApiResponse<WalletBalancesResponse>
+
+    @GET("api/members/me/avatar")
+    suspend fun getMyAvatar(): ApiResponse<MemberAvatarResponse>
+
+    // 보낸 것이 곧 전체 착장임 — 바뀐 것만 보내면 나머지가 벗겨짐
+    @PUT("api/members/me/avatar")
+    suspend fun equipAvatar(
+        @Body request: EquipAvatarRequest,
+    ): ApiResponse<MemberAvatarResponse>
+
+    @GET("api/shop/categories")
+    suspend fun getShopCategories(): ApiResponse<ShopCategoriesResponse>
 
     @GET("api/shop/items")
     suspend fun getAvatarItems(

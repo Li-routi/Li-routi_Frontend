@@ -39,13 +39,26 @@ data class ShopItemUiModel(
     val id: String,
     val name: String,
     val price: Int,
+    /** 차지하는 자리(HEAD/BODY/HAND). 한 자리엔 하나만 입을 수 있음 */
+    val slot: String = "",
+    /** 결제 재화. 아이템마다 달라서 가격 옆 아이콘이 이 값으로 갈림 */
+    val currency: String = "GEM",
     val imageUrl: String? = null,
     /** 보유한 아이템도 같은 목록에 섞여 내려옴 — 구매 대신 착용만 하면 됨 */
     val owned: Boolean = false,
 )
 
+/** 모르는 재화가 와도 화면이 비지 않게 파란보석으로 둠 */
+private fun currencyIconOf(currency: String): Int =
+    if (currency == "TOPAZ") R.drawable.diamond_orange else R.drawable.diamond_blue
+
 val SampleShopItems: List<ShopItemUiModel> = List(8) { index ->
-    ShopItemUiModel(id = "item_$index", name = "아이템 ${index + 1}", price = 600)
+    ShopItemUiModel(
+        id = "item_$index",
+        name = "아이템 ${index + 1}",
+        price = 600,
+        currency = if (index % 2 == 0) "GEM" else "TOPAZ",
+    )
 }
 
 /**
@@ -59,6 +72,8 @@ fun ShopItemGrid(
     selectedItemId: String?,
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** 지금 입고 있는 아이템 id. 보유중과 구분해서 보여주려고 받음 */
+    equippedItemIds: Set<String> = emptySet(),
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
@@ -70,6 +85,7 @@ fun ShopItemGrid(
             ShopItemCell(
                 item = item,
                 selected = item.id == selectedItemId,
+                equipped = item.id in equippedItemIds,
                 onClick = { onItemClick(item.id) },
             )
         }
@@ -80,6 +96,7 @@ fun ShopItemGrid(
 private fun ShopItemCell(
     item: ShopItemUiModel,
     selected: Boolean,
+    equipped: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -119,19 +136,32 @@ private fun ShopItemCell(
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Image(
-                painter = painterResource(id = R.drawable.diamond_blue),
-                contentDescription = null,
-                modifier = Modifier.size(16.dp),
-            )
-            Spacer(modifier = Modifier.width(4.dp))
+        // 이미 산 아이템은 다시 살 수 없어서 가격 대신 보유/착용 상태를 보여줌
+        if (item.owned) {
             Text(
-                text = item.price.toString(),
-                // Figma Body4/Bold 13/16
+                text = if (equipped) "착용중" else "보유중",
                 style = LiroutiTheme.typography.body3SemiBold.copy(lineHeight = 16.sp),
-                color = LiroutiTheme.colors.labelStrong,
+                color = if (equipped) {
+                    LiroutiTheme.colors.primaryNormal
+                } else {
+                    LiroutiTheme.colors.labelSub
+                },
             )
+        } else {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Image(
+                    painter = painterResource(id = currencyIconOf(item.currency)),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                )
+                Spacer(modifier = Modifier.width(4.dp))
+                Text(
+                    text = item.price.toString(),
+                    // Figma Body4/Bold 13/16
+                    style = LiroutiTheme.typography.body3SemiBold.copy(lineHeight = 16.sp),
+                    color = LiroutiTheme.colors.labelStrong,
+                )
+            }
         }
     }
 }
@@ -141,9 +171,10 @@ private fun ShopItemCell(
 private fun ShopItemGridPreview() {
     LiroutiFrontendTheme {
         ShopItemGrid(
-            items = SampleShopItems,
+            items = SampleShopItems.map { it.copy(owned = it.id == "item_0") },
             selectedItemId = null,
             onItemClick = {},
+            equippedItemIds = setOf("item_0"),
         )
     }
 }
