@@ -72,6 +72,8 @@ fun ShopItemGrid(
     selectedItemId: String?,
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier,
+    /** 지금 입고 있는 아이템 id. 보유중과 구분해서 보여주려고 받음 */
+    equippedItemIds: Set<String> = emptySet(),
 ) {
     LazyVerticalGrid(
         columns = GridCells.Fixed(4),
@@ -83,6 +85,7 @@ fun ShopItemGrid(
             ShopItemCell(
                 item = item,
                 selected = item.id == selectedItemId,
+                equipped = item.id in equippedItemIds,
                 onClick = { onItemClick(item.id) },
             )
         }
@@ -93,6 +96,7 @@ fun ShopItemGrid(
 private fun ShopItemCell(
     item: ShopItemUiModel,
     selected: Boolean,
+    equipped: Boolean,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -132,12 +136,16 @@ private fun ShopItemCell(
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
-        // 이미 산 아이템은 다시 살 수 없어서 가격 대신 보유 여부를 보여줌
+        // 이미 산 아이템은 다시 살 수 없어서 가격 대신 보유/착용 상태를 보여줌
         if (item.owned) {
             Text(
-                text = "보유중",
+                text = if (equipped) "착용중" else "보유중",
                 style = LiroutiTheme.typography.body3SemiBold.copy(lineHeight = 16.sp),
-                color = LiroutiTheme.colors.labelSub,
+                color = if (equipped) {
+                    LiroutiTheme.colors.primaryNormal
+                } else {
+                    LiroutiTheme.colors.labelSub
+                },
             )
         } else {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -163,9 +171,10 @@ private fun ShopItemCell(
 private fun ShopItemGridPreview() {
     LiroutiFrontendTheme {
         ShopItemGrid(
-            items = SampleShopItems,
+            items = SampleShopItems.map { it.copy(owned = it.id == "item_0") },
             selectedItemId = null,
             onItemClick = {},
+            equippedItemIds = setOf("item_0"),
         )
     }
 }

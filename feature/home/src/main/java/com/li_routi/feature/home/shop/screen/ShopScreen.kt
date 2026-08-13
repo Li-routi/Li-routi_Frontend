@@ -200,6 +200,7 @@ fun ShopScreen(
                 selectedItemId = selectedItemId,
                 onItemClick = actions::onItemClick,
                 modifier = Modifier.weight(1f),
+                equippedItemIds = equipped.values.mapTo(mutableSetOf()) { it.itemId.toString() },
             )
         }
     }
