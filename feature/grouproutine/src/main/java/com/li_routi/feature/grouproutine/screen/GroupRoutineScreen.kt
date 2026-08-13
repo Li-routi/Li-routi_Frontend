@@ -133,6 +133,7 @@ import com.li_routi.feature.grouproutine.R
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
+import com.li_routi.feature.grouproutine.navigation.GroupRoutineVerificationTarget
 import com.li_routi.feature.grouproutine.vm.CertificationPostUiModel
 import com.li_routi.feature.grouproutine.vm.CreateRoutineOptionUiModel
 import com.li_routi.feature.grouproutine.vm.GroupMemberUiModel
@@ -153,7 +154,7 @@ fun GroupRoutineRoute(
     onInitialEntryPointConsumed: () -> Unit = {},
     viewModel: GroupRoutineViewModel = viewModel { GroupRoutineViewModel() },
     onTabSelected: (AppBottomTab) -> Unit = {},
-    onStartVerification: (String) -> Unit = {},
+    onStartVerification: (GroupRoutineVerificationTarget) -> Unit = {},
     verificationRefreshSignal: Int = 0,
     verifiedRoutineId: Long? = null,
     modifier: Modifier = Modifier,
@@ -274,7 +275,18 @@ fun GroupRoutineRoute(
         onCategoryColorSelected = viewModel::onCategoryColorSelected,
         onCreateRoomDoneClick = viewModel::onCreateRoomDoneClick,
         onRoutineVerificationClick = { groupId, routineId ->
-            onStartVerification("group_${groupId}_${routineId}")
+            val todo = uiState.todos.firstOrNull { it.id == routineId } ?: return@GroupRoutineScreen
+            onStartVerification(
+                GroupRoutineVerificationTarget(
+                    groupId = groupId,
+                    routineId = routineId,
+                    roomName = uiState.selectedRoutine?.title.orEmpty(),
+                    title = todo.title,
+                    category = todo.category,
+                    deadline = todo.deadline,
+                    categoryColor = todo.categoryColor,
+                ),
+            )
         },
         onCertificationTabClick = viewModel::onCertificationTabClick,
         onCertificationMemberClick = viewModel::onCertificationMemberClick,

@@ -81,6 +81,11 @@ private data class ChatReadTarget(
 /** 답장 원본이 이모티콘이라 텍스트 미리보기가 없을 때 대신 보여줄 라벨. */
 private const val EmojiReplyPreviewLabel = "이모티콘"
 
+private data class VerifiedRoutineKey(
+    val groupId: Long,
+    val routineId: Long,
+)
+
 private const val MAX_ROOM_NAME_LENGTH = 20
 private const val MAX_ROUTINE_NAME_LENGTH = 20
 private const val MAX_CATEGORY_NAME_LENGTH = 20
@@ -125,6 +130,7 @@ class GroupRoutineViewModel(
     private val sendChatMessageUseCase: SendChatMessageUseCase = ChatContainer.sendChatMessageUseCase,
     private val disconnectChatSocketUseCase: DisconnectChatSocketUseCase = ChatContainer.disconnectChatSocketUseCase,
 ) : BaseViewModel() {
+    private val locallyCompletedRoutineKeys = mutableSetOf<VerifiedRoutineKey>()
 
     private val _uiState = MutableStateFlow(GroupRoutineUiState())
     val uiState: StateFlow<GroupRoutineUiState> = _uiState.asStateFlow()
@@ -201,6 +207,24 @@ class GroupRoutineViewModel(
 
     fun markRoutineVerified(routineId: Long?) {
         if (routineId == null) return
+        val groupId = currentGroupId() ?: return
+        val state = _uiState.value
+        val memberCount = state.members.size.takeIf { it > 0 }
+            ?: state.routines.firstOrNull { it.id == groupId }?.memberCount
+            ?: 0
+        val verificationScore = 1.5
+        val completionThreshold = memberCount / 2.0
+
+        if (memberCount > 0 && verificationScore > completionThreshold) {
+            locallyCompletedRoutineKeys += VerifiedRoutineKey(groupId, routineId)
+            _uiState.update { state ->
+                state.copy(
+                    todos = state.todos.map { todo ->
+                        if (todo.id == routineId) todo.copy(isDone = true) else todo
+                    },
+                )
+            }
+        }
         refreshVerificationDecisionState()
     }
 
@@ -1595,12 +1619,17 @@ class GroupRoutineViewModel(
                     val groupRoutines = result.data
                         .filter { it.groupId == groupId }
                     val todos = groupRoutines.map { routine ->
+                            val key = VerifiedRoutineKey(groupId, routine.routineId)
+                            val isCompletedOnServer = routine.status == GroupRoutineStatus.COMPLETED
+                            if (isCompletedOnServer) {
+                                locallyCompletedRoutineKeys.remove(key)
+                            }
                             GroupTodoUiModel(
                                 id = routine.routineId,
                                 title = routine.title,
                                 deadline = routine.scheduledEndTime,
                                 category = routine.categoryName,
-                                isDone = routine.status == GroupRoutineStatus.COMPLETED,
+                                isDone = isCompletedOnServer || key in locallyCompletedRoutineKeys,
                                 categoryColor = _uiState.value.categoryColors[routine.categoryName],
                             )
                         }

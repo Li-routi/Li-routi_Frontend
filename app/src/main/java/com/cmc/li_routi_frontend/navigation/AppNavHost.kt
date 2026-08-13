@@ -42,6 +42,7 @@ import com.li_routi.core.domain.notification.NotificationNavigationTarget
 import com.li_routi.feature.challenge.navigation.ChallengeNavHost
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
 import com.li_routi.feature.grouproutine.navigation.GrouproutineRootNavHost
+import com.li_routi.feature.grouproutine.navigation.GroupRoutineVerificationTarget
 import com.li_routi.feature.home.navigation.HomeEntryPoint
 import com.li_routi.feature.home.navigation.HomeNavHost
 import com.li_routi.feature.home.navigation.RoutineAuthCameraRoute
@@ -65,6 +66,17 @@ private fun TodayGroupRoutine.toAuthSelectable() = RoutineAuthSelectableUiModel(
     categoryColor = CategoryColor.entries[
         (((categoryId % CategoryColor.entries.size) + CategoryColor.entries.size) % CategoryColor.entries.size).toInt()
     ],
+    groupId = groupId,
+    groupRoutineId = routineId,
+)
+
+private fun GroupRoutineVerificationTarget.toAuthSelectable() = RoutineAuthSelectableUiModel(
+    id = "group_${groupId}_$routineId",
+    title = title,
+    dueLabel = deadline.takeIf(String::isNotBlank)?.let { "마감 $it" },
+    subtitle = roomName,
+    categoryLabel = category,
+    categoryColor = categoryColor,
     groupId = groupId,
     groupRoutineId = routineId,
 )
@@ -183,6 +195,9 @@ fun AppNavHost(
     // 오버레이가 닫히지 않고 유지된다.
     var showVerificationFlow by rememberSaveable { mutableStateOf(false) }
     var verificationPreselectedId by rememberSaveable { mutableStateOf<String?>(null) }
+    var verificationPreselectedRoutine by remember {
+        mutableStateOf<RoutineAuthSelectableUiModel?>(null)
+    }
     var capturedVerificationPhotoUri by rememberSaveable(stateSaver = NullableUriSaver) {
         mutableStateOf(null)
     }
@@ -195,8 +210,12 @@ fun AppNavHost(
     var groupRoutineRefreshSignal by remember { mutableIntStateOf(0) }
     var verifiedGroupRoutineId by rememberSaveable { mutableStateOf<Long?>(null) }
 
-    fun startVerificationFlow(preselectedId: String?) {
+    fun startVerificationFlow(
+        preselectedId: String?,
+        preselectedRoutine: RoutineAuthSelectableUiModel? = null,
+    ) {
         verificationPreselectedId = preselectedId
+        verificationPreselectedRoutine = preselectedRoutine
         capturedVerificationPhotoUri = null
         showVerificationFlow = true
     }
@@ -205,6 +224,7 @@ fun AppNavHost(
         showVerificationFlow = false
         capturedVerificationPhotoUri = null
         verificationPreselectedId = null
+        verificationPreselectedRoutine = null
     }
 
     // 개인 루틴 + 그룹 루틴(홈 요약) + 참여 중인 챌린지를 한 목록으로 합친다. 플로우가 열릴 때마다
@@ -214,6 +234,16 @@ fun AppNavHost(
         if (!showVerificationFlow) return@LaunchedEffect
         isLoadingVerificationRoutines = true
         verificationLoadError = false
+        val selectedGroupRoutine = verificationPreselectedRoutine?.takeIf { routine ->
+            verificationPreselectedId == routine.id &&
+                routine.groupId != null &&
+                routine.groupRoutineId != null
+        }
+        if (selectedGroupRoutine != null) {
+            verificationRoutines = listOf(selectedGroupRoutine)
+            isLoadingVerificationRoutines = false
+            return@LaunchedEffect
+        }
         val homeResult = HomeContainer.getHomeSummaryUseCase()
         val challengesResult = ChallengeContainer.getMyChallengesUseCase()
         val isGroupVerification = verificationPreselectedId?.startsWith("group_") == true
@@ -240,7 +270,9 @@ fun AppNavHost(
             .filter { it.status == GroupRoutineStatus.PENDING || it.status == GroupRoutineStatus.IN_PROGRESS }
             .map(TodayGroupRoutine::toAuthSelectable)
         val challengeItems = challengesResult.data.toAuthSelectables()
-        verificationRoutines = (groupItems + homeItems + challengeItems).distinctBy { it.id }
+        verificationRoutines = (
+            listOfNotNull(verificationPreselectedRoutine) + groupItems + homeItems + challengeItems
+        ).distinctBy { it.id }
         isLoadingVerificationRoutines = false
     }
 
@@ -275,7 +307,10 @@ fun AppNavHost(
                     initialEntryPoint = groupRoutineEntryPoint,
                     onInitialEntryPointConsumed = { groupRoutineEntryPoint = null },
                     onTabSelected = ::selectTab,
-                    onStartVerification = ::startVerificationFlow,
+                    onStartVerification = { target ->
+                        val selectable = target.toAuthSelectable()
+                        startVerificationFlow(selectable.id, selectable)
+                    },
                     verificationRefreshSignal = groupRoutineRefreshSignal,
                     verifiedRoutineId = verifiedGroupRoutineId,
                     modifier = Modifier.fillMaxSize(),
