@@ -70,6 +70,7 @@ import androidx.compose.material.icons.filled.Check
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.key
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -2851,7 +2852,7 @@ private fun ChatMessageBubble(
     ) {
         if (!isMine && time.isBlank()) {
             Image(
-                painter = painterResource(id = R.drawable.img_group_routine_character),
+                painter = painterResource(id = DesignSystemR.drawable.default_character),
                 contentDescription = null,
                 modifier = Modifier
                     .size(40.dp)
@@ -3210,6 +3211,38 @@ private fun LeaderSettingsScreen(
     }
 }
 
+/**
+ * 그룹 구성원 아바타. 기본 캐릭터 실루엣(design-system의 default_character — 홈/상점과 같은
+ * 파랑새) 위에 그 구성원이 실제 착용 중인 아이템([equippedImageUrls], `GET /api/groups/{groupId}`
+ * 응답의 avatar.equipped)을 겹쳐 그린다. 다른 구성원이 고른 캐릭터 본체(어떤 동물/색)는 서버에
+ * 없어(로컬 전용 선택이라) 알 수 없으므로 기본 캐릭터로 통일해서 보여준다 — feature/home의
+ * AvatarCharacter.kt와 같은 방식이지만, feature 모듈 간 의존을 새로 만들지 않으려고 여기 따로 둔다.
+ */
+@Composable
+private fun MemberAvatarImage(
+    equippedImageUrls: List<String>,
+    modifier: Modifier = Modifier,
+) {
+    Box(modifier = modifier, contentAlignment = Alignment.Center) {
+        Image(
+            painter = painterResource(id = DesignSystemR.drawable.default_character),
+            contentDescription = null,
+            contentScale = ContentScale.Fit,
+            modifier = Modifier.fillMaxSize(),
+        )
+        equippedImageUrls.forEach { url ->
+            key(url) {
+                AsyncImage(
+                    model = url,
+                    contentDescription = null,
+                    contentScale = ContentScale.Fit,
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
+        }
+    }
+}
+
 @Composable
 private fun LeaderMemberRow(
     member: GroupMemberUiModel,
@@ -3227,9 +3260,8 @@ private fun LeaderMemberRow(
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Image(
-            painter = painterResource(id = R.drawable.img_group_routine_character),
-            contentDescription = null,
+        MemberAvatarImage(
+            equippedImageUrls = member.equippedImageUrls,
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
@@ -3685,9 +3717,8 @@ private fun MemberSeat(
                     .background(LiroutiTheme.colors.backgroundDefault),
                 contentAlignment = Alignment.Center,
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.img_group_routine_character),
-                    contentDescription = null,
+                MemberAvatarImage(
+                    equippedImageUrls = member.equippedImageUrls,
                     modifier = Modifier.requiredSize(48.dp),
                 )
             }
@@ -3773,9 +3804,8 @@ private fun MemberProfileDialog(
                             .background(LiroutiTheme.colors.backgroundSecondary),
                         contentAlignment = Alignment.Center,
                     ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.img_group_routine_character),
-                            contentDescription = null,
+                        MemberAvatarImage(
+                            equippedImageUrls = member.equippedImageUrls,
                             modifier = Modifier.size(60.dp),
                         )
                     }
@@ -4084,7 +4114,7 @@ private fun CertificationPostItem(
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Image(
-                painter = painterResource(id = R.drawable.img_group_routine_character),
+                painter = painterResource(id = DesignSystemR.drawable.default_character),
                 contentDescription = null,
                 modifier = Modifier
                     .size(34.dp)

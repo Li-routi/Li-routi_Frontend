@@ -22,4 +22,7 @@ data class GroupMemberActivity(
     val completedCount: Long,
     /** 금일 전체 그룹 루틴 할당 수. 할당이 없으면 0 */
     val totalCount: Long,
+    /** 현재 착용 중인 아이템 이미지. 겹칠 순서대로(BODY→HEAD→HAND) 옴. 캐릭터 본체(어떤 동물/색)는
+     * 서버에 없어(로컬 전용 선택) 포함되지 않는다 — 기본 캐릭터 위에 이 이미지들만 겹쳐 그린다. */
+    val equippedImageUrls: List<String> = emptyList(),
 )

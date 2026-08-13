@@ -47,6 +47,8 @@ data class GroupMemberUiModel(
     val totalDisappointmentCount: Int = 0,
     val pokeCount: Long = 0L,
     val isMe: Boolean = false,
+    /** 현재 착용 중인 아이템 이미지(겹칠 순서대로). 서버에 없으면 빈 목록 — 기본 캐릭터만 보여준다. */
+    val equippedImageUrls: List<String> = emptyList(),
 )
 
 data class GroupTodoUiModel(

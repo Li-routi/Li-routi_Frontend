@@ -20,9 +20,20 @@ data class GroupMemberActivityResponse(
     val totalLikeCount: Long,
     val totalPokeCount: Long,
     val dailyProgress: DailyProgressResponse?,
+    /** 구성원의 현재 조합 아바타(착용 아이템). 안 입은 자리는 실리지 않는다. */
+    val avatar: GroupMemberAvatarResponse?,
 )
 
 data class DailyProgressResponse(
     val completedCount: Long,
     val totalCount: Long,
+)
+
+data class GroupMemberAvatarResponse(
+    val equipped: List<GroupMemberAvatarEquippedItemResponse>?,
+)
+
+data class GroupMemberAvatarEquippedItemResponse(
+    val slot: String?,
+    val imageUrl: String?,
 )

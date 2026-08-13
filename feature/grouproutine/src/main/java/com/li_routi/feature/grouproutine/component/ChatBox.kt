@@ -48,6 +48,7 @@ import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import coil.compose.AsyncImage
+import com.li_routi.core.designsystem.R as DesignSystemR
 import com.li_routi.core.designsystem.foundation.color.Neutral0
 import com.li_routi.core.designsystem.foundation.color.ScrimStrong
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -341,7 +342,7 @@ fun ChatBox(
                 verticalAlignment = Alignment.Top,
             ) {
                 Image(
-                    painter = painterResource(id = R.drawable.img_group_routine_character),
+                    painter = painterResource(id = DesignSystemR.drawable.default_character),
                     contentDescription = null,
                     modifier = Modifier
                         .size(AvatarSize)
