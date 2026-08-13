@@ -229,7 +229,13 @@ private fun createCameraCaptureUri(context: Context): Uri {
 }
 
 /** 아바타 아래 닉네임 입력 영역. 서버가 내려준 초기 닉네임이 채워진 채로 시작하며, 일반 텍스트
- * 필드처럼 자유롭게 고쳐 쓸 수 있다. */
+ * 필드처럼 자유롭게 고쳐 쓸 수 있다.
+ *
+ * [showError]가 true면 입력칸 아래에 [errorText]를 빨간 글씨로 보여준다(닉네임이 공백일 때 사용).
+ * 원래 [height]가 라벨+간격+입력칸 높이의 합과 정확히 같아 고정 높이를 줘도 잘렸었는데, 에러 텍스트가
+ * 추가되는 경우까지 고려해 `Column`은 내용물 높이에 맞춰 자연스럽게 늘어나게 두고 [height]는 더 이상
+ * 강제로 적용하지 않는다(호출부 레이아웃이 이미 유연한 Spacer(weight)로 남는 공간을 채우고 있어 안전).
+ */
 @Composable
 fun ProfileNicknameField(
     nickname: String,
@@ -244,11 +250,11 @@ fun ProfileNicknameField(
     inputBorderWidth: Dp = ProfileNicknameInputBorderWidth,
     inputBorderColor: Color = ProfileNicknameInputBorderColor,
     inputBackgroundColor: Color = ProfileNicknameInputBackgroundColor,
+    showError: Boolean = false,
+    errorText: String = "닉네임을 입력해주세요",
 ) {
     Column(
-        modifier = modifier
-            .width(width)
-            .height(height),
+        modifier = modifier.width(width),
     ) {
         Box(
             modifier = Modifier
@@ -281,6 +287,14 @@ fun ProfileNicknameField(
                 modifier = Modifier.fillMaxWidth(),
             )
         }
+        if (showError) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Text(
+                text = errorText,
+                style = LiroutiTheme.typography.captionRegular,
+                color = LiroutiTheme.colors.dangerText,
+            )
+        }
     }
 }
 
@@ -304,6 +318,8 @@ fun ProfileScreen(
     var nickname by rememberSaveable { mutableStateOf(initialNickname) }
     var profileImageUri by rememberSaveable(stateSaver = UriSaver) { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by rememberSaveable(stateSaver = UriSaver) { mutableStateOf<Uri?>(null) }
+    val isNicknameBlank = nickname.isBlank()
+    val isSaveEnabled = !isLoading && !isNicknameBlank
 
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture(),
@@ -337,6 +353,7 @@ fun ProfileScreen(
             ProfileNicknameField(
                 nickname = nickname,
                 onNicknameChange = { nickname = it },
+                showError = isNicknameBlank,
                 modifier = Modifier
                     .align(Alignment.CenterHorizontally)
                     .padding(top = ProfileNicknameSectionTopSpacing),
@@ -353,10 +370,12 @@ fun ProfileScreen(
                     // 제스처 내비게이션 바 등 시스템 내비게이션 바 높이만큼 버튼을 위로 밀어 올려, 버튼이 내비게이션 바에 가리지 않도록 한다.
                     .navigationBarsPadding()
                     .padding(bottom = ProfileActionButtonBottomSpacing)
-                    // HorizontalDoubleButton에 enabled 옵션이 없어, 로딩 중엔 시각적으로 흐리게 표시해 비활성 상태임을 알린다.
-                    .alpha(if (isLoading) ProfileActionButtonDisabledAlpha else 1f),
-                // 클릭 자체는 항상 열려 있으므로, 로딩 중에는 여기서 막아 연타로 인한 중복 저장 요청을 방지한다.
-                onRightClick = { if (!isLoading) onSaveClick(nickname, profileImageUri) },
+                    // HorizontalDoubleButton에 enabled 옵션이 없어, 로딩 중이거나 닉네임이 공백이면
+                    // 시각적으로 흐리게 표시해 비활성 상태임을 알린다.
+                    .alpha(if (isSaveEnabled) 1f else ProfileActionButtonDisabledAlpha),
+                // 클릭 자체는 항상 열려 있으므로, 비활성 상태일 땐 여기서 막아 연타로 인한 중복 저장
+                // 요청이나 빈 닉네임 저장을 방지한다.
+                onRightClick = { if (isSaveEnabled) onSaveClick(nickname, profileImageUri) },
             )
         }
 

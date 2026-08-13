@@ -1,7 +1,9 @@
 package com.li_routi.feature.mypage.vm
 
+import com.li_routi.core.domain.auth.SocialProvider
+
 /**
- * 마이페이지 화면 상태. [nickname]/[email]은 `GET /api/members/me` 조회 결과로 채워진다.
+ * 마이페이지 화면 상태. [nickname]/[email]/[socialProvider]는 `GET /api/members/me` 조회 결과로 채워진다.
  *
  * [isProfileLoaded]가 true가 되기 전에는 프로필 수정 화면 진입을 막는다 — 조회 응답이 오기 전에
  * 진입하면 [nickname]이 빈 값으로 초기화됐다가 응답 도착 시 바뀌면서 입력 중이던 값이 날아가기 때문.
@@ -10,6 +12,7 @@ data class MyPageUiState(
     val nickname: String = "",
     val email: String = "",
     val profileImageUrl: String? = null,
+    val socialProvider: SocialProvider = SocialProvider.Unknown,
     val isProfileLoaded: Boolean = false,
     val isSavingProfile: Boolean = false,
     /**
@@ -40,6 +43,12 @@ sealed interface MyPageUiEvent {
 
     /** "계정 관리" 탭 → 계정 관리 화면 진입 */
     data object NavigateToAccountManage : MyPageUiEvent
+
+    /** 상단 바 알림벨 아이콘 탭 → 홈의 알림 목록 화면 진입 (다른 feature라 외부 콜백으로 위임) */
+    data object NavigateToNotification : MyPageUiEvent
+
+    /** 상단 바 설정 아이콘 탭 → 홈의 알림 설정 화면 진입 (다른 feature라 외부 콜백으로 위임) */
+    data object NavigateToNotificationSettings : MyPageUiEvent
 
     /** 프로필(닉네임) 저장 성공 → 마이페이지로 복귀 */
     data object ProfileSaved : MyPageUiEvent

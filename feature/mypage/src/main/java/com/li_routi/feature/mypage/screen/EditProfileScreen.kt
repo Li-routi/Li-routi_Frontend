@@ -31,6 +31,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
@@ -67,6 +68,7 @@ fun EditProfileScreen(
 ) {
     var nickname by remember(initialNickname) { mutableStateOf(initialNickname) }
     var selectedImageUri by rememberSaveable { mutableStateOf<Uri?>(null) }
+    val isNicknameBlank = nickname.isBlank()
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val galleryLauncher = rememberLauncherForActivityResult(
@@ -106,7 +108,9 @@ fun EditProfileScreen(
                 value = nickname,
                 onValueChange = { nickname = it },
                 labelText = "닉네임",
-                showHelper = false,
+                helperText = "닉네임을 입력해주세요",
+                showHelper = isNicknameBlank,
+                isError = isNicknameBlank,
             )
         }
         Row(
@@ -129,7 +133,7 @@ fun EditProfileScreen(
                 onClick = { onSaveClick(nickname, selectedImageUri) },
                 backgroundColor = LiroutiTheme.colors.primaryNormal,
                 textColor = LiroutiTheme.colors.backgroundAlternative,
-                enabled = !isSaving,
+                enabled = !isSaving && !isNicknameBlank,
                 modifier = Modifier.weight(1f),
             )
         }
@@ -190,6 +194,7 @@ private fun EditProfileActionButton(
     Box(
         modifier = modifier
             .height(44.dp)
+            .alpha(if (enabled) 1f else EditProfileActionButtonDisabledAlpha)
             .background(backgroundColor, RoundedCornerShape(6.dp))
             .clickable(enabled = enabled, onClick = onClick),
         contentAlignment = Alignment.Center,
@@ -197,6 +202,8 @@ private fun EditProfileActionButton(
         Text(text = text, style = LiroutiTheme.typography.body2LongMedium, color = textColor)
     }
 }
+
+private const val EditProfileActionButtonDisabledAlpha = 0.5f
 
 @Preview(showBackground = true, heightDp = 800)
 @Composable

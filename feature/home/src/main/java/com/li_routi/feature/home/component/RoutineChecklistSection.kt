@@ -41,8 +41,6 @@ import com.li_routi.core.common.ui.routine.AddCategoryChip
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.detectLabelLongClick
 import com.li_routi.core.designsystem.R
-import com.li_routi.core.designsystem.component.CheckBoxState
-import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.designsystem.component.LiroutiBadge
 import com.li_routi.core.designsystem.component.LiroutiBadgeColor
 import com.li_routi.core.designsystem.component.LiroutiDivider
@@ -466,9 +464,6 @@ private fun RoutineChecklistItemRow(
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            CustomCheckBox(
-                state = if (item.isDone) CheckBoxState.B else CheckBoxState.A,
-            )
             Column(modifier = Modifier.weight(1f)) {
                 Text(
                     text = item.title,

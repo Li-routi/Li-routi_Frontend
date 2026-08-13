@@ -7,6 +7,7 @@ import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,6 +16,8 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Text
@@ -150,46 +153,58 @@ private fun ChallengeListContent(routines: List<RoutineUiModel>, onChallengeClic
     var searchQuery by remember { mutableStateOf("") }
     var activeFilter by remember { mutableStateOf("전체") }
 
+    // 카테고리가 여러 개인 경우 콤마로 이어붙임 (예: "건강, 취미")
+    val filteredRoutines = remember(routines, activeFilter, searchQuery) {
+        routines
+            .filter { activeFilter == "전체" || activeFilter in it.categories }
+            .filter { searchQuery.isBlank() || it.title.contains(searchQuery.trim(), ignoreCase = true) }
+    }
+
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundSecondary)
-            .padding(horizontal = 16.dp)
-            .padding(top = 25.dp, bottom = 50.dp),
-        verticalArrangement = Arrangement.spacedBy(16.dp),
+            .background(LiroutiTheme.colors.backgroundSecondary),
     ) {
-
-        // ---------- 검색바 ----------
-        LiroutiSearchField(
-            value = searchQuery,
-            onValueChange = { searchQuery = it },
-        )
-
-        // ---------- 필터 칩 ----------
-        // (Figma: Dim > Filter, node 2187:22130)
-        Row(
-            modifier = Modifier.horizontalScroll(rememberScrollState()),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
+        // ---------- 검색바 + 필터 칩 (스크롤 영역 밖에 고정) ----------
+        // 필터 칩 밑 여백도 여기(고정 영역)에 둬서, 리스트를 스크롤해도 이 여백이 사라지지 않고
+        // 필터 칩과 함께 위에 그대로 남아 있게 한다.
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 16.dp)
+                .padding(top = 25.dp, bottom = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp),
         ) {
-            filterOptions.forEach { label ->
-                LiroutiLabel(
-                    text = label,
-                    selected = label == activeFilter,
-                    onClick = { activeFilter = label },
-                )
+            LiroutiSearchField(
+                value = searchQuery,
+                onValueChange = { searchQuery = it },
+            )
+
+            // (Figma: Dim > Filter, node 2187:22130)
+            Row(
+                modifier = Modifier.horizontalScroll(rememberScrollState()),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
+            ) {
+                filterOptions.forEach { label ->
+                    LiroutiLabel(
+                        text = label,
+                        selected = label == activeFilter,
+                        onClick = { activeFilter = label },
+                    )
+                }
             }
         }
 
-        // ---------- 루틴 리스트 ----------
+        // ---------- 루틴 리스트 (스크롤) ----------
         // (Figma: List > Property1=routine_simple, node 2398:11076)
-        // 카테고리가 여러 개인 경우 콤마로 이어붙임 (예: "건강, 취미")
-        val filteredRoutines = remember(routines, activeFilter, searchQuery) {
-            routines
-                .filter { activeFilter == "전체" || activeFilter in it.categories }
-                .filter { searchQuery.isBlank() || it.title.contains(searchQuery.trim(), ignoreCase = true) }
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            filteredRoutines.forEach { routine ->
+        LazyColumn(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(horizontal = 16.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
+            contentPadding = PaddingValues(bottom = 50.dp),
+        ) {
+            items(filteredRoutines, key = { it.id }) { routine ->
                 LiroutiRoutineSimpleCard(
                     title = routine.title,
                     subtitle = "${routine.categories.joinToString(", ")} | ${routine.description}",

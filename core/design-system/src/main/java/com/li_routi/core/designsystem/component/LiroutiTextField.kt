@@ -34,6 +34,7 @@ fun LiroutiTextField(
     helperText: String = "Helper Text",
     showLabel: Boolean = true,
     showHelper: Boolean = true,
+    isError: Boolean = false,
 ) {
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
@@ -84,7 +85,7 @@ fun LiroutiTextField(
             Text(
                 text = helperText,
                 style = LiroutiTheme.typography.captionRegular,
-                color = LiroutiTheme.colors.labelSub,
+                color = if (isError) LiroutiTheme.colors.dangerText else LiroutiTheme.colors.labelSub,
                 modifier = Modifier.padding(top = 4.dp),
             )
         }

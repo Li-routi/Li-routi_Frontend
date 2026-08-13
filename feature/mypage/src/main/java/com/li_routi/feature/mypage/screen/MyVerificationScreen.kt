@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyRow
@@ -75,7 +76,7 @@ fun MyVerificationScreen(
             .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         EditProfileTopBar(
-            title = "내인증",
+            title = "내 인증",
             onBackClick = onBackClick,
             trailingContent = {
                 Image(
@@ -125,7 +126,8 @@ fun MyVerificationScreen(
                     .weight(1f)
                     .fillMaxWidth()
                     .verticalScroll(rememberScrollState())
-                    .padding(top = 20.dp),
+                    .padding(top = 20.dp, bottom = 20.dp)
+                    .navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(20.dp),
             ) {
                 if (pendingVerifications.isNotEmpty()) {

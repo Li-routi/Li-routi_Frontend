@@ -38,6 +38,7 @@ import com.li_routi.core.domain.notification.NotificationNavigationTarget
 import com.li_routi.feature.challenge.navigation.ChallengeNavHost
 import com.li_routi.feature.grouproutine.navigation.GrouproutineEntryPoint
 import com.li_routi.feature.grouproutine.navigation.GrouproutineRootNavHost
+import com.li_routi.feature.home.navigation.HomeEntryPoint
 import com.li_routi.feature.home.navigation.HomeNavHost
 import com.li_routi.feature.home.navigation.RoutineAuthCameraRoute
 import com.li_routi.feature.home.navigation.RoutineAuthUploadRoute
@@ -83,6 +84,7 @@ fun AppNavHost(
     onPendingNotificationConsumed: () -> Unit = {},
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(AppBottomTab.Home) }
+    var homeEntryPoint by rememberSaveable { mutableStateOf<HomeEntryPoint?>(null) }
     var groupRoutineEntryPoint by rememberSaveable { mutableStateOf<GrouproutineEntryPoint?>(null) }
     var challengeDetailEntryPoint by rememberSaveable { mutableStateOf<Long?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
@@ -230,6 +232,8 @@ fun AppNavHost(
                         challengeDetailEntryPoint = challengeId
                         selectTab(AppBottomTab.Challenge)
                     },
+                    initialEntryPoint = homeEntryPoint,
+                    onInitialEntryPointConsumed = { homeEntryPoint = null },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -263,6 +267,14 @@ fun AppNavHost(
                 MyPageRoute(
                     onTabSelected = ::selectTab,
                     refreshTick = myResetGen,
+                    onNotificationClick = {
+                        homeEntryPoint = HomeEntryPoint.Notification
+                        selectTab(AppBottomTab.Home)
+                    },
+                    onSettingsClick = {
+                        homeEntryPoint = HomeEntryPoint.NotificationSettings
+                        selectTab(AppBottomTab.Home)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }

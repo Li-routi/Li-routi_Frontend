@@ -55,6 +55,7 @@ import com.li_routi.feature.grouproutine.component.ChatDateDivider
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 import com.li_routi.feature.grouproutine.component.EmojiPannel
+import com.li_routi.feature.grouproutine.component.isGroupEnd
 import com.li_routi.feature.grouproutine.component.isGroupStart
 import com.li_routi.feature.grouproutine.component.isNewDate
 import com.li_routi.feature.grouproutine.component.toLocalDate
@@ -215,6 +216,7 @@ fun RoomDetailScreen(
                 ) {
                     itemsIndexed(items = messages, key = { _, message -> message.id }) { index, message ->
                         val previous = messages.getOrNull(index - 1)
+                        val next = messages.getOrNull(index + 1)
                         Column {
                             if (message.isNewDate(previous)) {
                                 ChatDateDivider(sentAtMillis = message.sentAtMillis)
@@ -222,6 +224,7 @@ fun RoomDetailScreen(
                             ChatBox(
                                 message = message,
                                 isGroupStart = message.isGroupStart(previous),
+                                isGroupEnd = message.isGroupEnd(next),
                                 emojiSize = emojiSize,
                                 onReplySwipe = onReplySwipe,
                             )

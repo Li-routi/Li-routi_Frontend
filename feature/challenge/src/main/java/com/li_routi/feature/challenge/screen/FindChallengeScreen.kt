@@ -109,12 +109,14 @@ fun FindChallengeScreen(
             }
 
             // 검색바/필터 칩은 스크롤 영역 밖에 고정하고, 카드 리스트만 그 아래에서 스크롤되게 한다.
+            // 필터 칩 밑 여백도 리스트의 contentPadding이 아니라 여기(고정 영역)에 둬야, 스크롤해도
+            // 이 여백이 사라지지 않고 필터 칩과 함께 위에 그대로 남아 있는다.
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
                     .background(LiroutiTheme.colors.backgroundSecondary)
                     .padding(horizontal = 16.dp)
-                    .padding(top = 25.dp),
+                    .padding(top = 25.dp, bottom = 16.dp),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
                 // ---------- 검색바 (입력마다 디바운스되어 서버 keyword로 반영됨) ----------
@@ -189,7 +191,7 @@ fun FindChallengeScreen(
                                 .fillMaxSize()
                                 .padding(horizontal = 16.dp),
                             verticalArrangement = Arrangement.spacedBy(16.dp),
-                            contentPadding = PaddingValues(top = 16.dp, bottom = 50.dp),
+                            contentPadding = PaddingValues(bottom = 50.dp),
                         ) {
                             items(uiState.challenges, key = { it.id }) { challenge ->
                                 ChallengeCard(

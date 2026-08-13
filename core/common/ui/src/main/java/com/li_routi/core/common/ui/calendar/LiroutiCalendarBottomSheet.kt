@@ -271,16 +271,20 @@ private fun CalendarDayCell(day: Int, columnIndex: Int, isSelected: Boolean, onC
     }
 }
 
+/** 연도 휠의 고정 범위. 예전엔 휠이 열릴 때 표시 연도 기준 ±10년으로 잡았는데, 그러면 헤더로
+ * 연도를 이동한 뒤 다시 휠을 열 때마다 범위 자체가 같이 밀렸다(예: 2016년으로 이동 후 재오픈하면
+ * 2006~2026년으로 범위가 바뀜). 고정값으로 못박아 몇 번을 열어도 범위가 그대로 유지되게 한다. */
+private const val CalendarPickerMinYear = 2026
+private const val CalendarPickerMaxYear = 2046
+
 @Composable
 private fun CalendarYearMonthWheel(
     yearMonth: YearMonth,
     onYearMonthChange: (YearMonth) -> Unit,
 ) {
-    // 오늘 날짜가 아니라 휠이 열릴 때의 실제 표시 연도([yearMonth])를 기준으로 ±10년 범위를 잡는다 —
-    // 오늘 기준으로 고정하면 헤더 이전/다음으로 10년 넘게 이동한 뒤 휠을 열었을 때 선택 연도가
-    // 범위 밖으로 나가 `indexOf(...).coerceAtLeast(0)`가 엉뚱한 연도(범위 맨 앞)로 조용히 폴백했다.
-    val baseYear = remember { yearMonth.year }
-    val years = remember { (baseYear - 10..baseYear + 10).map { "${it}년" }.toTypedArray() }
+    val years = remember {
+        (CalendarPickerMinYear..CalendarPickerMaxYear).map { "${it}년" }.toTypedArray()
+    }
     val months = remember { (1..12).map { "${it}월" }.toTypedArray() }
     val selectedTextColorArgb = LiroutiTheme.colors.labelDefault.toArgb()
 
@@ -304,7 +308,7 @@ private fun CalendarYearMonthWheel(
                     values = years,
                     selectedIndex = years.indexOf("${yearMonth.year}년").coerceAtLeast(0),
                     onSelectedIndexChange = { index ->
-                        onYearMonthChange(YearMonth.of(baseYear - 10 + index, yearMonth.monthValue))
+                        onYearMonthChange(YearMonth.of(CalendarPickerMinYear + index, yearMonth.monthValue))
                     },
                     selectedTextColorArgb = selectedTextColorArgb,
                     modifier = Modifier.weight(1f),
