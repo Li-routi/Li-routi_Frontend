@@ -7,10 +7,15 @@ import com.li_routi.feature.home.shop.component.ShopItemUiModel
  *
  * 이름으로 분기하지 않고 [slot]을 그대로 조회에 실어 보냄 — 탭이 늘어도 앱을 안 고치려는 것임
  */
-/** 캐릭터 위에 겹쳐 그릴 착용 아이템 한 건 */
+/**
+ * 캐릭터 위에 겹쳐 그릴 착용 아이템 한 건.
+ *
+ * 안 산 아이템도 미리보기로 올라오므로 [owned]로 갈라둠 — 저장은 보유한 것만 보낼 수 있음
+ */
 data class EquippedUiModel(
     val itemId: Long,
     val imageUrl: String?,
+    val owned: Boolean = true,
 )
 
 data class ShopCategoryUiModel(
@@ -39,7 +44,8 @@ data class ShopUiState(
     /**
      * 지금 캐릭터에 올려둔 착장. 자리 → 아이템.
      *
-     * 저장 전에도 화면에 바로 비치게 여기서 들고 있다가, 저장할 때 통째로 보냄
+     * 저장 전에도 화면에 바로 비치게 여기서 들고 있다가, 저장할 때 통째로 보냄.
+     * 한 자리엔 하나만 올라가므로 안 산 것을 미리 입어보면 그 자리 미리보기가 바뀜
      */
     val equipped: Map<String, EquippedUiModel> = emptyMap(),
     /**
@@ -50,13 +56,22 @@ data class ShopUiState(
     val savedEquippedItemIds: Set<Long> = emptySet(),
     /** 착장 저장 중 */
     val isEquipping: Boolean = false,
-    /** 그리드에서 선택된 아이템. null이면 미선택. */
-    val selectedItemId: String? = null,
+    /**
+     * 그리드에서 고른 아이템. 아이템 id → 아이템.
+     *
+     * 탭을 옮겨도 유지돼야 여러 탭에서 고른 걸 한 번에 살 수 있음.
+     * [items]는 지금 탭 것만 들고 있어서 id만 갖고는 다른 탭 선택을 되짚을 수 없어 아이템째로 담음
+     */
+    val selectedItems: Map<String, ShopItemUiModel> = emptyMap(),
     val isLoading: Boolean = false,
     /** 구매 요청 중. 따닥으로 두 번 사는 것 방지 */
     val isPurchasing: Boolean = false,
     val message: String? = null,
-)
+) {
+    /** 고른 것 중 아직 안 산 아이템. 하단 버튼이 구매냐 저장이냐를 이걸로 가름 */
+    val purchaseTargets: List<ShopItemUiModel>
+        get() = selectedItems.values.filterNot { it.owned }
+}
 
 /**
  * 아이템 상점 화면의 일회성 UI 이벤트.

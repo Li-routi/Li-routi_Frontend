@@ -49,7 +49,7 @@ data class ShopItemUiModel(
 )
 
 /** 모르는 재화가 와도 화면이 비지 않게 파란보석으로 둠 */
-private fun currencyIconOf(currency: String): Int =
+internal fun currencyIconOf(currency: String): Int =
     if (currency == "TOPAZ") R.drawable.diamond_orange else R.drawable.diamond_blue
 
 val SampleShopItems: List<ShopItemUiModel> = List(8) { index ->
@@ -64,12 +64,13 @@ val SampleShopItems: List<ShopItemUiModel> = List(8) { index ->
 /**
  * 상점 아이템 그리드 (Figma node `2299:23502`, 4열 x 2행).
  *
- * 탭 → [selectedItemId]에 파란 테두리(선택됨). 재화구매 리스트와 동일한 선택 스타일.
+ * 탭 → [selectedItemIds]에 파란 테두리(선택됨). 재화구매 리스트와 동일한 선택 스타일.
+ * 한 번에 여러 개를 사려면 여러 개가 동시에 선택돼 있어야 해서 집합으로 받음.
  */
 @Composable
 fun ShopItemGrid(
     items: List<ShopItemUiModel>,
-    selectedItemId: String?,
+    selectedItemIds: Set<String>,
     onItemClick: (String) -> Unit,
     modifier: Modifier = Modifier,
     /** 지금 입고 있는 아이템 id. 보유중과 구분해서 보여주려고 받음 */
@@ -84,7 +85,7 @@ fun ShopItemGrid(
         items(items = items, key = { it.id }) { item ->
             ShopItemCell(
                 item = item,
-                selected = item.id == selectedItemId,
+                selected = item.id in selectedItemIds,
                 equipped = item.id in equippedItemIds,
                 onClick = { onItemClick(item.id) },
             )
@@ -172,20 +173,20 @@ private fun ShopItemGridPreview() {
     LiroutiFrontendTheme {
         ShopItemGrid(
             items = SampleShopItems.map { it.copy(owned = it.id == "item_0") },
-            selectedItemId = null,
+            selectedItemIds = emptySet(),
             onItemClick = {},
             equippedItemIds = setOf("item_0"),
         )
     }
 }
 
-@Preview(showBackground = true, heightDp = 320, name = "선택됨")
+@Preview(showBackground = true, heightDp = 320, name = "여러 개 선택됨")
 @Composable
 private fun ShopItemGridSelectedPreview() {
     LiroutiFrontendTheme {
         ShopItemGrid(
             items = SampleShopItems,
-            selectedItemId = "item_1",
+            selectedItemIds = setOf("item_1", "item_3", "item_4"),
             onItemClick = {},
         )
     }

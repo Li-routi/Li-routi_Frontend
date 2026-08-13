@@ -84,15 +84,16 @@ class ShopViewModel(
         }
     }
 
+    /** 탭을 옮겨도 고른 것은 그대로 둠 — 여러 탭에서 고른 걸 한 번에 사는 게 목적임 */
     override fun onCategorySelected(index: Int) {
         if (_uiState.value.selectedCategoryIndex == index) return
-        _uiState.update { it.copy(selectedCategoryIndex = index, selectedItemId = null) }
+        _uiState.update { it.copy(selectedCategoryIndex = index) }
         loadItems()
     }
 
     override fun onOwnedOnlyChange(ownedOnly: Boolean) {
         if (_uiState.value.showOwnedOnly == ownedOnly) return
-        _uiState.update { it.copy(showOwnedOnly = ownedOnly, selectedItemId = null) }
+        _uiState.update { it.copy(showOwnedOnly = ownedOnly) }
         loadItems()
     }
 
@@ -176,65 +177,96 @@ class ShopViewModel(
     }
 
     /**
-     * 셀 탭. 보유한 아이템이면 저장 전에도 캐릭터에 바로 올려서 보여줌.
+     * 셀 탭. 안 산 것도 캐릭터에 바로 올려서 입어볼 수 있게 함.
      *
-     * 같은 자리에는 하나만 입을 수 있어서 그 자리를 덮어씀. 다시 누르면 벗음
+     * 같은 자리에는 하나만 올라가므로 그 자리를 덮어씀. 이미 올라가 있는 걸 다시 누르면 벗음.
+     * 벗기와 고르기가 같은 탭이라 미리보기 기준으로 판단함 — 다른 탭에서 고른 것도 그대로 살아 있음
      */
     override fun onItemClick(itemId: String) {
         _uiState.update { state ->
-            val unselecting = state.selectedItemId == itemId
-            val item = state.items.firstOrNull { it.id == itemId }
+            val item = state.items.firstOrNull { it.id == itemId } ?: return@update state
+            val numericId = item.id.toLongOrNull() ?: return@update state
+            // 자리를 모르는 아이템은 캐릭터에 못 올려서 선택 여부로만 껐다 켬
+            val unselecting = if (item.slot.isEmpty()) {
+                itemId in state.selectedItems
+            } else {
+                state.equipped[item.slot]?.itemId == numericId
+            }
+
             val equipped = when {
-                item == null || !item.owned || item.slot.isEmpty() -> state.equipped
+                item.slot.isEmpty() -> state.equipped
                 unselecting -> state.equipped - item.slot
                 else -> state.equipped + (item.slot to EquippedUiModel(
-                    itemId = item.id.toLongOrNull() ?: return@update state,
+                    itemId = numericId,
                     imageUrl = item.imageUrl,
+                    owned = item.owned,
                 ))
             }
-            state.copy(
-                selectedItemId = if (unselecting) null else itemId,
-                equipped = equipped,
-            )
+            val selectedItems = if (unselecting) {
+                state.selectedItems - itemId
+            } else {
+                state.selectedItems + (itemId to item)
+            }
+            state.copy(selectedItems = selectedItems, equipped = equipped)
         }
     }
 
     /**
-     * 하단 버튼. 고른 아이템을 아직 안 샀으면 구매, 이미 샀으면 착장을 저장함.
+     * 하단 버튼. 고른 것 중 안 산 게 있으면 그것들을 사고, 다 샀으면 착장을 저장함.
      *
-     * 구매는 서버가 사자마자 그 자리에 입혀주고, 가격·결제 재화도 서버가 갖고 있어서 body가 없음
+     * 구매는 가격·결제 재화를 서버가 갖고 있어서 body가 없음
      */
     override fun onSaveClick() {
         val state = _uiState.value
-        val selected = state.items.firstOrNull { it.id == state.selectedItemId }
-        if (selected == null || selected.owned) {
+        val targets = state.purchaseTargets
+        if (targets.isEmpty()) {
             equipSelected()
             return
         }
-        val itemId = selected.id.toLongOrNull() ?: run {
-            _uiState.update { it.copy(message = "아이템 정보를 불러오지 못했어요.") }
-            return
-        }
         if (state.isPurchasing) return
+        purchaseAll(targets)
+    }
 
+    /**
+     * 고른 아이템을 차례로 사들임.
+     *
+     * 서버에 일괄 구매 엔드포인트가 없어서 하나씩 부름. 하나라도 실패하면 거기서 멈춤 —
+     * 잔액이 모자란 경우가 대부분이라 밀어붙여도 같은 이유로 계속 실패함.
+     * 앞서 산 것은 되돌릴 수 없으니 몇 개가 넘어갔는지 함께 알려줌
+     */
+    private fun purchaseAll(targets: List<ShopItemUiModel>) {
         _uiState.update { it.copy(isPurchasing = true) }
         viewModelScope.launch {
             try {
-                when (val result = purchaseShopAvatarItemUseCase(itemId)) {
-                    is ResultState.Success -> {
-                        // 구매하면 서버가 그 자리에 바로 입혀줘서 응답이 곧 새 착장임
-                        _uiState.update {
-                            it.applyServerAvatar(result.data)
-                                .copy(message = "${selected.name}을(를) 구매했어요.")
-                        }
-                        // 갱신을 기다려야 함. 먼저 풀어주면 owned가 반영되기 전에 또 살 수 있음
-                        refreshItems()
-                        loadBalances()
-                        emitEvent(ShopUiEvent.SaveSelectedItems)
-                    }
+                val purchased = mutableListOf<String>()
+                var latestAvatar: MemberAvatar? = null
+                var error: String? = null
 
-                    is ResultState.Error -> _uiState.update { it.copy(message = result.message) }
-                    ResultState.Loading -> Unit
+                for (target in targets) {
+                    val itemId = target.id.toLongOrNull() ?: continue
+                    when (val result = purchaseShopAvatarItemUseCase(itemId)) {
+                        is ResultState.Success -> {
+                            purchased += target.name
+                            // 구매하면 서버가 그 자리에 바로 입혀줘서 응답이 곧 새 착장임
+                            latestAvatar = result.data
+                            _uiState.update { it.copy(selectedItems = it.selectedItems - target.id) }
+                        }
+
+                        is ResultState.Error -> error = result.message
+                        ResultState.Loading -> Unit
+                    }
+                    if (error != null) break
+                }
+
+                _uiState.update { state ->
+                    val next = latestAvatar?.let { state.applyServerAvatar(it) } ?: state
+                    next.copy(message = purchaseMessageOf(purchased, error))
+                }
+                if (purchased.isNotEmpty()) {
+                    // 갱신을 기다려야 함. 먼저 풀어주면 owned가 반영되기 전에 또 살 수 있음
+                    refreshItems()
+                    loadBalances()
+                    emitEvent(ShopUiEvent.SaveSelectedItems)
                 }
             } finally {
                 _uiState.update { it.copy(isPurchasing = false) }
@@ -242,15 +274,20 @@ class ShopViewModel(
         }
     }
 
-    /** 지금 올려둔 착장을 통째로 저장함. 서버가 보낸 목록을 곧 전체 착장으로 봄 */
+    /**
+     * 지금 올려둔 착장을 통째로 저장함. 서버가 보낸 목록을 곧 전체 착장으로 봄.
+     *
+     * 미리보기로만 올려둔 안 산 아이템은 서버가 받아주지 않아서 빼고 보냄
+     */
     private fun equipSelected() {
         val state = _uiState.value
         if (state.isEquipping) return
 
+        val itemIds = state.equipped.values.filter { it.owned }.map { it.itemId }
         _uiState.update { it.copy(isEquipping = true) }
         viewModelScope.launch {
             try {
-                when (val result = equipAvatarUseCase(state.equipped.values.map { it.itemId })) {
+                when (val result = equipAvatarUseCase(itemIds)) {
                     is ResultState.Success -> _uiState.update {
                         it.applyServerAvatar(result.data).copy(message = "저장했어요.")
                     }
@@ -274,6 +311,14 @@ class ShopViewModel(
 
 /** 캐릭터 목록 API가 아직 없어서 이 탭은 그리지 않음 */
 private const val CharacterSource = "CHARACTER"
+
+/** 하나씩 사기 때문에 중간에 끊길 수 있음 — 몇 개가 넘어갔는지 같이 밝힘 */
+private fun purchaseMessageOf(purchased: List<String>, error: String?): String = when {
+    purchased.isEmpty() -> error ?: "아이템 정보를 불러오지 못했어요."
+    error == null && purchased.size == 1 -> "${purchased.first()}을(를) 구매했어요."
+    error == null -> "${purchased.size}개를 구매했어요."
+    else -> "${purchased.size}개만 구매했어요. $error"
+}
 
 private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =
     firstOrNull { it.currency == currency }?.balance

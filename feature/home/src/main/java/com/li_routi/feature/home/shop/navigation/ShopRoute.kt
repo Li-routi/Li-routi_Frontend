@@ -16,6 +16,10 @@ import com.li_routi.feature.home.shop.screen.ShopScreen
 import com.li_routi.feature.home.shop.vm.ShopUiEvent
 import com.li_routi.feature.home.shop.vm.ShopUiState
 import com.li_routi.feature.home.shop.vm.ShopViewModel
+import kotlinx.coroutines.delay
+
+/** 구매 실패 사유까지 읽을 시간은 주되 계속 남지는 않게 함 */
+private const val ToastDurationMillis = 3_000L
 
 /**
  * 아이템 상점 화면 진입점. [ShopViewModel]과 [ShopScreen]을 연결한다.
@@ -38,6 +42,13 @@ fun ShopRoute(
         }
     }
 
+    // 새 문구가 오면 타이머를 다시 시작하려고 메시지를 key로 둠
+    LaunchedEffect(uiState.message) {
+        if (uiState.message == null) return@LaunchedEffect
+        delay(ToastDurationMillis)
+        viewModel.onDismissMessage()
+    }
+
     Box(modifier = modifier.fillMaxSize()) {
         ShopScreen(
             actions = viewModel,
@@ -50,7 +61,8 @@ fun ShopRoute(
             selectedCategoryIndex = uiState.selectedCategoryIndex,
             showOwnedOnly = uiState.showOwnedOnly,
             items = uiState.items,
-            selectedItemId = uiState.selectedItemId,
+            selectedItemIds = uiState.selectedItems.keys,
+            purchaseTargets = uiState.purchaseTargets,
         )
 
         // 구매 실패(잔액 부족 등) 사유를 서버 메시지 그대로 보여줌
