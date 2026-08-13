@@ -10,17 +10,18 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.designsystem.foundation.color.Blue500
+import com.li_routi.core.designsystem.foundation.color.Neutral96
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 
 private const val BarCount = 4
 private val BarWidth = 76.dp
 private val BarHeight = 4.dp
 private val BarSpacing = 8.dp
-private val BarActiveColor = Color(0xFF338AFF)
-private val BarInactiveColor = Color(0xFFDBDCDF)
+private val BarActiveColor = Blue500
+private val BarInactiveColor = Neutral96
 
 /**
  * 로그인 화면 상단 페이지 진행 바. currentPage(0-based) 이하 인덱스는 파란색으로 채워지고,

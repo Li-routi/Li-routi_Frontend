@@ -24,6 +24,14 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import com.li_routi.core.designsystem.foundation.color.AchievementProgressCountColor
+import com.li_routi.core.designsystem.foundation.color.BackgroundSecondary
+import com.li_routi.core.designsystem.foundation.color.Cyan500
+import com.li_routi.core.designsystem.foundation.color.GradeEpicBackground
+import com.li_routi.core.designsystem.foundation.color.GradeEpicText
+import com.li_routi.core.designsystem.foundation.color.GradeUniqueBackground
+import com.li_routi.core.designsystem.foundation.color.GradeUniqueText
+import com.li_routi.core.designsystem.foundation.color.Neutral98
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -32,9 +40,9 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
  * 노란색 계열로 임시 지정했다 — 실제 스펙이 나오면 교체해야 한다.
  */
 enum class AchievementRarity(val label: String, val backgroundColor: Color, val textColor: Color) {
-    Rare(label = "레어", backgroundColor = Color(0xFFF4F7FB), textColor = Color(0xFF00AAD2)),
-    Epic(label = "에픽", backgroundColor = Color(0xFFEFE0F8), textColor = Color(0xFF6903D6)),
-    Unique(label = "유니크", backgroundColor = Color(0xFFFFF6D8), textColor = Color(0xFFA67C00)),
+    Rare(label = "레어", backgroundColor = BackgroundSecondary, textColor = Cyan500),
+    Epic(label = "에픽", backgroundColor = GradeEpicBackground, textColor = GradeEpicText),
+    Unique(label = "유니크", backgroundColor = GradeUniqueBackground, textColor = GradeUniqueText),
 }
 
 data class AchievementUiModel(
@@ -53,8 +61,8 @@ private val RewardTextStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
 private val DescriptionTextStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
 private val ProgressCountTextStyle = TextStyle(fontWeight = FontWeight.Medium, fontSize = 12.sp, lineHeight = 18.sp)
 
-private val CardBorderColor = Color(0xFFF4F4F5)
-private val ProgressCountColor = Color(0xFF81898E)
+private val CardBorderColor = Neutral98
+private val ProgressCountColor = AchievementProgressCountColor
 private val CharacterIconSize = 60.dp
 
 /**

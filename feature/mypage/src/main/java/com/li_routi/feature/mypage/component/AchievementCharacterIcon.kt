@@ -6,13 +6,16 @@ import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.graphics.vector.addPathNodes
 import androidx.compose.ui.graphics.vector.rememberVectorPainter
 import androidx.compose.ui.unit.dp
+import com.li_routi.core.designsystem.foundation.color.AchievementEyeColor
+import com.li_routi.core.designsystem.foundation.color.AchievementGradientEnd
+import com.li_routi.core.designsystem.foundation.color.AchievementGradientStart
+import com.li_routi.core.designsystem.foundation.color.AchievementSmileColor
 
 private const val StarPath =
     "M68.1411 43.7063C68.8975 31.1757 82.2083 23.4907 93.4384 29.1009L96.7901 30.7754C102.548 33.6517 " +
@@ -30,8 +33,8 @@ private const val EyeLeftPath = "M84.0273 90.1951a4.66817 4.66817 0 1 0 9.33634 
 private const val EyeRightPath = "M114.371 87.2811a4.66817 4.66817 0 1 0 9.33634 0a4.66817 4.66817 0 1 0 -9.33634 0"
 private const val SmilePath = "M93.3592 102.162C96.2768 104.982 103.104 108.639 107.072 100.703"
 
-private val EyeColor = Color(0xFF205079)
-private val SmileColor = Color(0xFF0075DB)
+private val EyeColor = AchievementEyeColor
+private val SmileColor = AchievementSmileColor
 
 /**
  * 업적 화면 캐릭터 일러스트. Figma node `205:18228`("Frame 2147226283") 기준.
@@ -53,7 +56,7 @@ fun AchievementCharacterIcon(modifier: Modifier = Modifier) {
             addPath(
                 pathData = addPathNodes(StarPath),
                 fill = Brush.radialGradient(
-                    colors = listOf(Color(0xFF28AFFF), Color(0xFF9EDBFF)),
+                    colors = listOf(AchievementGradientStart, AchievementGradientEnd),
                     center = Offset(110f, 87f),
                     radius = 90f,
                 ),

@@ -25,7 +25,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.style.TextAlign
@@ -33,15 +32,14 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
+import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeBackground
+import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeText
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-/** Design Page [1.1] `badge/rectangle_large` — 대표 배지. */
-private val RepresentativeBadgeBackground = Color(0xFFF1F8E9)
-private val RepresentativeBadgeText = Color(0xFF3A8009)
-
-/** Figma `comp/myVehicle` 그라데이션 끝색 `rgba(207,228,255,0.2)`. */
-private val CharacterCardGradientEnd = Color(0x33CFE4FF)
+/** Figma `comp/myVehicle` 그라데이션 끝색 `rgba(207,228,255,0.2)` — 그룹 루틴 화면과 동일한 값. */
+private val CharacterCardGradientEnd = MemberHeroGradientEnd
 
 // 닉네임 아래 남는 공간을 쓰되, 400.dp처럼 화면을 덮지 않게 상한을 둠.
 // PNG는 400×400이고 그림은 그보다 작아서, 박스보다 실제 새는 조금 작게 보임

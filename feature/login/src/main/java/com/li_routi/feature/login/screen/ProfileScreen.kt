@@ -56,6 +56,8 @@ import androidx.core.content.FileProvider
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.HorizontalDoubleButton
 import com.li_routi.core.designsystem.component.LiroutiAvatar
+import com.li_routi.core.designsystem.foundation.color.Neutral100
+import com.li_routi.core.designsystem.foundation.color.Neutral96
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import java.io.File
@@ -78,8 +80,8 @@ val ProfileAvatarBadgeSize = 24.dp
 val ProfileAvatarBadgeStartOffset = 60.dp
 val ProfileAvatarBadgeBottomOverhang = 2.dp
 val ProfileAvatarBadgeBorderWidth = 1.dp
-val ProfileAvatarBadgeBorderColor = Color(0xFFDBDCDF)
-val ProfileAvatarBadgeBackgroundColor = Color(0xFFFFFFFF)
+val ProfileAvatarBadgeBorderColor = Neutral96
+val ProfileAvatarBadgeBackgroundColor = Neutral100
 val ProfileAvatarBadgeIconSize = 16.dp
 
 val ProfileNicknameSectionTopSpacing = 20.dp
@@ -90,8 +92,8 @@ val ProfileNicknameFieldSpacing = 8.dp
 val ProfileNicknameInputHeight = 44.dp
 val ProfileNicknameInputCornerRadius = 6.dp
 val ProfileNicknameInputBorderWidth = 1.dp
-val ProfileNicknameInputBorderColor = Color(0xFFDBDCDF)
-val ProfileNicknameInputBackgroundColor = Color(0xFFFFFFFF)
+val ProfileNicknameInputBorderColor = Neutral96
+val ProfileNicknameInputBackgroundColor = Neutral100
 
 val ProfileActionButtonBottomSpacing = 40.dp
 val ProfileActionButtonWidth = 328.dp

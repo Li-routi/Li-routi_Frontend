@@ -19,11 +19,12 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.DividerSoft
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
 // Figma 원본이 시맨틱 변수 없이 raw hex(#eff0f0)만 쓰고 있어서(바인딩된 변수 아님) 로컬 리터럴로 둔다.
-val SettingsSectionDividerColor = Color(0xFFEFF0F0)
+val SettingsSectionDividerColor = DividerSoft
 
 /**
  * 마이페이지 하위 "설정 목록형" 화면(앱 정보/계정 관리 등)의 섹션 라벨.

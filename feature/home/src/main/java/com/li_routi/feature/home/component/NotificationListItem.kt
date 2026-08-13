@@ -16,20 +16,17 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.NotificationUnreadBackground
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.vm.NotificationItemUiModel
 import com.li_routi.feature.home.vm.NotificationTab
-
-/** 와이어프레임 `background/alram` — 미읽음 행 배경. */
-internal val NotificationUnreadBackground = Color(0xFFF2F8FF)
 
 /**
  * 알림 목록 한 줄 (스크린샷 기준: 미읽음 점/배경, 카테고리·제목·시간, 3dot).

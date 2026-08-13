@@ -28,7 +28,6 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -39,11 +38,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.example.ri_routi.AstaSans
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.ChatBarBackground
+import com.li_routi.core.designsystem.foundation.color.ChatSendBackground
+import com.li_routi.core.designsystem.foundation.color.Neutral0
+import com.li_routi.core.designsystem.foundation.color.Neutral60
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-private val PlaceholderColor = Color(0xFF878A93)
-private val SendButtonBackground = Color(0xFFD6E8FF)
+private val PlaceholderColor = Neutral60
+private val SendButtonBackground = ChatSendBackground
 private val ChatBarHorizontalMargin = 16.dp
 
 private val ChatBarTextStyle = TextStyle(
@@ -57,7 +60,6 @@ private val ChatBarShape = RoundedCornerShape(6.dp)
 private val ReplyHeaderHeight = 44.dp
 // Figma는 rgba(238,238,238,0.8) 위에 backdrop-blur(6px)를 얹지만, 이 프로젝트에서 실제
 // backdrop blur는 API 31+ 전용이라(minSdk 24) ChatDateDivider와 같은 방식으로 반투명 색으로 대체한다.
-private val ChatBarBackground = Color(0xFFEEEEEE).copy(alpha = 0.8f)
 private val ReplyHeaderTextStartPadding = 16.dp
 private val ReplyHeaderTopTextTopPadding = 4.dp
 private val ReplyHeaderBottomTextBottomPadding = 4.dp
@@ -218,7 +220,7 @@ private fun ChatReplyHeader(
         Text(
             text = "${nickname}에게 답장",
             style = ReplyNicknameTextStyle,
-            color = Color(0xFF000000),
+            color = Neutral0,
             modifier = Modifier
                 .align(Alignment.TopStart)
                 .padding(

@@ -381,6 +381,12 @@ fun RoutineItemRow(
         if (checked != null) {
             CustomCheckBox(
                 state = if (checked) CheckBoxState.B else CheckBoxState.A,
+                // onCheckedChange가 없는 행(예: 이미 등록된 커스텀 루틴 — 체크박스는 보여주되 탭으로
+                // 해제는 안 됨)에서는 체크박스 자체를 비활성화해 터치가 그냥 사라지지 않고 아래 Row의
+                // onRowClick(수정 시트 열기)으로 넘어가게 한다. enabled=true인 채로 두면
+                // toggleable이 터치를 먼저 먹어버려서 행 전체 클릭도, 체크 해제도 둘 다 안 되는
+                // "죽은 영역"이 된다.
+                enabled = onCheckedChange != null,
                 onClick = {
                     onCheckedChange?.invoke(!checked)
                 },

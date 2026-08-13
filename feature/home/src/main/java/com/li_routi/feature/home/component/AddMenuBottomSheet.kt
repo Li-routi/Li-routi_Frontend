@@ -32,6 +32,7 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.DragHandleColor
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -39,7 +40,7 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 private val SheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp)
 
 /** Figma Header drag handle `#DEDEDE`, 44×4. */
-private val SheetDragHandleColor = Color(0xFFDEDEDE)
+private val SheetDragHandleColor = DragHandleColor
 
 /**
  * Figma Design Page [1.1] Home `+` 클릭 Bottom Sheet (`property1=home`, node `4766:60645`).

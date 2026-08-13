@@ -43,6 +43,7 @@ import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.R
+import com.li_routi.core.designsystem.foundation.color.DragHandleColor
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.core.domain.routine.RoutineCategory
@@ -62,7 +63,7 @@ import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.emptyFlow
 
 /** Figma `Bottom Sheet` 상단의 드래그 힌트 바 (`h-[4px] w-[44px]`, 회색 pill). */
-private val SheetDragHandleColor = androidx.compose.ui.graphics.Color(0xFFDEDEDE)
+private val SheetDragHandleColor = DragHandleColor
 
 /**
  * Figma `Bottom Sheet`(352dp) + 그 아래 `Bottom GNB` 예약 공간(80dp)을 합친 값.

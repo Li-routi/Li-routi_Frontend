@@ -26,6 +26,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiDim
+import com.li_routi.core.designsystem.foundation.color.Neutral99
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -45,7 +46,7 @@ val BottomSheetBoxGapAfterFirst = 1.dp
 val BottomSheetBoxGapAfterSecond = 8.dp
 val BottomSheetBoxBottomSpacing = 32.dp
 val BottomSheetBoxHorizontalMargin = 34.dp
-val BottomSheetBoxBackgroundColor = Color(0xFFF7F7F8)
+val BottomSheetBoxBackgroundColor = Neutral99
 
 @Composable
 fun BottomScreen(
