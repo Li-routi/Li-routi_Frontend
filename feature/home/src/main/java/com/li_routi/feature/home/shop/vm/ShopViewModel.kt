@@ -6,11 +6,13 @@ import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.ShopContainer
 import com.li_routi.core.domain.shop.CurrencyBalance
 import com.li_routi.core.domain.shop.GetShopAvatarItemsUseCase
+import com.li_routi.core.domain.shop.GetShopCategoriesUseCase
 import com.li_routi.core.domain.shop.GetWalletBalancesUseCase
 import com.li_routi.core.domain.shop.PurchaseShopAvatarItemUseCase
 import com.li_routi.core.domain.shop.ShopAvatarItem
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -27,6 +29,7 @@ import kotlinx.coroutines.launch
  */
 class ShopViewModel(
     initialState: ShopUiState = ShopUiState(),
+    private val getShopCategoriesUseCase: GetShopCategoriesUseCase = ShopContainer.getShopCategoriesUseCase,
     private val getShopAvatarItemsUseCase: GetShopAvatarItemsUseCase = ShopContainer.getShopAvatarItemsUseCase,
     private val purchaseShopAvatarItemUseCase: PurchaseShopAvatarItemUseCase = ShopContainer.purchaseShopAvatarItemUseCase,
     private val getWalletBalancesUseCase: GetWalletBalancesUseCase = ShopContainer.getWalletBalancesUseCase,
@@ -38,9 +41,49 @@ class ShopViewModel(
     private val _uiEvent = MutableSharedFlow<ShopUiEvent>(extraBufferCapacity = 1)
     val uiEvent: SharedFlow<ShopUiEvent> = _uiEvent.asSharedFlow()
 
+    private var itemsJob: Job? = null
+
     init {
+        loadCategories()
         loadItems()
         loadBalances()
+    }
+
+    /**
+     * 상단 탭. 서버가 내려준 순서 그대로 그림.
+     *
+     * 캐릭터 탭(`source == "CHARACTER"`)은 캐릭터 목록 API가 아직 없어서 뺌 —
+     * 나중에 API가 생기면 서버 목록에 그대로 실려 오므로 여기만 풀면 됨
+     */
+    private fun loadCategories() {
+        viewModelScope.launch {
+            val result = getShopCategoriesUseCase()
+            if (result is ResultState.Success) {
+                val categories = result.data
+                    .filter { it.source != CharacterSource }
+                    .map { ShopCategoryUiModel(key = it.key, name = it.name, slot = it.slot) }
+                _uiState.update { state ->
+                    state.copy(
+                        categories = categories,
+                        // 탭이 줄어들 수 있어서 선택 위치가 목록 밖으로 나가지 않게 맞춤
+                        selectedCategoryIndex = state.selectedCategoryIndex
+                            .coerceAtMost((categories.size - 1).coerceAtLeast(0)),
+                    )
+                }
+            }
+        }
+    }
+
+    override fun onCategorySelected(index: Int) {
+        if (_uiState.value.selectedCategoryIndex == index) return
+        _uiState.update { it.copy(selectedCategoryIndex = index, selectedItemId = null) }
+        loadItems()
+    }
+
+    override fun onOwnedOnlyChange(ownedOnly: Boolean) {
+        if (_uiState.value.showOwnedOnly == ownedOnly) return
+        _uiState.update { it.copy(showOwnedOnly = ownedOnly, selectedItemId = null) }
+        loadItems()
     }
 
     /** 상점 헤더 잔액. 구매 후에도 다시 불러서 서버 값과 어긋나지 않게 함 */
@@ -64,13 +107,19 @@ class ShopViewModel(
 
     /** 상점 격자에 뿌릴 아이템을 불러옴. 보유한 것도 같이 내려와서 owned로 구분함 */
     fun loadItems() {
-        viewModelScope.launch { refreshItems() }
+        // 탭을 빠르게 옮기면 늦게 온 응답이 나중에 덮어써서, 이전 조회는 버림
+        itemsJob?.cancel()
+        itemsJob = viewModelScope.launch { refreshItems() }
     }
 
     /** 목록 갱신을 기다려야 하는 곳(구매 직후)에서도 쓸 수 있게 suspend로 둠 */
     private suspend fun refreshItems() {
+        val state = _uiState.value
+        // 전체 탭은 slot 없이 부르는 것이라 null을 그대로 넘김
+        val slot = state.categories.getOrNull(state.selectedCategoryIndex)?.slot
+        val ownedOnly = state.showOwnedOnly.takeIf { it }
         _uiState.update { it.copy(isLoading = true) }
-        when (val result = getShopAvatarItemsUseCase()) {
+        when (val result = getShopAvatarItemsUseCase(slot = slot, ownedOnly = ownedOnly)) {
             is ResultState.Success -> _uiState.update { state ->
                 state.copy(isLoading = false, items = result.data.map { it.toUiModel() })
             }
@@ -154,6 +203,9 @@ class ShopViewModel(
     }
 }
 
+/** 캐릭터 목록 API가 아직 없어서 이 탭은 그리지 않음 */
+private const val CharacterSource = "CHARACTER"
+
 private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =
     firstOrNull { it.currency == currency }?.balance
 
@@ -161,6 +213,7 @@ private fun ShopAvatarItem.toUiModel(): ShopItemUiModel = ShopItemUiModel(
     id = id.toString(),
     name = name,
     price = price.toInt(),
+    currency = currency,
     imageUrl = imageUrl,
     owned = owned,
 )

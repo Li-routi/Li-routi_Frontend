@@ -23,6 +23,12 @@ class GetWalletBalancesUseCase(
         repository.getWalletBalances()
 }
 
+class GetShopCategoriesUseCase(
+    private val repository: ShopRepository,
+) {
+    suspend operator fun invoke(): ResultState<List<ShopCategory>> = repository.getShopCategories()
+}
+
 class GetShopAvatarItemsUseCase(
     private val repository: ShopRepository,
 ) {

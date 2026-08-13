@@ -12,6 +12,7 @@ import com.li_routi.core.data.network.dto.response.ExchangeResultResponse
 import com.li_routi.core.data.network.dto.response.MemberAvatarResponse
 import com.li_routi.core.data.network.dto.response.ShopAvatarItemResponse
 import com.li_routi.core.data.network.dto.response.ShopAvatarItemsResponse
+import com.li_routi.core.data.network.dto.response.ShopCategoriesResponse
 import com.li_routi.core.data.network.dto.response.WalletBalancesResponse
 import com.li_routi.core.domain.shop.AvatarEquippedItem
 import com.li_routi.core.domain.shop.ChargeProduct
@@ -22,6 +23,7 @@ import com.li_routi.core.domain.shop.ExchangeProduct
 import com.li_routi.core.domain.shop.ExchangeResult
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
+import com.li_routi.core.domain.shop.ShopCategory
 
 /**
  * 결제 응답에서 비면 안 되는 값을 걸러냄.
@@ -55,6 +57,19 @@ fun ChargeStartedResponse.toDomain(): ChargeStarted = ChargeStarted(
 
 fun WalletBalancesResponse.toDomain(): List<CurrencyBalance> =
     balances.orEmpty().map { CurrencyBalance(currency = it.currency.orEmpty(), balance = it.balance) }
+
+// 이름이 없는 탭은 그릴 수가 없어서 버림
+fun ShopCategoriesResponse.toDomain(): List<ShopCategory> =
+    categories.orEmpty().mapNotNull { response ->
+        val name = response.name
+        if (name.isNullOrBlank()) return@mapNotNull null
+        ShopCategory(
+            key = response.key.orEmpty(),
+            name = name,
+            source = response.source.orEmpty(),
+            slot = response.slot,
+        )
+    }
 
 fun ShopAvatarItemsResponse.toDomain(): List<ShopAvatarItem> = items.orEmpty().map { it.toDomain() }
 

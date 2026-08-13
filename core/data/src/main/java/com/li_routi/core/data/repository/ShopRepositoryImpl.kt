@@ -16,6 +16,7 @@ import com.li_routi.core.domain.shop.ExchangeProduct
 import com.li_routi.core.domain.shop.ExchangeResult
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
+import com.li_routi.core.domain.shop.ShopCategory
 import com.li_routi.core.domain.shop.ShopRepository
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -35,6 +36,10 @@ class ShopRepositoryImpl(
 
     override suspend fun getWalletBalances(): ResultState<List<CurrencyBalance>> = shopCall {
         api.getWalletBalances().unwrap().toDomain()
+    }
+
+    override suspend fun getShopCategories(): ResultState<List<ShopCategory>> = shopCall {
+        api.getShopCategories().unwrap().toDomain()
     }
 
     override suspend fun getAvatarItems(
