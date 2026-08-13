@@ -37,6 +37,10 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.component.LiroutiSwitch
+import androidx.compose.foundation.Image
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.shop.component.SampleShopItems
@@ -139,12 +143,13 @@ fun ShopScreen(
                         message = "의상을 선택해 주세요!",
                         modifier = Modifier.zIndex(1f),
                     )
-                    Box(
+                    Image(
+                        painter = painterResource(id = R.drawable.default_character),
+                        contentDescription = null,
+                        contentScale = ContentScale.Fit,
                         modifier = Modifier
                             .offset(y = -TooltipCharacterOverlap)
-                            .size(width = CharacterWidth, height = CharacterHeight)
-                            .clip(RoundedCornerShape(12.dp))
-                            .background(LiroutiTheme.colors.backgroundAlternative),
+                            .size(width = CharacterWidth, height = CharacterHeight),
                     )
                 }
             }

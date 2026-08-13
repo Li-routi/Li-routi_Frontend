@@ -3,7 +3,9 @@ package com.li_routi.feature.home.shop.vm
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.data.di.ShopContainer
+import com.li_routi.core.domain.auth.GetMyInfoUseCase
 import com.li_routi.core.domain.shop.CurrencyBalance
 import com.li_routi.core.domain.shop.GetShopAvatarItemsUseCase
 import com.li_routi.core.domain.shop.GetShopCategoriesUseCase
@@ -33,6 +35,7 @@ class ShopViewModel(
     private val getShopAvatarItemsUseCase: GetShopAvatarItemsUseCase = ShopContainer.getShopAvatarItemsUseCase,
     private val purchaseShopAvatarItemUseCase: PurchaseShopAvatarItemUseCase = ShopContainer.purchaseShopAvatarItemUseCase,
     private val getWalletBalancesUseCase: GetWalletBalancesUseCase = ShopContainer.getWalletBalancesUseCase,
+    private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
 ) : BaseViewModel(), ShopScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -44,6 +47,7 @@ class ShopViewModel(
     private var itemsJob: Job? = null
 
     init {
+        loadNickname()
         loadCategories()
         loadItems()
         loadBalances()
@@ -84,6 +88,16 @@ class ShopViewModel(
         if (_uiState.value.showOwnedOnly == ownedOnly) return
         _uiState.update { it.copy(showOwnedOnly = ownedOnly, selectedItemId = null) }
         loadItems()
+    }
+
+    /** 상단 캐릭터 카드에 쓸 내 닉네임 */
+    private fun loadNickname() {
+        viewModelScope.launch {
+            val result = getMyInfoUseCase()
+            if (result is ResultState.Success) {
+                _uiState.update { it.copy(nickname = result.data.nickname) }
+            }
+        }
     }
 
     /** 상점 헤더 잔액. 구매 후에도 다시 불러서 서버 값과 어긋나지 않게 함 */
