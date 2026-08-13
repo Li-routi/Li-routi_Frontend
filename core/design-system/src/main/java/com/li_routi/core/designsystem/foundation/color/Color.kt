@@ -105,8 +105,8 @@ val AchievementGradientStart = Color(0xFF28AFFF)
 val AchievementGradientEnd = Color(0xFF9EDBFF)
 val GradeEpicBackground = Color(0xFFEFE0F8)
 val GradeEpicText = Color(0xFF6903D6)
-val GradeUniqueBackground = Color(0xFFFFF6D8)
-val GradeUniqueText = Color(0xFFA67C00)
+val GradeUniqueBackground = Color(0xFFFFF7C2)
+val GradeUniqueText = Color(0xFFB59806)
 val AchievementProgressCountColor = Color(0xFF81898E)
 
 // home / challenge 화면 전용 장식 색상

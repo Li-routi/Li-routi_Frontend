@@ -16,6 +16,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.painter.ColorPainter
 import androidx.compose.ui.layout.ContentScale
@@ -32,6 +33,7 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 private val CardWidth = 192.dp
 private val CardImageHeight = 144.dp
 private val ScrimColor = ScrimMuted
+private val ImageBlurRadius = 5.dp
 
 /** AI 검증 대기 중인 인증 한 건. Figma node `4869:36895`("대기 중인 인증") 기준. */
 data class PendingVerificationUiModel(
@@ -46,9 +48,11 @@ private val InfoMemoTextStyle = TextStyle(fontSize = 12.sp, lineHeight = 14.sp)
 private val LoadingLabelTextStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
 
 /**
- * "대기 중인 인증" 가로 스크롤 목록 한 칸. 인증 사진 위에 스크림 + 로딩 스피너 + "Ai 검증 중" 문구를
- * 덮고, 하단에 루틴명/메모/남은 시간을 보여준다. Figma는 사진에 backdrop-blur도 함께 쓰지만
- * [MyVerificationCard]와 동일한 이유로 이 앱에서는 스크림만 적용한다.
+ * "대기 중인 인증" 가로 스크롤 목록 한 칸. 인증 사진에 블러 + 스크림을 덮고, 그 위에 로딩 스피너 +
+ * "Ai 검증 중" 문구를 얹으며, 하단에 루틴명/메모/남은 시간을 보여준다. Figma node `4869:36909` 기준
+ * `backdrop-blur(5px)` + `rgba(80,80,80,0.6)`. `Modifier.blur`는 API 31 미만에서 no-op이라
+ * ([androidx.compose.ui.draw.blur] 문서 참고) 구형 기기에서는 스크림만 남는데, 이 앱 minSdk(24)에서도
+ * 안전하게 걸어둘 수 있어 그대로 적용한다.
  */
 @Composable
 fun PendingVerificationCard(
@@ -63,7 +67,12 @@ fun PendingVerificationCard(
                 .clip(RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)),
         ) {
             if (item.imageUrl.isNullOrBlank()) {
-                Box(modifier = Modifier.fillMaxSize().background(LiroutiTheme.colors.backgroundSecondary))
+                Box(
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(ImageBlurRadius)
+                        .background(LiroutiTheme.colors.backgroundSecondary),
+                )
             } else {
                 AsyncImage(
                     model = item.imageUrl,
@@ -71,7 +80,9 @@ fun PendingVerificationCard(
                     contentScale = ContentScale.Crop,
                     // 서명 URL 만료 등으로 로드 자체가 실패해도 빈 화면 대신 자리표시자를 보여준다.
                     error = ColorPainter(LiroutiTheme.colors.backgroundSecondary),
-                    modifier = Modifier.fillMaxSize(),
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .blur(ImageBlurRadius),
                 )
             }
             Box(modifier = Modifier.fillMaxSize().background(ScrimColor))
@@ -162,7 +173,7 @@ private val SamplePendingVerifications = listOf(
     ),
 )
 
-@Preview(showBackground = true)
+@Preview(showBackground = true, apiLevel = 33)
 @Composable
 private fun PendingVerificationCardPreview() {
     LiroutiFrontendTheme {

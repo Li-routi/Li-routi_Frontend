@@ -6,4 +6,6 @@ data class NewChatMessage(
     val type: ChatMessageType,
     val content: String?,
     val emoticonCode: String?,
+    /** 답장으로 보낼 때만 채운다 — 답장 대상 원본 메시지의 id. */
+    val replyToMessageId: Long? = null,
 )

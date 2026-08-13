@@ -142,6 +142,8 @@ import com.li_routi.feature.grouproutine.vm.GroupRoutineUiState
 import com.li_routi.feature.grouproutine.vm.GroupRoutineViewModel
 import com.li_routi.feature.grouproutine.vm.GroupTodoUiModel
 import com.li_routi.feature.grouproutine.vm.NewCertificationUiModel
+import java.time.LocalDate
+import java.time.YearMonth
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
 
@@ -292,6 +294,8 @@ fun GroupRoutineRoute(
         onChatLoadMore = viewModel::onChatScrolledToTop,
         onReplySwipe = viewModel::onReplyTargetSelected,
         onReplyCancelClick = viewModel::onReplyTargetCleared,
+        onCalendarMonthChange = viewModel::onCalendarMonthChange,
+        onChatDateSelected = viewModel::onChatDateSelected,
         onMessageEditClick = viewModel::onMessageEditClick,
         onMessageDraftChange = viewModel::onMessageDraftChange,
         onDismissMessageEditSheet = viewModel::onDismissMessageEditSheet,
@@ -385,6 +389,8 @@ private fun GroupRoutineScreen(
     onChatLoadMore: () -> Unit = {},
     onReplySwipe: (ChatMessageUiModel) -> Unit,
     onReplyCancelClick: () -> Unit,
+    onCalendarMonthChange: (YearMonth) -> Unit = {},
+    onChatDateSelected: (LocalDate) -> Unit = {},
     onMessageEditClick: () -> Unit,
     onMessageDraftChange: (String) -> Unit,
     onDismissMessageEditSheet: () -> Unit,
@@ -469,6 +475,9 @@ private fun GroupRoutineScreen(
                     onReplySwipe = onReplySwipe,
                     onReplyCancelClick = onReplyCancelClick,
                     isInitialHistoryLoaded = uiState.isChatHistoryLoaded,
+                    chatDates = uiState.chatDates,
+                    onCalendarMonthChange = onCalendarMonthChange,
+                    onChatDateSelected = onChatDateSelected,
                 )
             }
 

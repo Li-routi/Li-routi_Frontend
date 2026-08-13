@@ -53,8 +53,8 @@ private val CountTextStyle = TextStyle(fontSize = 11.sp, lineHeight = 14.sp)
  * 진입한다.
  *
  * 상태 탭(전체/진행중/달성) + 등급 필터 칩(전체/레어/에픽/유니크)으로 구성되고, "달성" 탭만 진행률 카드
- * 목록 대신 3열 배지 그리드를 보여준다. 등급 칩은 두 탭 모두에 적용되고, 상태 탭은 목록 화면(전체/
- * 진행중)에서만 의미가 있다 — "달성"은 애초에 배지 그리드로 전환하는 탭이라 상태로 다시 거르지 않는다.
+ * 목록 대신 3열 배지 그리드를 보여준다. 등급 필터 칩은 "전체"/"진행중" 탭에서만 보이고, "달성" 탭은
+ * 필터 없이 획득한 배지를 전부 보여준다(Figma node `6008:31728` 기준).
  */
 @Composable
 fun AchievementScreen(
@@ -67,12 +67,13 @@ fun AchievementScreen(
 ) {
     var selectedTab by remember { mutableStateOf(AchievementStatusTab.All) }
     var selectedRarity by remember { mutableStateOf<AchievementRarity?>(null) }
+    var equippedBadgeId by remember { mutableStateOf<Long?>(null) }
 
     val filteredAchievements = achievements.filter { item ->
         (selectedRarity == null || item.rarity == selectedRarity) &&
             (selectedTab != AchievementStatusTab.InProgress || item.isInProgress)
     }
-    val filteredBadges = achievedBadges.filter { selectedRarity == null || it.rarity == selectedRarity }
+    val filteredBadges = achievedBadges
 
     Column(
         modifier = modifier
@@ -103,14 +104,16 @@ fun AchievementScreen(
                     .navigationBarsPadding(),
                 verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LiroutiLabel(text = "전체", selected = selectedRarity == null, onClick = { selectedRarity = null })
-                    AchievementRarity.entries.forEach { rarity ->
-                        LiroutiLabel(
-                            text = rarity.label,
-                            selected = selectedRarity == rarity,
-                            onClick = { selectedRarity = rarity },
-                        )
+                if (selectedTab != AchievementStatusTab.Achieved) {
+                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        LiroutiLabel(text = "전체", selected = selectedRarity == null, onClick = { selectedRarity = null })
+                        AchievementRarity.entries.forEach { rarity ->
+                            LiroutiLabel(
+                                text = rarity.label,
+                                selected = selectedRarity == rarity,
+                                onClick = { selectedRarity = rarity },
+                            )
+                        }
                     }
                 }
                 if (selectedTab == AchievementStatusTab.Achieved) {
@@ -120,7 +123,11 @@ fun AchievementScreen(
                             style = CountTextStyle,
                             color = LiroutiTheme.colors.labelSub,
                         )
-                        AchievementBadgeGrid(badges = filteredBadges)
+                        AchievementBadgeGrid(
+                            badges = filteredBadges,
+                            equippedBadgeId = equippedBadgeId,
+                            onBadgeClick = { badge -> equippedBadgeId = badge.id },
+                        )
                     }
                 } else {
                     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -186,10 +193,10 @@ private val SampleAchievements = listOf(
 )
 
 private val SampleAchievedBadges = listOf(
-    AchievementBadgeUiModel("불꽃 연속", AchievementRarity.Rare),
-    AchievementBadgeUiModel("친구 부자", AchievementRarity.Unique),
-    AchievementBadgeUiModel("소셜 스타", AchievementRarity.Epic),
-    AchievementBadgeUiModel("꾸준한 루티너", AchievementRarity.Rare),
+    AchievementBadgeUiModel(1, "불꽃 연속", AchievementRarity.Rare),
+    AchievementBadgeUiModel(2, "친구 부자", AchievementRarity.Unique),
+    AchievementBadgeUiModel(3, "소셜 스타", AchievementRarity.Epic),
+    AchievementBadgeUiModel(4, "꾸준한 루티너", AchievementRarity.Rare),
 )
 
 @Preview(showBackground = true, heightDp = 900)

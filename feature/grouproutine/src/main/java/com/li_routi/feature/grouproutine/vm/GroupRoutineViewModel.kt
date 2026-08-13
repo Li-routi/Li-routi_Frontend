@@ -13,6 +13,7 @@ import com.li_routi.core.domain.chat.ChatMessage
 import com.li_routi.core.domain.chat.ChatMessageType
 import com.li_routi.core.domain.chat.ConnectChatSocketUseCase
 import com.li_routi.core.domain.chat.DisconnectChatSocketUseCase
+import com.li_routi.core.domain.chat.GetChatDatesUseCase
 import com.li_routi.core.domain.chat.GetChatMessagesUseCase
 import com.li_routi.core.domain.chat.GetEmoticonsUseCase
 import com.li_routi.core.domain.chat.NewChatMessage
@@ -55,9 +56,12 @@ import com.li_routi.core.domain.grouproutine.UpdateGroupNameUseCase
 import com.li_routi.core.domain.grouproutine.UpdateGroupRoutineUseCase
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
+import com.li_routi.feature.grouproutine.component.ChatReplyPreviewUiModel
 import java.time.Instant
+import java.time.LocalDate
 import java.time.LocalDateTime
 import java.time.OffsetDateTime
+import java.time.YearMonth
 import java.time.ZoneId
 import java.util.UUID
 import kotlinx.coroutines.CoroutineScope
@@ -73,6 +77,9 @@ private data class ChatReadTarget(
     val groupId: Long,
     val lastReadMessageId: Long,
 )
+
+/** 답장 원본이 이모티콘이라 텍스트 미리보기가 없을 때 대신 보여줄 라벨. */
+private const val EmojiReplyPreviewLabel = "이모티콘"
 
 private const val MAX_ROOM_NAME_LENGTH = 20
 private const val MAX_ROUTINE_NAME_LENGTH = 20
@@ -110,6 +117,7 @@ class GroupRoutineViewModel(
     private val disappointGroupRoutineVerificationUseCase: DisappointGroupRoutineVerificationUseCase = GroupRoutineContainer.disappointGroupRoutineVerificationUseCase,
     private val undisappointGroupRoutineVerificationUseCase: UndisappointGroupRoutineVerificationUseCase = GroupRoutineContainer.undisappointGroupRoutineVerificationUseCase,
     private val getChatMessagesUseCase: GetChatMessagesUseCase = ChatContainer.getChatMessagesUseCase,
+    private val getChatDatesUseCase: GetChatDatesUseCase = ChatContainer.getChatDatesUseCase,
     private val updateChatReadPositionUseCase: UpdateChatReadPositionUseCase = ChatContainer.updateChatReadPositionUseCase,
     private val getEmoticonsUseCase: GetEmoticonsUseCase = ChatContainer.getEmoticonsUseCase,
     private val connectChatSocketUseCase: ConnectChatSocketUseCase = ChatContainer.connectChatSocketUseCase,
@@ -121,7 +129,6 @@ class GroupRoutineViewModel(
     private val _uiState = MutableStateFlow(GroupRoutineUiState())
     val uiState: StateFlow<GroupRoutineUiState> = _uiState.asStateFlow()
 
-    // 癲?????쇰궚?癲ル슣????濚욌꼬?댄꺍??곕㎜壤????⑤；?????덉툗 ????????ㅼ뒦??????㎣筌??熬곣뫀?櫻?? ??釉먮뻤????熬곥룊??ViewModel ??????????爾???筌먲퐢??
     private var chatSocketJob: Job? = null
     private var chatHistoryJob: Job? = null
     private var chatReadJob: Job? = null
@@ -131,24 +138,18 @@ class GroupRoutineViewModel(
     private var latestChatReadTarget: ChatReadTarget? = null
     private var unreadRoutineVerificationsJob: Job? = null
 
-    // PR ?袁⑸즵??? Mock ID?? ???源놁졆 ??筌먦끉裕?ID ??됰슣維??
-    // createGroupUseCase ?濚밸Þ?볠쾮???筌?猷??縕???熬곣뫀???????釉뚰?????源낃도 ???袁⑸즵獒???嚥▲꺂痢????源놁졆 ??筌먦끉裕???숆강筌?쓣爾?ID?????濚왿몾??????덊렡.
     private var backendGroupId: Long? = null
 
-    // API ?嶺뚮ㅎ??????????currentGroupId()?????⑤챷?????源놁졆 backendGroupId??癲ル슔?蹂?덫???筌뤾퍓???
     private fun currentGroupId(): Long? = backendGroupId
 
-    // CodeRabbit ?袁⑸즵??? ??룸Ŧ爾??????⑤챶援?????ш끽維쀨린??1L????筌먦끉裕?????源놁졆 ID癲ル슪?ｇ몭???怨뚮옖?雅?겦?쇿퐲? ????녳뵣??nullable???怨뚮뼚???
     private fun currentRoutineId(): Long? = _uiState.value.todos.firstOrNull()?.id
 
     init {
         loadParticipatingGroups()
     }
 
-    // CodeRabbit ?袁⑸즵??? ????궈???獄쏅똻?????筌먦끉裕? ?怨멸텭??沃섅뀙??關履????????-> categoryId. DefaultCategoryIds??????몄툗 ?怨멸텭??沃섅뀙??關履????筌믨퉭????????
     private var serverCategoryIds: Map<String, Long> = emptyMap()
 
-    // ????늄???癲ル슢?꾤땟戮⑤뭄?????"??????좊읈????怨???癲????癲ル슢????????щ뮝??筌??嶺뚮쮳?년봼??????. ?嶺뚮ㅎ??????雅????袁⑸즴???????????類??袁?맪??釉뚰????
     private var myMemberId: Long? = null
 
     fun onDismissActionMessage() {
@@ -382,23 +383,14 @@ class GroupRoutineViewModel(
             return
         }
 
-        // 답장 대상이 있으면 원본 메시지 id를 본문 앞에 인코딩해 실어 보낸다 — 서버가 별도
-        // "답장" 필드를 지원하지 않아서다. 보낸 사람/미리보기 텍스트는 여기 싣지 않는다 — 그건
-        // "보내는" 클라이언트가 자유롭게 채우는 값이라 그대로 믿으면 위조될 수 있다. 받는 쪽은
-        // id만 신뢰하고, 실제 내용은 자기가 받은 메시지 목록에서 직접 찾는다
-        // (ChatMessage.toUiModel / resolveReplyPreview 참고).
         val replyTarget = _uiState.value.replyTarget
-        val content = if (replyTarget != null) {
-            encodeReplyContent(replyToMessageId = replyTarget.id, body = text)
-        } else {
-            text
-        }
 
         val message = NewChatMessage(
             clientMessageId = UUID.randomUUID().toString(),
             type = ChatMessageType.TEXT,
-            content = content,
+            content = text,
             emoticonCode = null,
+            replyToMessageId = replyTarget?.id,
         )
         viewModelScope.launch {
             when (val result = sendChatMessageUseCase(groupId, message)) {
@@ -409,31 +401,27 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** 癲????癲ル슢?????????????렺轅곗땡??낆쑋???肉??????熬곣뫀????⑤똾留???????????ㅼ굣筌뤿뱶??癲ル슣???嶺뚮쮳?노뭄?????嶺뚮ㅎ????筌먲퐢?? */
     fun onReplyTargetSelected(message: ChatMessageUiModel) {
         _uiState.update { it.copy(replyTarget = message) }
     }
 
-    /** ?????雅?퍔瑗띰㎖???????깅탿(???筌???????爾???類?????????????嶺뚮ㅎ????筌먲퐢?? */
     fun onReplyTargetCleared() {
         _uiState.update { it.copy(replyTarget = null) }
     }
 
-    // 이모티콘은 서버가 별도 answer/답장 필드를 지원하지 않고 content도 null로 보내 답장 정보를
-    // 실을 곳이 없다 — 답장 대상을 지정해 둔 채로 이모티콘을 보내면 답장 없이 그냥 전송되지만,
-    // 답장 대상 UI(채팅바 윗상자)는 텍스트 전송과 마찬가지로 정리해서 다음 메시지에 잘못 남지
-    // 않게 한다.
     fun onChatEmojiSelected(emoticon: ChatEmoticonUiModel) {
         val groupId = currentGroupId() ?: run {
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
             return
         }
 
+        val replyTarget = _uiState.value.replyTarget
         val message = NewChatMessage(
             clientMessageId = UUID.randomUUID().toString(),
             type = ChatMessageType.EMOTICON,
             content = null,
             emoticonCode = emoticon.code,
+            replyToMessageId = replyTarget?.id,
         )
         viewModelScope.launch {
             when (val result = sendChatMessageUseCase(groupId, message)) {
@@ -467,6 +455,7 @@ class GroupRoutineViewModel(
                 unreadChatCount = 0,
                 replyTarget = null,
                 chatDraftText = "",
+                selectedChatDate = null,
             )
         }
         chatSocketJob = viewModelScope.launch {
@@ -514,10 +503,15 @@ class GroupRoutineViewModel(
         viewModelScope.launch { disconnectChatSocketUseCase() }
     }
 
-    /** cursor가 null이면 최신 50개를, 값이 있으면 그 커서보다 오래된 과거 메시지 50개를 불러온다. */
-    private suspend fun loadChatMessages(groupId: Long, cursor: Long? = null) {
+    /**
+     * cursor가 null이면 최신 50개를, 값이 있으면 그 커서보다 오래된 과거 메시지 50개를 불러온다.
+     * [date]("yyyy-MM-dd")를 주면 그 날짜부터 과거로 조회한다 — 이후 이어지는 과거 스크롤
+     * ([onChatScrolledToTop])도 [GroupRoutineUiState.selectedChatDate]로 같은 date를 계속
+     * 함께 실어 보내야 한다.
+     */
+    private suspend fun loadChatMessages(groupId: Long, cursor: Long? = null, date: String? = null) {
         _uiState.update { it.copy(isChatLoading = true) }
-        when (val result = getChatMessagesUseCase(groupId = groupId, cursor = cursor, size = 50)) {
+        when (val result = getChatMessagesUseCase(groupId = groupId, cursor = cursor, size = 50, date = date)) {
             is ResultState.Success -> {
                 // 응답이 오는 사이 다른 방으로 이동했다면(현재 활성 방 ID != 요청 당시 방 ID) 상태 반영을 건너뛴다.
                 if (currentGroupId() != groupId) {
@@ -563,7 +557,47 @@ class GroupRoutineViewModel(
         if (state.isChatLoading || !state.hasMoreChatHistory) return
         val groupId = currentGroupId() ?: return
         chatHistoryJob?.cancel()
-        chatHistoryJob = viewModelScope.launch { loadChatMessages(groupId, cursor = state.chatNextCursor) }
+        chatHistoryJob = viewModelScope.launch {
+            loadChatMessages(groupId, cursor = state.chatNextCursor, date = state.selectedChatDate?.toString())
+        }
+    }
+
+    /**
+     * 캘린더에서 날짜를 골라 그 날짜부터 과거 채팅을 조회한다. 기존 목록/커서를 비우고 그 날짜를
+     * 새 앵커로 다시 불러온다 — 이후 [onChatScrolledToTop]도 이 [date]를 계속 함께 실어 보낸다.
+     */
+    fun onChatDateSelected(date: LocalDate) {
+        val groupId = currentGroupId() ?: return
+        chatHistoryJob?.cancel()
+        _uiState.update {
+            it.copy(
+                selectedChatDate = date,
+                chatMessages = emptyList(),
+                chatNextCursor = null,
+                hasMoreChatHistory = false,
+                isChatHistoryLoaded = false,
+            )
+        }
+        chatHistoryJob = viewModelScope.launch { loadChatMessages(groupId, date = date.toString()) }
+    }
+
+    /**
+     * 캘린더 시트에 표시 중인 달이 바뀔 때마다 그 달의 채팅 존재 날짜를 조회해 누적 캐시한다.
+     * 실패해도 조용히 무시한다 — 그 달의 날짜 제한만 못 걸릴 뿐 캘린더 자체는 계속 쓸 수 있다.
+     */
+    fun onCalendarMonthChange(yearMonth: YearMonth) {
+        val groupId = currentGroupId() ?: return
+        val from = yearMonth.atDay(1).toString()
+        val to = yearMonth.plusMonths(1).atDay(1).toString()
+        viewModelScope.launch {
+            when (val result = getChatDatesUseCase(groupId, from, to)) {
+                is ResultState.Success -> _uiState.update { state ->
+                    state.copy(chatDates = state.chatDates + result.data.mapNotNull(::parseIsoDateOrNull))
+                }
+                is ResultState.Error -> Unit
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     private fun markChatRead(groupId: Long, lastReadMessageId: Long) {
@@ -624,7 +658,6 @@ class GroupRoutineViewModel(
     override fun onCleared() {
         chatSocketJob?.cancel()
         chatHistoryJob?.cancel()
-        // viewModelScope??onCleared() ??筌믨퀣??????? ???爾???筌뚯슦苑????怨쀪퐨 ?????????????명렡 ???怨뚮옓????????몄???ш끽維곩ㅇ?????룸뎿異??嶺뚮㉡?섌걡?
         CoroutineScope(Dispatchers.IO).launch { disconnectChatSocketUseCase() }
         super.onCleared()
     }
@@ -656,7 +689,6 @@ class GroupRoutineViewModel(
             return
         }
         val groupId = currentGroupId()
-        // mock ????筌먦끉裕???숆강筌?쓣爾???ш끽維筌?????????源놁벁癲ル슪?ｇ몭???棺??짆?쏆춾????ㅺ컼?얜쓣異??袁⑸즴???
         if (groupId == null) {
             applyMyStatusMessage(message)
             return
@@ -667,7 +699,6 @@ class GroupRoutineViewModel(
         viewModelScope.launch {
             try {
                 when (val result = updateGroupMemberStatusMessageUseCase(groupId, message)) {
-                    // ??筌먦끉裕??좊읈? ???濚왿몾????좊즴?????숆강筌????袁⑸즵?????⑤；??????렺???????釉먮뻤?????????源낅빖??? ???怨룹쓱
                     is ResultState.Success -> applyMyStatusMessage(result.data)
                     is ResultState.Error -> _uiState.update {
                         it.copy(isMessageEditSheetVisible = false, actionMessage = result.message)
@@ -732,7 +763,6 @@ class GroupRoutineViewModel(
                 when (val result = leaveGroupUseCase(groupId)) {
                     is ResultState.Success -> when (result.data) {
                         LeaveGroupResult.Left -> exitRoom(groupId, "그룹방을 나갔어요.")
-                        // ?袁⑸젻泳??? 癲?????⑸춪 ????????????????? ???怨뺣빰 ??醫딅땾???돥椰?
                         LeaveGroupResult.OwnerMustDelete -> _uiState.update {
                             it.copy(
                                 isLeaveRoomDialogVisible = false,
@@ -778,7 +808,6 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** ????????????살씁????猷??????癲ル슢?꾤땟戮⑤뭄?????????????怨멸텭????ｏ쭗?癲ル슣?????ㅼ뒭??癲ル슢?꾤땟戮⑤뭄???釉먮뻤????⑥???????ъ녃域?濚?*/
     private fun exitRoom(groupId: Long, message: String) {
         backendGroupId = null
         _uiState.update { state ->
@@ -788,7 +817,6 @@ class GroupRoutineViewModel(
                 selectedRoutineId = null,
                 selectedMemberId = null,
                 groupInviteCode = null,
-                // ????깅쐿 ?袁⑸젻泳??癲ル슢???볥뼀?癲ル슪???띿물筌먯옓????嶺? ???源낆쓱 ????釉먮뻤?????? ??熬곣뫗踰?????
                 members = emptyList(),
                 todos = emptyList(),
                 isConfirmedOwner = false,
@@ -799,15 +827,12 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** ??숆강筌?쓣爾?猿뗫궚????ㅳ늾?????됰씭???? ??숆강筌?쓣爾???떻??縕???熬곣뫀???????늄???癲ル슢?꾤땟戮⑤뭄?????源놁졆 ??筌먦끉裕????Β?????ㅻ깹鸚?癲??? */
     private fun loadGroupDetail(groupId: Long) {
         groupDetailJob?.cancel()
         groupDetailJob = viewModelScope.launch {
             if (myMemberId == null) {
                 when (val myInfo = getMyInfoUseCase()) {
                     is ResultState.Success -> myMemberId = myInfo.data.memberId
-                    // ??memberId??癲ル슢?꾤땟????곗떵?癲ル슢?꾤땟???????늄?????????쒙쭗?쒖뒙?癲ル슔?蹂?엥??????ㅺ컼??癲ル슢??????? ???쒓낯??癲????
-                    // 癲ル슢?????????????깅탿 ????????? ???源낅빖?? ??嚥?援????釉먮뻤?????숆강筌????????????癲ル슢????
                     is ResultState.Error -> {
                         if (currentGroupId() == groupId) {
                             _uiState.update {
@@ -888,7 +913,6 @@ class GroupRoutineViewModel(
         viewModelScope.launch {
             when (val result = getGroupInviteCodeUseCase(groupId)) {
                 is ResultState.Success -> _uiState.update { it.copy(groupInviteCode = result.data.inviteCode) }
-                // PR ?袁⑸즵??? ResultState.Error ???袁⑸즴??繞?????궈??袁⑸즵獒??issue)??? ??熬곥걿???????癲ル슢??????? ??ш끽維??堉?(??れ삀????縕???熬곣뫀??????뺤깙????袁⑸젻泳?)
                 is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                 ResultState.Loading -> Unit
             }
@@ -1350,7 +1374,6 @@ class GroupRoutineViewModel(
         if (!requireConfirmedOwner()) return
         val targetMemberId = state.pendingLeaderMemberId
         val myId = state.members.firstOrNull { it.isMe }?.id
-        // ??? ??關履??癲???鍮??嶺뚮Ĳ?됮??嚥????袁⑸즴?????獒??????⑤９苑????筌먦끉裕끾퓴諛매?? ????ш끽維?????⑤챶苡?
         if (targetMemberId == null || targetMemberId == myId) {
             applyLeaderTransfer(isStillLeader = true, message = null)
             return
@@ -1387,7 +1410,6 @@ class GroupRoutineViewModel(
             state.copy(
                 screenMode = GroupRoutineScreenMode.GroupSettings,
                 isCurrentUserLeader = isStillLeader,
-                // ?袁⑸젻泳???????듬젵??野껊갭???????⑤?彛??袁⑸젻泳?????ш끽維筌?
                 isConfirmedOwner = if (isStillLeader) state.isConfirmedOwner else false,
                 pendingLeaderMemberId = null,
                 actionMessage = message,
@@ -1402,14 +1424,12 @@ class GroupRoutineViewModel(
             return
         }
         val nextLocked = !_uiState.value.isRoomLocked
-        // ?????嚥???lock/unlock????筌?留??怨뚮옖??????⑤챶??????덈빰??????⑸춪
         if (_uiState.value.isSubmitting) return
         _uiState.update { it.copy(isSubmitting = true) }
 
         viewModelScope.launch {
             try {
                 when (val result = setGroupLockUseCase(groupId, nextLocked)) {
-                    // ??? ???ㅺ컼?????????ㅼ굣筌뤿뱶???袁⑸즴???癲ル슣?? ??熬곥걿????筌먦끉裕??좊읈? ??????㉨?? 癲ル슔?됭짆?륂렭???좊즴?????
                     is ResultState.Success -> _uiState.update {
                         it.copy(
                             isRoomLocked = result.data,
@@ -1566,15 +1586,12 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** ????몄툜????숆강筌?쓣爾???룸Ŧ爾?????됰씭???? ?????ㅳ늾????嚥▲꺂??癲ル슪???띿물筌먯옓????嶺? 癲??? */
     private fun loadTodayRoutines(groupId: Long) {
         todayRoutinesJob?.cancel()
         todayRoutinesJob = viewModelScope.launch {
             when (val result = getTodayGroupRoutinesUseCase()) {
                 is ResultState.Success -> {
-                    // ???쑩?젆??????????몄툗 ?????袁⑸젻泳???????野껊갭??癲ル슣??????癲ル슪???띿물筌먯옓????嶺? ??????ㅽ떝??????
                     if (backendGroupId != groupId) return@launch
-                    // ?釉뚰???API??좊읈? ??? ???⑤８??癲ル슢?꾤땟?????숆강筌?쓣爾?????類???산덩???낆뒩??곷뎨????????ш끽維?????濡ろ뜏?蹂잜맪?癲꾧퀗?э㎖???
                     val groupRoutines = result.data
                         .filter { it.groupId == groupId }
                     val todos = groupRoutines.map { routine ->
@@ -1726,7 +1743,6 @@ class GroupRoutineViewModel(
         _uiState.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
             try {
-                // ??좊읈?????ш끽維??雅?퍔瑗띰㎖???????깅탿??癲ル슢??쭕??????(?嶺뚮ㅎ????縕??? ???ル㎣?????????沃섅굥?? ??????㉨?
                 val preview = getGroupJoinPreviewUseCase(inviteCode)
                 if (preview is ResultState.Error) {
                     _uiState.update { it.copy(actionMessage = preview.message.toGroupJoinMessage()) }
@@ -1770,7 +1786,6 @@ class GroupRoutineViewModel(
                                 actionMessage = "그룹에 참여했어요.",
                             )
                         }
-                        // ???源놁졆 癲ル슢???볥뼀???룸Ŧ爾????嚥▲꺂痢????ㅳ늾???釉뚰????대퓠?癲???
                         loadGroupDetail(joined.groupId)
                         loadGroupRoutineCategories()
                         loadTodayRoutines(joined.groupId)
@@ -1913,7 +1928,6 @@ class GroupRoutineViewModel(
         viewModelScope.launch {
             when (val result = createGroupRoutineCategoryUseCase(groupId, name, color = state.categoryColorInput?.serverCode())) {
                 is ResultState.Success -> {
-                    // CodeRabbit ?袁⑸즵??? ????κ퓭源욘뤃???ш끽維?????筌먦끉裕?categoryId?????濚왿몾?????룸Ŧ爾????筌믨퉭??????????좊읈???
                     serverCategoryIds = serverCategoryIds + (result.data.name to result.data.categoryId)
                     val categoryColor = result.data.color.toCategoryColor() ?: state.categoryColorInput
                     _uiState.update {
@@ -2084,7 +2098,6 @@ class GroupRoutineViewModel(
             return
         }
 
-        // ??筌먦끉裕??좊읈? schedules??癲ル슔?됭짆??1????釉먮윥????⑤똾留????뽮덫???0????좊읈????????? ???源낆쓱) 雅?퍔瑗띰㎖??癲ル슢??쭕??
         if (routineState.routineDraftRepeatDays.isEmpty()) {
             _uiState.update { it.copy(actionMessage = "반복 요일을 선택해 주세요.") }
             return
@@ -2111,7 +2124,6 @@ class GroupRoutineViewModel(
             return
         }
 
-        // PR ?袁⑸즵??? ???ㅻ쿋??濚욌꼬?댄꺇??????????⑥???嶺뚮ㅏ援앯뵳?API ???湲깅룪 ?嶺뚮ㅎ????袁⑸젻泳? ??좊읈???
         if (state.isSubmitting) return
         _uiState.update { it.copy(isSubmitting = true) }
 
@@ -2122,7 +2134,6 @@ class GroupRoutineViewModel(
             endTime = state.routineDraftEndTime,
         )
         val editingId = state.editingRoutineId
-        // CodeRabbit ?袁⑸즵??? ??れ삀????怨멸텭??沃섅뀙??關履??????⑤챶?뺧┼?????궈???獄쏅똻?????筌먦끉裕??怨멸텭??沃섅뀙??關履??ID??????
         val categoryId = DefaultCategoryIds[categoryName] ?: serverCategoryIds[categoryName]
 
         if (categoryId == null) {
@@ -2173,7 +2184,6 @@ class GroupRoutineViewModel(
                                 it.routineOptions + savedOption
                             } else {
                                 it.routineOptions.map { option ->
-                                    // PR ?袁⑸즵??? ???쒓낯??????れ삀????isSelected ???ㅺ컼?????
                                     if (option.id == editingId) savedOption.copy(isSelected = option.isSelected) else option
                                 }
                             }
@@ -2189,14 +2199,12 @@ class GroupRoutineViewModel(
                                 actionMessage = null,
                             )
                         }
-                        // ???ㅳ늾????釉먮뻤??癲ル슪???띿물筌먯옓?????todos)??????몄툜????룸Ŧ爾???釉뚰????대퓠?癲??????????????筌먲퐣?????怨뺣빰 ??됰씭????????
                         loadGroupRoutines()
                     }
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                     ResultState.Loading -> Unit
                 }
             } finally {
-                // ?濚밸Þ?볠쾮?????됰꽡 ???뺣섕?????곕쿊 濚욌꼬?댄꺇???嶺뚮ㅎ????袁⑸젻泳? ?????μ쐺??縕?猿녿뎨??
                 _uiState.update { it.copy(isSubmitting = false) }
             }
         }
@@ -2270,18 +2278,14 @@ class GroupRoutineViewModel(
         val state = _uiState.value
         val editingId = state.editingRoutineId
         val groupId = currentGroupId()
-        // ???? ??筌먦끉裕??????덉툗 ??룸Ŧ爾????숆강筌?쓣爾???룸Ŧ爾?????굿????釉먮뻤??癲ル슣??????????????源놁졆????????釉먯뒜???
-        // ??癲ル슢?????琉왈?????룸Ŧ爾?????ャ뀕????影?됀????れ삀??????얜?源???룸Ŧ爾???????id)?? ?棺??짆?쏆춾????ㅺ컼?얜쓣異?癲ル슣????
         val shouldCallApi = state.screenMode == GroupRoutineScreenMode.GroupRoutineManage &&
             editingId != null && editingId > 0L && groupId != null
 
         if (!shouldCallApi) {
-            // ?棺??짆?쏆춾???ш끽維????癲ル슢?????琉왈?????影?됀? ???얜?源???룸Ŧ爾????????袁⑸즴??繞?癲ル슢?꾤땟戮⑤뭄?????癲ル슣????
             clearRoutineDraft(editingId)
             return
         }
         if (state.isSubmitting) return
-        // ???影?놁씀? ????됰꽡??嚥???routineOptions????嚥▲꺃????袁⑸젻泳?쉬??????⑤９苑?? ????レ쉐癲?????됀?癲ル슢?꾤땟戮⑤뭄?? ?濚밸Þ?볠쾮???ш끽維??癲꾧퀗?????ｉ?
         closeRoutineSheets()
         _uiState.update { it.copy(isSubmitting = true) }
 
@@ -2303,7 +2307,6 @@ class GroupRoutineViewModel(
         }
     }
 
-    /** 癲ル슢?꾤땟戮⑤뭄?? ??숆강筌?????????嶺뚮ㅎ?당빊?????レ쉐/???????源낇꼧???⑥???숆강筌?쑚?????甕?*/
     private fun closeRoutineSheets() {
         _uiState.update {
             it.copy(isRoutineSettingSheetVisible = false, isDeleteRoutineDialogVisible = false)
@@ -2344,7 +2347,6 @@ class GroupRoutineViewModel(
             return
         }
         
-        // PR ?袁⑸즵??? ???ㅻ쿋??濚욌꼬?댄꺇??????????⑥???嶺뚮ㅏ援앯뵳???숆강筌?쓣爾?2????獄쏅똻???袁⑸젻泳?
         if (state.isSubmitting) return
         _uiState.update { it.copy(isSubmitting = true) }
 
@@ -2372,8 +2374,6 @@ class GroupRoutineViewModel(
             try {
                 when (val result = createGroupUseCase(roomName, customCategories, routines)) {
                     is ResultState.Success -> {
-                        // CodeRabbit ?袁⑸즵??? ??筌먦끉裕????쑩?젆????룸Ŧ爾????좊즵獒????筌?留??좊읈? ??釉먯뒜???????렺?異???ш끽維뽳쭛????????⑤９苑??ID??
-                        // ??筌먦끉裕?ID???濡ろ뜏?遺삳쐩???????? ????녳뵣????좊즵獒??? ??筌먯룄肄???繹먮봾萸???????沃섅굥?? ?濡ろ떟?癲?
                         val createdRoutines = result.data.routines
                         val responseIsValid = createdRoutines.size == selectedOptions.size &&
                             createdRoutines.indices.all { index -> createdRoutines[index].title == selectedOptions[index].title }
@@ -2436,7 +2436,6 @@ class GroupRoutineViewModel(
                                 actionMessage = "\uBC29\uC774 \uB9CC\uB4E4\uC5B4\uC84C\uC5B4\uC694.",
                             )
                         }
-                        // ?袁⑸젻泳??癲?癲ル슢???????떵?????늄??????????繹먮냱寃??mock 癲ル슢???볥뼀?筌? ??숆강筌??????쒑린??????ㅳ늾???釉뚰????대퓠??????
                         loadGroupDetail(groupId)
                         loadGroupRoutineCategories()
                     }
@@ -2444,7 +2443,6 @@ class GroupRoutineViewModel(
                     ResultState.Loading -> Unit
                 }
             } finally {
-                // ??ш끽維??????筌믨퉭?????ㅺ컼?????⑤챷??
                 _uiState.update { it.copy(isSubmitting = false) }
             }
         }
@@ -2496,19 +2494,29 @@ class GroupRoutineViewModel(
         }
     }
 
-    private fun ChatMessage.toUiModel(isMine: Boolean): ChatMessageUiModel {
-        val parsed = if (type == ChatMessageType.TEXT) content.parseReplyContent() else null
-        return ChatMessageUiModel(
-            id = id,
-            senderName = senderNickname,
-            message = parsed?.body ?: if (type == ChatMessageType.TEXT) content else "",
-            sentAtMillis = createdAt.toEpochMillisOrNow(),
-            isMine = isMine,
-            emojiUrl = if (type == ChatMessageType.EMOTICON) emoticon?.assetUrl else null,
-            replyToMessageId = parsed?.replyToMessageId,
-        )
-    }
+    private fun ChatMessage.toUiModel(isMine: Boolean): ChatMessageUiModel = ChatMessageUiModel(
+        id = id,
+        senderName = senderNickname,
+        message = if (type == ChatMessageType.TEXT) content else "",
+        sentAtMillis = createdAt.toEpochMillisOrNow(),
+        isMine = isMine,
+        emojiUrl = if (type == ChatMessageType.EMOTICON) emoticon?.assetUrl else null,
+        replyPreview = reply?.let { original ->
+            ChatReplyPreviewUiModel(
+                originalMessageId = original.id,
+                senderName = original.senderNickname,
+                previewText = if (original.type == ChatMessageType.EMOTICON) {
+                    EmojiReplyPreviewLabel
+                } else {
+                    original.content
+                },
+            )
+        },
+    )
 }
+
+/** 서버가 주는 "yyyy-MM-dd" 채팅 날짜 문자열을 [LocalDate]로 변환한다. 파싱 실패 시 그 날짜만 건너뛴다. */
+private fun parseIsoDateOrNull(isoDate: String): LocalDate? = runCatching { LocalDate.parse(isoDate) }.getOrNull()
 
 /**
  * 서버가 주는 createdAt 문자열을 epoch millis로 변환한다.
@@ -2575,7 +2583,6 @@ private val RepeatDayToKoreanDay = KoreanDayToRepeatDay.entries.associate { (day
     repeatDay to day
 }
 
-// ?袁⑸즲??援????れ삀????怨멸텭??沃섅뀙??關履???????癲꾧퀗???????????節뚮쳥?????됰Ŧ苑?嶺뚮㉡?섌걡?癲ル슢?????????????) ???????categoryId
 private val DefaultCategoryIds = mapOf(
     "\uC6B4\uB3D9" to 1L,
     "\uAC74\uAC15" to 2L,
@@ -2591,5 +2598,4 @@ private fun Set<String>.toGroupRoutineSchedules(startTime: String, endTime: Stri
     }
 }
 
-/** ??筌먦끉裕??怨멸텭??沃섅뀙??關履????? RED/BLUE ??좊즵?? ?????뽮덫??enum?????Kotlin enum ????????숆강筌????怨뚮옖?雅?겦?쇿퐲?400 ??*/
 private fun CategoryColor.serverCode(): String = name.uppercase()

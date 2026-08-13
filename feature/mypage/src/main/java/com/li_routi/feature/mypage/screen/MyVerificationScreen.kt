@@ -222,7 +222,7 @@ private val SamplePendingVerifications = listOf(
     ),
 )
 
-@Preview(showBackground = true, heightDp = 900)
+@Preview(showBackground = true, heightDp = 900, apiLevel = 34)
 @Composable
 private fun MyVerificationScreenPreview() {
     LiroutiFrontendTheme {
