@@ -10,6 +10,16 @@ data class ChargeStartedResponse(
     val orderName: String?,
 )
 
+/** POST /api/shop/charges/{paymentId}/complete 응답 result. */
+data class ChargeSettledResponse(
+    val paymentId: String?,
+    val currency: String?,
+    val rewardAmount: Int,
+    val bonusAmount: Int,
+    val paidBalance: Int,
+    val freeBalance: Int,
+)
+
 /** GET /api/members/me/wallet 응답 result. */
 data class WalletBalancesResponse(
     val balances: List<WalletBalanceResponse>?,

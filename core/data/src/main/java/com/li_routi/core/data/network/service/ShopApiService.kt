@@ -4,6 +4,7 @@ import com.li_routi.core.data.network.dto.request.ExchangeRequest
 import com.li_routi.core.data.network.dto.request.StartChargeRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.ChargeProductsResponse
+import com.li_routi.core.data.network.dto.response.ChargeSettledResponse
 import com.li_routi.core.data.network.dto.response.ChargeStartedResponse
 import com.li_routi.core.data.network.dto.response.ExchangeProductsResponse
 import com.li_routi.core.data.network.dto.response.ExchangeResultResponse
@@ -27,7 +28,7 @@ interface ShopApiService {
     @POST("api/shop/charges/{paymentId}/complete")
     suspend fun completeCharge(
         @Path("paymentId") paymentId: String,
-    ): ApiResponse<ChargeStartedResponse>
+    ): ApiResponse<ChargeSettledResponse>
 
     @GET("api/members/me/wallet")
     suspend fun getWalletBalances(): ApiResponse<WalletBalancesResponse>

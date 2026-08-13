@@ -13,7 +13,7 @@ interface ShopRepository {
      * 서버가 포트원에 다시 물어보기 때문에 클라이언트가 무엇을 보내도 결과가 바뀌지 않음.
      * 이미 지급된 결제면 조용히 성공으로 답함(이 요청과 웹훅이 둘 다 오는 게 정상)
      */
-    suspend fun completeCharge(paymentId: String): ResultState<Unit>
+    suspend fun completeCharge(paymentId: String): ResultState<ChargeSettled>
 
     /** 내 재화 잔액을 조회함. 재화 종류마다 한 건씩 항상 전부 내려옴 */
     suspend fun getWalletBalances(): ResultState<List<CurrencyBalance>>

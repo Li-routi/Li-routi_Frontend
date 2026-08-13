@@ -3,6 +3,7 @@ package com.li_routi.core.data.mapper
 import com.li_routi.core.data.network.dto.response.AvatarEquippedItemResponse
 import com.li_routi.core.data.network.dto.response.ChargeProductItemResponse
 import com.li_routi.core.data.network.dto.response.ChargeProductsResponse
+import com.li_routi.core.data.network.dto.response.ChargeSettledResponse
 import com.li_routi.core.data.network.dto.response.ChargeStartedResponse
 import com.li_routi.core.data.network.dto.response.ExchangeProductItemResponse
 import com.li_routi.core.data.network.dto.response.ExchangeProductsResponse
@@ -13,12 +14,22 @@ import com.li_routi.core.data.network.dto.response.ShopAvatarItemsResponse
 import com.li_routi.core.data.network.dto.response.WalletBalancesResponse
 import com.li_routi.core.domain.shop.AvatarEquippedItem
 import com.li_routi.core.domain.shop.ChargeProduct
+import com.li_routi.core.domain.shop.ChargeSettled
 import com.li_routi.core.domain.shop.ChargeStarted
 import com.li_routi.core.domain.shop.CurrencyBalance
 import com.li_routi.core.domain.shop.ExchangeProduct
 import com.li_routi.core.domain.shop.ExchangeResult
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
+
+fun ChargeSettledResponse.toDomain(): ChargeSettled = ChargeSettled(
+    paymentId = paymentId.orEmpty(),
+    currency = currency.orEmpty(),
+    rewardAmount = rewardAmount,
+    bonusAmount = bonusAmount,
+    paidBalance = paidBalance,
+    freeBalance = freeBalance,
+)
 
 fun ChargeStartedResponse.toDomain(): ChargeStarted = ChargeStarted(
     storeId = storeId.orEmpty(),

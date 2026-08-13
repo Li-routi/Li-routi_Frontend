@@ -38,6 +38,21 @@ data class ChargeStarted(
     val orderName: String,
 )
 
+/**
+ * 결제 검증·지급 결과. 지급 후 잔액까지 실려 와서 잔액 조회를 따로 부를 필요가 없음.
+ * 화면에 하나로 보여줄 때는 유상([paidBalance])과 무상([freeBalance])을 더하면 됨
+ */
+data class ChargeSettled(
+    val paymentId: String,
+    val currency: String,
+    val rewardAmount: Int,
+    val bonusAmount: Int,
+    val paidBalance: Int,
+    val freeBalance: Int,
+) {
+    val totalBalance: Int get() = paidBalance + freeBalance
+}
+
 /** 상점 헤더에 표시할 재화 잔액. 한 번도 받은 적 없는 재화도 0으로 실려서 옴 */
 data class CurrencyBalance(
     val currency: String,

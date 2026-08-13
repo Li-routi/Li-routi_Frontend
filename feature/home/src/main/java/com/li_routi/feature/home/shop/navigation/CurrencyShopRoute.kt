@@ -9,14 +9,13 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.activity.compose.LocalActivity
+import androidx.compose.runtime.DisposableEffect
+import com.li_routi.core.common.ui.payment.LocalPaymentLauncher
+import com.li_routi.core.common.ui.payment.LocalPaymentResultHandlerSetter
 import com.li_routi.core.designsystem.component.LiroutiToast
-import io.portone.sdk.android.PortOne
-import io.portone.sdk.android.payment.PaymentCallback
 import io.portone.sdk.android.type.entity.Currency
 import io.portone.sdk.android.type.entity.PaymentPayMethod
 import io.portone.sdk.android.type.request.PaymentRequest
-import io.portone.sdk.android.type.response.PaymentResponse
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.feature.home.shop.screen.CurrencyShopScreen
@@ -42,22 +41,19 @@ fun CurrencyShopRoute(
     },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
-    val activity = LocalActivity.current as? androidx.activity.ComponentActivity
+    val paymentLauncher = LocalPaymentLauncher.current
+    val setPaymentResultHandler = LocalPaymentResultHandlerSetter.current
 
-    val paymentLauncher = activity?.let {
-        PortOne.registerForPaymentActivity(
-            it,
-            callback = object : PaymentCallback {
-                // code가 null이면 결제 성공
-                override fun onSuccess(response: PaymentResponse) {
-                    viewModel.onPaymentSucceeded(response.paymentId)
-                }
-
-                override fun onFail(response: PaymentResponse) {
-                    viewModel.onPaymentFailed(response.message)
-                }
-            },
-        )
+    // 결제 결과는 Activity가 받아서 넘겨줌 — 화면을 벗어나면 해제해야 다른 화면으로 새지 않음
+    DisposableEffect(viewModel, setPaymentResultHandler) {
+        setPaymentResultHandler?.invoke { response, isSuccess ->
+            if (isSuccess) {
+                viewModel.onPaymentSucceeded(response.paymentId)
+            } else {
+                viewModel.onPaymentFailed(response.message)
+            }
+        }
+        onDispose { setPaymentResultHandler?.invoke(null) }
     }
 
     LaunchedEffect(viewModel) {
@@ -65,12 +61,11 @@ fun CurrencyShopRoute(
             when (event) {
                 is CurrencyShopUiEvent.OpenPaymentSheet -> {
                     val charge = event.charge
-                    if (activity == null || paymentLauncher == null) {
+                    if (paymentLauncher == null) {
                         viewModel.onPaymentFailed("결제창을 열 수 없어요.")
                     } else {
-                        PortOne.requestPayment(
-                            activity,
-                            request = PaymentRequest(
+                        paymentLauncher.launch(
+                            PaymentRequest(
                                 storeId = charge.storeId,
                                 paymentId = charge.paymentId,
                                 orderName = charge.orderName,
@@ -79,7 +74,6 @@ fun CurrencyShopRoute(
                                 currency = Currency.KRW,
                                 payMethod = PaymentPayMethod.CARD,
                             ),
-                            resultLauncher = paymentLauncher,
                         )
                     }
                 }

@@ -35,6 +35,8 @@ dependencies {
     implementation(project(":core:common:android"))
     implementation(project(":core:design-system"))
 
+    // 결제창 요청 타입을 CompositionLocal로 내려주기 위해 필요함
+    api(libs.portone.android.sdk)
     implementation(platform(libs.androidx.compose.bom))
     implementation(libs.androidx.compose.ui)
     implementation(libs.androidx.compose.ui.graphics)

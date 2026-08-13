@@ -195,8 +195,16 @@ class CurrencyShopViewModel(
             try {
                 when (val result = completeChargeUseCase(paymentId)) {
                     is ResultState.Success -> {
-                        _uiState.update { it.copy(message = "충전이 완료됐어요.") }
-                        loadBalances()
+                        // 응답에 지급 후 잔액이 실려 와서 잔액 조회를 따로 부를 필요가 없음
+                        val settled = result.data
+                        val charged = settled.rewardAmount + settled.bonusAmount
+                        _uiState.update { state ->
+                            state.copy(
+                                coinBalance = if (settled.currency == "TOPAZ") settled.totalBalance else state.coinBalance,
+                                gemBalance = if (settled.currency == "GEM") settled.totalBalance else state.gemBalance,
+                                message = "${charged}개 충전이 완료됐어요.",
+                            )
+                        }
                     }
 
                     is ResultState.Error -> _uiState.update { it.copy(message = result.message) }

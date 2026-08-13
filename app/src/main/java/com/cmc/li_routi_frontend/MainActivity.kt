@@ -12,6 +12,7 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableLongStateOf
 import androidx.compose.runtime.mutableStateOf
@@ -24,7 +25,13 @@ import com.cmc.li_routi_frontend.navigation.AppNavHost
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
 import com.li_routi.core.data.preference.AuthTokenPreference
+import com.li_routi.core.common.ui.payment.LocalPaymentLauncher
+import com.li_routi.core.common.ui.payment.LocalPaymentResultHandlerSetter
+import com.li_routi.core.common.ui.payment.PaymentLauncher
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
+import io.portone.sdk.android.PortOne
+import io.portone.sdk.android.payment.PaymentCallback
+import io.portone.sdk.android.type.response.PaymentResponse
 import com.li_routi.core.domain.notification.NotificationNavigationTarget
 import com.li_routi.core.domain.notification.resolveNotificationNavigationTarget
 import com.li_routi.feature.login.LoginActivity
@@ -39,6 +46,27 @@ class MainActivity : ComponentActivity() {
 
     private val requestNotificationPermission =
         registerForActivityResult(ActivityResultContracts.RequestPermission()) { /* no-op */ }
+
+    /** 결제 결과를 받을 콜백. 화면이 붙기 전에 정해져 있어야 해서 여기서 들고 있음 */
+    private var paymentResultHandler: ((PaymentResponse, Boolean) -> Unit)? = null
+
+    /**
+     * 포트원 SDK는 결과 런처를 Activity가 STARTED 되기 전에 등록해야 함 —
+     * Composable 안에서 만들면 이미 RESUMED라 등록이 거부됨. 그래서 여기서 미리 만들어 둠
+     */
+    private val paymentLauncher = PortOne.registerForPaymentActivity(
+        this,
+        callback = object : PaymentCallback {
+            // code가 null이면 결제 성공
+            override fun onSuccess(response: PaymentResponse) {
+                paymentResultHandler?.invoke(response, true)
+            }
+
+            override fun onFail(response: PaymentResponse) {
+                paymentResultHandler?.invoke(response, false)
+            }
+        },
+    )
 
     private var pendingNotificationTarget by mutableStateOf<NotificationNavigationTarget?>(null)
 
@@ -85,12 +113,21 @@ class MainActivity : ComponentActivity() {
         )
         setContent {
             LiroutiFrontendTheme {
-                AppNavHost(
-                    modifier = Modifier.fillMaxSize(),
-                    pendingNotificationTarget = pendingNotificationTarget,
-                    pendingNotificationToken = pendingNotificationToken,
-                    onPendingNotificationConsumed = { pendingNotificationTarget = null },
-                )
+                CompositionLocalProvider(
+                    LocalPaymentLauncher provides PaymentLauncher { request ->
+                        PortOne.requestPayment(this, request, paymentLauncher)
+                    },
+                    LocalPaymentResultHandlerSetter provides { handler ->
+                        paymentResultHandler = handler
+                    },
+                ) {
+                    AppNavHost(
+                        modifier = Modifier.fillMaxSize(),
+                        pendingNotificationTarget = pendingNotificationTarget,
+                        pendingNotificationToken = pendingNotificationToken,
+                        onPendingNotificationConsumed = { pendingNotificationTarget = null },
+                    )
+                }
             }
         }
     }

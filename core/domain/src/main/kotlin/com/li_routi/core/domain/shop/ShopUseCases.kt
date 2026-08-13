@@ -12,7 +12,7 @@ class StartChargeUseCase(
 class CompleteChargeUseCase(
     private val repository: ShopRepository,
 ) {
-    suspend operator fun invoke(paymentId: String): ResultState<Unit> =
+    suspend operator fun invoke(paymentId: String): ResultState<ChargeSettled> =
         repository.completeCharge(paymentId)
 }
 
