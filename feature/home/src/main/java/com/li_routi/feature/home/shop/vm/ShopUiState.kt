@@ -1,5 +1,6 @@
 package com.li_routi.feature.home.shop.vm
 
+import com.li_routi.feature.home.component.DefaultCharacterId
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 
 /**
@@ -21,6 +22,8 @@ data class EquippedUiModel(
 data class ShopCategoryUiModel(
     val key: String,
     val name: String,
+    /** `ITEM`이면 서버 아이템 목록, `CHARACTER`면 앱에 넣은 캐릭터 목록을 뿌림 */
+    val source: String,
     val slot: String?,
 )
 
@@ -54,6 +57,15 @@ data class ShopUiState(
      * [equipped]를 쓰면 고르자마자 착용중이 돼서 저장한 것과 구분이 안 됨
      */
     val savedEquippedItemIds: Set<Long> = emptySet(),
+    /**
+     * 앱이 기억 중인 캐릭터. 캐릭터 탭의 `착용중` 표시는 이걸 따름.
+     *
+     * 캐릭터는 서버 아이템이 아니라 겹쳐 입기의 바탕 그림이라 [equipped]와 따로 둠.
+     * 본체 id API가 생기면 착장처럼 서버 저장본으로 바꾸면 됨
+     */
+    val savedCharacterId: String = DefaultCharacterId,
+    /** 지금 캐릭터 카드에 비치는 캐릭터. 고르면 저장 전에도 바로 바뀜 */
+    val previewCharacterId: String = DefaultCharacterId,
     /** 착장 저장 중 */
     val isEquipping: Boolean = false,
     /**

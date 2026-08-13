@@ -75,7 +75,7 @@ fun ShopAvatarItemsResponse.toDomain(): List<ShopAvatarItem> = items.orEmpty().m
 
 fun ShopAvatarItemResponse.toDomain(): ShopAvatarItem = ShopAvatarItem(
     id = id,
-    slot = slot.orEmpty(),
+    slot = slot.orEmpty().uppercase(),
     name = name.orEmpty(),
     imageUrl = imageUrl,
     currency = currency.orEmpty(),
@@ -89,7 +89,7 @@ fun MemberAvatarResponse.toDomain(): MemberAvatar = MemberAvatar(
 )
 
 fun AvatarEquippedItemResponse.toDomain(): AvatarEquippedItem = AvatarEquippedItem(
-    slot = slot.orEmpty(),
+    slot = slot.orEmpty().uppercase(),
     itemId = itemId,
     name = name.orEmpty(),
     imageUrl = imageUrl,

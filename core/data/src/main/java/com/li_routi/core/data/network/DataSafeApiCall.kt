@@ -2,6 +2,7 @@ package com.li_routi.core.data.network
 
 import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.common.kotlin.util.ResultState
+import kotlinx.coroutines.CancellationException
 import retrofit2.HttpException
 import java.io.IOException
 
@@ -14,6 +15,8 @@ private const val RetryAfterHeader = "Retry-After"
 internal suspend fun <T> safeDataApiCall(apiCall: suspend () -> T): ResultState<T> {
     return try {
         ResultState.Success(apiCall())
+    } catch (e: CancellationException) {
+        throw e
     } catch (e: Exception) {
         ResultState.Error(e.toUserFacingMessage())
     }

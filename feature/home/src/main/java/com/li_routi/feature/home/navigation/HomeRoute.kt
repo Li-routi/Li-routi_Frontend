@@ -4,12 +4,16 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.HomeContainer
 import com.li_routi.core.data.di.RoutineContainer
+import com.li_routi.feature.home.component.characterImageResOf
 import com.li_routi.feature.home.screen.HomeScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
 import com.li_routi.feature.home.vm.HomeUiState
@@ -46,6 +50,13 @@ fun HomeRoute(
     },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    val lifecycleOwner = LocalLifecycleOwner.current
+
+    LaunchedEffect(lifecycleOwner, viewModel) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.reloadAppearance()
+        }
+    }
 
     LaunchedEffect(requestRefreshTick) {
         if (requestRefreshTick > 0) {
@@ -91,6 +102,7 @@ private fun HomeScreenContent(
         hasGroupRoom = uiState.hasGroupRoom,
         nickname = uiState.nickname,
         equippedImageUrls = uiState.equippedImageUrls,
+        characterRes = characterImageResOf(uiState.characterId),
         myRoutineItems = uiState.myRoutineItems,
         myRoutineFilters = uiState.myRoutineFilters,
         groupRoomFilters = uiState.groupRoomFilters,

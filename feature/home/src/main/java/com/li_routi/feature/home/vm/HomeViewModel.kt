@@ -5,9 +5,10 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.common.ui.routine.toApiColor
+import com.li_routi.core.data.appearance.FallbackCharacterId
+import com.li_routi.core.data.appearance.MemberAppearanceStore
 import com.li_routi.core.data.di.ShopContainer
 import com.li_routi.core.domain.home.GetHomeSummaryUseCase
-import com.li_routi.core.domain.shop.GetMyAvatarUseCase
 import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
@@ -41,7 +42,7 @@ class HomeViewModel(
     private val getRoutineCategoriesUseCase: GetRoutineCategoriesUseCase,
     private val updateRoutineCategoryUseCase: UpdateRoutineCategoryUseCase,
     private val deleteRoutineCategoryUseCase: DeleteRoutineCategoryUseCase,
-    private val getMyAvatarUseCase: GetMyAvatarUseCase = ShopContainer.getMyAvatarUseCase,
+    private val appearanceStore: MemberAppearanceStore = ShopContainer.memberAppearanceStore,
     initialState: HomeUiState = HomeUiState(isLoading = true),
 ) : BaseViewModel(), HomeScreenActions {
 
@@ -53,25 +54,45 @@ class HomeViewModel(
 
     init {
         refresh()
-        loadAvatar()
+        observeAppearance()
     }
 
-    /** 홈 캐릭터에 입힐 착장. 상점에서 갈아입고 오면 다시 불러야 해서 refresh와 따로 둠 */
-    fun loadAvatar() {
+    /**
+     * 앱에 착장/캐릭터가 없으면 받아서 기억하고, 이후엔 상점이 저장한 로컬 상태를 그대로 그림.
+     * 화면마다 GET 하면 상점에서 갈아입고 돌아와도 이 ViewModel이 옛값을 들고 있음
+     */
+    private fun observeAppearance() {
         viewModelScope.launch {
-            val result = getMyAvatarUseCase()
-            if (result is ResultState.Success) {
+            appearanceStore.ensureLoaded()
+            appearanceStore.appearance.collect { appearance ->
                 val urls = equippedImageUrlsOf(
-                    result.data.equipped.associate { it.slot to it.imageUrl },
+                    appearance.equipped.associate { it.slot to it.imageUrl },
                 )
-                _uiState.update { it.copy(equippedImageUrls = urls) }
+                _uiState.update {
+                    it.copy(
+                        equippedImageUrls = urls,
+                        characterId = appearance.characterId.ifBlank { FallbackCharacterId },
+                    )
+                }
             }
+        }
+    }
+
+    /**
+     * 홈이 다시 보일 때 서버 착장을 다시 받음.
+     * 상점에서 저장하고 돌아왔는데 화면이 옛 옷을 들고 있는 걸 막음
+     */
+    fun reloadAppearance() {
+        viewModelScope.launch {
+            appearanceStore.reloadAvatar()
         }
     }
 
     /** 홈 요약을 다시 불러온다. 인증 업로드 성공 후 등에서 호출한다. */
     fun refresh() {
         viewModelScope.launch {
+            // 첫 GET이 실패했으면 홈 재시도에서 착장도 다시 받아 둠
+            appearanceStore.ensureLoaded()
             _uiState.update { it.copy(isLoading = true, loadError = false) }
             val summaryDeferred = async { getHomeSummaryUseCase() }
             val categoriesDeferred = async { getRoutineCategoriesUseCase() }
@@ -100,8 +121,16 @@ class HomeViewModel(
                         }
                         is ResultState.Error, ResultState.Loading -> Unit
                     }
-                    // 요약으로 상태를 새로 만들기 때문에 따로 불러온 착장은 옮겨 담아야 함
-                    _uiState.value = next.copy(equippedImageUrls = _uiState.value.equippedImageUrls)
+                    // 요약으로 상태를 새로 만들기 때문에 착장/캐릭터는 공용 캐시에서 다시 담음
+                    _uiState.update {
+                        val appearance = appearanceStore.appearance.value
+                        next.copy(
+                            equippedImageUrls = equippedImageUrlsOf(
+                                appearance.equipped.associate { it.slot to it.imageUrl },
+                            ),
+                            characterId = appearance.characterId.ifBlank { FallbackCharacterId },
+                        )
+                    }
                 }
                 is ResultState.Error -> {
                     _uiState.update { it.copy(isLoading = false, loadError = true) }

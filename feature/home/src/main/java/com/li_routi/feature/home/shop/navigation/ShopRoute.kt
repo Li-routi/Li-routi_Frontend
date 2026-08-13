@@ -1,6 +1,7 @@
 package com.li_routi.feature.home.shop.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.foundation.layout.Box
@@ -42,6 +43,10 @@ fun ShopRoute(
         }
     }
 
+    DisposableEffect(viewModel) {
+        onDispose { viewModel.clearPurchaseSelection() }
+    }
+
     // 새 문구가 오면 타이머를 다시 시작하려고 메시지를 key로 둠
     LaunchedEffect(uiState.message) {
         if (uiState.message == null) return@LaunchedEffect
@@ -63,6 +68,8 @@ fun ShopRoute(
             items = uiState.items,
             selectedItemIds = uiState.selectedItems.keys,
             purchaseTargets = uiState.purchaseTargets,
+            previewCharacterId = uiState.previewCharacterId,
+            savedCharacterId = uiState.savedCharacterId,
         )
 
         // 구매 실패(잔액 부족 등) 사유를 서버 메시지 그대로 보여줌

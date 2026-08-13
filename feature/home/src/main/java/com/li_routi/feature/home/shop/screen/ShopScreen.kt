@@ -37,6 +37,8 @@ import com.li_routi.feature.home.shop.component.ShopTopBar
 import com.li_routi.feature.home.shop.component.currencyIconOf
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
 import com.li_routi.feature.home.component.AvatarCharacter
+import com.li_routi.feature.home.component.DefaultCharacterId
+import com.li_routi.feature.home.component.characterImageResOf
 import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.feature.home.shop.vm.EquippedUiModel
 import com.li_routi.feature.home.shop.vm.ShopCategoryUiModel
@@ -68,6 +70,10 @@ fun ShopScreen(
     selectedItemIds: Set<String> = emptySet(),
     /** 고른 것 중 안 산 아이템. 다른 탭에서 고른 것도 섞여 있어서 [items]와 따로 받음 */
     purchaseTargets: List<ShopItemUiModel> = emptyList(),
+    /** 지금 캐릭터 카드에 그릴 캐릭터. 캐릭터 탭에서 고르면 저장 전에도 바로 바뀜 */
+    previewCharacterId: String = DefaultCharacterId,
+    /** 기기에 저장된 캐릭터. 격자 `착용중`은 이걸 따름 */
+    savedCharacterId: String = DefaultCharacterId,
     modifier: Modifier = Modifier,
 ) {
 
@@ -132,6 +138,7 @@ fun ShopScreen(
                 Spacer(modifier = Modifier.height(20.dp))
                 AvatarCharacter(
                     equippedImageUrls = equippedImageUrlsOf(equipped.mapValues { it.value.imageUrl }),
+                    characterRes = characterImageResOf(previewCharacterId),
                     modifier = Modifier.size(width = CharacterWidth, height = CharacterHeight),
                 )
             }
@@ -174,7 +181,8 @@ fun ShopScreen(
                 selectedItemIds = selectedItemIds,
                 onItemClick = actions::onItemClick,
                 modifier = Modifier.weight(1f),
-                equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() },
+                equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() } +
+                    savedCharacterId,
             )
         }
     }
