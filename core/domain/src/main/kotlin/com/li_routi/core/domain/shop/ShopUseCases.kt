@@ -2,6 +2,20 @@ package com.li_routi.core.domain.shop
 
 import com.li_routi.core.common.kotlin.util.ResultState
 
+class StartChargeUseCase(
+    private val repository: ShopRepository,
+) {
+    suspend operator fun invoke(productId: Long): ResultState<ChargeStarted> =
+        repository.startCharge(productId)
+}
+
+class CompleteChargeUseCase(
+    private val repository: ShopRepository,
+) {
+    suspend operator fun invoke(paymentId: String): ResultState<Unit> =
+        repository.completeCharge(paymentId)
+}
+
 class GetWalletBalancesUseCase(
     private val repository: ShopRepository,
 ) {

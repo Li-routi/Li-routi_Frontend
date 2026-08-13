@@ -26,6 +26,7 @@ androidxCredentials = "1.6.0"
 googleId = "1.2.0"
 datastorePreferences = "1.2.1"
 coil = "2.7.0"
+portone = "0.2.3"
 krossbow = "9.3.0"
 googleServicesPlugin = "4.4.2"
 firebaseBom = "33.14.0"
@@ -90,6 +91,7 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 
 # Coil (인증 게시글 이미지 등 네트워크 이미지 로딩)
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+portone-android-sdk = { group = "com.github.portone-io", name = "android-sdk", version.ref = "portone" }
 
 # Krossbow (채팅 STOMP over WebSocket)
 krossbow-stomp-core = { group = "org.hildan.krossbow", name = "krossbow-stomp-core", version.ref = "krossbow" }

@@ -20,6 +20,8 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://devrepo.kakao.com/nexus/content/groups/public/")
+        // 포트원 안드로이드 SDK는 JitPack으로 배포됨
+        maven("https://jitpack.io")
     }
 }
 

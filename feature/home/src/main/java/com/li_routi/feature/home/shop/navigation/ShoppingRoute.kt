@@ -18,7 +18,7 @@ import com.li_routi.feature.home.shop.vm.ShopUiEvent
  * - 재화구매 뒤로가기(상단/시스템 Back) → [ShopRoute]
  * - 상점 뒤로가기 → [onNavigateBack] (홈 등 feature 밖은 AppNavHost에서 연결)
  *
- * API 연동 전: [ShopUiEvent.SaveSelectedItems], [CurrencyShopUiEvent.ConfirmCharge]는 no-op.
+ * 아이템 저장/결제는 각 Route와 ViewModel에서 처리하고, 여기서는 화면 전환만 중계한다.
  */
 @Composable
 fun ShoppingRoute(
@@ -40,8 +40,8 @@ fun ShoppingRoute(
             onEvent = { event ->
                 when (event) {
                     CurrencyShopUiEvent.NavigateBack -> showCurrencyShop = false
-                    // API 연동 전: 결제/잔액 갱신 미구현
-                    is CurrencyShopUiEvent.ConfirmCharge -> Unit
+                    // 결제창 띄우기는 CurrencyShopRoute가 직접 처리함
+                    is CurrencyShopUiEvent.OpenPaymentSheet -> Unit
                 }
             },
             modifier = modifier,

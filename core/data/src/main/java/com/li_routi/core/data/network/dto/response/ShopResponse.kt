@@ -1,5 +1,15 @@
 package com.li_routi.core.data.network.dto.response
 
+/** POST /api/shop/charges 응답 result. 그대로 포트원 SDK에 넘김 */
+data class ChargeStartedResponse(
+    val storeId: String?,
+    val channelKey: String?,
+    val paymentId: String?,
+    val amount: Long,
+    val currency: String?,
+    val orderName: String?,
+)
+
 /** GET /api/members/me/wallet 응답 result. */
 data class WalletBalancesResponse(
     val balances: List<WalletBalanceResponse>?,

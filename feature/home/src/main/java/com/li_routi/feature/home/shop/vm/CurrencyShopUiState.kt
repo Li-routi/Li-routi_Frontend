@@ -1,5 +1,6 @@
 package com.li_routi.feature.home.shop.vm
 
+import com.li_routi.core.domain.shop.ChargeStarted
 import com.li_routi.feature.home.shop.component.CurrencyProductUiModel
 
 /**
@@ -22,6 +23,8 @@ data class CurrencyShopUiState(
     val isLoading: Boolean = false,
     /** 교환 요청 중. 따닥으로 두 번 교환되는 것 방지 */
     val isExchanging: Boolean = false,
+    /** 결제 시작~결제창 종료까지. 중복 결제 방지 */
+    val isCharging: Boolean = false,
     val message: String? = null,
 ) {
     val allProducts: List<CurrencyProductUiModel>
@@ -37,6 +40,6 @@ data class CurrencyShopUiState(
 sealed interface CurrencyShopUiEvent {
     data object NavigateBack : CurrencyShopUiEvent
 
-    /** 충전하기 확인. API 연동 전: ShoppingRoute에서 no-op. */
-    data class ConfirmCharge(val productId: String) : CurrencyShopUiEvent
+    /** 결제창을 띄워야 함. 서버가 준 값을 그대로 포트원 SDK에 넘김 */
+    data class OpenPaymentSheet(val charge: ChargeStarted) : CurrencyShopUiEvent
 }
