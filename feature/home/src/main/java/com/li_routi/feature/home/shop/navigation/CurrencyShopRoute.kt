@@ -64,17 +64,20 @@ fun CurrencyShopRoute(
                     if (paymentLauncher == null) {
                         viewModel.onPaymentFailed("결제창을 열 수 없어요.")
                     } else {
-                        paymentLauncher.launch(
-                            PaymentRequest(
-                                storeId = charge.storeId,
-                                paymentId = charge.paymentId,
-                                orderName = charge.orderName,
-                                channelKey = charge.channelKey,
-                                totalAmount = charge.amount,
-                                currency = Currency.KRW,
-                                payMethod = PaymentPayMethod.CARD,
-                            ),
-                        )
+                        // 여는 데 실패하면 결과 콜백도 안 와서, 여기서 안 풀어주면 다시 충전을 못 함
+                        runCatching {
+                            paymentLauncher.launch(
+                                PaymentRequest(
+                                    storeId = charge.storeId,
+                                    paymentId = charge.paymentId,
+                                    orderName = charge.orderName,
+                                    channelKey = charge.channelKey,
+                                    totalAmount = charge.amount,
+                                    currency = Currency.KRW,
+                                    payMethod = PaymentPayMethod.CARD,
+                                ),
+                            )
+                        }.onFailure { viewModel.onPaymentFailed("결제창을 열 수 없어요.") }
                     }
                 }
 

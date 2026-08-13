@@ -1,5 +1,6 @@
 package com.li_routi.core.data.mapper
 
+import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.data.network.dto.response.AvatarEquippedItemResponse
 import com.li_routi.core.data.network.dto.response.ChargeProductItemResponse
 import com.li_routi.core.data.network.dto.response.ChargeProductsResponse
@@ -22,9 +23,20 @@ import com.li_routi.core.domain.shop.ExchangeResult
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
 
+/**
+ * 결제 응답에서 비면 안 되는 값을 걸러냄.
+ *
+ * 빈 값을 그냥 흘려보내면 결제창이 이상하게 뜨거나, 지급됐다고 안내해놓고 잔액은 그대로인 상황이 생김
+ */
+private fun String?.requirePaymentField(name: String): String {
+    if (isNullOrBlank()) throw ApiException("결제 응답에 $name 가 없습니다.")
+    return this
+}
+
 fun ChargeSettledResponse.toDomain(): ChargeSettled = ChargeSettled(
-    paymentId = paymentId.orEmpty(),
-    currency = currency.orEmpty(),
+    paymentId = paymentId.requirePaymentField("paymentId"),
+    // 비면 TOPAZ/GEM 어느 쪽 잔액도 갱신되지 않음
+    currency = currency.requirePaymentField("currency"),
     rewardAmount = rewardAmount,
     bonusAmount = bonusAmount,
     paidBalance = paidBalance,
@@ -32,12 +44,13 @@ fun ChargeSettledResponse.toDomain(): ChargeSettled = ChargeSettled(
 )
 
 fun ChargeStartedResponse.toDomain(): ChargeStarted = ChargeStarted(
-    storeId = storeId.orEmpty(),
-    channelKey = channelKey.orEmpty(),
-    paymentId = paymentId.orEmpty(),
+    // 아래 넷은 그대로 결제창(PaymentRequest)으로 넘어감
+    storeId = storeId.requirePaymentField("storeId"),
+    channelKey = channelKey.requirePaymentField("channelKey"),
+    paymentId = paymentId.requirePaymentField("paymentId"),
     amount = amount,
     currency = currency.orEmpty(),
-    orderName = orderName.orEmpty(),
+    orderName = orderName.requirePaymentField("orderName"),
 )
 
 fun WalletBalancesResponse.toDomain(): List<CurrencyBalance> =

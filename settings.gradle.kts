@@ -20,8 +20,11 @@ dependencyResolutionManagement {
         google()
         mavenCentral()
         maven("https://devrepo.kakao.com/nexus/content/groups/public/")
-        // 포트원 안드로이드 SDK는 JitPack으로 배포됨
-        maven("https://jitpack.io")
+        // 포트원 안드로이드 SDK는 JitPack으로 배포됨.
+        // JitPack은 누구나 올릴 수 있어서 다른 라이브러리가 여기로 새지 않게 그룹을 묶어둠
+        maven("https://jitpack.io") {
+            content { includeGroup("com.github.portone-io") }
+        }
     }
 }
 
