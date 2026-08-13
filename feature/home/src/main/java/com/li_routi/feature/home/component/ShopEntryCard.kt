@@ -42,11 +42,10 @@ private val RepresentativeBadgeText = Color(0xFF3A8009)
 /** Figma `comp/myVehicle` 그라데이션 끝색 `rgba(207,228,255,0.2)`. */
 private val CharacterCardGradientEnd = Color(0x33CFE4FF)
 
-// default_character.png가 (아직 로컬엔 안 받았지만) 원격 develop에서 400x400px 정사각형으로
-// 교체돼서 미리 맞춰둔다(상점(ShopScreen.kt)은 이 값을 공유하지 않고 자기 파일에 똑같은 이름으로
-// 따로 두고 있어 여기만 바꿔도 영향 없음). git pull 직후 바로 맞게 반영되도록 값만 먼저 바꿔둔다.
-private val CharacterWidth = 400.dp
-private val CharacterHeight = 400.dp
+// Figma `comp/myVehicle` 캐릭터 영역 220×180.
+// PNG는 400×400이지만 화면 박스 크기와는 다름 — Fit으로 이 안에 맞춤
+private val CharacterWidth = 220.dp
+private val CharacterHeight = 180.dp
 
 /**
  * 홈 화면의 닉네임/캐릭터/상점가기 영역 (Figma Design Page [1.1] `comp/myVehicle`).
@@ -58,7 +57,7 @@ private val CharacterHeight = 400.dp
  * 받는다.
  *
  * verticalScroll을 같이 둬서, 화면이 짧거나(작은 기기) 시스템 폰트 크기가 커서 닉네임 줄 + 캐릭터
- * 박스(400x400) 높이가 남는 공간보다 커지는 경우에도 위아래가 그냥 잘리지 않고 스크롤로 볼 수 있게
+ * 박스(220x180) 높이가 남는 공간보다 커지는 경우에도 위아래가 그냥 잘리지 않고 스크롤로 볼 수 있게
  * 한다.
  */
 @Composable
