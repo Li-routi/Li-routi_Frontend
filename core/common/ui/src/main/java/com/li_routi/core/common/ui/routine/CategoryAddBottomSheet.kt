@@ -6,10 +6,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.CircleShape
@@ -17,17 +20,21 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.SheetState
+import androidx.compose.material3.SheetValue
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.component.LiroutiBottomSheetCloseButton
@@ -94,6 +101,34 @@ fun String?.toCategoryColor(): CategoryColor? {
 }
 
 /**
+ * 키보드가 떠 있는 상태로 바깥 탭·시스템 뒤로가기가 들어오면 시트를 그대로 닫지 않고 키보드부터
+ * 내린다 — 안드로이드 기본 동작(뒤로가기=키보드 먼저 닫힘)과 맞추기 위함
+ * ([RoutineEditBottomSheet]의 `rememberRoutineEditSheetState`와 동일한 패턴/이유).
+ */
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
+@Composable
+private fun rememberCategoryAddSheetState(): SheetState {
+    val currentIsKeyboardVisible = rememberUpdatedState(WindowInsets.isImeVisible)
+    val currentKeyboardController = rememberUpdatedState(LocalSoftwareKeyboardController.current)
+    val currentFocusManager = rememberUpdatedState(LocalFocusManager.current)
+    val confirmValueChange = remember {
+        { target: SheetValue ->
+            if (target == SheetValue.Hidden && currentIsKeyboardVisible.value) {
+                currentKeyboardController.value?.hide()
+                currentFocusManager.value.clearFocus()
+                false
+            } else {
+                true
+            }
+        }
+    }
+    return rememberModalBottomSheetState(
+        skipPartiallyExpanded = true,
+        confirmValueChange = confirmValueChange,
+    )
+}
+
+/**
  * 카테고리 추가/편집 Bottom Sheet.
  *
  * Figma `4741:43934`: 닫기(X) + 삭제, 이름 필드, 회색 배경 색 선택 영역, 확인.
@@ -109,7 +144,7 @@ fun CategoryAddBottomSheet(
     onConfirm: () -> Unit,
     onDismissRequest: () -> Unit,
     modifier: Modifier = Modifier,
-    sheetState: SheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+    sheetState: SheetState = rememberCategoryAddSheetState(),
     onDeleteClick: () -> Unit = onDismissRequest,
     placeholder: String = "최대 20자",
     errorMessage: String? = null,

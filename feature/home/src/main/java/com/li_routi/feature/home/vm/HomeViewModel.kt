@@ -11,7 +11,7 @@ import com.li_routi.core.data.di.NotificationContainer
 import com.li_routi.core.data.di.ShopContainer
 import com.li_routi.core.data.profile.MemberProfileCache
 import com.li_routi.core.domain.home.GetHomeSummaryUseCase
-import com.li_routi.core.domain.notification.GetNotificationsUseCase
+import com.li_routi.core.domain.notification.HasUnreadNotificationUseCase
 import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
@@ -46,13 +46,14 @@ class HomeViewModel(
     private val updateRoutineCategoryUseCase: UpdateRoutineCategoryUseCase,
     private val deleteRoutineCategoryUseCase: DeleteRoutineCategoryUseCase,
     private val appearanceStore: MemberAppearanceStore = ShopContainer.memberAppearanceStore,
-    private val getNotificationsUseCase: GetNotificationsUseCase = NotificationContainer.getNotificationsUseCase,
+    private val hasUnreadNotificationUseCase: HasUnreadNotificationUseCase = NotificationContainer.hasUnreadNotificationUseCase,
     // 마지막으로 알던 닉네임/뱃지 값으로 먼저 그려서, 탭 전환마다 ViewModel이 새로 만들어져도
     // placeholder("닉네임")나 숨겨진 뱃지가 잠깐 보였다 실제 값으로 바뀌는 깜빡임을 없앤다.
     initialState: HomeUiState = HomeUiState(
         isLoading = true,
         nickname = MemberProfileCache.nickname.value ?: "닉네임",
         hasUnreadNotification = MemberProfileCache.hasUnreadNotification.value,
+        characterId = MemberProfileCache.characterId.value ?: FallbackCharacterId,
     ),
 ) : BaseViewModel(), HomeScreenActions {
 
@@ -69,18 +70,13 @@ class HomeViewModel(
         observeAppearance()
     }
 
-    /**
-     * 종 아이콘 뱃지용 "안 읽은 알림 있음" 여부. 서버에 별도 개수 API가 없어 목록 첫 페이지를
-     * 받아 [com.li_routi.core.domain.notification.AppNotification.read]가 false인 게 있는지로
-     * 판단한다 — 알림 화면과 같은 기본 페이지 크기(20개)를 쓴다.
-     */
+    /** 종 아이콘 뱃지용 "안 읽은 알림 있음" 여부. [HasUnreadNotificationUseCase] 참고. */
     private fun loadUnreadNotificationStatus() {
         viewModelScope.launch {
-            val result = getNotificationsUseCase(category = null, cursor = null)
+            val result = hasUnreadNotificationUseCase()
             if (result is ResultState.Success) {
-                val hasUnread = result.data.notifications.any { n -> !n.read }
-                MemberProfileCache.hasUnreadNotification.value = hasUnread
-                _uiState.update { it.copy(hasUnreadNotification = hasUnread) }
+                MemberProfileCache.hasUnreadNotification.value = result.data
+                _uiState.update { it.copy(hasUnreadNotification = result.data) }
             }
         }
     }
@@ -100,10 +96,12 @@ class HomeViewModel(
                 val urls = equippedImageUrlsOf(
                     appearance.equipped.associate { it.slot to it.imageUrl },
                 )
+                val characterId = appearance.characterId.ifBlank { FallbackCharacterId }
+                MemberProfileCache.characterId.value = characterId
                 _uiState.update {
                     it.copy(
                         equippedImageUrls = urls,
-                        characterId = appearance.characterId.ifBlank { FallbackCharacterId },
+                        characterId = characterId,
                     )
                 }
             }

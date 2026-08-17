@@ -16,6 +16,7 @@ import com.li_routi.core.data.network.service.NotificationApiService
 import com.li_routi.core.data.notification.FcmDeviceSyncGate
 import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.data.preference.FcmTokenPreference
+import com.li_routi.core.data.profile.MemberProfileCache
 import com.li_routi.core.domain.auth.AuthRepository
 import com.li_routi.core.domain.auth.AuthToken
 import com.li_routi.core.domain.auth.MyInfo
@@ -70,6 +71,9 @@ class AuthRepositoryImpl(
             if (!response.isSuccess) throw ApiException(response.message)
             fcmTokenPreference.clear()
             tokenPreference.clear()
+            // 안 지우면 같은 기기에서 다른 계정으로 다시 로그인했을 때, 새 세션 조회가 끝나기 전까지
+            // 이전 계정의 닉네임/캐릭터/알림 상태가 잠깐 그대로 보인다.
+            MemberProfileCache.clear()
         }
     }
 
@@ -91,22 +95,29 @@ class AuthRepositoryImpl(
      * 기존 사진이 있으면 그 바이트를 다시 받아 재업로드해서 유효한 키를 채워 보낸다 — 닉네임만
      * 바꿔도 기존 프로필 사진이 지워지지 않게 하기 위한 우회다.
      *
-     * 재다운로드/재업로드가 실패하면(네트워크 등) null로 폴백한다 — 이 경우 기존 버그가 재현될 수
-     * 있지만, 저장 자체를 막는 것보다는 낫다.
+     * 조회/다운로드/재업로드 중 어느 하나라도 실패하면 null로 폴백하지 않고 예외를 던져 저장
+     * 자체를 실패시킨다 — null로 폴백하면 일시적인 네트워크 실패만으로도 (백엔드가 null을 "삭제"로
+     * 해석해) 기존 프로필 사진이 지워질 수 있다.
      */
     private suspend fun resolveProfileImageKey(image: ProfileImageUpload?): String? {
         if (image != null) return uploadProfileImage(image)
-        val currentImageUrl = (getMyInfo() as? ResultState.Success)?.data?.profileImageUrl
-            ?.takeIf { it.isNotBlank() }
-            ?: return null
+        val currentImageUrl = when (val myInfo = getMyInfo()) {
+            is ResultState.Success -> myInfo.data.profileImageUrl?.takeIf { it.isNotBlank() }
+            is ResultState.Error -> throw ApiException(myInfo.message)
+            ResultState.Loading -> throw ApiException("내 정보를 확인하지 못했습니다.")
+        } ?: return null
         val existingImage = runCatching {
             ProfileImageUpload(bytes = downloadImageBytes(currentImageUrl), contentType = "image/jpeg")
-        }.getOrNull() ?: return null
+        }.getOrElse { throw ApiException("기존 프로필 사진을 불러오지 못했습니다.") }
         return uploadProfileImage(existingImage)
     }
 
     /** OkHttp의 동기 [okhttp3.Call.execute]를 그대로 부르면 호출 스레드를 막으므로 IO로 옮긴다. */
     private suspend fun downloadImageBytes(url: String): ByteArray = withContext(Dispatchers.IO) {
+        // 서버가 내려준 URL이라도 그대로 요청을 만들지 않는다 — presigned 업로드 쪽
+        // (MediaRepositoryImpl.uploadToPresignedUrl)과 동일하게 HTTPS만 허용해, 응답이 조작되거나
+        // 다른 스킴으로 바뀌어도 내부망 등 임의 호스트로 요청이 나가지 않게 한다.
+        if (!url.startsWith("https://")) throw ApiException("잘못된 이미지 주소입니다.")
         val request = Request.Builder().url(url).build()
         NetworkModule.s3OkHttpClient.newCall(request).execute().use { response ->
             if (!response.isSuccessful) throw ApiException("이미지를 불러오지 못했습니다.")
@@ -137,6 +148,7 @@ class AuthRepositoryImpl(
             if (!response.isSuccess) throw ApiException(response.message)
             fcmTokenPreference.clear()
             tokenPreference.clear()
+            MemberProfileCache.clear()
         }
     }
 

@@ -1,7 +1,6 @@
 package com.li_routi.feature.mypage.component
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -20,12 +19,10 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -119,19 +116,15 @@ private fun AchievementBadgeCell(
             ) {
                 // 목록 카드(AchievementListItem)와 소스 우선순위(서버 이미지 > 로컬 매핑 > 기본
                 // 캐릭터)를 똑같이 맞춰서, 같은 업적이면 항상 같은 이미지가 보이게 한다.
-                when {
-                    !badge.imageUrl.isNullOrBlank() -> AsyncImage(
-                        model = badge.imageUrl,
-                        contentDescription = badge.title,
-                        modifier = Modifier.size(BadgeIconSize),
-                    )
-                    badge.iconRes != null -> Image(
-                        painter = painterResource(id = badge.iconRes),
-                        contentDescription = badge.title,
-                        modifier = Modifier.size(BadgeIconSize),
-                    )
-                    else -> AchievementCharacterIcon(modifier = Modifier.size(width = MedalImageWidth, height = MedalImageHeight))
-                }
+                AchievementFallbackImage(
+                    imageUrl = badge.imageUrl,
+                    iconRes = badge.iconRes,
+                    contentDescription = badge.title,
+                    modifier = Modifier.size(BadgeIconSize),
+                    fallback = {
+                        AchievementCharacterIcon(modifier = Modifier.size(width = MedalImageWidth, height = MedalImageHeight))
+                    },
+                )
             }
             if (isEquipped) {
                 Text(text = "장착 중", style = EquippedLabelTextStyle, color = LiroutiTheme.colors.primaryNormal)

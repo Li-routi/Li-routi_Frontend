@@ -5,6 +5,7 @@ import com.li_routi.core.data.preference.FcmTokenPreference
 import com.li_routi.core.data.repository.NotificationRepositoryImpl
 import com.li_routi.core.domain.notification.GetNotificationSettingsUseCase
 import com.li_routi.core.domain.notification.GetNotificationsUseCase
+import com.li_routi.core.domain.notification.HasUnreadNotificationUseCase
 import com.li_routi.core.domain.notification.MarkAllNotificationsReadUseCase
 import com.li_routi.core.domain.notification.MarkNotificationReadUseCase
 import com.li_routi.core.domain.notification.NotificationRepository
@@ -35,6 +36,10 @@ object NotificationContainer {
 
     val getNotificationsUseCase: GetNotificationsUseCase by lazy {
         GetNotificationsUseCase(repository)
+    }
+
+    val hasUnreadNotificationUseCase: HasUnreadNotificationUseCase by lazy {
+        HasUnreadNotificationUseCase(repository)
     }
 
     val markNotificationReadUseCase: MarkNotificationReadUseCase by lazy {

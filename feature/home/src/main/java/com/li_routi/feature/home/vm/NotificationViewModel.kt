@@ -57,6 +57,13 @@ class NotificationViewModel(
 
     private var loadGeneration = 0
 
+    // GET(loadSettings)와 PATCH(onSettingToggle)가 서로 겹쳐 실행될 수 있어(설정 화면 진입과 동시에
+    // 토글, 또는 토글을 연달아 여러 번), 매 요청 시작마다 올리고 응답이 왔을 때 그 사이 더 최근 요청이
+    // 시작되지 않았을 때만(generation이 그대로일 때만) 반영한다 — 그렇지 않으면 먼저 시작했지만
+    // 나중에 끝난 응답이 그 이후의 최신 상태를 덮어쓸 수 있다(예: 오래된 GET 전체 맵 응답이 방금 누른
+    // PATCH 낙관적 갱신을 되돌리거나, 먼저 누른 토글의 실패 롤백이 나중에 누른 토글 값을 덮어씀).
+    private var settingsGeneration = 0
+
     fun refresh() {
         loadNotifications(reset = true)
     }
@@ -158,9 +165,12 @@ class NotificationViewModel(
 
     /** 알림 설정 화면 진입 시 서버 값으로 토글을 맞춘다([NotificationSettingsRoute]에서 호출). */
     fun loadSettings() {
+        val generation = ++settingsGeneration
         viewModelScope.launch {
             when (val result = getNotificationSettingsUseCase()) {
-                is ResultState.Success -> _uiState.update { it.copy(settingToggles = result.data.toToggleMap()) }
+                is ResultState.Success -> if (generation == settingsGeneration) {
+                    _uiState.update { it.copy(settingToggles = result.data.toToggleMap()) }
+                }
                 is ResultState.Error, ResultState.Loading -> Unit
             }
         }
@@ -173,12 +183,17 @@ class NotificationViewModel(
     override fun onSettingToggle(key: NotificationSettingKey, checked: Boolean) {
         val previous = _uiState.value.settingToggles[key] == true
         if (previous == checked) return
+        val generation = ++settingsGeneration
         _uiState.update { state -> state.copy(settingToggles = state.settingToggles + (key to checked)) }
         viewModelScope.launch {
             when (val result = updateNotificationSettingsUseCase(key.toUpdate(checked))) {
-                is ResultState.Success -> _uiState.update { it.copy(settingToggles = result.data.toToggleMap()) }
-                is ResultState.Error -> _uiState.update { state ->
-                    state.copy(settingToggles = state.settingToggles + (key to previous))
+                is ResultState.Success -> if (generation == settingsGeneration) {
+                    _uiState.update { it.copy(settingToggles = result.data.toToggleMap()) }
+                }
+                is ResultState.Error -> if (generation == settingsGeneration) {
+                    _uiState.update { state ->
+                        state.copy(settingToggles = state.settingToggles + (key to previous))
+                    }
                 }
                 ResultState.Loading -> Unit
             }

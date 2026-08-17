@@ -1,7 +1,6 @@
 package com.li_routi.feature.mypage.component
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -21,14 +20,12 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.foundation.color.AchievementProgressCountColor
 import com.li_routi.core.designsystem.foundation.color.BackgroundSecondary
 import com.li_routi.core.designsystem.foundation.color.Cyan500
@@ -110,19 +107,13 @@ fun AchievementListItem(
                 .background(LiroutiTheme.colors.backgroundDefault, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            when {
-                !item.imageUrl.isNullOrBlank() -> AsyncImage(
-                    model = item.imageUrl,
-                    contentDescription = null,
-                    modifier = Modifier.size(IconImageSize),
-                )
-                item.iconRes != null -> Image(
-                    painter = painterResource(id = item.iconRes),
-                    contentDescription = null,
-                    modifier = Modifier.size(IconImageSize),
-                )
-                else -> AchievementCharacterIcon(modifier = Modifier.size(width = 69.dp, height = 56.dp))
-            }
+            AchievementFallbackImage(
+                imageUrl = item.imageUrl,
+                iconRes = item.iconRes,
+                contentDescription = null,
+                modifier = Modifier.size(IconImageSize),
+                fallback = { AchievementCharacterIcon(modifier = Modifier.size(width = 69.dp, height = 56.dp)) },
+            )
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {

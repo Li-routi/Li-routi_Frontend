@@ -54,7 +54,18 @@ class AchievementViewModel(
             _uiState.update { it.copy(isClaiming = true) }
             when (val result = claimAchievementUseCase(achievementId)) {
                 is ResultState.Success -> {
-                    _uiState.update { it.copy(isClaiming = false, claimMessage = result.data.toMessage()) }
+                    _uiState.update { state ->
+                        state.copy(
+                            isClaiming = false,
+                            claimMessage = result.data.toMessage(),
+                            // load()가 새 목록을 받아오기 전까지도 이 항목은 즉시 "받기" 불가로 바꿔둔다.
+                            // isClaiming은 이 요청 하나만 막는 전역 가드라, 응답 직후부터 load() 완료
+                            // 전까지의 틈에 같은 업적을 다시 탭하면 수령 API가 중복 호출될 수 있었다.
+                            achievements = state.achievements.map {
+                                if (it.achievementId == achievementId) it.copy(isClaimable = false) else it
+                            },
+                        )
+                    }
                     load()
                 }
                 is ResultState.Error -> _uiState.update {

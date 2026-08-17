@@ -52,9 +52,11 @@ import java.util.concurrent.TimeUnit
 import kotlin.coroutines.resume
 import kotlin.coroutines.suspendCoroutine
 import kotlin.math.roundToInt
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.awaitCancellation
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
 
 /**
  * CameraX Preview + ImageCapture 바인딩. 루틴/그룹 루틴/챌린지 인증 촬영 화면에서 공용으로 쓴다.
@@ -241,9 +243,13 @@ fun LiroutiCameraPreview(
         LaunchedEffect(isActive, onPreviewSnapshot) {
             if (!isActive) return@LaunchedEffect
             while (true) {
-                runCatching { previewView.bitmap }.getOrNull()
-                    ?.downscaledForBlur()
-                    ?.let(onPreviewSnapshot)
+                val raw = runCatching { previewView.bitmap }.getOrNull()
+                if (raw != null) {
+                    // getBitmap()은 UI 스레드에서만 호출 가능하지만, 이 비트맵을 단독으로 갖고
+                    // 있는 축소 작업은 메인 스레드를 막지 않도록 백그라운드에서 수행한다.
+                    val scaled = withContext(Dispatchers.Default) { raw.downscaledForBlur() }
+                    onPreviewSnapshot(scaled)
+                }
                 delay(PreviewSnapshotIntervalMs)
             }
         }

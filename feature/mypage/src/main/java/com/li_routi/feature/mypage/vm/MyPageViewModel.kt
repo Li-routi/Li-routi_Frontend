@@ -12,7 +12,7 @@ import com.li_routi.core.data.profile.MemberProfileCache
 import com.li_routi.core.domain.auth.GetMyInfoUseCase
 import com.li_routi.core.domain.auth.ProfileImageUpload
 import com.li_routi.core.domain.auth.UpdateProfileUseCase
-import com.li_routi.core.domain.notification.GetNotificationsUseCase
+import com.li_routi.core.domain.notification.HasUnreadNotificationUseCase
 import com.li_routi.feature.mypage.navigation.MyPageScreenActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -41,7 +41,7 @@ class MyPageViewModel(
     ),
     private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
     private val updateProfileUseCase: UpdateProfileUseCase = AuthContainer.updateProfileUseCase,
-    private val getNotificationsUseCase: GetNotificationsUseCase = NotificationContainer.getNotificationsUseCase,
+    private val hasUnreadNotificationUseCase: HasUnreadNotificationUseCase = NotificationContainer.hasUnreadNotificationUseCase,
 ) : BaseViewModel(), MyPageScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -61,18 +61,13 @@ class MyPageViewModel(
         loadUnreadNotificationStatus()
     }
 
-    /**
-     * 종 아이콘 뱃지용 "안 읽은 알림 있음" 여부. 서버에 별도 개수 API가 없어 목록 첫 페이지를
-     * 받아 [com.li_routi.core.domain.notification.AppNotification.read]가 false인 게 있는지로
-     * 판단한다 — 알림 화면과 같은 기본 페이지 크기(20개)를 쓴다.
-     */
+    /** 종 아이콘 뱃지용 "안 읽은 알림 있음" 여부. [HasUnreadNotificationUseCase] 참고. */
     private fun loadUnreadNotificationStatus() {
         viewModelScope.launch {
-            val result = getNotificationsUseCase(category = null, cursor = null)
+            val result = hasUnreadNotificationUseCase()
             if (result is ResultState.Success) {
-                val hasUnread = result.data.notifications.any { n -> !n.read }
-                MemberProfileCache.hasUnreadNotification.value = hasUnread
-                _uiState.update { it.copy(hasUnreadNotification = hasUnread) }
+                MemberProfileCache.hasUnreadNotification.value = result.data
+                _uiState.update { it.copy(hasUnreadNotification = result.data) }
             }
         }
     }
@@ -128,6 +123,7 @@ class MyPageViewModel(
 
             when (val result = updateProfileUseCase(newNickname, imageResult?.getOrNull())) {
                 is ResultState.Success -> {
+                    MemberProfileCache.nickname.value = result.data.nickname
                     _uiState.update {
                         it.copy(
                             nickname = result.data.nickname,

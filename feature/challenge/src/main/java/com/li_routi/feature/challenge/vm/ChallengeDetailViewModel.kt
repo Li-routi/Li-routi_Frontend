@@ -71,6 +71,10 @@ class ChallengeDetailViewModel(
      * 무관하게 항상 sort=LIKES로 별도 조회한다 — 사용자가 목록 정렬을 최신순으로 바꿔도 대문은 안 바뀌어야 한다.
      */
     private fun loadHeroImage() {
+        // 조회 도중 새로고침/인증 등록 등으로 목록이 통째로 리셋됐으면(generation 변경) 이 응답은
+        // 버린다 — 그렇지 않으면 더 최근에 시작된 요청보다 먼저 끝난 오래된 응답이 대문 이미지를
+        // 도로 옛 값으로 덮어쓸 수 있다.
+        val generation = certificationGeneration
         viewModelScope.launch {
             val result = getVerificationsUseCase(
                 challengeId,
@@ -79,7 +83,7 @@ class ChallengeDetailViewModel(
                 size = 1,
                 sort = VerificationSort.LIKES,
             )
-            if (result is ResultState.Success) {
+            if (result is ResultState.Success && generation == certificationGeneration) {
                 _uiState.update { it.copy(heroImageUrl = result.data.certifications.firstOrNull()?.imageUrl) }
             }
         }
@@ -333,16 +337,20 @@ class ChallengeDetailViewModel(
     override fun onDeleteCertificationClick(certificationId: Long) {
         viewModelScope.launch {
             when (val result = deleteVerificationUseCase(challengeId, certificationId)) {
-                is ResultState.Success -> _uiState.update { state ->
-                    state.copy(
-                        allCertifications = state.allCertifications.filterNot { it.id == certificationId },
-                        myCertifications = state.myCertifications.filterNot { it.id == certificationId },
-                        postCount = (state.postCount - 1).coerceAtLeast(0),
-                        // 삭제는 내 게시글에만 가능하고, 한 주기(일/주/월)당 인증은 하나뿐이라(재인증 시
-                        // 덮어쓰기) 삭제하면 그 주기는 항상 다시 "미인증" 상태가 된다(서버 스펙: 삭제 시
-                        // 해당 주기가 재인증 가능하게 다시 열림).
-                        verifiedInCurrentPeriod = false,
-                    )
+                is ResultState.Success -> {
+                    _uiState.update { state ->
+                        state.copy(
+                            allCertifications = state.allCertifications.filterNot { it.id == certificationId },
+                            myCertifications = state.myCertifications.filterNot { it.id == certificationId },
+                            postCount = (state.postCount - 1).coerceAtLeast(0),
+                            // 삭제는 내 게시글에만 가능하고, 한 주기(일/주/월)당 인증은 하나뿐이라(재인증 시
+                            // 덮어쓰기) 삭제하면 그 주기는 항상 다시 "미인증" 상태가 된다(서버 스펙: 삭제 시
+                            // 해당 주기가 재인증 가능하게 다시 열림).
+                            verifiedInCurrentPeriod = false,
+                        )
+                    }
+                    // 지운 게시글이 대문(좋아요 1위)이었을 수 있어 같이 새로고침한다.
+                    loadHeroImage()
                 }
                 is ResultState.Error -> _uiState.update { it.copy(actionErrorMessage = result.message) }
                 ResultState.Loading -> Unit
@@ -465,11 +473,28 @@ class ChallengeDetailViewModel(
     // 자체엔 liked가 없어서(withMyLikedSyncedFromAll 참고) 대상을 못 찾으면 "인증" 쪽에서 찾는다.
     override fun onLikeToggleClick(certificationId: Long) {
         val state = _uiState.value
-        val target = state.allCertifications.find { it.id == certificationId }
-            ?: state.myCertifications.find { it.id == certificationId }
-            ?: return
+        val foundInAll = state.allCertifications.find { it.id == certificationId }
+        val target = foundInAll ?: state.myCertifications.find { it.id == certificationId } ?: return
+        val sort = state.selectedSort
         viewModelScope.launch {
-            val result = if (target.liked) {
+            // "인증"(전체)에 아직 안 불러와진(현재 페이지 밖) "내 인증 보기" 전용 항목은 liked가
+            // withMyLikedSyncedFromAll로 맞춰진 적이 없어 로컬 값을 못 믿는다(항상 false로 시작).
+            // 이 값을 그대로 믿고 반대 API(예: 이미 좋아요했는데 좋아요 API)를 부르지 않도록,
+            // 이 경우에만 최신 목록을 한 번 더 조회해 진짜 liked를 확인한다.
+            val liked = if (foundInAll != null) {
+                target.liked
+            } else {
+                val lookup = getVerificationsUseCase(
+                    challengeId,
+                    cursor = null,
+                    cursorLikeCount = null,
+                    size = MaxVerificationPageSize,
+                    sort = sort,
+                )
+                (lookup as? ResultState.Success)?.data?.certifications
+                    ?.find { it.id == certificationId }?.liked ?: target.liked
+            }
+            val result = if (liked) {
                 unlikeVerificationUseCase(challengeId, certificationId)
             } else {
                 likeVerificationUseCase(challengeId, certificationId)
@@ -485,9 +510,12 @@ class ChallengeDetailViewModel(
                         myCertifications = s.myCertifications.withLikeResult(result.data),
                     )
                 }
-                // 내가 누른 항목은 위에서 이미 갱신했지만, 그 사이 다른 사람이 누른 좋아요도 같이
-                // 반영되도록 15초를 기다리지 않고 바로 한 번 더 조용히 새로고침한다.
+                // 이 화면은 주기적 자동 새로고침이 없어(당겨서 새로고침/탭 재진입 시에만 갱신),
+                // 내가 좋아요를 누른 시점에 다른 사람이 누른 좋아요도 같이 최신화해둔다 — 안 그러면
+                // 남이 새로 누른 좋아요는 내가 직접 새로고침하거나 탭을 나갔다 와야만 보인다.
                 refreshLikeCounts()
+                // 좋아요 순위가 바뀌어 대문(좋아요 1위) 게시글이 달라졌을 수 있다.
+                loadHeroImage()
             }
         }
     }

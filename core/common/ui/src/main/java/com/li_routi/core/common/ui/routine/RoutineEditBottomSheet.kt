@@ -5,10 +5,13 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -28,6 +31,8 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.component.LiroutiBottomSheetCloseButton
@@ -53,16 +58,20 @@ private enum class RoutineEditExpandedSection {
 }
 
 /**
- * 바깥 탭·시스템 뒤로가기로 [SheetValue.Hidden]으로 전환되려 할 때, 초안이 있으면
- * `confirmValueChange`에서 전환을 막고(false 반환) 대신 [onDismissRequest]만 호출한다
- * (실제 닫기 여부는 그쪽의 이탈 확인 다이얼로그가 결정). 초안이 없으면 평소처럼 닫히게 둔다.
+ * 바깥 탭·시스템 뒤로가기로 [SheetValue.Hidden]으로 전환되려 할 때:
+ * 1. 키보드가 떠 있으면 시트를 닫지 않고 키보드부터 내린다 — 안드로이드 기본 동작(뒤로가기=키보드
+ *    먼저 닫힘)과 맞추기 위함. `ModalBottomSheet`가 자체 `BackHandler`/스크림 탭으로 곧장
+ *    [SheetValue.Hidden]까지 가버리면 [onDismissRequest] 쪽의 "키보드부터" 판단을 거치지 않고
+ *    시트가 통째로 닫혀버리므로, 여기 `confirmValueChange`에서 먼저 막아야 한다.
+ * 2. 키보드가 없고 초안이 있으면 마찬가지로 전환을 막고(false 반환) 대신 [onDismissRequest]만
+ *    호출한다(실제 닫기 여부는 그쪽의 이탈 확인 다이얼로그가 결정).
+ * 3. 둘 다 아니면 평소처럼 닫히게 둔다.
  *
  * `confirmValueChange` 람다는 [rememberModalBottomSheetState] 내부에서 `rememberSaveable`의
  * key로도 쓰이므로, 매 재구성마다 새 람다를 넘기면 SheetState가 계속 재생성돼 애니메이션이 깨진다.
- * 그래서 람다 자체는 `remember`로 한 번만 만들고, 최신 [hasDraft]/[onDismissRequest] 값은
- * [rememberUpdatedState]로 참조한다.
+ * 그래서 람다 자체는 `remember`로 한 번만 만들고, 최신 값들은 [rememberUpdatedState]로 참조한다.
  */
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 private fun rememberRoutineEditSheetState(
     hasDraft: Boolean,
@@ -70,13 +79,23 @@ private fun rememberRoutineEditSheetState(
 ): SheetState {
     val currentHasDraft = rememberUpdatedState(hasDraft)
     val currentOnDismissRequest = rememberUpdatedState(onDismissRequest)
+    val currentIsKeyboardVisible = rememberUpdatedState(WindowInsets.isImeVisible)
+    val currentKeyboardController = rememberUpdatedState(LocalSoftwareKeyboardController.current)
+    val currentFocusManager = rememberUpdatedState(LocalFocusManager.current)
     val confirmValueChange = remember {
         { target: SheetValue ->
-            if (target == SheetValue.Hidden && currentHasDraft.value) {
-                currentOnDismissRequest.value()
-                false
-            } else {
-                true
+            when {
+                target != SheetValue.Hidden -> true
+                currentIsKeyboardVisible.value -> {
+                    currentKeyboardController.value?.hide()
+                    currentFocusManager.value.clearFocus()
+                    false
+                }
+                currentHasDraft.value -> {
+                    currentOnDismissRequest.value()
+                    false
+                }
+                else -> true
             }
         }
     }
