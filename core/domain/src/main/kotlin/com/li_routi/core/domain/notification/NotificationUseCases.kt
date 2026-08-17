@@ -39,3 +39,16 @@ class MarkAllNotificationsReadUseCase(
     suspend operator fun invoke(): ResultState<NotificationReadAllResult> =
         repository.markAllRead()
 }
+
+class GetNotificationSettingsUseCase(
+    private val repository: NotificationRepository,
+) {
+    suspend operator fun invoke(): ResultState<NotificationSettings> = repository.getSettings()
+}
+
+class UpdateNotificationSettingsUseCase(
+    private val repository: NotificationRepository,
+) {
+    suspend operator fun invoke(update: NotificationSettingsUpdate): ResultState<NotificationSettings> =
+        repository.updateSettings(update)
+}

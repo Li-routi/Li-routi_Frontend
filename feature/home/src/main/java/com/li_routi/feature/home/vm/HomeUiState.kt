@@ -34,6 +34,8 @@ data class HomeUiState(
     val groupRoomItems: List<RoutineChecklistItemUiModel> = emptyList(),
     val isLoading: Boolean = false,
     val loadError: Boolean = false,
+    /** 종 아이콘 우측 상단 파란 점 표시 여부. 안 읽은 알림이 하나라도 있으면 true. */
+    val hasUnreadNotification: Boolean = false,
 ) {
     /** 개인/그룹 중 하나라도 있으면 체크리스트(또는 그룹만)를 보여 준다. */
     val showChecklist: Boolean

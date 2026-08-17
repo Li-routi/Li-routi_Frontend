@@ -36,6 +36,7 @@ fun MyPageScreen(
     nickname: String,
     email: String,
     profileImageUrl: String?,
+    hasUnreadNotification: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
     Scaffold(
@@ -45,6 +46,7 @@ fun MyPageScreen(
             MyPageTopBar(
                 onNotificationClick = actions::onNotificationClick,
                 onSettingsClick = actions::onSettingsClick,
+                hasUnreadNotification = hasUnreadNotification,
             )
         },
         bottomBar = { AppBottomNavBar(selectedTab = AppBottomTab.My, onTabSelected = onTabSelected) },

@@ -26,3 +26,13 @@ data class NotificationItemResponse(
     val read: Boolean,
     val createdAt: String,
 )
+
+/** GET/PATCH `api/notifications/settings` 응답. */
+data class NotificationSettingsResponse(
+    val routineDeadlineEnabled: Boolean,
+    val newVerificationEnabled: Boolean,
+    val verificationReactionEnabled: Boolean,
+    val pokeEnabled: Boolean,
+    val newChatEnabled: Boolean,
+    val likeEnabled: Boolean,
+)

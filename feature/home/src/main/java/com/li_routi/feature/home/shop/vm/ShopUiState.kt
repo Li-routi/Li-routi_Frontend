@@ -28,6 +28,16 @@ data class ShopCategoryUiModel(
 )
 
 /**
+ * 상점 최상위 탭. Figma node `6057:20320`: "캐릭터"/"의상"이 한 줄 필터가 아니라 상위 탭으로
+ * 분리되어 있고, [CLOTHING]을 골랐을 때만 그 아래에 [ShopCategoryUiModel] 하위 필터(전체/머리장식/
+ * 옷/소품/세트)가 보인다.
+ */
+enum class ShopMainTab {
+    CHARACTER,
+    CLOTHING,
+}
+
+/**
  * 아이템 상점 화면 UI 상태.
  *
  * [items]는 `GET /api/shop/items` 결과로 채운다. 실패하면 빈 목록이라 샘플이 실제 상품처럼
@@ -39,7 +49,9 @@ data class ShopUiState(
     val nickname: String = "닉네임",
     val coinBalance: Int = 450,
     val gemBalance: Int = 30,
-    /** 서버가 내려준 탭. 받은 순서대로 그린다 */
+    /** 상위 탭. "의상"일 때만 [categories] 하위 필터가 보인다 */
+    val selectedMainTab: ShopMainTab = ShopMainTab.CLOTHING,
+    /** 서버가 내려준 의상 하위 필터. 받은 순서대로 그린다 */
     val categories: List<ShopCategoryUiModel> = emptyList(),
     val selectedCategoryIndex: Int = 0,
     val showOwnedOnly: Boolean = false,
@@ -82,9 +94,19 @@ data class ShopUiState(
     val isPurchaseConfirmVisible: Boolean = false,
     val message: String? = null,
 ) {
-    /** 고른 것 중 아직 안 산 아이템. 하단 버튼이 구매냐 저장이냐를 이걸로 가름 */
+    /** 고른 것 중 아직 안 산 아이템. 구매 대상 여부만 가름 — 버튼 활성화는 [hasUnsavedChanges]가 함 */
     val purchaseTargets: List<ShopItemUiModel>
         get() = selectedItems.values.filterNot { it.owned }
+
+    /**
+     * 지금 미리보기 중인 모습(착장+캐릭터)이 저장된 모습과 다른지.
+     *
+     * 이미 보유한 다른 아이템/캐릭터로 바꾼 경우엔 [purchaseTargets]가 비어 있어도 저장은 해야
+     * 하므로, 하단 버튼 활성화는 구매 대상 유무가 아니라 이 값으로 가른다.
+     */
+    val hasUnsavedChanges: Boolean
+        get() = equipped.values.mapTo(mutableSetOf()) { it.itemId } != savedEquippedItemIds ||
+            previewCharacterId != savedCharacterId
 
     /** 구매 대상 중 GEM(블루젬)으로 결제할 것들의 합계 */
     val purchaseGemTotal: Int

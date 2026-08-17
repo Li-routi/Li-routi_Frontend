@@ -4,6 +4,7 @@ import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.kotlin.util.safeApiCall
 import com.li_routi.core.data.mapper.toDomain
+import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.network.apiCall
 import com.li_routi.core.data.network.dto.request.FcmDeviceTokenRequest
 import com.li_routi.core.data.network.dto.request.LogoutRequest
@@ -24,7 +25,10 @@ import com.li_routi.core.domain.auth.SocialProvider
 import com.li_routi.core.domain.auth.VerificationReviewStatus
 import com.li_routi.core.domain.media.MediaPurpose
 import com.li_routi.core.domain.media.UploadMediaUseCase
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.withContext
+import okhttp3.Request
 
 class AuthRepositoryImpl(
     private val api: AuthApiService,
@@ -75,11 +79,40 @@ class AuthRepositoryImpl(
 
     override suspend fun updateProfile(nickname: String, image: ProfileImageUpload?): ResultState<MyInfo> =
         safeApiCall {
-            val profileImageKey = image?.let { uploadProfileImage(it) }
+            val profileImageKey = resolveProfileImageKey(image)
             apiCall {
                 api.updateProfile(UpdateProfileRequest(nickname = nickname, profileImageKey = profileImageKey))
             }.toDomain()
         }
+
+    /**
+     * [image]가 null(새 사진을 안 골랐음)이어도 서버가 `profileImageKey: null`을 "사진 삭제"로
+     * 잘못 처리하는 문제가 있다(백엔드 이슈 — 필드를 아예 빼도 동일하게 삭제 처리됨을 확인함).
+     * 기존 사진이 있으면 그 바이트를 다시 받아 재업로드해서 유효한 키를 채워 보낸다 — 닉네임만
+     * 바꿔도 기존 프로필 사진이 지워지지 않게 하기 위한 우회다.
+     *
+     * 재다운로드/재업로드가 실패하면(네트워크 등) null로 폴백한다 — 이 경우 기존 버그가 재현될 수
+     * 있지만, 저장 자체를 막는 것보다는 낫다.
+     */
+    private suspend fun resolveProfileImageKey(image: ProfileImageUpload?): String? {
+        if (image != null) return uploadProfileImage(image)
+        val currentImageUrl = (getMyInfo() as? ResultState.Success)?.data?.profileImageUrl
+            ?.takeIf { it.isNotBlank() }
+            ?: return null
+        val existingImage = runCatching {
+            ProfileImageUpload(bytes = downloadImageBytes(currentImageUrl), contentType = "image/jpeg")
+        }.getOrNull() ?: return null
+        return uploadProfileImage(existingImage)
+    }
+
+    /** OkHttp의 동기 [okhttp3.Call.execute]를 그대로 부르면 호출 스레드를 막으므로 IO로 옮긴다. */
+    private suspend fun downloadImageBytes(url: String): ByteArray = withContext(Dispatchers.IO) {
+        val request = Request.Builder().url(url).build()
+        NetworkModule.s3OkHttpClient.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) throw ApiException("이미지를 불러오지 못했습니다.")
+            response.body?.bytes() ?: throw ApiException("이미지 응답이 비어 있습니다.")
+        }
+    }
 
     override suspend fun getMyVerifications(
         date: String?,

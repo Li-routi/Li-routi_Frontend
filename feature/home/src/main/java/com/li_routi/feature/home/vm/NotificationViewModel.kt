@@ -5,10 +5,14 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.NotificationContainer
 import com.li_routi.core.domain.notification.AppNotification
+import com.li_routi.core.domain.notification.GetNotificationSettingsUseCase
 import com.li_routi.core.domain.notification.GetNotificationsUseCase
 import com.li_routi.core.domain.notification.MarkNotificationReadUseCase
 import com.li_routi.core.domain.notification.NotificationCategory
 import com.li_routi.core.domain.notification.NotificationNavigationTarget
+import com.li_routi.core.domain.notification.NotificationSettings
+import com.li_routi.core.domain.notification.NotificationSettingsUpdate
+import com.li_routi.core.domain.notification.UpdateNotificationSettingsUseCase
 import com.li_routi.core.domain.notification.resolveNotificationNavigationTarget
 import com.li_routi.feature.home.navigation.NotificationScreenActions
 import com.li_routi.feature.home.navigation.NotificationSettingsScreenActions
@@ -30,13 +34,18 @@ import kotlinx.coroutines.launch
  * 알림 목록·설정 ViewModel.
  *
  * 목록은 GET /api/notifications 커서 페이지네이션을 사용한다.
- * 설정 토글·삭제는 서버 API가 없어 로컬 state만 갱신한다.
+ * 설정은 GET/PATCH /api/notifications/settings로 실제 조회·변경한다. 삭제는 서버 API가 없어
+ * 로컬 state만 갱신한다.
  */
 class NotificationViewModel(
     private val getNotificationsUseCase: GetNotificationsUseCase =
         NotificationContainer.getNotificationsUseCase,
     private val markNotificationReadUseCase: MarkNotificationReadUseCase =
         NotificationContainer.markNotificationReadUseCase,
+    private val getNotificationSettingsUseCase: GetNotificationSettingsUseCase =
+        NotificationContainer.getNotificationSettingsUseCase,
+    private val updateNotificationSettingsUseCase: UpdateNotificationSettingsUseCase =
+        NotificationContainer.updateNotificationSettingsUseCase,
     initialState: NotificationUiState = NotificationUiState(),
 ) : BaseViewModel(), NotificationScreenActions, NotificationSettingsScreenActions {
 
@@ -147,10 +156,32 @@ class NotificationViewModel(
         }
     }
 
+    /** 알림 설정 화면 진입 시 서버 값으로 토글을 맞춘다([NotificationSettingsRoute]에서 호출). */
+    fun loadSettings() {
+        viewModelScope.launch {
+            when (val result = getNotificationSettingsUseCase()) {
+                is ResultState.Success -> _uiState.update { it.copy(settingToggles = result.data.toToggleMap()) }
+                is ResultState.Error, ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    /**
+     * 토글은 응답을 기다리지 않고 바로 반영한다(낙관적 갱신) — 스위치가 눌러도 잠깐 안 움직이는 것처럼
+     * 보이면 안 되기 때문. 실패하면 눌러진 값을 되돌린다.
+     */
     override fun onSettingToggle(key: NotificationSettingKey, checked: Boolean) {
-        // 알림 설정 preference API가 없어 로컬 토글만 반영한다.
-        _uiState.update { state ->
-            state.copy(settingToggles = state.settingToggles + (key to checked))
+        val previous = _uiState.value.settingToggles[key] == true
+        if (previous == checked) return
+        _uiState.update { state -> state.copy(settingToggles = state.settingToggles + (key to checked)) }
+        viewModelScope.launch {
+            when (val result = updateNotificationSettingsUseCase(key.toUpdate(checked))) {
+                is ResultState.Success -> _uiState.update { it.copy(settingToggles = result.data.toToggleMap()) }
+                is ResultState.Error -> _uiState.update { state ->
+                    state.copy(settingToggles = state.settingToggles + (key to previous))
+                }
+                ResultState.Loading -> Unit
+            }
         }
     }
 
@@ -234,6 +265,25 @@ private fun AppNotification.toUiModel(): NotificationItemUiModel = NotificationI
     type = type,
     referenceId = referenceId,
 )
+
+private fun NotificationSettings.toToggleMap(): Map<NotificationSettingKey, Boolean> = mapOf(
+    NotificationSettingKey.RoutineDeadline to routineDeadlineEnabled,
+    NotificationSettingKey.NewVerification to newVerificationEnabled,
+    NotificationSettingKey.MyVerificationReaction to verificationReactionEnabled,
+    NotificationSettingKey.Nudge to pokeEnabled,
+    NotificationSettingKey.NewChat to newChatEnabled,
+    NotificationSettingKey.Like to likeEnabled,
+)
+
+/** [key] 하나만 [checked]로 바꾸는 부분 업데이트 요청 — 나머지 필드는 null로 둬서 기존 값을 유지한다. */
+private fun NotificationSettingKey.toUpdate(checked: Boolean): NotificationSettingsUpdate = when (this) {
+    NotificationSettingKey.RoutineDeadline -> NotificationSettingsUpdate(routineDeadlineEnabled = checked)
+    NotificationSettingKey.NewVerification -> NotificationSettingsUpdate(newVerificationEnabled = checked)
+    NotificationSettingKey.MyVerificationReaction -> NotificationSettingsUpdate(verificationReactionEnabled = checked)
+    NotificationSettingKey.Nudge -> NotificationSettingsUpdate(pokeEnabled = checked)
+    NotificationSettingKey.NewChat -> NotificationSettingsUpdate(newChatEnabled = checked)
+    NotificationSettingKey.Like -> NotificationSettingsUpdate(likeEnabled = checked)
+}
 
 private fun NotificationCategory.toTab(): NotificationTab = when (this) {
     NotificationCategory.PERSONAL_ROUTINE -> NotificationTab.MyRoutine

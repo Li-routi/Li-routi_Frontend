@@ -1,7 +1,9 @@
 package com.li_routi.feature.home.shop.screen
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
@@ -21,6 +24,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -28,6 +32,7 @@ import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.component.LiroutiSwitch
 import androidx.compose.foundation.Image
 import androidx.compose.ui.res.painterResource
+import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.shop.component.SampleShopItems
@@ -42,9 +47,13 @@ import com.li_routi.feature.home.component.characterImageResOf
 import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.feature.home.shop.vm.EquippedUiModel
 import com.li_routi.feature.home.shop.vm.ShopCategoryUiModel
+import com.li_routi.feature.home.shop.vm.ShopMainTab
 
 private val CharacterWidth = 220.dp
 private val CharacterHeight = 180.dp
+
+/** [ShopMainTab.entries] 순서(CHARACTER, CLOTHING)와 짝을 맞춘 탭 라벨. */
+private val ShopMainTabLabels = listOf("캐릭터", "의상")
 
 /**
  * 상점(아이템 상점) 화면 (Figma node `2222:25595` / Design Page [1.1] 상점).
@@ -61,6 +70,7 @@ fun ShopScreen(
     nickname: String = "닉네임",
     coinBalance: Int = 450,
     gemBalance: Int = 30,
+    selectedMainTab: ShopMainTab = ShopMainTab.CLOTHING,
     categories: List<ShopCategoryUiModel> = emptyList(),
     equipped: Map<String, EquippedUiModel> = emptyMap(),
     savedEquippedItemIds: Set<Long> = emptySet(),
@@ -70,6 +80,8 @@ fun ShopScreen(
     selectedItemIds: Set<String> = emptySet(),
     /** 고른 것 중 안 산 아이템. 다른 탭에서 고른 것도 섞여 있어서 [items]와 따로 받음 */
     purchaseTargets: List<ShopItemUiModel> = emptyList(),
+    /** 미리보기 중인 모습이 저장된 모습과 다른지. 하단 버튼 활성화 여부를 가름 */
+    hasUnsavedChanges: Boolean = false,
     /** 지금 캐릭터 카드에 그릴 캐릭터. 캐릭터 탭에서 고르면 저장 전에도 바로 바뀜 */
     previewCharacterId: String = DefaultCharacterId,
     /** 기기에 저장된 캐릭터. 격자 `착용중`은 이걸 따름 */
@@ -79,6 +91,9 @@ fun ShopScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        // LiroutiFrontendTheme이 MaterialTheme에 colorScheme을 안 넘겨서, 명시하지 않으면
+        // Compose Material3 기본 배경색(붉은끼가 도는 기본 팔레트)이 깔린다 — Figma(순백)와 맞춘다.
+        containerColor = LiroutiTheme.colors.backgroundDefault,
         topBar = {
             ShopTopBar(
                 title = "상점",
@@ -90,9 +105,10 @@ fun ShopScreen(
             )
         },
         bottomBar = {
-            // 안 산 걸 골랐으면 결제라는 게 분명하도록 파란 버튼 + 개수·합계를 보여주고, 고른 게
-            // 없으면(=지금 착장 그대로) "현재 모습"이라는 문구와 함께 비활성처럼 보이는 회색으로
-            // 바꾼다(Figma node `6057:20321` 등).
+            // 저장된 모습과 달라진 게 있어야 활성화(파란 배경 + 클릭 가능)한다 — 안 산 아이템이
+            // 섞여 있으면 "N개 구매" 문구로, 이미 보유한 것끼리만 바꿨으면 "저장하기"로 보여준다.
+            // 아무것도 안 바꿨으면 "현재 모습" 문구와 함께 실제로 눌리지 않는 회색 상태로 둔다
+            // (Figma node `6057:20321` 등 — 단, "저장하기"/비활성 클릭 방지는 Figma에 없는 로직).
             Box(
                 modifier = Modifier
                     .fillMaxWidth()
@@ -101,24 +117,30 @@ fun ShopScreen(
                     .height(44.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(
-                        if (purchaseTargets.isEmpty()) {
-                            LiroutiTheme.colors.backgroundAlternative
-                        } else {
+                        if (hasUnsavedChanges) {
                             LiroutiTheme.colors.primaryNormal
+                        } else {
+                            LiroutiTheme.colors.backgroundAlternative
                         },
                     )
-                    .clickable(onClick = actions::onSaveClick),
+                    .then(
+                        if (hasUnsavedChanges) Modifier.clickable(onClick = actions::onSaveClick) else Modifier,
+                    ),
                 contentAlignment = Alignment.Center,
             ) {
-                if (purchaseTargets.isEmpty()) {
-                    Text(
+                when {
+                    !hasUnsavedChanges -> Text(
                         text = "현재 모습",
                         // Figma: Medium 16/24
                         style = LiroutiTheme.typography.body1Medium,
                         color = LiroutiTheme.colors.labelInfo,
                     )
-                } else {
-                    PurchaseButtonLabel(targets = purchaseTargets)
+                    purchaseTargets.isEmpty() -> Text(
+                        text = "저장하기",
+                        style = LiroutiTheme.typography.body1Medium,
+                        color = LiroutiTheme.colors.labelReverse,
+                    )
+                    else -> PurchaseButtonLabel(targets = purchaseTargets)
                 }
             }
         },
@@ -126,12 +148,12 @@ fun ShopScreen(
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(innerPadding)
-                .padding(horizontal = 16.dp),
+                .padding(innerPadding),
         ) {
             Column(
                 modifier = Modifier
                     .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
                     .clip(RoundedCornerShape(6.dp))
                     .background(LiroutiTheme.colors.backgroundDefault)
                     .padding(horizontal = 16.dp, vertical = 20.dp),
@@ -153,45 +175,129 @@ fun ShopScreen(
 
             Spacer(modifier = Modifier.height(20.dp))
 
-            // Figma `2222:25595`: 카테고리 탭 → 보유 토글 → 아이템 그리드
-            // 탭을 못 받아오면 줄 자체를 빼서 빈 띠가 남지 않게 함
-            if (categories.isNotEmpty()) {
+            // Figma `6057:20320`: 최상위 탭("캐릭터"/"의상")과 "의상" 하위 카테고리 필터가
+            // 분리된 구조 — 최상위 탭은 항상 보이고, 하위 필터·보유 토글은 "의상"일 때만 보인다.
+            // 탭 띠는 Figma에서 다른 섹션들의 16dp 여백 밖까지 흰 배경으로 엣지투엣지로 깔리고,
+            // 두 탭이 화면 폭을 나눠 채우는 넓은 형태라 equalWidth를 쓴다.
+            Box(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(LiroutiTheme.colors.backgroundDefault),
+            ) {
                 LiroutiLineTab(
-                    tabs = categories.map { it.name },
-                    selectedIndex = selectedCategoryIndex,
-                    onTabSelected = actions::onCategorySelected,
+                    tabs = ShopMainTabLabels,
+                    selectedIndex = selectedMainTab.ordinal,
+                    onTabSelected = { index -> actions.onMainTabSelected(ShopMainTab.entries[index]) },
+                    equalWidth = true,
                 )
+            }
+
+            if (selectedMainTab == ShopMainTab.CLOTHING) {
+                if (categories.isNotEmpty()) {
+                    Spacer(modifier = Modifier.height(14.dp))
+                    ShopCategoryFilterRow(
+                        categories = categories,
+                        selectedIndex = selectedCategoryIndex,
+                        onCategorySelected = actions::onCategorySelected,
+                        modifier = Modifier.padding(horizontal = 16.dp),
+                    )
+                }
 
                 Spacer(modifier = Modifier.height(14.dp))
-            }
 
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.End,
-                verticalAlignment = Alignment.CenterVertically,
-            ) {
-                Text(
-                    text = "보유 중인 아이템만 보기",
-                    style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
-                    color = LiroutiTheme.colors.labelStrong,
-                    modifier = Modifier.padding(end = 6.dp),
-                )
-                LiroutiSwitch(
-                    checked = showOwnedOnly,
-                    onCheckedChange = actions::onOwnedOnlyChange,
-                )
-            }
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp),
+                    horizontalArrangement = Arrangement.End,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = "보유 중인 아이템만 보기",
+                        style = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp),
+                        color = LiroutiTheme.colors.labelStrong,
+                        modifier = Modifier.padding(end = 6.dp),
+                    )
+                    LiroutiSwitch(
+                        checked = showOwnedOnly,
+                        onCheckedChange = actions::onOwnedOnlyChange,
+                    )
+                }
 
-            Spacer(modifier = Modifier.height(10.dp))
+                Spacer(modifier = Modifier.height(10.dp))
+            } else {
+                Spacer(modifier = Modifier.height(14.dp))
+            }
 
             ShopItemGrid(
                 items = items,
                 selectedItemIds = selectedItemIds,
                 onItemClick = actions::onItemClick,
-                modifier = Modifier.weight(1f),
+                modifier = Modifier
+                    .weight(1f)
+                    .padding(horizontal = 16.dp),
                 equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() } +
                     savedCharacterId,
             )
+        }
+    }
+}
+
+/**
+ * "의상" 탭 하위 카테고리 필터(전체/머리장식/옷/소품/세트). Figma node `6057:20320`: 알약형
+ * 칩 — 선택된 칩은 파란 배경 + 체크마크, 그 외는 흰 배경 + 테두리.
+ */
+@Composable
+private fun ShopCategoryFilterRow(
+    categories: List<ShopCategoryUiModel>,
+    selectedIndex: Int,
+    onCategorySelected: (Int) -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .horizontalScroll(rememberScrollState()),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
+    ) {
+        categories.forEachIndexed { index, category ->
+            val selected = index == selectedIndex
+            Row(
+                modifier = Modifier
+                    .height(38.dp)
+                    .clip(RoundedCornerShape(percent = 50))
+                    .then(
+                        if (selected) {
+                            Modifier.background(LiroutiTheme.colors.primaryNormal)
+                        } else {
+                            Modifier
+                                .background(LiroutiTheme.colors.backgroundDefault)
+                                .border(
+                                    width = 1.dp,
+                                    color = LiroutiTheme.colors.borderDefault,
+                                    shape = RoundedCornerShape(percent = 50),
+                                )
+                        },
+                    )
+                    .clickable { onCategorySelected(index) }
+                    .padding(horizontal = if (selected) 12.dp else 16.dp, vertical = 6.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+            ) {
+                if (selected) {
+                    Image(
+                        painter = painterResource(id = R.drawable.checkmark),
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp),
+                        colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelReverse),
+                    )
+                }
+                Text(
+                    text = category.name,
+                    style = LiroutiTheme.typography.body2LongMedium,
+                    color = if (selected) LiroutiTheme.colors.labelReverse else LiroutiTheme.colors.labelDefault,
+                )
+            }
         }
     }
 }
@@ -234,6 +340,7 @@ private fun PurchaseButtonLabel(
 
 private object PreviewShopScreenActions : ShopScreenActions {
     override fun onBackClick() = Unit
+    override fun onMainTabSelected(tab: ShopMainTab) = Unit
     override fun onOrangeGemClick() = Unit
     override fun onBlueGemClick() = Unit
     override fun onCategorySelected(index: Int) = Unit

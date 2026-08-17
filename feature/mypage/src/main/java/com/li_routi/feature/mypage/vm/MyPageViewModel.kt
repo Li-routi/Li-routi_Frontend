@@ -7,9 +7,12 @@ import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.android.image.readProfileImageBytes
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
+import com.li_routi.core.data.di.NotificationContainer
+import com.li_routi.core.data.profile.MemberProfileCache
 import com.li_routi.core.domain.auth.GetMyInfoUseCase
 import com.li_routi.core.domain.auth.ProfileImageUpload
 import com.li_routi.core.domain.auth.UpdateProfileUseCase
+import com.li_routi.core.domain.notification.GetNotificationsUseCase
 import com.li_routi.feature.mypage.navigation.MyPageScreenActions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -31,9 +34,14 @@ import kotlinx.coroutines.withContext
  * 콜백에 위임한다.
  */
 class MyPageViewModel(
-    initialState: MyPageUiState = MyPageUiState(),
+    // 마지막으로 알던 닉네임/뱃지 값으로 먼저 그려서 조회 완료 전 깜빡임을 없앤다(HomeViewModel과 동일 패턴).
+    initialState: MyPageUiState = MyPageUiState(
+        nickname = MemberProfileCache.nickname.value ?: "",
+        hasUnreadNotification = MemberProfileCache.hasUnreadNotification.value,
+    ),
     private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
     private val updateProfileUseCase: UpdateProfileUseCase = AuthContainer.updateProfileUseCase,
+    private val getNotificationsUseCase: GetNotificationsUseCase = NotificationContainer.getNotificationsUseCase,
 ) : BaseViewModel(), MyPageScreenActions {
 
     private val _uiState = MutableStateFlow(initialState)
@@ -44,24 +52,45 @@ class MyPageViewModel(
 
     init {
         loadMyInfo()
+        loadUnreadNotificationStatus()
     }
 
     /** 마이 탭을 다시 눌러 들어올 때 등, 외부에서 프로필을 다시 불러오라는 신호가 왔을 때 호출한다. */
     fun refresh() {
         loadMyInfo()
+        loadUnreadNotificationStatus()
+    }
+
+    /**
+     * 종 아이콘 뱃지용 "안 읽은 알림 있음" 여부. 서버에 별도 개수 API가 없어 목록 첫 페이지를
+     * 받아 [com.li_routi.core.domain.notification.AppNotification.read]가 false인 게 있는지로
+     * 판단한다 — 알림 화면과 같은 기본 페이지 크기(20개)를 쓴다.
+     */
+    private fun loadUnreadNotificationStatus() {
+        viewModelScope.launch {
+            val result = getNotificationsUseCase(category = null, cursor = null)
+            if (result is ResultState.Success) {
+                val hasUnread = result.data.notifications.any { n -> !n.read }
+                MemberProfileCache.hasUnreadNotification.value = hasUnread
+                _uiState.update { it.copy(hasUnreadNotification = hasUnread) }
+            }
+        }
     }
 
     private fun loadMyInfo() {
         viewModelScope.launch {
             when (val result = getMyInfoUseCase()) {
-                is ResultState.Success -> _uiState.update {
-                    it.copy(
-                        nickname = result.data.nickname,
-                        email = result.data.email,
-                        profileImageUrl = result.data.profileImageUrl,
-                        socialProvider = result.data.socialProvider,
-                        isProfileLoaded = true,
-                    )
+                is ResultState.Success -> {
+                    MemberProfileCache.nickname.value = result.data.nickname
+                    _uiState.update {
+                        it.copy(
+                            nickname = result.data.nickname,
+                            email = result.data.email,
+                            profileImageUrl = result.data.profileImageUrl,
+                            socialProvider = result.data.socialProvider,
+                            isProfileLoaded = true,
+                        )
+                    }
                 }
                 is ResultState.Error -> {
                     // isProfileLoaded는 true로 둔다(그렇지 않으면 onEditProfileClick이 영영 막힘). 에러는

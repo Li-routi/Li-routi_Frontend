@@ -23,6 +23,9 @@ fun AchievementRoute(
         achievedBadges = uiState.achievedBadges,
         isLoading = uiState.isLoading,
         isError = uiState.isError,
+        onClaimClick = viewModel::onClaimClick,
+        claimMessage = uiState.claimMessage,
+        onClaimMessageDismissed = viewModel::onClaimMessageDismissed,
         modifier = modifier,
     )
 }

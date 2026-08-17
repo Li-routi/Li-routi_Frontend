@@ -148,6 +148,7 @@ fun MyPageRoute(
             nickname = uiState.nickname,
             email = uiState.email,
             profileImageUrl = uiState.profileImageUrl,
+            hasUnreadNotification = uiState.hasUnreadNotification,
             modifier = modifier,
         )
 

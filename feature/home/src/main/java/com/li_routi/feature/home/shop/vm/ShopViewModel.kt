@@ -64,32 +64,23 @@ class ShopViewModel(
     }
 
     /**
-     * 상단 탭. 서버가 내려준 순서 그대로 그림.
+     * "의상" 탭 하위 필터. 서버가 내려준 순서 그대로 그림.
      *
-     * 캐릭터 탭은 목록 API가 없어서 앱에 넣은 이미지로 채움. 서버가 탭을 안 주면 맨 뒤에 붙임
+     * "캐릭터"는 목록 API가 없는 별도 최상위 탭([ShopMainTab.CHARACTER])이라 여기 안 섞는다
+     * (Figma node `6057:20320`: 상위 탭 "캐릭터"/"의상" + "의상" 하위 필터로 분리된 구조).
      */
     private fun loadCategories() {
         viewModelScope.launch {
             val result = getShopCategoriesUseCase()
             if (result is ResultState.Success) {
-                val categories = result.data
-                    .map {
-                        ShopCategoryUiModel(
-                            key = it.key,
-                            name = it.name,
-                            source = it.source,
-                            slot = it.slot,
-                        )
-                    }
-                    .let { tabs ->
-                        if (tabs.any { it.source == CharacterSource }) tabs
-                        else tabs + ShopCategoryUiModel(
-                            key = CharacterSource,
-                            name = "캐릭터",
-                            source = CharacterSource,
-                            slot = null,
-                        )
-                    }
+                val categories = result.data.map {
+                    ShopCategoryUiModel(
+                        key = it.key,
+                        name = it.name,
+                        source = it.source,
+                        slot = it.slot,
+                    )
+                }
                 _uiState.update { state ->
                     state.copy(
                         categories = categories,
@@ -101,6 +92,13 @@ class ShopViewModel(
             // 탭을 못 받아도 전체 목록은 불러야 빈 상점이 안 됨
             loadItems()
         }
+    }
+
+    /** 최상위 탭("캐릭터"/"의상") 전환. 하위 필터 선택은 유지해서 "의상"으로 돌아오면 그대로 보임 */
+    override fun onMainTabSelected(tab: ShopMainTab) {
+        if (_uiState.value.selectedMainTab == tab) return
+        _uiState.update { it.copy(selectedMainTab = tab) }
+        loadItems()
     }
 
     /**
@@ -196,12 +194,12 @@ class ShopViewModel(
     /** 목록 갱신을 기다려야 하는 곳(구매 직후)에서도 쓸 수 있게 suspend로 둠 */
     private suspend fun refreshItems() {
         val state = _uiState.value
-        val category = state.categories.getOrNull(state.selectedCategoryIndex)
-        if (category?.source == CharacterSource) {
+        if (state.selectedMainTab == ShopMainTab.CHARACTER) {
             _uiState.update { it.copy(isLoading = false, items = CharacterCatalog.map { it.toShopItem() }) }
             return
         }
         // 전체 탭은 slot 없이 부르는 것이라 null을 그대로 넘김
+        val category = state.categories.getOrNull(state.selectedCategoryIndex)
         val slot = category?.slot
         val ownedOnly = state.showOwnedOnly.takeIf { it }
         _uiState.update { it.copy(isLoading = true) }
@@ -406,8 +404,6 @@ class ShopViewModel(
         }
     }
 }
-
-private const val CharacterSource = "CHARACTER"
 
 private fun CharacterUiModel.toShopItem(): ShopItemUiModel = ShopItemUiModel(
     id = id,

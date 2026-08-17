@@ -42,6 +42,12 @@ data class ChallengeDetailUiState(
     val participantCount: Int = 0,
     val rewardCount: Int = 0,
     val postCount: Int = 0,
+    /**
+     * 대문 이미지에 걸 사진. 정렬 기준(selectedSort)과 무관하게 "인기순 1위"(좋아요가 가장 많은
+     * 인증) 고정으로 별도 조회한다 — 목록 정렬을 최신순으로 바꿔도 대문은 그대로여야 한다.
+     * 아직 못 받아왔거나 인증이 하나도 없으면 null이라 플레이스홀더가 보인다.
+     */
+    val heroImageUrl: String? = null,
     val isJoined: Boolean = false,
     /**
      * 현재 인증 주기(routineCycle 기준)에 이미 인증했는지 여부. 서버(GET 챌린지 상세)가 내려주는

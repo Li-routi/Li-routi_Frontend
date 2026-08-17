@@ -63,6 +63,26 @@ class ChallengeDetailViewModel(
         loadDetail()
         loadVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
         loadMyVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
+        loadHeroImage()
+    }
+
+    /**
+     * 대문 이미지용 "좋아요 1위" 인증을 딱 1건만 조회한다. 목록의 [ChallengeDetailUiState.selectedSort]와
+     * 무관하게 항상 sort=LIKES로 별도 조회한다 — 사용자가 목록 정렬을 최신순으로 바꿔도 대문은 안 바뀌어야 한다.
+     */
+    private fun loadHeroImage() {
+        viewModelScope.launch {
+            val result = getVerificationsUseCase(
+                challengeId,
+                cursor = null,
+                cursorLikeCount = null,
+                size = 1,
+                sort = VerificationSort.LIKES,
+            )
+            if (result is ResultState.Success) {
+                _uiState.update { it.copy(heroImageUrl = result.data.certifications.firstOrNull()?.imageUrl) }
+            }
+        }
     }
 
     // "인증"(전체)/"내 인증 보기" 두 탭 모두 각 1페이지를 다시 조회해 id가 같은 기존 항목의 좋아요
@@ -96,7 +116,7 @@ class ChallengeDetailViewModel(
                             certification.copy(likeCount = it.likeCount, liked = it.liked)
                         } ?: certification
                     },
-                )
+                ).withMyLikedSyncedFromAll()
             }
         }
 
@@ -152,7 +172,7 @@ class ChallengeDetailViewModel(
                             allCursor = result.data.nextCursor,
                             allCursorLikeCount = result.data.nextCursorLikeCount,
                             allHasNext = result.data.hasNext,
-                        )
+                        ).withMyLikedSyncedFromAll()
                     }
                 }
                 is ResultState.Error -> if (generation == certificationGeneration) {
@@ -186,7 +206,7 @@ class ChallengeDetailViewModel(
                             myCursor = result.data.nextCursor,
                             myCursorLikeCount = result.data.nextCursorLikeCount,
                             myHasNext = result.data.hasNext,
-                        )
+                        ).withMyLikedSyncedFromAll()
                     }
                 }
                 is ResultState.Error -> if (generation == certificationGeneration) {
@@ -372,6 +392,9 @@ class ChallengeDetailViewModel(
         if (_uiState.value.selectedTab == CertificationTab.Mine) {
             loadMyVerifications(cursor = null, cursorLikeCount = null, generation = certificationGeneration)
         }
+        // 방금 올린 인증이 좋아요 1위가 될 순 없지만(항상 0개로 시작), 대문에 걸려 있던 게시글이
+        // 방금 삭제·재인증 등으로 바뀌었을 수 있어 같이 새로고침해둔다.
+        loadHeroImage()
     }
 
     // 당겨서 새로고침. loadDetail/loadVerifications류와 달리 각 요청을 이 코루틴 안에서 직접 await해
@@ -404,7 +427,7 @@ class ChallengeDetailViewModel(
                             allCursor = result.data.nextCursor,
                             allCursorLikeCount = result.data.nextCursorLikeCount,
                             allHasNext = result.data.hasNext,
-                        )
+                        ).withMyLikedSyncedFromAll()
                     }
                 }
                 is ResultState.Error -> Unit
@@ -422,7 +445,7 @@ class ChallengeDetailViewModel(
                                 myCursorLikeCount = result.data.nextCursorLikeCount,
                                 myHasNext = result.data.hasNext,
                                 myLoaded = true,
-                            )
+                            ).withMyLikedSyncedFromAll()
                         }
                     }
                     is ResultState.Error -> Unit
@@ -434,11 +457,17 @@ class ChallengeDetailViewModel(
             // 당겨서 새로고침을 다시는 못 쓰게 된다.
             _uiState.update { it.copy(isRefreshing = false) }
         }
+        loadHeroImage()
     }
 
-    // 좋아요 취소/좋아요는 "인증"(전체) 탭 항목에서만 호출된다("내 인증 보기" 응답엔 liked 상태가 없음).
+    // "인증"(전체)/"내 인증 보기" 어느 카드에서 눌러도 동작한다 — 같은 verificationId를 두 탭이
+    // 같이 보여주는 값이라, 좋아요/좋아요 취소 결과를 두 목록 모두에 반영한다. "내 인증 보기" API
+    // 자체엔 liked가 없어서(withMyLikedSyncedFromAll 참고) 대상을 못 찾으면 "인증" 쪽에서 찾는다.
     override fun onLikeToggleClick(certificationId: Long) {
-        val target = _uiState.value.allCertifications.find { it.id == certificationId } ?: return
+        val state = _uiState.value
+        val target = state.allCertifications.find { it.id == certificationId }
+            ?: state.myCertifications.find { it.id == certificationId }
+            ?: return
         viewModelScope.launch {
             val result = if (target.liked) {
                 unlikeVerificationUseCase(challengeId, certificationId)
@@ -446,15 +475,14 @@ class ChallengeDetailViewModel(
                 likeVerificationUseCase(challengeId, certificationId)
             }
             if (result is ResultState.Success) {
-                _uiState.update { state ->
-                    state.copy(
-                        allCertifications = state.allCertifications.withLikeResult(result.data),
-                        // "내 인증 보기"엔 liked 개념이 없어 likeCount만 같은 verificationId 기준으로
-                        // 즉시 맞춰준다 — 이후 refreshLikeCounts()가 실패해도 내가 방금 누른 결과 자체는
-                        // 이미 반영돼 있다.
-                        myCertifications = state.myCertifications.map {
-                            if (it.id == result.data.verificationId) it.copy(likeCount = result.data.likeCount) else it
-                        },
+                _uiState.update { s ->
+                    s.copy(
+                        allCertifications = s.allCertifications.withLikeResult(result.data),
+                        // "내 인증 보기"에서 눌렀어도 결과(liked 포함)를 그대로 반영한다 — 이전엔
+                        // likeCount만 맞추고 liked는 항상 false로 둬서, "인증" 탭에서 좋아요를 눌러도
+                        // "내 인증 보기"엔 반영되지 않고 반대로 "내 인증 보기"에선 좋아요 자체를 누를
+                        // 수도 없었다.
+                        myCertifications = s.myCertifications.withLikeResult(result.data),
                     )
                 }
                 // 내가 누른 항목은 위에서 이미 갱신했지만, 그 사이 다른 사람이 누른 좋아요도 같이
@@ -470,6 +498,20 @@ private fun List<CertificationUiModel>.withUpdatedContent(id: Long, content: Str
 
 private fun List<CertificationUiModel>.withLikeResult(result: LikeResult): List<CertificationUiModel> =
     map { if (it.id == result.verificationId) it.copy(likeCount = result.likeCount, liked = result.liked) else it }
+
+// "내 인증 보기"(MyCertification) API엔 liked가 아예 없어 toUiModel()에서 항상 false로 매핑된다.
+// 대신 같은 verificationId를 "인증"(전체) 쪽이 알고 있으면 그 liked 값을 그대로 맞춰준다 —
+// 두 목록 중 어느 쪽에서 좋아요를 눌렀어도, 아직 안 눌러본 탭으로 처음 전환했을 때도 liked가
+// 정확히 보이게 하기 위함.
+private fun ChallengeDetailUiState.withMyLikedSyncedFromAll(): ChallengeDetailUiState {
+    if (myCertifications.isEmpty() || allCertifications.isEmpty()) return this
+    val likedById = allCertifications.associate { it.id to it.liked }
+    return copy(
+        myCertifications = myCertifications.map { certification ->
+            likedById[certification.id]?.let { certification.copy(liked = it) } ?: certification
+        },
+    )
+}
 
 private fun ChallengeDetailUiState.applyDetail(detail: ChallengeDetail): ChallengeDetailUiState = copy(
     isLoading = false,
@@ -496,6 +538,8 @@ private fun Certification.toUiModel(): CertificationUiModel = CertificationUiMod
 )
 
 // "내 인증 보기"는 항상 로그인한 본인의 게시글이라 별도 작성자 이름을 내려주지 않는다.
+// liked는 이 API 자체엔 없어 일단 false로 채우고, withMyLikedSyncedFromAll()이 "인증"(전체)
+// 쪽에서 알고 있는 값으로 맞춰준다.
 private fun MyCertification.toUiModel(): CertificationUiModel = CertificationUiModel(
     id = id,
     authorName = "나",

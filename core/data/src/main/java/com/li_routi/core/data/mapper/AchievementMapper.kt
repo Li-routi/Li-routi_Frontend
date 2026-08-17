@@ -3,9 +3,11 @@ package com.li_routi.core.data.mapper
 import com.li_routi.core.data.network.dto.response.AchievementCategoryResponse
 import com.li_routi.core.data.network.dto.response.AchievementResponse
 import com.li_routi.core.data.network.dto.response.AchievementsResponse
+import com.li_routi.core.data.network.dto.response.ClaimResponse
 import com.li_routi.core.domain.achievement.Achievement
 import com.li_routi.core.domain.achievement.AchievementCategory
 import com.li_routi.core.domain.achievement.AchievementCategoryGroup
+import com.li_routi.core.domain.achievement.AchievementClaimResult
 
 fun AchievementsResponse.toDomain(): List<AchievementCategoryGroup> = categories.map { it.toDomain() }
 
@@ -34,4 +36,11 @@ fun AchievementResponse.toDomain(): Achievement = Achievement(
     limitedOutfitYn = limitedOutfitYn,
     achievedAt = achievedAt,
     claimedAt = claimedAt,
+    badgeImageUrl = badgeImageUrl?.takeIf { it.isNotBlank() },
+)
+
+fun ClaimResponse.toDomain(): AchievementClaimResult = AchievementClaimResult(
+    achievementId = achievementId,
+    freeBalanceAfter = freeBalanceAfter,
+    rewardApplied = rewardApplied,
 )

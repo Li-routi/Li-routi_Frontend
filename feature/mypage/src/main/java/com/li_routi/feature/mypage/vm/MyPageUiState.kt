@@ -22,6 +22,8 @@ data class MyPageUiState(
      * 화면에 보여준 뒤에는 null로 지운다.
      */
     val profileLoadError: String? = null,
+    /** 종 아이콘 우측 상단 파란 점 표시 여부. 안 읽은 알림이 하나라도 있으면 true. */
+    val hasUnreadNotification: Boolean = false,
 )
 
 /** 마이페이지에서 발생하는 일회성 내비게이션 이벤트. */

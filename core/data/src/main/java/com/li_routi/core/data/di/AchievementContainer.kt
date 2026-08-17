@@ -3,6 +3,7 @@ package com.li_routi.core.data.di
 import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.repository.AchievementRepositoryImpl
 import com.li_routi.core.domain.achievement.AchievementRepository
+import com.li_routi.core.domain.achievement.ClaimAchievementUseCase
 import com.li_routi.core.domain.achievement.GetAchievementsUseCase
 
 /**
@@ -17,5 +18,9 @@ object AchievementContainer {
 
     val getAchievementsUseCase: GetAchievementsUseCase by lazy {
         GetAchievementsUseCase(repository)
+    }
+
+    val claimAchievementUseCase: ClaimAchievementUseCase by lazy {
+        ClaimAchievementUseCase(repository)
     }
 }

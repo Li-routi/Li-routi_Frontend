@@ -1,10 +1,12 @@
 package com.li_routi.core.data.network.service
 
 import com.li_routi.core.data.network.dto.request.FcmDeviceTokenRequest
+import com.li_routi.core.data.network.dto.request.UpdateNotificationSettingsRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.FcmDeviceActiveResponse
 import com.li_routi.core.data.network.dto.response.NotificationListResponse
 import com.li_routi.core.data.network.dto.response.NotificationReadAllResponse
+import com.li_routi.core.data.network.dto.response.NotificationSettingsResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
 import retrofit2.http.HTTP
@@ -39,4 +41,12 @@ interface NotificationApiService {
 
     @PATCH("api/notifications/read-all")
     suspend fun markAllRead(): ApiResponse<NotificationReadAllResponse>
+
+    @GET("api/notifications/settings")
+    suspend fun getSettings(): ApiResponse<NotificationSettingsResponse>
+
+    @PATCH("api/notifications/settings")
+    suspend fun updateSettings(
+        @Body body: UpdateNotificationSettingsRequest,
+    ): ApiResponse<NotificationSettingsResponse>
 }

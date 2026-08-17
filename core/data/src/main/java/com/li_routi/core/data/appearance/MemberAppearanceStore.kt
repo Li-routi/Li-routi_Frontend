@@ -61,10 +61,14 @@ class MemberAppearanceStore(
                     return@withLock
                 }
             }
+            // 캐릭터 본체는 기기 로컬(DataStore)에 있어 네트워크보다 훨씬 빨리 읽을 수 있다.
+            // 착장 GET(네트워크, 느림)보다 먼저 반영해야 앱 시작 시 기본 캐릭터("파랑이")가
+            // 잠깐 보였다가 실제 캐릭터로 바뀌는 깜빡임이 없다 — appearance는 StateFlow라
+            // 여기서 갱신하는 즉시 이미 구독 중인 화면에 반영된다.
+            hydrateCharacterLocked()
             if (!avatarLoaded) {
                 fetchAvatarLocked(token)
             }
-            hydrateCharacterLocked()
         }
     }
 
@@ -83,8 +87,8 @@ class MemberAppearanceStore(
                 loadedForToken = token
                 return@withLock
             }
-            fetchAvatarLocked(token)
             hydrateCharacterLocked()
+            fetchAvatarLocked(token)
         }
     }
 

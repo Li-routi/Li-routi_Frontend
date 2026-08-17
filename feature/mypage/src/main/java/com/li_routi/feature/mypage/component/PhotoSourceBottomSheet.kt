@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -57,6 +58,7 @@ fun PhotoSourceBottomSheet(
                 .shadow(elevation = 8.dp, shape = sheetShape, ambientColor = SheetShadowColor, spotColor = SheetShadowColor)
                 .background(LiroutiTheme.colors.backgroundDefault, sheetShape)
                 .padding(horizontal = 24.dp)
+                .navigationBarsPadding()
                 .padding(bottom = 32.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp),
         ) {

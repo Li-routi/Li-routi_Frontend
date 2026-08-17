@@ -1,6 +1,7 @@
 package com.li_routi.core.common.ui.camera
 
 import android.content.Context
+import android.graphics.Bitmap
 import android.graphics.Rect
 import android.net.Uri
 import android.view.View
@@ -62,6 +63,12 @@ import kotlinx.coroutines.suspendCancellableCoroutine
  * [torchEnabled]는 재바인딩 없이 [CameraControl.enableTorch]로 상시 손전등을 켠다.
  * [flashMode]는 바인딩된 [ImageCapture]에 setter로만 반영해 토글 시 화면이 밀리지 않게 한다.
  * 셔터는 호출부에서 보관하는 [ImageCapture]로 [captureLiroutiCameraPhoto]를 호출한다.
+ *
+ * [onPreviewSnapshot]을 넘기면 [PreviewSnapshotIntervalMs] 간격으로 [PreviewView.getBitmap]
+ * 정적 스냅샷을 콜백으로 흘려준다. 라이브 프리뷰(TextureView 등 하드웨어 합성 콘텐츠)는
+ * `Modifier.blur()`/`RenderEffect`를 중첩 레이어로 캡처해 블러를 씌워도 실제로 적용되지 않는
+ * 경우가 있어(호출부의 배경 블러 오버레이 참고), 이럴 땐 라이브 텍스처 대신 일반 [Bitmap]으로 뜬
+ * 스냅샷에 블러를 적용해야 한다.
  */
 @Composable
 fun LiroutiCameraPreview(
@@ -71,6 +78,7 @@ fun LiroutiCameraPreview(
     onImageCaptureReady: (ImageCapture?) -> Unit,
     modifier: Modifier = Modifier,
     torchEnabled: Boolean = false,
+    onPreviewSnapshot: ((Bitmap) -> Unit)? = null,
 ) {
     val context = LocalContext.current
     val lifecycleOwner = LocalLifecycleOwner.current
@@ -228,6 +236,39 @@ fun LiroutiCameraPreview(
         if (!camera.cameraInfo.hasFlashUnit()) return@LaunchedEffect
         runCatching { camera.cameraControl.enableTorch(torchEnabled) }
     }
+
+    if (onPreviewSnapshot != null) {
+        LaunchedEffect(isActive, onPreviewSnapshot) {
+            if (!isActive) return@LaunchedEffect
+            while (true) {
+                runCatching { previewView.bitmap }.getOrNull()
+                    ?.downscaledForBlur()
+                    ?.let(onPreviewSnapshot)
+                delay(PreviewSnapshotIntervalMs)
+            }
+        }
+    }
+}
+
+/** [LiroutiCameraPreview]의 [onPreviewSnapshot] 폴링 간격. 배경 블러용이라 실시간일 필요는 없다. */
+private const val PreviewSnapshotIntervalMs = 200L
+
+/** [downscaledForBlur]가 줄여내는 목표 (긴 변 기준) 픽셀 크기. */
+private const val PreviewSnapshotMaxDimensionPx = 240
+
+/**
+ * [PreviewView.getBitmap]은 프리뷰 화면 전체 해상도(기기에 따라 수 MB)로 매번 새 [Bitmap]을
+ * 만든다. 블러로 뭉개질 배경용 스냅샷이라 그 해상도가 전혀 필요 없으므로, 즉시 작은 크기로
+ * 축소하고 원본은 곧바로 recycle해 폴링마다 큰 비트맵이 잠깐이라도 메모리에 남지 않게 한다.
+ */
+private fun Bitmap.downscaledForBlur(): Bitmap {
+    val scale = PreviewSnapshotMaxDimensionPx.toFloat() / maxOf(width, height)
+    if (scale >= 1f) return this
+    val targetWidth = (width * scale).roundToInt().coerceAtLeast(1)
+    val targetHeight = (height * scale).roundToInt().coerceAtLeast(1)
+    val scaled = Bitmap.createScaledBitmap(this, targetWidth, targetHeight, true)
+    if (scaled !== this) recycle()
+    return scaled
 }
 
 private val FocusIndicatorSize = 64.dp

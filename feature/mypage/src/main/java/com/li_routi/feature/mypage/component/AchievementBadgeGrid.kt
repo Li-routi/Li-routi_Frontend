@@ -25,7 +25,7 @@ import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.li_routi.core.designsystem.R
+import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
@@ -34,6 +34,8 @@ data class AchievementBadgeUiModel(
     val title: String,
     val rarity: AchievementRarity,
     @param:DrawableRes val iconRes: Int? = null,
+    /** 서버 제공 뱃지 이미지. 있으면 [iconRes]보다 우선한다 — 같은 업적의 목록 아이콘과 항상 같은 이미지를 쓴다. */
+    val imageUrl: String? = null,
 )
 
 private val CellHeight = 120.dp
@@ -115,18 +117,20 @@ private fun AchievementBadgeCell(
                     .clip(RoundedCornerShape(6.dp)),
                 contentAlignment = Alignment.Center,
             ) {
-                if (badge.iconRes != null) {
-                    Image(
+                // 목록 카드(AchievementListItem)와 소스 우선순위(서버 이미지 > 로컬 매핑 > 기본
+                // 캐릭터)를 똑같이 맞춰서, 같은 업적이면 항상 같은 이미지가 보이게 한다.
+                when {
+                    !badge.imageUrl.isNullOrBlank() -> AsyncImage(
+                        model = badge.imageUrl,
+                        contentDescription = badge.title,
+                        modifier = Modifier.size(BadgeIconSize),
+                    )
+                    badge.iconRes != null -> Image(
                         painter = painterResource(id = badge.iconRes),
                         contentDescription = badge.title,
                         modifier = Modifier.size(BadgeIconSize),
                     )
-                } else {
-                    Image(
-                        painter = painterResource(id = R.drawable.img_achievement_medal),
-                        contentDescription = badge.title,
-                        modifier = Modifier.size(MedalImageWidth, MedalImageHeight),
-                    )
+                    else -> AchievementCharacterIcon(modifier = Modifier.size(width = MedalImageWidth, height = MedalImageHeight))
                 }
             }
             if (isEquipped) {

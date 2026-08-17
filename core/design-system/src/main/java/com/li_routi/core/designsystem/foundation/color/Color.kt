@@ -107,6 +107,11 @@ val GradeEpicBackground = Color(0xFFEFE0F8)
 val GradeEpicText = Color(0xFF6903D6)
 val GradeUniqueBackground = Color(0xFFFFF7C2)
 val GradeUniqueText = Color(0xFFB59806)
+// "캐릭터" 등급(EGG) — 캐릭터 해금용 알 업적. 정확한 Figma 스펙이 아직 없어 기존 등급 배지들과
+// 같은 파스텔 배경 + 채도 있는 텍스트 톤으로, 레어(시안)/에픽(퍼플)/유니크(옐로)와 겹치지 않는
+// 민트 계열을 우선 배정했다 — 디자인 확정되면 값만 바꾸면 된다.
+val GradeCharacterBackground = Color(0xFFDCF6E3)
+val GradeCharacterText = Color(0xFF1F9254)
 val AchievementProgressCountColor = Color(0xFF81898E)
 
 // home / challenge 화면 전용 장식 색상

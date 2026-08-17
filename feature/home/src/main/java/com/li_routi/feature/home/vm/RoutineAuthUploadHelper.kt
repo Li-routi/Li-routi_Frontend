@@ -113,7 +113,9 @@ internal suspend fun submitRoutineAuthUpload(
     val bytes = runCatching {
         val bitmap = decodeBitmapWithExif(context, photoUri, VerificationPhotoUploadTargetSizePx)
             ?: error("사진을 디코딩할 수 없습니다.")
-        bitmap.rotateToLandscapeIfPortrait().centerCropToRatio(VerificationPhotoAspectRatio).toJpegBytes()
+        bitmap.rotateToLandscapeIfPortrait()
+            .centerCropToRatio(VerificationPhotoAspectRatio, VerificationPhotoTopCropBias)
+            .toJpegBytes()
     }.getOrElse {
         return@withContext Result.failure(IllegalArgumentException("사진을 읽을 수 없습니다.", it))
     }

@@ -35,6 +35,7 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
+import androidx.compose.ui.BiasAlignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.ColorFilter
@@ -69,6 +70,7 @@ import com.li_routi.feature.home.vm.RoutineAuthBadgeTone
 import com.li_routi.feature.home.vm.RoutineAuthSelectableUiModel
 import com.li_routi.feature.home.vm.SampleRoutineAuthSelectables
 import com.li_routi.feature.home.vm.VerificationPhotoAspectRatio
+import com.li_routi.feature.home.vm.VerificationPhotoCropAlignmentBias
 import com.li_routi.feature.home.vm.decodeBitmapWithExif
 import com.li_routi.feature.home.vm.rotateToLandscapeIfPortrait
 import kotlinx.coroutines.Dispatchers
@@ -241,6 +243,9 @@ private fun CapturedPhotoPreview(
             bitmap = currentBitmap.asImageBitmap(),
             contentDescription = "촬영 사진",
             modifier = Modifier.fillMaxWidth().aspectRatio(VerificationPhotoAspectRatio),
+            // 실제 업로드 크롭(centerCropToRatio + VerificationPhotoTopCropBias)과 같은 결과를
+            // 보여주도록, 회전된 이미지 기준 가로 크롭 위치를 같은 비율로 맞춘다.
+            alignment = BiasAlignment(horizontalBias = VerificationPhotoCropAlignmentBias, verticalBias = 0f),
             contentScale = ContentScale.Crop,
         )
     }
