@@ -30,6 +30,7 @@ import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiLabel
 import com.li_routi.core.designsystem.component.LiroutiLineTab
+import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.mypage.component.AchievementBadgeGrid
@@ -64,6 +65,9 @@ fun AchievementScreen(
     achievedBadges: List<AchievementBadgeUiModel> = SampleAchievedBadges,
     isLoading: Boolean = false,
     isError: Boolean = false,
+    onClaimClick: (Long) -> Unit = {},
+    claimMessage: String? = null,
+    onClaimMessageDismissed: () -> Unit = {},
 ) {
     var selectedTab by remember { mutableStateOf(AchievementStatusTab.All) }
     var selectedRarity by remember { mutableStateOf<AchievementRarity?>(null) }
@@ -75,76 +79,92 @@ fun AchievementScreen(
     }
     val filteredBadges = achievedBadges
 
-    Column(
-        modifier = modifier
-            .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundDefault),
-    ) {
-        EditProfileTopBar(title = "업적", onBackClick = onBackClick)
-        LiroutiLineTab(
-            tabs = AchievementStatusTab.entries.map { it.label },
-            selectedIndex = selectedTab.ordinal,
-            onTabSelected = { index -> selectedTab = AchievementStatusTab.entries[index] },
-            equalWidth = true,
-        )
-        if (isLoading) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
-            }
-        } else if (isError) {
-            Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                AchievementEmptyState(message = "업적 정보를 불러오지 못했어요")
-            }
-        } else {
-            Column(
-                modifier = Modifier
-                    .weight(1f)
-                    .verticalScroll(rememberScrollState())
-                    .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
-                    .navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(16.dp),
-            ) {
-                if (selectedTab != AchievementStatusTab.Achieved) {
-                    Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-                        LiroutiLabel(text = "전체", selected = selectedRarity == null, onClick = { selectedRarity = null })
-                        AchievementRarity.entries.forEach { rarity ->
-                            LiroutiLabel(
-                                text = rarity.label,
-                                selected = selectedRarity == rarity,
-                                onClick = { selectedRarity = rarity },
-                            )
+    Box(modifier = modifier.fillMaxSize()) {
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .background(LiroutiTheme.colors.backgroundDefault),
+        ) {
+            EditProfileTopBar(title = "업적", onBackClick = onBackClick)
+            LiroutiLineTab(
+                tabs = AchievementStatusTab.entries.map { it.label },
+                selectedIndex = selectedTab.ordinal,
+                onTabSelected = { index -> selectedTab = AchievementStatusTab.entries[index] },
+                equalWidth = true,
+            )
+            if (isLoading) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
+                }
+            } else if (isError) {
+                Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                    AchievementEmptyState(message = "업적 정보를 불러오지 못했어요")
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .weight(1f)
+                        .verticalScroll(rememberScrollState())
+                        .padding(top = 16.dp, start = 16.dp, end = 16.dp, bottom = 16.dp)
+                        .navigationBarsPadding(),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    if (selectedTab != AchievementStatusTab.Achieved) {
+                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                            LiroutiLabel(text = "전체", selected = selectedRarity == null, onClick = { selectedRarity = null })
+                            AchievementRarity.entries.forEach { rarity ->
+                                LiroutiLabel(
+                                    text = rarity.label,
+                                    selected = selectedRarity == rarity,
+                                    onClick = { selectedRarity = rarity },
+                                )
+                            }
                         }
                     }
-                }
-                if (selectedTab == AchievementStatusTab.Achieved) {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "총 ${filteredBadges.size}개 달성",
-                            style = CountTextStyle,
-                            color = LiroutiTheme.colors.labelSub,
-                        )
-                        AchievementBadgeGrid(
-                            badges = filteredBadges,
-                            equippedBadgeId = equippedBadgeId,
-                            onBadgeClick = { badge -> equippedBadgeId = badge.id },
-                        )
-                    }
-                } else {
-                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        Text(
-                            text = "총 ${filteredAchievements.size}개의 업적이 있어요",
-                            style = CountTextStyle,
-                            color = LiroutiTheme.colors.labelSub,
-                        )
+                    if (selectedTab == AchievementStatusTab.Achieved) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                            filteredAchievements.forEach { item -> AchievementListItem(item = item) }
+                            Text(
+                                text = "총 ${filteredBadges.size}개 달성",
+                                style = CountTextStyle,
+                                color = LiroutiTheme.colors.labelSub,
+                            )
+                            AchievementBadgeGrid(
+                                badges = filteredBadges,
+                                equippedBadgeId = equippedBadgeId,
+                                onBadgeClick = { badge -> equippedBadgeId = badge.id },
+                            )
+                        }
+                    } else {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                text = "총 ${filteredAchievements.size}개의 업적이 있어요",
+                                style = CountTextStyle,
+                                color = LiroutiTheme.colors.labelSub,
+                            )
+                            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                filteredAchievements.forEach { item ->
+                                    AchievementListItem(item = item, onClaimClick = onClaimClick)
+                                }
+                            }
                         }
                     }
                 }
             }
         }
+        if (claimMessage != null) {
+            LiroutiToast(
+                message = claimMessage,
+                onCloseClick = onClaimMessageDismissed,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .fillMaxWidth()
+                    .navigationBarsPadding()
+                    .padding(16.dp),
+            )
+        }
     }
 }
+
 
 /** 업적 조회에 실패했을 때 화면 가운데에 보여주는 상태. */
 @Composable

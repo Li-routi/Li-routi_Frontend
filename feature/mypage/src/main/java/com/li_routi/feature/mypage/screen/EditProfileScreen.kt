@@ -79,9 +79,10 @@ fun EditProfileScreen(
     var pendingCameraUri by rememberSaveable(stateSaver = UriSaver) { mutableStateOf<Uri?>(null) }
     var showPhotoSourceSheet by remember { mutableStateOf(false) }
     val isNicknameBlank = nickname.isBlank()
-    // 닉네임도 안 바꾸고 사진도 새로 안 골랐으면 서버에 보낼 변경 사항이 없다 — 이때 저장을 누르면
-    // profileImageKey 필드가 빠진 채로 요청이 나가는데, 서버가 이걸 "이미지 삭제"로 잘못 처리해서
-    // 기존 프로필 사진이 지워지는 문제가 있다(백엔드 이슈). 고쳐지기 전까지 아예 저장을 막는다.
+    // 닉네임도 안 바꾸고 사진도 새로 안 골랐으면 서버에 보낼 변경 사항이 없어 저장을 막는다 — 그냥
+    // 불필요한 요청을 줄이기 위함이며, 사진을 안 바꿔도 저장 자체는 안전하다(사진 유지 로직은
+    // AuthRepositoryImpl.resolveProfileImageKey 참고 — 새 이미지가 없으면 기존 사진을 재업로드해
+    // 서버의 "profileImageKey=null → 삭제" 처리 문제를 우회한다).
     val hasChanges = nickname != initialNickname || selectedImageUri != null
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current

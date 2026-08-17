@@ -6,8 +6,11 @@ data class AchievementCategoryGroup(
     val achievements: List<Achievement>,
 )
 
-/** [UNKNOWN]은 서버가 새 카테고리를 추가했을 때를 대비한 폴백이다. */
-enum class AchievementCategory { RARE, EPIC, UNIQUE, UNKNOWN }
+/**
+ * [EGG]는 캐릭터 해금용 알을 얻는 업적 분류로, 화면에는 "캐릭터" 등급으로 보여준다.
+ * [UNKNOWN]은 서버가 또 새 카테고리를 추가했을 때를 대비한 폴백이다.
+ */
+enum class AchievementCategory { RARE, EPIC, UNIQUE, EGG, UNKNOWN }
 
 /**
  * 업적 한 건. [status]는 문서에 진행 전 상태(`IN_PROGRESS`)만 명시돼 있어 도메인에서도 문자열 그대로
@@ -30,7 +33,19 @@ data class Achievement(
     val limitedOutfitYn: Boolean,
     val achievedAt: String?,
     val claimedAt: String?,
+    /** 서버가 제공하는 업적 뱃지 이미지. 없는 업적도 있어(null) 그럴 땐 앱 내장 이미지로 대체한다. */
+    val badgeImageUrl: String? = null,
 ) {
     val isInProgress: Boolean get() = status == "IN_PROGRESS"
     val isAchieved: Boolean get() = achievedAt != null
+
+    /** 달성했지만 보상을 아직 수령하지 않아, [ClaimAchievementUseCase]를 호출할 수 있는 상태인지. */
+    val isClaimable: Boolean get() = status == "ACHIEVED"
 }
+
+/** POST .../claim 응답 — 수령 처리 후의 무료(토파즈) 잔액과 보상 지급 여부. */
+data class AchievementClaimResult(
+    val achievementId: Long,
+    val freeBalanceAfter: Int,
+    val rewardApplied: Boolean,
+)

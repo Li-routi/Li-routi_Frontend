@@ -110,6 +110,7 @@ private fun HomeScreenContent(
         showChecklist = uiState.showChecklist,
         isLoading = uiState.isLoading,
         loadError = uiState.loadError,
+        hasUnreadNotification = uiState.hasUnreadNotification,
         uiEvent = viewModel.uiEvent,
         findEditableCategory = viewModel::editableCategoryByName,
         addCategoryEnabled = uiState.addCategoryEnabled,

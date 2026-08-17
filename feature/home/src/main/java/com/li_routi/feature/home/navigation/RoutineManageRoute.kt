@@ -3,8 +3,11 @@ package com.li_routi.feature.home.navigation
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -19,6 +22,8 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalFocusManager
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -55,7 +60,7 @@ private val LiroutiClockTimeSaver = Saver<LiroutiClockTime, String>(
     restore = { LiroutiClockTime.fromApiHHmm(it) },
 )
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun RoutineManageRoute(
     onNavigateBack: () -> Unit,
@@ -116,6 +121,21 @@ fun RoutineManageRoute(
             startTime != baselineStartTime ||
             endTime != baselineEndTime
 
+    // 시스템 뒤로가기/시트 바깥 배경 탭은 원래 "키보드가 떠 있으면 키보드만 내린다"는 게 안드로이드
+    // 기본 동작인데, BackHandler와 ModalBottomSheet의 onDismissRequest가 이를 신경 쓰지 않고 바로
+    // 화면/시트를 닫아버리는 문제가 있었다 — 루틴 이름 입력 중 키보드를 내리려던 게 화면 이탈로
+    // 이어짐. 키보드가 떠 있으면 그것부터 내리고, 닫기/이탈 로직은 그 다음 탭부터 동작하게 한다.
+    val focusManager = LocalFocusManager.current
+    val keyboardController = LocalSoftwareKeyboardController.current
+    // getBottom(density) 기반 높이 체크는 IME 애니메이션 도중 일시적으로 0을 반환할 수 있어(특히
+    // 예측형 뒤로가기 제스처 중), 시맨틱 API인 isImeVisible로 대체한다.
+    val isKeyboardVisible = WindowInsets.isImeVisible
+
+    fun hideKeyboard() {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+    }
+
     fun askDiscardConfirm(onConfirm: () -> Unit) {
         pendingExitAction = onConfirm
         showExitConfirmDialog = true
@@ -149,7 +169,21 @@ fun RoutineManageRoute(
         }
     }
 
+    fun requestCategorySheetDismiss() {
+        if (isKeyboardVisible) {
+            hideKeyboard()
+            return
+        }
+        showCategorySheet = false
+        editingCategoryId = null
+        viewModel.clearError()
+    }
+
     fun requestRoutineSheetDismiss() {
+        if (isKeyboardVisible) {
+            hideKeyboard()
+            return
+        }
         if (hasRoutineSheetDraft) {
             askDiscardConfirm { closeRoutineSheet() }
         } else {
@@ -176,7 +210,13 @@ fun RoutineManageRoute(
         }
     }
 
-    BackHandler(onBack = ::requestExit)
+    BackHandler {
+        if (isKeyboardVisible) {
+            hideKeyboard()
+        } else {
+            requestExit()
+        }
+    }
 
     Box(modifier = modifier.fillMaxSize()) {
         RoutineChecklistScreen(
@@ -289,16 +329,12 @@ fun RoutineManageRoute(
             onDeleteClick = {
                 val categoryId = editingCategoryId
                 if (categoryId == null) {
-                    showCategorySheet = false
+                    requestCategorySheetDismiss()
                 } else {
                     showCategoryDeleteDialog = true
                 }
             },
-            onDismissRequest = {
-                showCategorySheet = false
-                editingCategoryId = null
-                viewModel.clearError()
-            },
+            onDismissRequest = ::requestCategorySheetDismiss,
         )
     }
 

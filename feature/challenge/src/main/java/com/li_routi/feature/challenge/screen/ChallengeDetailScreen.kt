@@ -33,10 +33,12 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiBadge
 import com.li_routi.core.designsystem.component.LiroutiBadgeColor
@@ -200,7 +202,7 @@ fun ChallengeDetailScreen(
                     modifier = Modifier.fillMaxSize(),
                 ) {
                     item {
-                        ChallengeHeroImage()
+                        ChallengeHeroImage(imageUrl = uiState.heroImageUrl)
                     }
                     item {
                         Column(
@@ -241,13 +243,23 @@ fun ChallengeDetailScreen(
                             onClick = { showSortSheet = true },
                         )
                     }
-                    if (
+                    // 각 탭의 목록이 실제로 다 불러와진 뒤(로딩 중이 아닐 때)만 "없음"으로 판단한다.
+                    // uiState.isLoading(화면 최초 로딩 전용 플래그)로 판단하면, "인증"/"내 인증 보기"
+                    // 각 탭 자체의 조회가 아직 끝나기 전에도 "없음"으로 잘못 그려졌다가 응답이 오면
+                    // 사라지는 깜빡임이 생긴다 — 탭별 로딩 상태를 따로 봐야 한다.
+                    val certificationEmptyMessage = when {
                         uiState.selectedTab == CertificationTab.Mine &&
-                        uiState.visibleCertifications.isEmpty() &&
-                        !uiState.isLoading
-                    ) {
+                            uiState.visibleCertifications.isEmpty() &&
+                            uiState.myLoaded && !uiState.isLoadingMoreMy -> "아직 인증을 올리지 않았어요"
+                        uiState.selectedTab == CertificationTab.All &&
+                            uiState.visibleCertifications.isEmpty() &&
+                            !uiState.isLoadingMoreAll -> "아직 올라온 인증이 없어요"
+                        else -> null
+                    }
+                    if (certificationEmptyMessage != null) {
                         item {
-                            MyCertificationEmptyState(
+                            CertificationEmptyState(
+                                message = certificationEmptyMessage,
                                 modifier = Modifier
                                     .fillMaxWidth()
                                     .padding(top = 40.dp),
@@ -264,9 +276,9 @@ fun ChallengeDetailScreen(
                             } else {
                                 { moreSheetCertification = certification }
                             },
-                            // "내 인증 보기" 응답엔 liked 상태가 없어 그 탭에서는 좋아요를 누를 수 없게 한다
-                            // ("인증"(전체) 탭은 본인 글이어도 liked가 내려오고, 자기 글에도 좋아요를 누를 수 있다).
-                            onLikeClick = if (uiState.selectedTab == CertificationTab.Mine) null else { { actions.onLikeToggleClick(certification.id) } },
+                            // "내 인증 보기" 응답 자체엔 liked가 없지만 ViewModel이 "인증"(전체) 쪽 값으로
+                            // 맞춰주므로, 두 탭 모두 좋아요를 누를 수 있다(자기 글에도 좋아요 가능).
+                            onLikeClick = { actions.onLikeToggleClick(certification.id) },
                             modifier = Modifier
                                 .fillMaxWidth()
                                 .padding(horizontal = 16.dp)
@@ -371,9 +383,9 @@ fun ChallengeDetailScreen(
     }
 }
 
-/** "내 인증 보기" 탭에 아직 올린 인증이 하나도 없을 때 목록 자리에 보여주는 상태. */
+/** "인증"(전체)/"내 인증 보기" 두 탭 모두, 목록이 비어 있을 때 목록 자리에 보여주는 상태. */
 @Composable
-private fun MyCertificationEmptyState(modifier: Modifier = Modifier) {
+private fun CertificationEmptyState(message: String, modifier: Modifier = Modifier) {
     Column(modifier = modifier, horizontalAlignment = Alignment.CenterHorizontally) {
         Image(
             painter = painterResource(id = R.drawable.warning),
@@ -381,7 +393,7 @@ private fun MyCertificationEmptyState(modifier: Modifier = Modifier) {
             modifier = Modifier.size(28.dp),
         )
         Text(
-            text = "아직 인증을 올리지 않았어요",
+            text = message,
             style = LiroutiTheme.typography.body2LongMedium,
             color = LiroutiTheme.colors.labelInfo,
             modifier = Modifier.padding(top = 8.dp),
@@ -472,22 +484,32 @@ private fun ChallengeDetailHeader(
     }
 }
 
-// 챌린지 대표 이미지(비-DS 이미지 자산) — 실제 에셋은 백엔드에서 제공, 지금은 자리만. 헤더와 달리
-// 일반 콘텐츠이므로 스크롤 영역 안에 들어간다.
+// 챌린지 대표 이미지 — 좋아요가 가장 많은 인증 사진(ChallengeDetailViewModel.loadHeroImage)을 채운다.
+// 아직 못 받아왔거나 인증이 하나도 없으면([imageUrl]이 null) 자리만 보여주는 플레이스홀더로
+// 대체한다. 헤더와 달리 일반 콘텐츠이므로 스크롤 영역 안에 들어간다.
 @Composable
-private fun ChallengeHeroImage(modifier: Modifier = Modifier) {
+private fun ChallengeHeroImage(imageUrl: String?, modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
             .height(200.dp)
             .background(HeroBg),
     ) {
-        Box(
-            modifier = Modifier
-                .align(Alignment.Center)
-                .size(84.dp)
-                .background(LiroutiTheme.colors.backgroundSecondary, RoundedCornerShape(8.dp)),
-        )
+        if (imageUrl != null) {
+            AsyncImage(
+                model = imageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Crop,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            Box(
+                modifier = Modifier
+                    .align(Alignment.Center)
+                    .size(84.dp)
+                    .background(LiroutiTheme.colors.backgroundSecondary, RoundedCornerShape(8.dp)),
+            )
+        }
     }
 }
 

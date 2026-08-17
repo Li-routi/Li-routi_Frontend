@@ -1,5 +1,7 @@
 package com.li_routi.feature.home.shop.navigation
 
+import com.li_routi.feature.home.shop.vm.ShopMainTab
+
 /**
  * `ShopScreen`(아이템 상점)에서 발생하는 사용자 이벤트에 대한 콜백 계약(contract).
  *
@@ -16,7 +18,10 @@ interface ShopScreenActions {
     /** 상단 파란보석 잔액 chip 탭 → 재화 상점 파란 탭 */
     fun onBlueGemClick()
 
-    /** 상단 카테고리 탭 선택 */
+    /** 최상위 탭("캐릭터"/"의상") 선택 */
+    fun onMainTabSelected(tab: ShopMainTab)
+
+    /** "의상" 탭 하위 카테고리 필터 선택 */
     fun onCategorySelected(index: Int)
 
     /** "보유 중인 아이템만 보기" 토글 */

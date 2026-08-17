@@ -61,6 +61,7 @@ fun ShopRoute(
             nickname = uiState.nickname,
             coinBalance = uiState.coinBalance,
             gemBalance = uiState.gemBalance,
+            selectedMainTab = uiState.selectedMainTab,
             categories = uiState.categories,
             equipped = uiState.equipped,
             savedEquippedItemIds = uiState.savedEquippedItemIds,
@@ -69,6 +70,7 @@ fun ShopRoute(
             items = uiState.items,
             selectedItemIds = uiState.selectedItems.keys,
             purchaseTargets = uiState.purchaseTargets,
+            hasUnsavedChanges = uiState.hasUnsavedChanges,
             previewCharacterId = uiState.previewCharacterId,
             savedCharacterId = uiState.savedCharacterId,
         )

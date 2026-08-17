@@ -234,16 +234,6 @@ fun AppNavHost(
         if (!showVerificationFlow) return@LaunchedEffect
         isLoadingVerificationRoutines = true
         verificationLoadError = false
-        val selectedGroupRoutine = verificationPreselectedRoutine?.takeIf { routine ->
-            verificationPreselectedId == routine.id &&
-                routine.groupId != null &&
-                routine.groupRoutineId != null
-        }
-        if (selectedGroupRoutine != null) {
-            verificationRoutines = listOf(selectedGroupRoutine)
-            isLoadingVerificationRoutines = false
-            return@LaunchedEffect
-        }
         val homeResult = HomeContainer.getHomeSummaryUseCase()
         val challengesResult = ChallengeContainer.getMyChallengesUseCase()
         val isGroupVerification = verificationPreselectedId?.startsWith("group_") == true

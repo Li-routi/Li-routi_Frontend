@@ -106,23 +106,26 @@ internal fun Bitmap.rotateToLandscapeIfPortrait(): Bitmap {
 }
 
 /**
- * 사진을 [targetRatio](가로/세로)에 맞춰 중앙 기준으로 잘라낸다. 미리보기·업로드가 같은 크롭 결과를 쓰도록 공유한다.
+ * 사진을 [targetRatio](가로/세로)에 맞춰 잘라낸다. [startBias]는 잘려나가는 전체 양 중 시작 쪽
+ * (가로 크롭이면 왼쪽, 세로 크롭이면 위쪽)에서 가져갈 비율로, 0.5면 정중앙 대칭 크롭이다.
+ * 미리보기·업로드가 같은 크롭 결과를 쓰도록 공유한다.
  *
  * 주의: 크롭이 필요해 새 비트맵을 만드는 경우 수신 객체(this)를 [Bitmap.recycle]한다 — 소유권이 반환값으로
  * 넘어가므로 호출 후 원본 비트맵을 다시 쓰면 안 된다. 크롭이 필요 없을 때(비율이 이미 같을 때)는 원본을
  * 그대로 반환하고 recycle하지 않는다.
  */
-internal fun Bitmap.centerCropToRatio(targetRatio: Float): Bitmap {
+internal fun Bitmap.centerCropToRatio(targetRatio: Float, startBias: Float = 0.5f): Bitmap {
+    val bias = startBias.coerceIn(0f, 1f)
     val currentRatio = width.toFloat() / height.toFloat()
     val cropped = when {
         currentRatio > targetRatio -> {
             val newWidth = (height * targetRatio).toInt().coerceIn(1, width)
-            val x = (width - newWidth) / 2
+            val x = ((width - newWidth) * bias).toInt()
             Bitmap.createBitmap(this, x, 0, newWidth, height)
         }
         currentRatio < targetRatio -> {
             val newHeight = (width / targetRatio).toInt().coerceIn(1, height)
-            val y = (height - newHeight) / 2
+            val y = ((height - newHeight) * bias).toInt()
             Bitmap.createBitmap(this, 0, y, width, newHeight)
         }
         else -> this
@@ -130,6 +133,28 @@ internal fun Bitmap.centerCropToRatio(targetRatio: Float): Bitmap {
     if (cropped !== this) recycle()
     return cropped
 }
+
+/**
+ * 인증 사진 크롭 시 상/하단 중 어느 쪽을 더 잘라낼지 정하는 비율(위쪽에서 가져가는 비율). Figma
+ * node `5562:14552`(Subtract)의 원래 상/하단 크롭 비율(88:180)에서 그대로 가져왔다 —
+ * 가운데 피사체가 살짝 위쪽에 오도록 아래를 더 많이 잘라낸다.
+ *
+ * 촬영 화면의 크롭 안내([com.li_routi.feature.home.screen.RoutineAuthCameraScreen])와 실제
+ * 크롭(이 값 자체)이 같은 소스를 쓰므로 항상 일치한다. [rotateToLandscapeIfPortrait]로 -90도
+ * 회전한 뒤에는 원본 상단이 회전된 이미지의 왼쪽, 원본 하단이 오른쪽이 되므로
+ * ([centerCropToRatio]가 회전 후 이미지 기준 currentRatio > targetRatio라 가로(왼쪽/오른쪽)를
+ * 잘라내는 경우), 이 비율을 [centerCropToRatio]의 [startBias]로 그대로 쓰면 "원본 기준 위쪽에서
+ * 이 비율만큼" 잘라내는 것과 같아진다.
+ */
+internal const val VerificationPhotoTopCropBias: Float = 88f / (88f + 180f)
+
+/**
+ * [RoutineAuthUploadScreen]의 [CapturedPhotoPreview]에서 `ContentScale.Crop` 정렬에 쓰는 값.
+ * `BiasAlignment`는 bias=-1일 때 시작 쪽이 0% 잘리고(전부 반대쪽에서 잘림), bias=+1일 때 100%
+ * 잘리는 선형 관계라 `bias = 2 * startBias - 1`로 변환해야 [VerificationPhotoTopCropBias]와
+ * 같은 크롭 결과가 된다.
+ */
+internal val VerificationPhotoCropAlignmentBias: Float = 2f * VerificationPhotoTopCropBias - 1f
 
 /** 크롭된 비트맵을 JPEG 바이트로 재인코딩한다. 업로드 직전에 호출한다. */
 internal fun Bitmap.toJpegBytes(quality: Int = 90): ByteArray =

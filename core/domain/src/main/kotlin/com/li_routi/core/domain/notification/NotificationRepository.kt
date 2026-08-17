@@ -12,4 +12,6 @@ interface NotificationRepository {
     ): ResultState<NotificationPage>
     suspend fun markRead(notificationId: Long): ResultState<Unit>
     suspend fun markAllRead(): ResultState<NotificationReadAllResult>
+    suspend fun getSettings(): ResultState<NotificationSettings>
+    suspend fun updateSettings(update: NotificationSettingsUpdate): ResultState<NotificationSettings>
 }

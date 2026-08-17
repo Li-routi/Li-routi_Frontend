@@ -105,6 +105,8 @@ fun HomeScreen(
     showChecklist: Boolean = hasActiveRoutine || hasGroupRoom,
     isLoading: Boolean = false,
     loadError: Boolean = false,
+    /** 종 아이콘 우측 상단 파란 점 표시 여부. */
+    hasUnreadNotification: Boolean = false,
     /** 카테고리 생성 성공/실패 등 홈 일회성 UI 이벤트. */
     uiEvent: Flow<HomeUiEvent> = emptyFlow(),
     /** 롱프레스 편집 가능한 카테고리 조회(!fixed). */
@@ -192,6 +194,7 @@ fun HomeScreen(
                 HomeTopBar(
                     onAddRoutineClick = { showAddMenuSheet = true },
                     onNotificationClick = actions::onNotificationClick,
+                    hasUnreadNotification = hasUnreadNotification,
                 )
             },
             sheetPeekHeight = SheetPeekHeight,

@@ -1,9 +1,9 @@
 package com.li_routi.feature.mypage.component
 
 import androidx.annotation.DrawableRes
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -20,7 +20,6 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
@@ -30,6 +29,8 @@ import androidx.compose.ui.unit.sp
 import com.li_routi.core.designsystem.foundation.color.AchievementProgressCountColor
 import com.li_routi.core.designsystem.foundation.color.BackgroundSecondary
 import com.li_routi.core.designsystem.foundation.color.Cyan500
+import com.li_routi.core.designsystem.foundation.color.GradeCharacterBackground
+import com.li_routi.core.designsystem.foundation.color.GradeCharacterText
 import com.li_routi.core.designsystem.foundation.color.GradeEpicBackground
 import com.li_routi.core.designsystem.foundation.color.GradeEpicText
 import com.li_routi.core.designsystem.foundation.color.GradeUniqueBackground
@@ -38,11 +39,15 @@ import com.li_routi.core.designsystem.foundation.color.Neutral98
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-/** 업적 등급. Figma node `6008:31220`("전체")/`6008:31578`("레어")/`6008:31510`("에픽")/`6008:31459`("유니크") 기준. */
+/**
+ * 업적 등급. Figma node `6008:31220`("전체")/`6008:31578`("레어")/`6008:31510`("에픽")/`6008:31459`("유니크") 기준.
+ * [Character]는 서버 카테고리 `EGG`(캐릭터 해금용 알 업적)를 화면에 보여주는 이름이다.
+ */
 enum class AchievementRarity(val label: String, val backgroundColor: Color, val textColor: Color) {
     Rare(label = "레어", backgroundColor = BackgroundSecondary, textColor = Cyan500),
     Epic(label = "에픽", backgroundColor = GradeEpicBackground, textColor = GradeEpicText),
     Unique(label = "유니크", backgroundColor = GradeUniqueBackground, textColor = GradeUniqueText),
+    Character(label = "캐릭터", backgroundColor = GradeCharacterBackground, textColor = GradeCharacterText),
 }
 
 data class AchievementUiModel(
@@ -55,6 +60,12 @@ data class AchievementUiModel(
     val isInProgress: Boolean = false,
     val isAchieved: Boolean = false,
     @param:DrawableRes val iconRes: Int? = null,
+    /** 서버 제공 뱃지 이미지. 있으면 [iconRes]보다 우선한다. */
+    val imageUrl: String? = null,
+    /** [onClaimClick]에 넘길 식별자. 실제 데이터는 항상 0 이상이라, 프리뷰용 기본값(-1)과 구분된다. */
+    val achievementId: Long = -1L,
+    /** 달성했지만 보상을 아직 수령하지 않은 상태 — true면 "받기" 버튼을 보여준다. */
+    val isClaimable: Boolean = false,
 )
 
 private val TitleTextStyle = TextStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 22.sp, letterSpacing = (-0.35).sp)
@@ -77,6 +88,7 @@ private val IconImageSize = 44.dp
 fun AchievementListItem(
     item: AchievementUiModel,
     modifier: Modifier = Modifier,
+    onClaimClick: (Long) -> Unit = {},
 ) {
     Row(
         modifier = modifier
@@ -95,15 +107,13 @@ fun AchievementListItem(
                 .background(LiroutiTheme.colors.backgroundDefault, CircleShape),
             contentAlignment = Alignment.Center,
         ) {
-            if (item.iconRes != null) {
-                Image(
-                    painter = painterResource(id = item.iconRes),
-                    contentDescription = null,
-                    modifier = Modifier.size(IconImageSize),
-                )
-            } else {
-                AchievementCharacterIcon(modifier = Modifier.size(width = 69.dp, height = 56.dp))
-            }
+            AchievementFallbackImage(
+                imageUrl = item.imageUrl,
+                iconRes = item.iconRes,
+                contentDescription = null,
+                modifier = Modifier.size(IconImageSize),
+                fallback = { AchievementCharacterIcon(modifier = Modifier.size(width = 69.dp, height = 56.dp)) },
+            )
         }
         Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
@@ -129,7 +139,9 @@ fun AchievementListItem(
                             AchievedBadge()
                         }
                     }
-                    if (item.rewardText != null) {
+                    if (item.isClaimable) {
+                        ClaimRewardButton(onClick = { onClaimClick(item.achievementId) })
+                    } else if (item.rewardText != null) {
                         Text(text = item.rewardText, style = RewardTextStyle, color = LiroutiTheme.colors.primaryNormal)
                     }
                 }
@@ -175,6 +187,22 @@ private fun AchievedBadge(modifier: Modifier = Modifier) {
             .padding(horizontal = 7.dp, vertical = 2.dp),
     ) {
         Text(text = "달성", style = RarityBadgeTextStyle, color = LiroutiTheme.colors.labelInfo)
+    }
+}
+
+/**
+ * 달성했지만 보상을 아직 안 받은 업적에 보이는 "받기" 버튼. Figma 시안이 따로 없어 [AchievedBadge]와
+ * 같은 크기·모양에 파란 배경만 입혀 "탭 가능한 액션"임을 구분했다.
+ */
+@Composable
+private fun ClaimRewardButton(onClick: () -> Unit, modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier
+            .background(LiroutiTheme.colors.primaryNormal, RoundedCornerShape(6.dp))
+            .clickable(onClick = onClick)
+            .padding(horizontal = 7.dp, vertical = 2.dp),
+    ) {
+        Text(text = "받기", style = RarityBadgeTextStyle, color = LiroutiTheme.colors.labelReverse)
     }
 }
 

@@ -1,6 +1,7 @@
 package com.li_routi.feature.home.navigation
 
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -9,11 +10,7 @@ import com.li_routi.feature.home.screen.NotificationSettingsScreen
 import com.li_routi.feature.home.vm.NotificationSettingKey
 import com.li_routi.feature.home.vm.NotificationViewModel
 
-/**
- * 알림 설정 화면 진입점.
- *
- * API 연동 전: 설정 토글은 이 화면 ViewModel 로컬 state로만 유지한다.
- */
+/** 알림 설정 화면 진입점. GET /api/notifications/settings로 서버 값을 불러와 보여준다. */
 @Composable
 fun NotificationSettingsRoute(
     onNavigateBack: () -> Unit = {},
@@ -23,6 +20,10 @@ fun NotificationSettingsRoute(
     },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+
+    LaunchedEffect(viewModel) {
+        viewModel.loadSettings()
+    }
 
     NotificationSettingsScreen(
         actions = object : NotificationSettingsScreenActions {
