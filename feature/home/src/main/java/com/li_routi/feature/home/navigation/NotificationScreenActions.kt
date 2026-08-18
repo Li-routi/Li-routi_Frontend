@@ -10,9 +10,6 @@ interface NotificationScreenActions {
     fun onSettingsClick()
     fun onTabSelected(index: Int)
     fun onNotificationClick(notificationId: String)
-    fun onMoreClick(notificationId: String)
-    fun onDismissDeleteSheet()
-    fun onConfirmDelete()
 }
 
 /**

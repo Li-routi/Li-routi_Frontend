@@ -34,8 +34,7 @@ import kotlinx.coroutines.launch
  * 알림 목록·설정 ViewModel.
  *
  * 목록은 GET /api/notifications 커서 페이지네이션을 사용한다.
- * 설정은 GET/PATCH /api/notifications/settings로 실제 조회·변경한다. 삭제는 서버 API가 없어
- * 로컬 state만 갱신한다.
+ * 설정은 GET/PATCH /api/notifications/settings로 실제 조회·변경한다.
  */
 class NotificationViewModel(
     private val getNotificationsUseCase: GetNotificationsUseCase =
@@ -142,25 +141,6 @@ class NotificationViewModel(
             null -> return
         }
         emitEvent(event)
-    }
-
-    override fun onMoreClick(notificationId: String) {
-        _uiState.update { it.copy(deleteTargetId = notificationId) }
-    }
-
-    override fun onDismissDeleteSheet() {
-        _uiState.update { it.copy(deleteTargetId = null) }
-    }
-
-    override fun onConfirmDelete() {
-        // DELETE 알림 API가 없어 로컬 목록에서만 제거한다.
-        _uiState.update { state ->
-            val id = state.deleteTargetId ?: return@update state
-            state.copy(
-                notifications = state.notifications.filterNot { it.id == id },
-                deleteTargetId = null,
-            )
-        }
     }
 
     /** 알림 설정 화면 진입 시 서버 값으로 토글을 맞춘다([NotificationSettingsRoute]에서 호출). */

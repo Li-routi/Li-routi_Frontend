@@ -34,7 +34,6 @@ import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
-import com.li_routi.feature.home.component.NotificationDeleteBottomSheet
 import com.li_routi.feature.home.component.NotificationListItem
 import com.li_routi.feature.home.component.NotificationTopBar
 import com.li_routi.feature.home.navigation.NotificationScreenActions
@@ -52,7 +51,6 @@ fun NotificationScreen(
     tabs: List<String>,
     selectedTabIndex: Int,
     notifications: List<NotificationItemUiModel>,
-    showDeleteSheet: Boolean,
     modifier: Modifier = Modifier,
     isLoading: Boolean = false,
     hasNext: Boolean = false,
@@ -136,7 +134,6 @@ fun NotificationScreen(
                             NotificationListItem(
                                 item = item,
                                 onClick = { actions.onNotificationClick(item.id) },
-                                onMoreClick = { actions.onMoreClick(item.id) },
                             )
                         }
                         if (errorMessage != null) {
@@ -166,12 +163,6 @@ fun NotificationScreen(
         }
     }
 
-    if (showDeleteSheet) {
-        NotificationDeleteBottomSheet(
-            onDismissRequest = actions::onDismissDeleteSheet,
-            onDeleteClick = actions::onConfirmDelete,
-        )
-    }
 }
 
 @Composable
@@ -264,9 +255,6 @@ private object PreviewNotificationScreenActions : NotificationScreenActions {
     override fun onSettingsClick() = Unit
     override fun onTabSelected(index: Int) = Unit
     override fun onNotificationClick(notificationId: String) = Unit
-    override fun onMoreClick(notificationId: String) = Unit
-    override fun onDismissDeleteSheet() = Unit
-    override fun onConfirmDelete() = Unit
 }
 
 @Preview(showBackground = true, heightDp = 800, name = "목록")
@@ -278,7 +266,6 @@ private fun NotificationScreenListPreview() {
             tabs = NotificationTabLabels,
             selectedTabIndex = 0,
             notifications = SampleNotifications,
-            showDeleteSheet = false,
         )
     }
 }
@@ -292,21 +279,6 @@ private fun NotificationScreenEmptyPreview() {
             tabs = NotificationTabLabels,
             selectedTabIndex = 0,
             notifications = emptyList(),
-            showDeleteSheet = false,
-        )
-    }
-}
-
-@Preview(showBackground = true, heightDp = 800, name = "삭제 시트")
-@Composable
-private fun NotificationScreenDeleteSheetPreview() {
-    LiroutiFrontendTheme {
-        NotificationScreen(
-            actions = PreviewNotificationScreenActions,
-            tabs = NotificationTabLabels,
-            selectedTabIndex = 0,
-            notifications = SampleNotifications.take(3),
-            showDeleteSheet = true,
         )
     }
 }
