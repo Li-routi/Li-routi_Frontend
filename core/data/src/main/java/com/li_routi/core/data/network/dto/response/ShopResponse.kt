@@ -58,7 +58,7 @@ data class ShopAvatarItemResponse(
     val onSale: Boolean,
 )
 
-/** POST /api/shop/items/{itemId}/purchase 응답 result. 구매 후의 착용 상태. */
+/** GET /api/members/me/avatar, PUT /api/members/me/avatar 응답 result. 현재 착용 상태. */
 data class MemberAvatarResponse(
     val equipped: List<AvatarEquippedItemResponse>?,
 )
@@ -68,6 +68,18 @@ data class AvatarEquippedItemResponse(
     val itemId: Long,
     val name: String?,
     val imageUrl: String?,
+)
+
+/** POST /api/shop/items/purchase 응답 result. 이 자체로는 착용을 바꾸지 않음. */
+data class ShopPurchaseResultResponse(
+    val purchasedItemIds: List<Long>?,
+    val payments: List<ShopPurchasePaymentResponse>?,
+)
+
+data class ShopPurchasePaymentResponse(
+    val currency: String?,
+    val paidAmount: Int,
+    val balanceAfter: Int,
 )
 
 /** GET /api/shop/charge-products 응답 result. */

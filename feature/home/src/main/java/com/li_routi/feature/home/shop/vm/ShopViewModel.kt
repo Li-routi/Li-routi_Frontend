@@ -13,13 +13,15 @@ import com.li_routi.core.domain.shop.EquipAvatarUseCase
 import com.li_routi.core.domain.shop.GetShopAvatarItemsUseCase
 import com.li_routi.core.domain.shop.GetShopCategoriesUseCase
 import com.li_routi.core.domain.shop.GetWalletBalancesUseCase
-import com.li_routi.core.domain.shop.PurchaseShopAvatarItemUseCase
+import com.li_routi.core.domain.shop.PurchaseShopItemsUseCase
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
+import com.li_routi.core.domain.shop.ShopPurchasePayment
 import com.li_routi.feature.home.component.CharacterCatalog
 import com.li_routi.feature.home.component.CharacterUiModel
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
+import java.util.UUID
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -39,7 +41,7 @@ class ShopViewModel(
     initialState: ShopUiState = ShopUiState(),
     private val getShopCategoriesUseCase: GetShopCategoriesUseCase = ShopContainer.getShopCategoriesUseCase,
     private val getShopAvatarItemsUseCase: GetShopAvatarItemsUseCase = ShopContainer.getShopAvatarItemsUseCase,
-    private val purchaseShopAvatarItemUseCase: PurchaseShopAvatarItemUseCase = ShopContainer.purchaseShopAvatarItemUseCase,
+    private val purchaseShopItemsUseCase: PurchaseShopItemsUseCase = ShopContainer.purchaseShopItemsUseCase,
     private val getWalletBalancesUseCase: GetWalletBalancesUseCase = ShopContainer.getWalletBalancesUseCase,
     private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
     private val equipAvatarUseCase: EquipAvatarUseCase = ShopContainer.equipAvatarUseCase,
@@ -55,6 +57,11 @@ class ShopViewModel(
     private var itemsJob: Job? = null
     /** 늦게 온 착장 GET이 사용자가 고른 미리보기를 덮지 않게 */
     private var hasUserPreviewed = false
+
+    // 재시도 시 같은 키를 보내야 두 번 결제되지 않음. 장바구니(아이템 id 집합)별로 진행 중인 키를
+    // 들고 있다가 성공하면 버림 — 장바구니가 바뀌면 다른 키로 새로 발급된다(서버가 같은 키에 다른
+    // 장바구니가 오면 거절함).
+    private val purchaseKeys = mutableMapOf<Set<String>, String>()
 
     init {
         loadNickname()
@@ -320,51 +327,67 @@ class ShopViewModel(
     }
 
     /**
-     * 고른 아이템을 차례로 사들임.
-     *
-     * 서버에 일괄 구매 엔드포인트가 없어서 하나씩 부름. 하나라도 실패하면 거기서 멈춤 —
-     * 잔액이 모자란 경우가 대부분이라 밀어붙여도 같은 이유로 계속 실패함.
-     * 앞서 산 것은 되돌릴 수 없으니 몇 개가 넘어갔는지 함께 알려줌
+     * 고른 아이템을 한 번에 삼(`POST /api/shop/items/purchase`). 재화가 섞여도 되고, 전부 되거나
+     * 전부 안 됨(부분 성공 없음). 이 응답 자체는 착용을 바꾸지 않으므로, 성공하면 지금 미리보기
+     * 중인 자리(방금 산 것 포함)를 [equipAfterPurchase]로 이어서 저장한다.
      */
     private fun purchaseAll(targets: List<ShopItemUiModel>) {
+        val itemIds = targets.mapNotNull { it.id.toLongOrNull() }
+        if (itemIds.isEmpty()) return
+        val targetIdSet = targets.mapTo(mutableSetOf()) { it.id }
+
         _uiState.update { it.copy(isPurchasing = true) }
         viewModelScope.launch {
             try {
-                val purchased = mutableListOf<String>()
-                var latestAvatar: MemberAvatar? = null
-                var error: String? = null
-
-                for (target in targets) {
-                    val itemId = target.id.toLongOrNull() ?: continue
-                    when (val result = purchaseShopAvatarItemUseCase(itemId)) {
-                        is ResultState.Success -> {
-                            purchased += target.name
-                            // 구매하면 서버가 그 자리에 바로 입혀줘서 응답이 곧 새 착장임
-                            latestAvatar = result.data
-                            _uiState.update { it.copy(selectedItems = it.selectedItems - target.id) }
+                val key = purchaseKeys.getOrPut(targetIdSet) { UUID.randomUUID().toString() }
+                when (val result = purchaseShopItemsUseCase(itemIds, key)) {
+                    is ResultState.Success -> {
+                        // 성공한 키를 다시 쓰면 서버가 새 구매 대신 이전 결과를 돌려줘서 버려야 함
+                        purchaseKeys.remove(targetIdSet)
+                        _uiState.update { state ->
+                            state.copy(
+                                selectedItems = state.selectedItems - targetIdSet,
+                                coinBalance = result.data.payments.paymentBalanceOf("TOPAZ") ?: state.coinBalance,
+                                gemBalance = result.data.payments.paymentBalanceOf("GEM") ?: state.gemBalance,
+                            )
                         }
-
-                        is ResultState.Error -> error = result.message
-                        ResultState.Loading -> Unit
+                        equipAfterPurchase(purchasedCount = result.data.purchasedItemIds.size)
                     }
-                    if (error != null) break
-                }
 
-                latestAvatar?.let { appearanceStore.applyAvatar(it) }
-                _uiState.update { state ->
-                    val next = latestAvatar?.let { state.applyServerAvatar(it) } ?: state
-                    next.copy(message = purchaseMessageOf(purchased, error))
-                }
-                if (purchased.isNotEmpty()) {
-                    // 갱신을 기다려야 함. 먼저 풀어주면 owned가 반영되기 전에 또 살 수 있음
-                    awaitItemsRefresh()
-                    loadBalances()
-                    emitEvent(ShopUiEvent.SaveSelectedItems)
+                    // 실패한 키는 남겨둬야 재시도할 때 중복 결제되지 않음
+                    is ResultState.Error -> _uiState.update { it.copy(message = result.message) }
+                    ResultState.Loading -> Unit
                 }
             } finally {
                 _uiState.update { it.copy(isPurchasing = false) }
             }
         }
+    }
+
+    /**
+     * 구매 직후 지금 미리보기 중인 자리를 그대로 착용 저장한다.
+     *
+     * [ShopUiState.equipped]는 안 산 아이템도 미리보기로 이미 올라가 있어서(owned 여부와 무관),
+     * 방금 산 아이템까지 자연히 포함된다 — 굳이 owned로 다시 걸러낼 필요가 없다.
+     */
+    private suspend fun equipAfterPurchase(purchasedCount: Int) {
+        val itemIds = _uiState.value.equipped.values.map { it.itemId }
+        when (val result = equipAvatarUseCase(itemIds)) {
+            is ResultState.Success -> {
+                appearanceStore.applyAvatar(result.data)
+                _uiState.update {
+                    it.applyServerAvatar(result.data).copy(message = "${purchasedCount}개를 구매했어요.")
+                }
+            }
+            is ResultState.Error -> _uiState.update {
+                it.copy(message = "구매는 완료됐지만 착용에는 실패했어요. ${result.message}")
+            }
+            ResultState.Loading -> Unit
+        }
+        // 갱신을 기다려야 함. 먼저 풀어주면 owned가 반영되기 전에 또 살 수 있음
+        awaitItemsRefresh()
+        loadBalances()
+        emitEvent(ShopUiEvent.SaveSelectedItems)
     }
 
     /**
@@ -413,16 +436,12 @@ private fun CharacterUiModel.toShopItem(): ShopItemUiModel = ShopItemUiModel(
     owned = true,
 )
 
-/** 하나씩 사기 때문에 중간에 끊길 수 있음 — 몇 개가 넘어갔는지 같이 밝힘 */
-private fun purchaseMessageOf(purchased: List<String>, error: String?): String = when {
-    purchased.isEmpty() -> error ?: "아이템 정보를 불러오지 못했어요."
-    error == null && purchased.size == 1 -> "${purchased.first()}을(를) 구매했어요."
-    error == null -> "${purchased.size}개를 구매했어요."
-    else -> "${purchased.size}개만 구매했어요. $error"
-}
-
 private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =
     firstOrNull { it.currency == currency }?.balance
+
+// balanceOf(List<CurrencyBalance>)와 이름이 같으면 타입 소거로 JVM 시그니처가 겹쳐 컴파일 에러가 남
+private fun List<ShopPurchasePayment>.paymentBalanceOf(currency: String): Int? =
+    firstOrNull { it.currency == currency }?.balanceAfter
 
 /**
  * 서버가 준 착장으로 화면과 저장 상태를 함께 맞춤.

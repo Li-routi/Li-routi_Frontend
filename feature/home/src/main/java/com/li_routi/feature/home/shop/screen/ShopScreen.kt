@@ -49,8 +49,9 @@ import com.li_routi.feature.home.shop.vm.EquippedUiModel
 import com.li_routi.feature.home.shop.vm.ShopCategoryUiModel
 import com.li_routi.feature.home.shop.vm.ShopMainTab
 
-private val CharacterWidth = 220.dp
-private val CharacterHeight = 180.dp
+// 높이를 180 -> 230으로 올리면서 기존 220:180 비율을 유지해 너비도 같이 늘림(220 * 230/180 ≈ 281).
+private val CharacterHeight = 230.dp
+private val CharacterWidth = 281.dp
 
 /** [ShopMainTab.entries] 순서(CHARACTER, CLOTHING)와 짝을 맞춘 탭 라벨. */
 private val ShopMainTabLabels = listOf("캐릭터", "의상")

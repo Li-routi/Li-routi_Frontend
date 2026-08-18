@@ -50,11 +50,14 @@ class GetShopAvatarItemsUseCase(
         repository.getAvatarItems(slot = slot, ownedOnly = ownedOnly)
 }
 
-class PurchaseShopAvatarItemUseCase(
+class PurchaseShopItemsUseCase(
     private val repository: ShopRepository,
 ) {
-    suspend operator fun invoke(itemId: Long): ResultState<MemberAvatar> =
-        repository.purchaseAvatarItem(itemId)
+    /** [idempotencyKey]를 안 주면 새 구매로 보고 매번 새로 만듦 */
+    suspend operator fun invoke(
+        itemIds: List<Long>,
+        idempotencyKey: String = java.util.UUID.randomUUID().toString(),
+    ): ResultState<ShopPurchaseResult> = repository.purchaseItems(itemIds, idempotencyKey)
 }
 
 class GetChargeProductsUseCase(

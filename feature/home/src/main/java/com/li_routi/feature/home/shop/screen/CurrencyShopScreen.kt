@@ -20,6 +20,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
+import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.shop.component.CurrencyChargeDialog
 import com.li_routi.feature.home.shop.component.CurrencyChargeDialogContent
 import com.li_routi.feature.home.shop.component.CurrencyProductList
@@ -31,7 +32,7 @@ import com.li_routi.feature.home.shop.component.ShopTopBar
 import com.li_routi.feature.home.shop.navigation.CurrencyShopScreenActions
 
 /** Figma node `2305:14471` 탭 라벨. index 0 = 주황, 1 = 파란. */
-private val CurrencyTabLabels = listOf("주황보석", "파란보석")
+private val CurrencyTabLabels = listOf("오렌지젬", "블루젬")
 
 private const val TabOrange = 0
 private const val TabBlue = 1
@@ -58,6 +59,9 @@ fun CurrencyShopScreen(
 
     Scaffold(
         modifier = modifier.fillMaxSize(),
+        // LiroutiFrontendTheme이 MaterialTheme에 colorScheme을 안 넘겨서, 명시하지 않으면
+        // Compose Material3 기본 배경색(붉은끼가 도는 기본 팔레트)이 깔린다 — Figma(순백)와 맞춘다.
+        containerColor = LiroutiTheme.colors.backgroundDefault,
         topBar = {
             ShopTopBar(
                 title = "상점",

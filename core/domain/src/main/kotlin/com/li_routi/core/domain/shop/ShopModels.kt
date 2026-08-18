@@ -33,6 +33,25 @@ data class MemberAvatar(
     val equipped: List<AvatarEquippedItem>,
 )
 
+/**
+ * 여러 아이템을 한 번에 산 결과. 이 자체로는 착용을 바꾸지 않음 —
+ * 착용은 [ShopRepository.equipAvatar]가 따로 맡음
+ */
+data class ShopPurchaseResult(
+    /** 이번에 산 아이템 id. 요청한 순서 그대로 옴 */
+    val purchasedItemIds: List<Long>,
+    /** 재화별 결제 내역. 한 재화로만 샀으면 한 줄 */
+    val payments: List<ShopPurchasePayment>,
+)
+
+/** 재화 한 종류의 결제 내역 */
+data class ShopPurchasePayment(
+    val currency: String,
+    val paidAmount: Int,
+    /** 결제 후 잔액. 화면 상단 잔액을 이 값으로 갱신하면 됨 */
+    val balanceAfter: Int,
+)
+
 data class AvatarEquippedItem(
     val slot: String,
     val itemId: Long,
