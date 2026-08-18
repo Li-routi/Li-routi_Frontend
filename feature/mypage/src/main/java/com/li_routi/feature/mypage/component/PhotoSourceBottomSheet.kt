@@ -33,18 +33,21 @@ private val SheetShadowColor = Color.Black.copy(alpha = 0.25f)
 private val HandleColor = Color(0xFFDEDEDE)
 private val ItemTextStyle = TextStyle(fontSize = 14.sp, lineHeight = 22.sp, letterSpacing = (-0.35).sp)
 private val TopItemShape = RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp)
+private val MiddleItemShape = RoundedCornerShape(0.dp)
 private val BottomItemShape = RoundedCornerShape(bottomStart = 6.dp, bottomEnd = 6.dp)
 private val StandaloneItemShape = RoundedCornerShape(6.dp)
 
 /**
  * 프로필 사진 변경 방법을 고르는 바텀시트. Figma node `6075:25632`("Bottom Sheet") 기준 —
- * "사진 촬영하기"/"앨범에서 가져오기"는 구분선으로 나뉜 한 카드로 묶고, "닫기"는 아래에 별도 버튼으로 둔다.
+ * "사진 촬영하기"/"앨범에서 가져오기"/"기본 이미지로 변경"은 구분선으로 나뉜 한 카드로 묶고,
+ * "닫기"는 아래에 별도 버튼으로 둔다.
  */
 @Composable
 fun PhotoSourceBottomSheet(
     onDismiss: () -> Unit,
     onTakePhotoClick: () -> Unit,
     onPickAlbumClick: () -> Unit,
+    onResetToDefaultClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val sheetShape: Shape = RoundedCornerShape(topStart = SheetCornerRadius, topEnd = SheetCornerRadius)
@@ -79,7 +82,9 @@ fun PhotoSourceBottomSheet(
                 Column {
                     PhotoSourceBottomSheetItem(text = "사진 촬영하기", shape = TopItemShape, onClick = onTakePhotoClick)
                     LiroutiDivider(color = LiroutiTheme.colors.borderSub)
-                    PhotoSourceBottomSheetItem(text = "앨범에서 가져오기", shape = BottomItemShape, onClick = onPickAlbumClick)
+                    PhotoSourceBottomSheetItem(text = "앨범에서 가져오기", shape = MiddleItemShape, onClick = onPickAlbumClick)
+                    LiroutiDivider(color = LiroutiTheme.colors.borderSub)
+                    PhotoSourceBottomSheetItem(text = "기본 이미지로 변경", shape = BottomItemShape, onClick = onResetToDefaultClick)
                 }
                 PhotoSourceBottomSheetItem(text = "닫기", shape = StandaloneItemShape, onClick = onDismiss)
             }
@@ -105,6 +110,11 @@ private fun PhotoSourceBottomSheetItem(text: String, shape: Shape, onClick: () -
 @Composable
 private fun PhotoSourceBottomSheetPreview() {
     LiroutiFrontendTheme {
-        PhotoSourceBottomSheet(onDismiss = {}, onTakePhotoClick = {}, onPickAlbumClick = {})
+        PhotoSourceBottomSheet(
+            onDismiss = {},
+            onTakePhotoClick = {},
+            onPickAlbumClick = {},
+            onResetToDefaultClick = {},
+        )
     }
 }

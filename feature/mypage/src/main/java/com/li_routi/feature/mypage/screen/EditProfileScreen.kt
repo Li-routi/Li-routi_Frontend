@@ -60,8 +60,8 @@ import java.io.File
  * 프로필 수정(닉네임/프로필 사진) 화면. Figma node `205:18107`("마이") 기준.
  *
  * 마이페이지의 "프로필 수정" 버튼으로 진입한다. 사진 편집 배지를 탭하면 "사진 촬영하기"/"앨범에서
- * 가져오기" 바텀시트가 뜨고([PhotoSourceBottomSheet], Figma node `6075:25632` 기준), 실제 업로드는
- * "저장" 탭 시 [onSaveClick]으로 골라둔 [Uri]를 넘겨 처리한다.
+ * 가져오기"/"기본 이미지로 변경" 바텀시트가 뜨고([PhotoSourceBottomSheet], Figma node `6075:25632` 기준),
+ * 실제 반영은 "저장" 탭 시 [onSaveClick]으로 골라둔 [Uri](또는 "기본 이미지로 변경" 여부)를 넘겨 처리한다.
  */
 @Composable
 fun EditProfileScreen(
@@ -69,7 +69,7 @@ fun EditProfileScreen(
     profileImageUrl: String?,
     onBackClick: () -> Unit,
     onCancelClick: () -> Unit,
-    onSaveClick: (nickname: String, imageUri: Uri?) -> Unit,
+    onSaveClick: (nickname: String, imageUri: Uri?, resetToDefault: Boolean) -> Unit,
     isSaving: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
@@ -77,21 +77,25 @@ fun EditProfileScreen(
     var nickname by remember(initialNickname) { mutableStateOf(initialNickname) }
     var selectedImageUri by rememberSaveable(stateSaver = UriSaver) { mutableStateOf<Uri?>(null) }
     var pendingCameraUri by rememberSaveable(stateSaver = UriSaver) { mutableStateOf<Uri?>(null) }
+    // "기본 이미지로 변경"을 눌렀는지. 실제로 업로드할 이미지가 있는 게 아니라(디자인상 기본 이미지는
+    // LiroutiAvatar의 내장 placeholder라 별도 자산이 없다) 저장 시 profileImageKey를 null로 보내
+    // 서버에서 지우라는 의도를 전달하는 플래그다 — AuthRepositoryImpl.updateProfile 참고.
+    var resetToDefaultImage by rememberSaveable { mutableStateOf(false) }
     var showPhotoSourceSheet by remember { mutableStateOf(false) }
     val isNicknameBlank = nickname.isBlank()
-    // 닉네임도 안 바꾸고 사진도 새로 안 골랐으면 서버에 보낼 변경 사항이 없어 저장을 막는다 — 그냥
-    // 불필요한 요청을 줄이기 위함이며, 사진을 안 바꿔도 저장 자체는 안전하다(사진 유지 로직은
+    // 닉네임도 안 바꾸고 사진도 그대로면 서버에 보낼 변경 사항이 없어 저장을 막는다 — 그냥 불필요한
+    // 요청을 줄이기 위함이며, 사진을 안 바꿔도 저장 자체는 안전하다(사진 유지 로직은
     // AuthRepositoryImpl.resolveProfileImageKey 참고 — 새 이미지가 없으면 기존 사진을 재업로드해
     // 서버의 "profileImageKey=null → 삭제" 처리 문제를 우회한다).
-    val hasChanges = nickname != initialNickname || selectedImageUri != null
+    val hasChanges = nickname != initialNickname || selectedImageUri != null || resetToDefaultImage
     val focusManager = LocalFocusManager.current
     val keyboardController = LocalSoftwareKeyboardController.current
     val galleryLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.PickVisualMedia(),
-    ) { uri -> if (uri != null) selectedImageUri = uri }
+    ) { uri -> if (uri != null) { selectedImageUri = uri; resetToDefaultImage = false } }
     val cameraLauncher = rememberLauncherForActivityResult(
         ActivityResultContracts.TakePicture(),
-    ) { success -> if (success) selectedImageUri = pendingCameraUri }
+    ) { success -> if (success) { selectedImageUri = pendingCameraUri; resetToDefaultImage = false } }
 
     Box(modifier = modifier.fillMaxSize()) {
         Column(
@@ -115,6 +119,7 @@ fun EditProfileScreen(
                 EditProfileAvatar(
                     profileImageUrl = profileImageUrl,
                     selectedImageUri = selectedImageUri,
+                    resetToDefaultImage = resetToDefaultImage,
                     onEditPhotoClick = { showPhotoSourceSheet = true },
                     modifier = Modifier.align(Alignment.CenterHorizontally),
                 )
@@ -145,7 +150,7 @@ fun EditProfileScreen(
                 )
                 EditProfileActionButton(
                     text = "저장",
-                    onClick = { onSaveClick(nickname, selectedImageUri) },
+                    onClick = { onSaveClick(nickname, selectedImageUri, resetToDefaultImage) },
                     backgroundColor = LiroutiTheme.colors.primaryNormal,
                     textColor = LiroutiTheme.colors.backgroundAlternative,
                     enabled = !isSaving && !isNicknameBlank && hasChanges,
@@ -168,6 +173,11 @@ fun EditProfileScreen(
                     galleryLauncher.launch(
                         PickVisualMediaRequest(ActivityResultContracts.PickVisualMedia.ImageOnly),
                     )
+                },
+                onResetToDefaultClick = {
+                    showPhotoSourceSheet = false
+                    selectedImageUri = null
+                    resetToDefaultImage = true
                 },
             )
         }
@@ -193,21 +203,27 @@ private val EditProfilePhotoBadgeSize = 24.dp
 private fun EditProfileAvatar(
     profileImageUrl: String?,
     selectedImageUri: Uri?,
+    resetToDefaultImage: Boolean,
     onEditPhotoClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.size(EditProfileAvatarSize)) {
-        LiroutiAvatar(size = EditProfileAvatarSize) {
-            val model = selectedImageUri ?: profileImageUrl
-            if (model != null) {
-                AsyncImage(
-                    model = model,
-                    contentDescription = "프로필 사진",
-                    modifier = Modifier.size(EditProfileAvatarSize),
-                    contentScale = ContentScale.Crop,
-                )
-            }
-        }
+        // model이 null이면 content 자체를 null로 넘겨 LiroutiAvatar가 기본 placeholder 아이콘을
+        // 그리게 한다 — "기본 이미지로 변경"이 가리키는 실제 기본 이미지가 바로 이 내장 아이콘이다.
+        val model = (selectedImageUri ?: profileImageUrl).takeUnless { resetToDefaultImage }
+        LiroutiAvatar(
+            size = EditProfileAvatarSize,
+            content = model?.let { imageModel ->
+                {
+                    AsyncImage(
+                        model = imageModel,
+                        contentDescription = "프로필 사진",
+                        modifier = Modifier.size(EditProfileAvatarSize),
+                        contentScale = ContentScale.Crop,
+                    )
+                }
+            },
+        )
         Box(
             modifier = Modifier
                 .align(Alignment.BottomEnd)
@@ -260,7 +276,7 @@ private fun EditProfileScreenPreview() {
             profileImageUrl = null,
             onBackClick = {},
             onCancelClick = {},
-            onSaveClick = { _, _ -> },
+            onSaveClick = { _, _, _ -> },
         )
     }
 }
