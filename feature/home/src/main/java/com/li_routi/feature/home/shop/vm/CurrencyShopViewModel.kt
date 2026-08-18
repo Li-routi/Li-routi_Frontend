@@ -246,29 +246,34 @@ private fun com.li_routi.core.domain.shop.ExchangeResult.balanceOf(currency: Str
     else -> null
 }
 
+// Figma(node 6389:17225/17281/18526) 표기 기준 — "다이아"/"토파즈"가 아니라 "오렌지젬"/"블루젬".
 private fun String.toDisplayCurrency(): String = when (this) {
-    "GEM" -> "다이아"
-    "TOPAZ" -> "토파즈"
+    "GEM" -> "블루젬"
+    "TOPAZ" -> "오렌지젬"
     else -> this
 }
 
 private fun Long.formatted(): String = NumberFormat.getNumberInstance(Locale.KOREA).format(this)
 
 private fun ExchangeProduct.toUiModel(): CurrencyProductUiModel {
-    val title = "${toAmount.formatted()}${toCurrency.toDisplayCurrency()}"
-    val payment = "${fromAmount.formatted()}${fromCurrency.toDisplayCurrency()}"
+    val title = "${toAmount.formatted()} ${toCurrency.toDisplayCurrency()}"
+    val payment = "${fromAmount.formatted()} ${fromCurrency.toDisplayCurrency()}"
     return CurrencyProductUiModel(
         id = "$ExchangeIdPrefix$id",
         title = title,
         subtitle = payment,
-        price = payment,
+        // 가격 칸 아이콘이 이미 파란 다이아몬드로 재화를 나타내므로, Figma처럼 이름 없이 개수만 적는다.
+        price = "${fromAmount.formatted()}개",
         chargeTitle = title,
         paymentAmount = payment,
     )
 }
 
 private fun ChargeProduct.toUiModel(): CurrencyProductUiModel {
-    val title = "${rewardAmount.formatted()}${rewardCurrency.toDisplayCurrency()}"
+    // Figma 충전 팝업(node 6389:18526)의 큰 숫자는 유상+무상 합계(예: "550 블루젬" = 500 유상 + 50
+    // 보너스)이고, "+50 보너스" 뱃지가 그중 무상분만 별도로 강조해 보여준다.
+    val totalAmount = rewardAmount + bonusAmount
+    val title = "${totalAmount.formatted()} ${rewardCurrency.toDisplayCurrency()}"
     return CurrencyProductUiModel(
         id = "$ChargeIdPrefix$id",
         title = title,
@@ -277,7 +282,6 @@ private fun ChargeProduct.toUiModel(): CurrencyProductUiModel {
         priceSuffix = "원",
         isPopular = popular,
         chargeTitle = title,
-        // 유상/무상을 나눠서 내려주는 건 팝업에서 "+50 보너스"를 따로 보여주기 위함
         bonusLabel = if (bonusAmount > 0) "+${bonusAmount.formatted()} 보너스" else null,
         paymentAmount = "${priceKrw.formatted()}원",
     )

@@ -6,6 +6,7 @@ import com.li_routi.core.common.kotlin.util.safeApiCall
 import com.li_routi.core.data.mapper.toDomain
 import com.li_routi.core.data.network.dto.request.EquipAvatarRequest
 import com.li_routi.core.data.network.dto.request.ExchangeRequest
+import com.li_routi.core.data.network.dto.request.PurchaseItemsRequest
 import com.li_routi.core.data.network.dto.request.StartChargeRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.service.ShopApiService
@@ -18,6 +19,7 @@ import com.li_routi.core.domain.shop.ExchangeResult
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
 import com.li_routi.core.domain.shop.ShopCategory
+import com.li_routi.core.domain.shop.ShopPurchaseResult
 import com.li_routi.core.domain.shop.ShopRepository
 import com.google.gson.Gson
 import com.google.gson.JsonObject
@@ -58,8 +60,13 @@ class ShopRepositoryImpl(
         api.getAvatarItems(slot = slot, ownedOnly = ownedOnly).unwrap().toDomain()
     }
 
-    override suspend fun purchaseAvatarItem(itemId: Long): ResultState<MemberAvatar> = shopCall {
-        api.purchaseAvatarItem(itemId).unwrap().toDomain()
+    override suspend fun purchaseItems(
+        itemIds: List<Long>,
+        idempotencyKey: String,
+    ): ResultState<ShopPurchaseResult> = shopCall {
+        api.purchaseItems(
+            PurchaseItemsRequest(itemIds = itemIds, idempotencyKey = idempotencyKey),
+        ).unwrap().toDomain()
     }
 
     override suspend fun getChargeProducts(): ResultState<List<ChargeProduct>> = shopCall {

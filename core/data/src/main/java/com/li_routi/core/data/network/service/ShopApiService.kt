@@ -2,6 +2,7 @@ package com.li_routi.core.data.network.service
 
 import com.li_routi.core.data.network.dto.request.EquipAvatarRequest
 import com.li_routi.core.data.network.dto.request.ExchangeRequest
+import com.li_routi.core.data.network.dto.request.PurchaseItemsRequest
 import com.li_routi.core.data.network.dto.request.StartChargeRequest
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.ChargeProductsResponse
@@ -12,6 +13,7 @@ import com.li_routi.core.data.network.dto.response.ExchangeResultResponse
 import com.li_routi.core.data.network.dto.response.MemberAvatarResponse
 import com.li_routi.core.data.network.dto.response.ShopAvatarItemsResponse
 import com.li_routi.core.data.network.dto.response.ShopCategoriesResponse
+import com.li_routi.core.data.network.dto.response.ShopPurchaseResultResponse
 import com.li_routi.core.data.network.dto.response.WalletBalancesResponse
 import retrofit2.http.Body
 import retrofit2.http.GET
@@ -54,11 +56,13 @@ interface ShopApiService {
         @Query("ownedOnly") ownedOnly: Boolean?,
     ): ApiResponse<ShopAvatarItemsResponse>
 
-    // 요청 body 없음 — 가격이랑 결제 재화는 서버가 갖고 있음
-    @POST("api/shop/items/{itemId}/purchase")
-    suspend fun purchaseAvatarItem(
-        @Path("itemId") itemId: Long,
-    ): ApiResponse<MemberAvatarResponse>
+    // 여러 아이템을 한 번에 삼(최대 30개). 가격/결제 재화는 서버가 갖고 있고, 재화가 섞여도
+    // 재화별로 합산해 각각 차감한다. 이 응답 자체는 착용 상태를 바꾸지 않으므로, 산 뒤 원하는
+    // 착장은 equipAvatar로 별도 저장해야 한다.
+    @POST("api/shop/items/purchase")
+    suspend fun purchaseItems(
+        @Body request: PurchaseItemsRequest,
+    ): ApiResponse<ShopPurchaseResultResponse>
 
     @GET("api/shop/charge-products")
     suspend fun getChargeProducts(): ApiResponse<ChargeProductsResponse>

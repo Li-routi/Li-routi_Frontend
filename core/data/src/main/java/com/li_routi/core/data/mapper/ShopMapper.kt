@@ -13,6 +13,8 @@ import com.li_routi.core.data.network.dto.response.MemberAvatarResponse
 import com.li_routi.core.data.network.dto.response.ShopAvatarItemResponse
 import com.li_routi.core.data.network.dto.response.ShopAvatarItemsResponse
 import com.li_routi.core.data.network.dto.response.ShopCategoriesResponse
+import com.li_routi.core.data.network.dto.response.ShopPurchasePaymentResponse
+import com.li_routi.core.data.network.dto.response.ShopPurchaseResultResponse
 import com.li_routi.core.data.network.dto.response.WalletBalancesResponse
 import com.li_routi.core.domain.shop.AvatarEquippedItem
 import com.li_routi.core.domain.shop.ChargeProduct
@@ -24,6 +26,8 @@ import com.li_routi.core.domain.shop.ExchangeResult
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
 import com.li_routi.core.domain.shop.ShopCategory
+import com.li_routi.core.domain.shop.ShopPurchasePayment
+import com.li_routi.core.domain.shop.ShopPurchaseResult
 
 /**
  * 결제 응답에서 비면 안 되는 값을 걸러냄.
@@ -123,4 +127,15 @@ fun ExchangeResultResponse.toDomain(): ExchangeResult = ExchangeResult(
     toAmount = toAmount,
     fromBalance = fromBalance,
     toBalance = toBalance,
+)
+
+fun ShopPurchaseResultResponse.toDomain(): ShopPurchaseResult = ShopPurchaseResult(
+    purchasedItemIds = purchasedItemIds.orEmpty(),
+    payments = payments.orEmpty().map { it.toDomain() },
+)
+
+fun ShopPurchasePaymentResponse.toDomain(): ShopPurchasePayment = ShopPurchasePayment(
+    currency = currency.orEmpty(),
+    paidAmount = paidAmount,
+    balanceAfter = balanceAfter,
 )
