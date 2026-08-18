@@ -79,6 +79,7 @@ private fun GroupRoutineVerificationTarget.toAuthSelectable() = RoutineAuthSelec
     categoryColor = categoryColor,
     groupId = groupId,
     groupRoutineId = routineId,
+    groupRoutineVerificationId = verificationId,
 )
 
 /** [Uri]는 Bundle에 바로 못 넣으므로 문자열로 저장/복원한다(구성 변경 후에도 촬영 사진 유지). */

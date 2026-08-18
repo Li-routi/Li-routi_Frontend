@@ -13,6 +13,7 @@ import com.li_routi.core.domain.routine.GetRoutineCategoriesUseCase
 import com.li_routi.core.domain.routine.GetRoutineTemplatesUseCase
 import com.li_routi.core.domain.routine.RoutineCatalogRepository
 import com.li_routi.core.domain.routine.RoutineVerificationRepository
+import com.li_routi.core.domain.routine.ReverifyGroupRoutineUseCase
 import com.li_routi.core.domain.routine.SubmitGroupRoutineAuthUseCase
 import com.li_routi.core.domain.routine.SubmitMemberRoutineAuthUseCase
 import com.li_routi.core.domain.routine.SubmitRoutineAuthUseCase
@@ -42,6 +43,10 @@ object RoutineContainer {
         VerifyGroupRoutineUseCase(verificationRepository)
     }
 
+    private val reverifyGroupRoutineUseCase: ReverifyGroupRoutineUseCase by lazy {
+        ReverifyGroupRoutineUseCase(verificationRepository)
+    }
+
     private val uploadMediaUseCase: UploadMediaUseCase
         get() = MediaContainer.uploadMediaUseCase
 
@@ -56,6 +61,7 @@ object RoutineContainer {
         SubmitGroupRoutineAuthUseCase(
             uploadMediaUseCase = uploadMediaUseCase,
             verifyGroupRoutineUseCase = verifyGroupRoutineUseCase,
+            reverifyGroupRoutineUseCase = reverifyGroupRoutineUseCase,
         )
     }
 

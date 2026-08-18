@@ -13,4 +13,5 @@ data class GroupRoutineVerification(
 data class GroupRoutineTarget(
     val groupId: Long,
     val routineId: Long,
+    val verificationId: Long? = null,
 )

@@ -61,6 +61,7 @@ data class RoutineAuthSelectableUiModel(
     val memberRoutineId: Long? = null,
     val groupId: Long? = null,
     val groupRoutineId: Long? = null,
+    val groupRoutineVerificationId: Long? = null,
     val challengeId: Long? = null,
 )
 

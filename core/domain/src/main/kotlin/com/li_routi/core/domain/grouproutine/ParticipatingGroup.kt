@@ -10,4 +10,5 @@ data class ParticipatingGroup(
     val currentStreak: Int,
     val monthlyAchievementRate: Int,
     val todayGroupVerificationCount: Int,
+    val lastVerificationAt: String?,
 )

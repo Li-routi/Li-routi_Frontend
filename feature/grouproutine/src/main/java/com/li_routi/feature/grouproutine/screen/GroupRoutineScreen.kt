@@ -54,6 +54,8 @@ import androidx.compose.material3.BottomSheetScaffold
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.CheckboxDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -289,6 +291,23 @@ fun GroupRoutineRoute(
                 ),
             )
         },
+        onCertificationReverifyClick = { post ->
+            val groupId = uiState.selectedRoutine?.id ?: return@GroupRoutineScreen
+            val todo = uiState.todos.firstOrNull { it.id == post.routineId }
+                ?: return@GroupRoutineScreen
+            onStartVerification(
+                GroupRoutineVerificationTarget(
+                    groupId = groupId,
+                    routineId = post.routineId,
+                    verificationId = post.id,
+                    roomName = uiState.selectedRoutine?.title.orEmpty(),
+                    title = todo.title,
+                    category = todo.category,
+                    deadline = todo.deadline,
+                    categoryColor = todo.categoryColor,
+                ),
+            )
+        },
         onCertificationTabClick = viewModel::onCertificationTabClick,
         onCertificationMemberClick = viewModel::onCertificationMemberClick,
         onCertificationSummaryClick = viewModel::onCertificationSummaryClick,
@@ -384,6 +403,7 @@ private fun GroupRoutineScreen(
     onCategoryColorSelected: (CategoryColor) -> Unit,
     onCreateRoomDoneClick: () -> Unit,
     onRoutineVerificationClick: (Long, Long) -> Unit = { _, _ -> },
+    onCertificationReverifyClick: (CertificationPostUiModel) -> Unit = {},
     onCertificationTabClick: (Boolean) -> Unit,
     onCertificationMemberClick: (Long?) -> Unit,
     onCertificationSummaryClick: () -> Unit,
@@ -465,6 +485,7 @@ private fun GroupRoutineScreen(
                 onCertificationMemberClick = onCertificationMemberClick,
                 onCertificationLikeClick = onCertificationLikeClick,
                 onCertificationDisappointmentClick = onCertificationDisappointmentClick,
+                onCertificationReverifyClick = onCertificationReverifyClick,
                 onTabSelected = onTabSelected,
             )
 
@@ -2179,10 +2200,8 @@ private fun GroupRoutineCard(
     ) {
         Row(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(6.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RoutineIconBox(size = 44)
             Column(modifier = Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
                     Text(
@@ -2757,6 +2776,7 @@ private fun CertificationCollectionScreen(
     onCertificationMemberClick: (Long?) -> Unit,
     onCertificationLikeClick: (Long, Boolean) -> Unit,
     onCertificationDisappointmentClick: (Long, Boolean) -> Unit,
+    onCertificationReverifyClick: (CertificationPostUiModel) -> Unit,
     onTabSelected: (AppBottomTab) -> Unit = {},
     modifier: Modifier = Modifier,
 ) {
@@ -2782,9 +2802,10 @@ private fun CertificationCollectionScreen(
                         posts = uiState.visibleCertificationPosts,
                         members = uiState.members,
                         selectedMemberId = uiState.selectedCertificationMemberId,
-                        onMemberClick = onCertificationMemberClick,
-                        onLikeClick = onCertificationLikeClick,
-                        onDisappointmentClick = onCertificationDisappointmentClick,
+        onMemberClick = onCertificationMemberClick,
+        onLikeClick = onCertificationLikeClick,
+        onDisappointmentClick = onCertificationDisappointmentClick,
+        onReverifyClick = onCertificationReverifyClick,
                         modifier = Modifier.padding(horizontal = 16.dp),
                     )
                 }
@@ -4031,6 +4052,7 @@ private fun CertificationFeedCard(
     onMemberClick: (Long?) -> Unit,
     onLikeClick: (Long, Boolean) -> Unit,
     onDisappointmentClick: (Long, Boolean) -> Unit,
+    onReverifyClick: (CertificationPostUiModel) -> Unit,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -4058,6 +4080,7 @@ private fun CertificationFeedCard(
             CertificationPostItem(
                 post = post,
                 onLikeClick = { onLikeClick(post.id, post.isLiked) },
+                onReverifyClick = { onReverifyClick(post) },
             )
         }
     }
@@ -4109,8 +4132,10 @@ private fun FeedTab(
 private fun CertificationPostItem(
     post: CertificationPostUiModel,
     onLikeClick: () -> Unit,
+    onReverifyClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var isReverifyMenuVisible by remember(post.id) { mutableStateOf(false) }
     Column(modifier = modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
             Image(
@@ -4134,7 +4159,37 @@ private fun CertificationPostItem(
                 )
             }
             Spacer(modifier = Modifier.weight(1f))
-            Text(text = "...", color = LiroutiTheme.colors.labelInfo, fontSize = 18.sp)
+            if (post.isMine) {
+                Box {
+                    Text(
+                        text = "...",
+                        color = LiroutiTheme.colors.labelInfo,
+                        fontSize = 18.sp,
+                        textAlign = TextAlign.Center,
+                        modifier = Modifier
+                            .size(40.dp)
+                            .clickable(
+                                onClickLabel = "인증 메뉴 열기",
+                                onClick = { isReverifyMenuVisible = true },
+                            )
+                            .padding(bottom = 8.dp),
+                    )
+                    DropdownMenu(
+                        expanded = isReverifyMenuVisible,
+                        onDismissRequest = { isReverifyMenuVisible = false },
+                    ) {
+                        DropdownMenuItem(
+                            text = { Text("재인증") },
+                            onClick = {
+                                isReverifyMenuVisible = false
+                                onReverifyClick()
+                            },
+                        )
+                    }
+                }
+            } else {
+                Text(text = "...", color = LiroutiTheme.colors.labelInfo, fontSize = 18.sp)
+            }
         }
         Text(
             text = post.body,
