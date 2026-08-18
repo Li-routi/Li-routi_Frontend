@@ -28,6 +28,7 @@ import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.common.ui.payment.LocalPaymentLauncher
 import com.li_routi.core.common.ui.payment.LocalPaymentResultHandlerSetter
 import com.li_routi.core.common.ui.payment.PaymentLauncher
+import com.li_routi.core.data.di.NotificationContainer
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import io.portone.sdk.android.PortOne
 import io.portone.sdk.android.payment.PaymentCallback
@@ -149,6 +150,7 @@ class MainActivity : ComponentActivity() {
      * raw 키로 한 번 더 시도한다.
      */
     private fun consumeNotificationIntent(intent: Intent) {
+        markNotificationReadFromIntent(intent)
         val type = intent.getStringExtra(FcmNotificationPresenter.ExtraNotificationType)
             ?: intent.getStringExtra("type")
             ?: return
@@ -158,6 +160,24 @@ class MainActivity : ComponentActivity() {
             ?: intent.getStringExtra("referenceId")?.toLongOrNull()
         pendingNotificationTarget = resolveNotificationNavigationTarget(type, referenceId) ?: return
         pendingNotificationToken++
+    }
+
+    /**
+     * 시스템 알림을 탭해 앱에 진입한 경우 서버의 알림 목록도 읽음 처리한다.
+     *
+     * 포그라운드에서 직접 만든 알림은 숫자 extra를 사용하고, 백그라운드에서 FCM이 만든 알림은
+     * data payload의 문자열 extra를 사용한다. 서버 읽음 API는 멱등이므로 같은 Intent가 다시
+     * 전달돼도 최초 읽은 시각은 유지된다.
+     */
+    private fun markNotificationReadFromIntent(intent: Intent) {
+        val notificationId = intent
+            .getLongExtra(FcmNotificationPresenter.ExtraNotificationId, -1L)
+            .takeIf { it > 0 }
+            ?: intent.getStringExtra("notificationId")?.toLongOrNull()?.takeIf { it > 0 }
+            ?: return
+        lifecycleScope.launch {
+            NotificationContainer.markNotificationReadUseCase(notificationId)
+        }
     }
 
     private fun requestPostNotificationsIfNeeded() {

@@ -1,6 +1,5 @@
 package com.li_routi.feature.home.component
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
@@ -16,12 +15,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.ColorFilter
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.foundation.color.NotificationUnreadBackground
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
@@ -29,19 +25,26 @@ import com.li_routi.feature.home.vm.NotificationItemUiModel
 import com.li_routi.feature.home.vm.NotificationTab
 
 /**
- * 알림 목록 한 줄 (스크린샷 기준: 미읽음 점/배경, 카테고리·제목·시간, 3dot).
+ * 알림 목록 한 줄이다.
+ *
+ * 읽지 않은 알림만 점과 배경으로 강조한다. 읽은 알림도 관련 화면을 다시 열 수 있어야 하므로
+ * 클릭은 유지하고 제목 색상만 낮춰 읽음 상태를 표현한다.
  */
 @Composable
 fun NotificationListItem(
     item: NotificationItemUiModel,
     onClick: () -> Unit,
-    onMoreClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     val background = if (item.isUnread) {
         NotificationUnreadBackground
     } else {
         LiroutiTheme.colors.backgroundDefault
+    }
+    val titleColor = if (item.isUnread) {
+        LiroutiTheme.colors.labelDefault
+    } else {
+        LiroutiTheme.colors.labelInfo
     }
     // Figma Body4 13/16
     val metaStyle = LiroutiTheme.typography.body3Regular.copy(lineHeight = 16.sp)
@@ -92,18 +95,9 @@ fun NotificationListItem(
                 text = item.title,
                 // Figma Body3/Bold 14/22
                 style = LiroutiTheme.typography.body2LongSemiBold,
-                color = LiroutiTheme.colors.labelDefault,
+                color = titleColor,
             )
         }
-
-        Image(
-            painter = painterResource(id = R.drawable.overflow_menu__vertical),
-            contentDescription = "더보기",
-            modifier = Modifier
-                .size(20.dp)
-                .clickable(onClick = onMoreClick),
-            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelDefault),
-        )
     }
 }
 
@@ -121,7 +115,6 @@ private fun NotificationListItemUnreadPreview() {
                 isUnread = true,
             ),
             onClick = {},
-            onMoreClick = {},
         )
     }
 }
@@ -140,7 +133,6 @@ private fun NotificationListItemReadPreview() {
                 isUnread = false,
             ),
             onClick = {},
-            onMoreClick = {},
         )
     }
 }

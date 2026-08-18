@@ -36,7 +36,6 @@ fun NotificationRoute(
         tabs = uiState.tabs,
         selectedTabIndex = uiState.selectedTabIndex,
         notifications = uiState.filteredNotifications,
-        showDeleteSheet = uiState.deleteTargetId != null,
         isLoading = uiState.isLoading,
         hasNext = uiState.hasNext,
         errorMessage = uiState.errorMessage,

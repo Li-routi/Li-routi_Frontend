@@ -6,7 +6,6 @@ package com.li_routi.feature.home.vm
 data class NotificationUiState(
     val selectedTabIndex: Int = 0,
     val notifications: List<NotificationItemUiModel> = emptyList(),
-    val deleteTargetId: String? = null,
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val hasNext: Boolean = false,

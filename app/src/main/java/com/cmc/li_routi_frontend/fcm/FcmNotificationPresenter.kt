@@ -24,6 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger
 object FcmNotificationPresenter {
 
     const val ChannelId = "lirouti_default"
+    /** 서버 알림 목록의 ID를 읽어 시스템 푸시 탭을 읽음 처리하는 키다. */
+    const val ExtraNotificationId = "notification_id"
     /** [message.data]에서 알림 이벤트 타입을 읽는 키. 서버 알림 목록 API의 `type` 필드와 동일한 값이 온다고 가정한다. */
     const val ExtraNotificationType = "notification_type"
     /** [message.data]에서 대상 id를 읽는 키. 서버 알림 목록 API의 `referenceId`와 동일하다고 가정한다. */
@@ -67,6 +69,7 @@ object FcmNotificationPresenter {
             // 최신 알림 것으로 덮어써서, 예전 알림을 눌러도 최신 알림의 대상으로 이동해버린다.
             data = Uri.parse("lirouti://notification/$id")
             // MainActivity가 어느 화면으로 이동할지 판단하는 데 쓴다. resolveNotificationNavigationTarget 참고.
+            putExtra(ExtraNotificationId, message.data["notificationId"]?.toLongOrNull() ?: -1L)
             putExtra(ExtraNotificationType, message.data["type"])
             putExtra(ExtraNotificationReferenceId, message.data["referenceId"]?.toLongOrNull() ?: -1L)
         }
