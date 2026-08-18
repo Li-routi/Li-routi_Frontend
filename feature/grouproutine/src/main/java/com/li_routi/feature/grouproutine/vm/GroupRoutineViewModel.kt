@@ -244,7 +244,11 @@ class GroupRoutineViewModel(
                         GroupRoutineUiModel(
                             id = group.groupId,
                             title = group.groupName,
-                            lastActiveLabel = "1\uC2DC\uAC04 \uC804 \uD65C\uB3D9",
+                            lastActiveLabel = group.lastVerificationAt
+                                .toRelativeTimeLabel()
+                                .takeIf { it.isNotBlank() }
+                                ?.plus(" \uD65C\uB3D9")
+                                .orEmpty(),
                             memberCount = group.activeMemberCount,
                             routineCount = group.activeRoutineCount,
                             statusLabel = if (
