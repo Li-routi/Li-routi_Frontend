@@ -158,9 +158,7 @@ fun MyPageRoute(
             isSaving = uiState.isSavingProfile,
             onBackClick = { destination = MyPageDestination.MyPage },
             onCancelClick = { destination = MyPageDestination.MyPage },
-            onSaveClick = { nickname, imageUri, resetToDefault ->
-                viewModel.onSaveProfile(context, nickname, imageUri, resetToDefault)
-            },
+            onSaveClick = { nickname, imageUri -> viewModel.onSaveProfile(context, nickname, imageUri) },
             modifier = modifier,
         )
 

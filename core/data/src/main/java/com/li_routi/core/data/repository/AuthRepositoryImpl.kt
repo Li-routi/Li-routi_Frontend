@@ -81,15 +81,9 @@ class AuthRepositoryImpl(
         apiCall { api.getMyInfo() }.toDomain()
     }
 
-    override suspend fun updateProfile(
-        nickname: String,
-        image: ProfileImageUpload?,
-        removeImage: Boolean,
-    ): ResultState<MyInfo> =
+    override suspend fun updateProfile(nickname: String, image: ProfileImageUpload?): ResultState<MyInfo> =
         safeApiCall {
-            // removeImage는 사용자가 "기본 이미지로 변경"을 명시적으로 눌렀을 때만 true다 — 이때는
-            // profileImageKey: null이 "삭제"로 처리되는 게 오히려 의도된 동작이라 재업로드 우회를 타지 않는다.
-            val profileImageKey = if (removeImage) null else resolveProfileImageKey(image)
+            val profileImageKey = resolveProfileImageKey(image)
             apiCall {
                 api.updateProfile(UpdateProfileRequest(nickname = nickname, profileImageKey = profileImageKey))
             }.toDomain()
