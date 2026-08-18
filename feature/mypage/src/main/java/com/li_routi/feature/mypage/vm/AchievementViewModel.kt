@@ -196,7 +196,9 @@ private fun AchievementClaimResult.toMessage(): String =
 private fun Achievement.toUiModel(category: AchievementCategory): AchievementUiModel = AchievementUiModel(
     title = name,
     rarity = category.toAchievementRarity(),
-    description = conditionDesc,
+    // 숨김 업적은 서버가 conditionDesc를 아예 안 내려준다(조건을 감추는 의도) — 목록에서 빈 줄로
+    // 보이지 않도록 안내 문구로 대체한다.
+    description = conditionDesc ?: "달성 조건이 아직 공개되지 않았어요",
     // progressTarget이 0인 업적은 진행률 추적이 없는(달성 여부만 있는) 업적이다 — 달성했다면
     // "0/0"이 아니라 꽉 찬 상태로 보여야 한다. 진행 중인데 target이 0인 경우는 없다고 보고, 그
     // 외(진행 중이며 target>0)에는 기존처럼 실제 진행률을 쓴다.
@@ -206,7 +208,9 @@ private fun Achievement.toUiModel(category: AchievementCategory): AchievementUiM
         progressTarget > 0 -> progressCurrent.toFloat() / progressTarget
         else -> 0f
     },
-    rewardText = if (topazReward > 0) "+${topazReward}토파즈" else null,
+    // "토파즈"는 서버 필드명(topazReward)일 뿐, 실제 표기는 상점과 동일하게 "오렌지젬"이다
+    // (CurrencyShopViewModel.toDisplayCurrency, Figma node 6389:17225/17281/18526 기준).
+    rewardText = if (topazReward > 0) "+${topazReward}오렌지젬" else null,
     isInProgress = isInProgress,
     isAchieved = isAchieved,
     iconRes = AchievementIcons.resolve(code),
@@ -217,10 +221,18 @@ private fun Achievement.toUiModel(category: AchievementCategory): AchievementUiM
 )
 
 private fun AchievementConditionProgress.toUiModel(): AchievementConditionUiModel = AchievementConditionUiModel(
-    label = conditionKey,
+    label = conditionKey.toDisplayLabel(),
     progressLabel = "$current/$target",
     progress = if (target > 0) current.toFloat() / target else 0f,
 )
+
+// 서버 조건 키를 화면 문구로 바꾼다 — 목록에 없는(새로 추가된) 키는 원래 값 그대로 보여줘, 조건 자체가
+// 안 보이는 것보단 낫게 한다.
+private fun String.toDisplayLabel(): String = when (this) {
+    "POKE_COUNT" -> "쿡쿡 수"
+    "LIKE_COUNT" -> "좋아요 수"
+    else -> this
+}
 
 private fun AchievementCategory.toAchievementRarity(): AchievementRarity = when (this) {
     AchievementCategory.RARE -> AchievementRarity.Rare
