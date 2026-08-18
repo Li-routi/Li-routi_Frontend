@@ -62,7 +62,7 @@ data class GroupTodoUiModel(
 
 data class CertificationPostUiModel(
     val id: Long,
-    val routineId: Long = 0L,
+    val routineId: Long,
     val memberId: Long,
     val userName: String,
     val body: String,
@@ -246,6 +246,7 @@ private val SampleGroupTodos = listOf(
 private val SampleCertificationPosts = listOf(
     CertificationPostUiModel(
         id = 1L,
+        routineId = 1L,
         memberId = 1L,
         userName = "민지",
         body = "물 마시기 1일차 인증! 오늘도 잊지 않고 해냈어요.",
@@ -255,6 +256,7 @@ private val SampleCertificationPosts = listOf(
     ),
     CertificationPostUiModel(
         id = 2L,
+        routineId = 2L,
         memberId = 2L,
         userName = "서현",
         body = "스트레칭 완료. 내일도 같이 이어가요.",
