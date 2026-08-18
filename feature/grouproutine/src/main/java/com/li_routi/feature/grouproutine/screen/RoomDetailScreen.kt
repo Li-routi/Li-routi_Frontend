@@ -38,6 +38,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.ColorFilter
+import androidx.compose.ui.layout.onSizeChanged
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
@@ -192,6 +193,28 @@ fun RoomDetailScreen(
         previousLastMessageId = lastId
     }
 
+    // 키보드가 올라오면 메시지 영역(weight(1f))이 그만큼 줄어드는데, LazyColumn은 컨테이너가
+    // 작아져도 스크롤 위치(offset)를 그대로 유지하므로 맨 아래를 보고 있던 채팅 로그가 줄어든
+    // 화면 아래로 밀려나 잘려 보인다.
+    //
+    // isImeVisible(불리언) 전환 시점에 한 번만 스크롤하는 방식은 실제로는 잘 안 됐다 — 그 값이
+    // true로 바뀌는 시점은 키보드 애니메이션이 "시작"할 때라 아직 영역이 줄어들기 전이고, 이후
+    // 프레임마다 서서히 줄어드는 동안엔 다시 스크롤을 안 하니 결국 줄어든 만큼 잘려 보이는 건
+    // 똑같았다. 대신 이 영역의 실제 레이아웃 높이가 바뀔 때마다(onSizeChanged, 키보드 애니메이션
+    // 도중에도 프레임마다 호출됨) 맨 아래를 다시 스크롤해 맞춘다 — 애니메이션 전 구간에 걸쳐
+    // 계속 바닥에 붙어 있는 것처럼 보인다.
+    //
+    // 단, 과거 메시지를 읽으려고 위로 스크롤해 둔 상태에서 크기만 바뀌는 경우(예: 회전)까지
+    // 강제로 맨 아래로 끌고 가지 않도록, "직전에 맨 아래를 보고 있었는지"(isAtBottom)를 계속
+    // 추적해두고 그때만 다시 스크롤한다.
+    var isAtBottom by remember { mutableStateOf(true) }
+    LaunchedEffect(listState) {
+        snapshotFlow { listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index }
+            .collect { lastVisibleIndex ->
+                isAtBottom = lastVisibleIndex == null || lastVisibleIndex >= listState.layoutInfo.totalItemsCount - 1
+            }
+    }
+
     // 답장으로 보낸 메시지의 인용 미리보기를 탭하면 원본 메시지로 스크롤한다. 서버가 내려주는
     // reply는 원본이 지금 로드된 목록에 없어도(과거 페이지 등) 항상 채워져 있으므로, targetIndex가
     // -1인 경우(원본이 아직 안 불러와진 페이지에 있음)는 실제로 발생할 수 있다 — 그때는 조용히
@@ -254,6 +277,11 @@ fun RoomDetailScreen(
             modifier = Modifier
                 .fillMaxWidth()
                 .weight(1f)
+                .onSizeChanged {
+                    if (hasScrolledToLatest && isAtBottom && messages.isNotEmpty()) {
+                        coroutineScope.launch { listState.scrollToItem(messages.lastIndex) }
+                    }
+                }
                 .background(LiroutiTheme.colors.backgroundSecondary),
         ) {
             if (messages.isEmpty()) {

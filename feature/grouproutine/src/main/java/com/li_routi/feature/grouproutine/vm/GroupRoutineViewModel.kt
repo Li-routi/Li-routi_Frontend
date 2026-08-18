@@ -136,6 +136,9 @@ class GroupRoutineViewModel(
     val uiState: StateFlow<GroupRoutineUiState> = _uiState.asStateFlow()
 
     private var chatSocketJob: Job? = null
+    /** [chatSocketJob]이 지금 연결돼 있는 그룹 ID. 같은 그룹으로 [enterChatSocket]이 다시 불려도
+     * (그룹 상세 진입 시 연결한 소켓을 채팅창 진입 시 재사용) 굳이 끊고 재연결하지 않기 위함. */
+    private var chatSocketGroupId: Long? = null
     private var chatHistoryJob: Job? = null
     private var chatReadJob: Job? = null
     private var routineVerificationsJob: Job? = null
@@ -182,6 +185,10 @@ class GroupRoutineViewModel(
             loadGroupRoutineCategories()
             loadTodayRoutines(routineId)
             loadUnreadRoutineVerifications()
+            // 채팅창을 열기 전, 그룹 상세(루틴 목록)를 보는 동안에도 새 메시지를 감지해 채팅
+            // 아이콘에 뱃지를 띄우려면 소켓이 미리 연결돼 있어야 한다 — 안 그러면 실제로 채팅창을
+            // 열기 전까지는 소켓 자체가 없어서 새 메시지가 와도 알림을 띄울 방법이 없었다.
+            enterChatSocket()
         } else {
             backendGroupId = null
             _uiState.update {
@@ -285,7 +292,6 @@ class GroupRoutineViewModel(
     }
 
     fun onGroupRoutineTabExit() {
-        val leavingChat = _uiState.value.screenMode == GroupRoutineScreenMode.GroupChat
         backendGroupId = null
         cancelGroupScopedJobs()
         _uiState.update {
@@ -301,11 +307,13 @@ class GroupRoutineViewModel(
                 actionMessage = null,
             )
         }
-        if (leavingChat) leaveChatSocket()
+        // 그룹 상세 진입 시점부터 소켓이 연결돼 있으므로(enterChatSocket 참고), 채팅창이 아니라
+        // 상세만 보다가 탭을 나가도 그룹을 완전히 벗어나는 거라 항상 끊어야 한다.
+        leaveChatSocket()
     }
 
     fun onBackClick() {
-        val leavingChat = _uiState.value.screenMode == GroupRoutineScreenMode.GroupChat
+        val leavingDetail = _uiState.value.screenMode == GroupRoutineScreenMode.Detail
         _uiState.update { state ->
             when (state.screenMode) {
                 GroupRoutineScreenMode.Detail -> state.copy(
@@ -356,7 +364,13 @@ class GroupRoutineViewModel(
                 GroupRoutineScreenMode.List -> state.copy(actionMessage = null)
             }
         }
-        if (leavingChat) leaveChatSocket()
+        // Detail -> List로 나갈 때만 그룹을 완전히 벗어난다 — 채팅창(GroupChat)에서 뒤로가기로
+        // Detail로 돌아가는 건 여전히 같은 그룹 안이므로 소켓을 계속 살려 둔다(상세에서도 새
+        // 메시지 뱃지를 받아야 하므로).
+        if (leavingDetail) {
+            backendGroupId = null
+            leaveChatSocket()
+        }
     }
 
     fun onCreateFlowCloseClick() {
@@ -396,7 +410,13 @@ class GroupRoutineViewModel(
             )
         }
         if (_uiState.value.chatEmoticons.isEmpty()) loadEmoticons()
+        // 그룹 상세를 보는 동안 이미 소켓이 연결돼 있었다면(enterChatSocket의 groupId 일치 시
+        // no-op) 그 사이 쌓인 unreadChatCount/서버 읽음 위치가 아직 안 지워져 있으므로 여기서
+        // 마지막 메시지를 명시적으로 읽음 처리한다.
         enterChatSocket()
+        currentGroupId()?.let { groupId ->
+            _uiState.value.chatMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
+        }
     }
 
     fun onChatMessageChange(value: String) {
@@ -463,7 +483,13 @@ class GroupRoutineViewModel(
     /**
      * 채팅 소켓에 연결하고 REST로 최근 메시지를 불러온다.
      *
-     * 그룹이 바뀌었을 수도 있으므로(목록 → 다른 채팅방으로 재진입 포함), 이전 그룹의 채팅 상태
+     * 그룹 상세(루틴 목록) 진입 시와 채팅창 진입 시 둘 다에서 호출된다 — 상세를 보는 동안에도
+     * 새 메시지를 감지해 채팅 아이콘 뱃지를 띄우려면 채팅창을 열기 전부터 소켓이 연결돼 있어야
+     * 하기 때문이다. 이미 같은 그룹으로 연결돼 있으면(상세에서 연결한 걸 채팅창 진입 시 재사용)
+     * 그냥 무시한다 — 안 그러면 채팅창을 열 때마다 이미 불러온 메시지 목록이 통째로 비워졌다 다시
+     * 로딩되는 깜빡임이 생긴다.
+     *
+     * 그룹이 바뀌었을 때는(목록 → 다른 채팅방으로 재진입 포함) 이전 그룹의 채팅 상태
      * (메시지 목록/페이지 커서/답장 대상/임시 입력 등)를 먼저 비운다 — 안 그러면 새 그룹의 이력과
      * 이전에 보던 그룹의 메시지가 한 리스트에 섞여서 그룹별로 채팅이 분리되지 않는 버그가 있었다.
      */
@@ -472,8 +498,10 @@ class GroupRoutineViewModel(
             _uiState.update { it.copy(actionMessage = "그룹 ID를 찾을 수 없습니다.") }
             return
         }
+        if (chatSocketJob?.isActive == true && chatSocketGroupId == groupId) return
 
         chatSocketJob?.cancel()
+        chatSocketGroupId = groupId
         _uiState.update {
             it.copy(
                 isChatHistoryLoaded = false,
@@ -525,6 +553,7 @@ class GroupRoutineViewModel(
     private fun leaveChatSocket() {
         chatSocketJob?.cancel()
         chatSocketJob = null
+        chatSocketGroupId = null
         // A방에서 시작된 과거 채팅 로딩이 B방 이동 후에도 살아남아 응답으로 B방 상태를 덮어쓰지 않도록 함께 취소한다.
         chatHistoryJob?.cancel()
         chatHistoryJob = null
@@ -562,8 +591,11 @@ class GroupRoutineViewModel(
                         unreadChatCount = if (historyMessages.isEmpty()) 0 else state.unreadChatCount,
                     )
                 }
-                // cursor가 null이면(최신 메시지 조회) 마지막 메시지까지 읽음 처리한다.
-                if (cursor == null) {
+                // cursor가 null이면(최신 메시지 조회) 마지막 메시지까지 읽음 처리한다 — 단, 실제로
+                // 채팅창을 보고 있을 때만. 이제 그룹 상세(루틴 목록) 진입 시에도 이 조회가 미리
+                // 실행되는데, 그때 무조건 읽음 처리해버리면 채팅창을 열기도 전에 안 읽음 뱃지가
+                // 사라져버린다.
+                if (cursor == null && _uiState.value.screenMode == GroupRoutineScreenMode.GroupChat) {
                     historyMessages.lastOrNull()?.let { last -> markChatRead(groupId, last.id) }
                 }
             }
@@ -838,6 +870,7 @@ class GroupRoutineViewModel(
 
     private fun exitRoom(groupId: Long, message: String) {
         backendGroupId = null
+        leaveChatSocket()
         _uiState.update { state ->
             state.copy(
                 screenMode = GroupRoutineScreenMode.List,
@@ -1825,6 +1858,7 @@ class GroupRoutineViewModel(
                         loadGroupRoutineCategories()
                         loadTodayRoutines(joined.groupId)
                         loadUnreadRoutineVerifications()
+                        enterChatSocket()
                     }
 
                     is ResultState.Error -> _uiState.update {
@@ -2473,6 +2507,7 @@ class GroupRoutineViewModel(
                         }
                         loadGroupDetail(groupId)
                         loadGroupRoutineCategories()
+                        enterChatSocket()
                     }
                     is ResultState.Error -> _uiState.update { it.copy(actionMessage = result.message) }
                     ResultState.Loading -> Unit

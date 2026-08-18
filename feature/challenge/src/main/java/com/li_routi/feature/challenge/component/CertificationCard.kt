@@ -28,6 +28,9 @@ import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.challenge.vm.CertificationUiModel
 
+/** 마이페이지 "내 인증"(MyVerificationCard)과 같은 크기로 맞춘다. */
+private val CertificationImageHeight = 180.dp
+
 /**
  * 인증 게시글 카드 한 건 (Figma "Certification_IMG", node 2372:39010 / 2372:49703).
  * 챌린지 상세 화면의 인증 목록에서 백엔드 응답(imageUrl, likeCount, liked 포함)을 그대로 매핑해
@@ -81,7 +84,7 @@ fun CertificationCard(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(280.dp)
+                        .height(CertificationImageHeight)
                         .clip(RoundedCornerShape(6.dp)),
                 )
             } else {
@@ -89,7 +92,7 @@ fun CertificationCard(
                 Box(
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(280.dp)
+                        .height(CertificationImageHeight)
                         .background(LiroutiTheme.colors.backgroundSecondary, RoundedCornerShape(6.dp)),
                 )
             }
