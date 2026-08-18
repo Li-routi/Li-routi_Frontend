@@ -27,16 +27,8 @@ interface AuthRepository {
     /** 로그인한 회원의 프로필 정보를 조회한다. */
     suspend fun getMyInfo(): ResultState<MyInfo>
 
-    /**
-     * 로그인한 회원의 닉네임/프로필 이미지를 수정한다. [image]가 null이면 기존 프로필 이미지를 그대로
-     * 유지한다. [removeImage]가 true면 [image]는 무시하고 프로필 이미지를 지워 기본 이미지 상태로
-     * 되돌린다.
-     */
-    suspend fun updateProfile(
-        nickname: String,
-        image: ProfileImageUpload? = null,
-        removeImage: Boolean = false,
-    ): ResultState<MyInfo>
+    /** 로그인한 회원의 닉네임/프로필 이미지를 수정한다. [image]가 null이면 기존 프로필 이미지를 그대로 유지한다. */
+    suspend fun updateProfile(nickname: String, image: ProfileImageUpload? = null): ResultState<MyInfo>
 
     /**
      * 특정 날짜에 남긴 인증(챌린지·개인 루틴·그룹 루틴 통합)을 최신순으로 조회한다.
