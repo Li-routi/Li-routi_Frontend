@@ -101,14 +101,15 @@ class MyPageViewModel(
 
     /**
      * 프로필 수정 화면에서 "저장" 탭 시 호출된다. [imageUri]가 null이면(사진을 새로 고르지 않았으면)
-     * 기존 프로필 사진을 그대로 두고 닉네임만 수정한다.
+     * 기존 프로필 사진을 그대로 두고 닉네임만 수정한다. [resetToDefault]가 true면(바텀시트에서 "기본
+     * 이미지로 변경"을 눌렀으면) [imageUri]는 무시하고 프로필 사진을 지워 기본 이미지 상태로 되돌린다.
      */
-    fun onSaveProfile(context: Context, newNickname: String, imageUri: Uri?) {
+    fun onSaveProfile(context: Context, newNickname: String, imageUri: Uri?, resetToDefault: Boolean = false) {
         viewModelScope.launch {
             if (_uiState.value.isSavingProfile) return@launch
             _uiState.update { it.copy(isSavingProfile = true) }
 
-            val imageResult = imageUri?.let { uri ->
+            val imageResult = imageUri?.takeUnless { resetToDefault }?.let { uri ->
                 runCatching {
                     withContext(Dispatchers.IO) {
                         ProfileImageUpload(bytes = readProfileImageBytes(context, uri), contentType = "image/jpeg")
@@ -121,7 +122,9 @@ class MyPageViewModel(
                 return@launch
             }
 
-            when (val result = updateProfileUseCase(newNickname, imageResult?.getOrNull())) {
+            when (
+                val result = updateProfileUseCase(newNickname, imageResult?.getOrNull(), removeImage = resetToDefault)
+            ) {
                 is ResultState.Success -> {
                     MemberProfileCache.nickname.value = result.data.nickname
                     _uiState.update {

@@ -43,16 +43,22 @@ fun MyPageProfileHeader(
         verticalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            LiroutiAvatar(size = ProfileHeaderAvatarSize) {
-                if (profileImageUrl != null) {
-                    AsyncImage(
-                        model = profileImageUrl,
-                        contentDescription = "프로필 사진",
-                        modifier = Modifier.size(ProfileHeaderAvatarSize),
-                        contentScale = ContentScale.Crop,
-                    )
-                }
-            }
+            // profileImageUrl이 null이면 content 자체를 null로 넘겨 LiroutiAvatar가 기본 placeholder
+            // 아이콘을 그리게 한다 — 빈 람다를 넘기면 content가 null이 아니라고 판단해 아무것도 안
+            // 그려진 빈 원만 남는다.
+            LiroutiAvatar(
+                size = ProfileHeaderAvatarSize,
+                content = profileImageUrl?.let { url ->
+                    {
+                        AsyncImage(
+                            model = url,
+                            contentDescription = "프로필 사진",
+                            modifier = Modifier.size(ProfileHeaderAvatarSize),
+                            contentScale = ContentScale.Crop,
+                        )
+                    }
+                },
+            )
             Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(
                     text = nickname,
