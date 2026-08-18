@@ -164,7 +164,19 @@ fun ProfileAvatarWithCameraBadge(
                 )
             }
         } else {
-            LiroutiAvatar(size = avatarSize)
+            // 사용자가 사진을 고르지 않으면 저장 시 img_default_profile(마스코트)이 실제로 업로드되므로
+            // (LoginViewModel.readDefaultProfileImageUpload 참고), 미리보기도 동일한 마스코트를 보여준다 —
+            // 마이페이지의 "기본 이미지로 변경"(EditProfileScreen.defaultProfileImageUri)과 같은 자산이다.
+            LiroutiAvatar(size = avatarSize) {
+                Image(
+                    painter = painterResource(id = R.drawable.img_default_profile),
+                    contentDescription = "기본 프로필 사진",
+                    modifier = Modifier
+                        .fillMaxSize()
+                        .clip(CircleShape),
+                    contentScale = ContentScale.Crop,
+                )
+            }
         }
         Box(
             modifier = Modifier
