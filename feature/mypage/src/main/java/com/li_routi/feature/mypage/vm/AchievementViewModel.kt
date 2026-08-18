@@ -4,12 +4,20 @@ import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AchievementContainer
+import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.domain.achievement.Achievement
 import com.li_routi.core.domain.achievement.AchievementCategory
 import com.li_routi.core.domain.achievement.AchievementClaimResult
+import com.li_routi.core.domain.achievement.AchievementConditionProgress
 import com.li_routi.core.domain.achievement.ClaimAchievementUseCase
 import com.li_routi.core.domain.achievement.GetAchievementsUseCase
+import com.li_routi.core.domain.achievement.GetWaveRoutineStatusUseCase
+import com.li_routi.core.domain.achievement.SelectWaveRoutineUseCase
+import com.li_routi.core.domain.achievement.WaveRoutineStatus
+import com.li_routi.core.domain.routine.CreatedRoutine
+import com.li_routi.core.domain.routine.GetMemberRoutinesUseCase
 import com.li_routi.feature.mypage.component.AchievementBadgeUiModel
+import com.li_routi.feature.mypage.component.AchievementConditionUiModel
 import com.li_routi.feature.mypage.component.AchievementIcons
 import com.li_routi.feature.mypage.component.AchievementRarity
 import com.li_routi.feature.mypage.component.AchievementUiModel
@@ -35,6 +43,9 @@ import kotlinx.coroutines.launch
 class AchievementViewModel(
     private val getAchievementsUseCase: GetAchievementsUseCase = AchievementContainer.getAchievementsUseCase,
     private val claimAchievementUseCase: ClaimAchievementUseCase = AchievementContainer.claimAchievementUseCase,
+    private val getWaveRoutineStatusUseCase: GetWaveRoutineStatusUseCase = AchievementContainer.getWaveRoutineStatusUseCase,
+    private val selectWaveRoutineUseCase: SelectWaveRoutineUseCase = AchievementContainer.selectWaveRoutineUseCase,
+    private val getMemberRoutinesUseCase: GetMemberRoutinesUseCase = RoutineContainer.getMemberRoutinesUseCase,
 ) : BaseViewModel() {
 
     private val _uiState = MutableStateFlow(AchievementUiState(isLoading = true))
@@ -42,6 +53,51 @@ class AchievementViewModel(
 
     init {
         load()
+        loadWaveRoutineStatus()
+    }
+
+    private fun loadWaveRoutineStatus() {
+        viewModelScope.launch {
+            when (val result = getWaveRoutineStatusUseCase()) {
+                is ResultState.Success -> _uiState.update { it.copy(waveRoutineStatus = result.data) }
+                is ResultState.Error, ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    /** "루틴 선택"/"변경" 탭 — 시트를 열고, 아직 안 불러왔으면 내 루틴 목록도 같이 불러온다. */
+    fun onWaveRoutinePickerOpen() {
+        _uiState.update { it.copy(isWaveRoutinePickerVisible = true) }
+        if (_uiState.value.myRoutines.isNotEmpty()) return
+        viewModelScope.launch {
+            when (val result = getMemberRoutinesUseCase()) {
+                is ResultState.Success -> _uiState.update { it.copy(myRoutines = result.data.routines) }
+                is ResultState.Error -> _uiState.update { it.copy(claimMessage = result.message) }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onWaveRoutinePickerDismiss() {
+        _uiState.update { it.copy(isWaveRoutinePickerVisible = false) }
+    }
+
+    /** 시트에서 루틴을 고름 — 성공하면 시트를 닫고 상태를 다시 조회해 이름/스트릭을 최신화한다. */
+    fun onWaveRoutineChosen(memberRoutineId: Long) {
+        if (_uiState.value.isSelectingWaveRoutine) return
+        _uiState.update { it.copy(isSelectingWaveRoutine = true) }
+        viewModelScope.launch {
+            when (val result = selectWaveRoutineUseCase(memberRoutineId)) {
+                is ResultState.Success -> {
+                    _uiState.update { it.copy(isSelectingWaveRoutine = false, isWaveRoutinePickerVisible = false) }
+                    loadWaveRoutineStatus()
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isSelectingWaveRoutine = false, claimMessage = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     /**
@@ -85,13 +141,17 @@ class AchievementViewModel(
             _uiState.update { it.copy(isLoading = true, isError = false) }
             when (val result = getAchievementsUseCase()) {
                 is ResultState.Success -> {
-                    val allAchievements = result.data.flatMap { group ->
+                    // hiddenYn으로 "달성 전 숨김" 필터를 걸었었으나, 스웨거 문서에 정확한 의미가
+                    // 없어(필드명만 보고 추측) dev 서버 응답과 맞지 않아 업적 목록 전체가 사라지는
+                    // 회귀가 있었다. 의미가 명확히 확인되기 전까지는 필터링하지 않는다 — 필드 자체는
+                    // Achievement.hiddenYn에 남겨둬서 나중에 다시 쓸 수 있게 한다.
+                    val visibleAchievements = result.data.flatMap { group ->
                         group.achievements.map { it to group.category }
                     }
                     _uiState.update {
                         it.copy(
-                            achievements = allAchievements.map { (achievement, category) -> achievement.toUiModel(category) },
-                            achievedBadges = allAchievements
+                            achievements = visibleAchievements.map { (achievement, category) -> achievement.toUiModel(category) },
+                            achievedBadges = visibleAchievements
                                 .filter { (achievement, _) -> achievement.isAchieved }
                                 .map { (achievement, category) ->
                                     AchievementBadgeUiModel(
@@ -122,6 +182,12 @@ data class AchievementUiState(
     val isClaiming: Boolean = false,
     /** 수령 성공/실패 메시지. 토스트로 보여주고 닫으면 지운다. */
     val claimMessage: String? = null,
+    /** "파도타기"(연속 기록) 업적이 추적 중인 루틴. null이면 아직 못 불러온 상태 */
+    val waveRoutineStatus: WaveRoutineStatus? = null,
+    val isWaveRoutinePickerVisible: Boolean = false,
+    /** 루틴 선택 시트에 뿌릴 내 루틴 목록. 시트를 처음 열 때 한 번만 불러와 캐싱한다 */
+    val myRoutines: List<CreatedRoutine> = emptyList(),
+    val isSelectingWaveRoutine: Boolean = false,
 )
 
 private fun AchievementClaimResult.toMessage(): String =
@@ -147,6 +213,13 @@ private fun Achievement.toUiModel(category: AchievementCategory): AchievementUiM
     imageUrl = badgeImageUrl,
     achievementId = achievementId,
     isClaimable = isClaimable,
+    conditions = conditionProgresses.map { it.toUiModel() },
+)
+
+private fun AchievementConditionProgress.toUiModel(): AchievementConditionUiModel = AchievementConditionUiModel(
+    label = conditionKey,
+    progressLabel = "$current/$target",
+    progress = if (target > 0) current.toFloat() / target else 0f,
 )
 
 private fun AchievementCategory.toAchievementRarity(): AchievementRarity = when (this) {

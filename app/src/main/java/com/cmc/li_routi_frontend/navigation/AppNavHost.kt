@@ -115,6 +115,10 @@ fun AppNavHost(
 ) {
     var selectedTab by rememberSaveable { mutableStateOf(AppBottomTab.Home) }
     var homeEntryPoint by rememberSaveable { mutableStateOf<HomeEntryPoint?>(null) }
+    // 마이페이지 알림벨/설정처럼 다른 탭에서 홈의 화면으로 진입시킨 경우, 그 화면에서 뒤로가기를
+    // 누르면 홈 메인이 아니라 원래 탭으로 돌아가야 한다 — homeEntryPoint는 진입 직후 바로 비워지므로
+    // (재진입 시 재실행 방지) 뒤로가기 시점까지 따로 기억해둔다.
+    var homeEntryPointOriginTab by rememberSaveable { mutableStateOf<AppBottomTab?>(null) }
     var groupRoutineEntryPoint by rememberSaveable { mutableStateOf<GrouproutineEntryPoint?>(null) }
     var challengeDetailEntryPoint by rememberSaveable { mutableStateOf<Long?>(null) }
     val saveableStateHolder = rememberSaveableStateHolder()
@@ -289,6 +293,12 @@ fun AppNavHost(
                     },
                     initialEntryPoint = homeEntryPoint,
                     onInitialEntryPointConsumed = { homeEntryPoint = null },
+                    entryPointOriginTab = homeEntryPointOriginTab,
+                    onExitEntryPoint = {
+                        val origin = homeEntryPointOriginTab
+                        homeEntryPointOriginTab = null
+                        if (origin != null) selectTab(origin)
+                    },
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -327,10 +337,12 @@ fun AppNavHost(
                     refreshTick = myResetGen,
                     onNotificationClick = {
                         homeEntryPoint = HomeEntryPoint.Notification
+                        homeEntryPointOriginTab = AppBottomTab.My
                         selectTab(AppBottomTab.Home)
                     },
                     onSettingsClick = {
                         homeEntryPoint = HomeEntryPoint.NotificationSettings
+                        homeEntryPointOriginTab = AppBottomTab.My
                         selectTab(AppBottomTab.Home)
                     },
                     modifier = Modifier.fillMaxSize(),

@@ -1,6 +1,6 @@
 package com.li_routi.feature.home.shop.vm
 
-import com.li_routi.feature.home.component.DefaultCharacterId
+import com.li_routi.core.data.appearance.FallbackCharacterId
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 
 /**
@@ -70,14 +70,15 @@ data class ShopUiState(
      */
     val savedEquippedItemIds: Set<Long> = emptySet(),
     /**
-     * 앱이 기억 중인 캐릭터. 캐릭터 탭의 `착용중` 표시는 이걸 따름.
+     * 서버에 저장된(선택된) 캐릭터. 캐릭터 탭의 `착용중` 표시는 이걸 따름.
      *
-     * 캐릭터는 서버 아이템이 아니라 겹쳐 입기의 바탕 그림이라 [equipped]와 따로 둠.
-     * 본체 id API가 생기면 착장처럼 서버 저장본으로 바꾸면 됨
+     * 캐릭터는 `GET /api/shop/items` 아이템이 아니라 겹쳐 입기의 바탕 그림이라 [equipped]와 따로 둠.
      */
-    val savedCharacterId: String = DefaultCharacterId,
+    val savedCharacterId: Long = FallbackCharacterId,
     /** 지금 캐릭터 카드에 비치는 캐릭터. 고르면 저장 전에도 바로 바뀜 */
-    val previewCharacterId: String = DefaultCharacterId,
+    val previewCharacterId: Long = FallbackCharacterId,
+    /** [previewCharacterId]의 그림. 캐릭터 카드 렌더링에 씀 */
+    val previewCharacterImageUrl: String? = null,
     /** 착장 저장 중 */
     val isEquipping: Boolean = false,
     /**

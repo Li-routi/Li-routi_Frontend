@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -51,6 +52,8 @@ fun CurrencyShopScreen(
     blueProducts: List<CurrencyProductUiModel> = SampleBlueGemProducts,
     selectedProductId: String? = null,
     chargeDialogProduct: CurrencyProductUiModel? = null,
+    /** 상품 목록을 처음 불러오는 중인지 — 비어 있는 목록이 "빈 상점"처럼 잠깐 보이는 걸 막는다. */
+    isLoading: Boolean = false,
     modifier: Modifier = Modifier,
     initialTabIndex: Int = TabOrange,
 ) {
@@ -84,18 +87,26 @@ fun CurrencyShopScreen(
                 onTabSelected = { selectedTabIndex = it },
             )
 
-            Column(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(horizontal = 16.dp, vertical = 10.dp)
-                    .verticalScroll(rememberScrollState()),
-            ) {
-                CurrencyProductList(
-                    items = products,
-                    selectedProductId = selectedProductId,
-                    onProductClick = actions::onProductClick,
-                    modifier = Modifier.fillMaxWidth(),
-                )
+            // 아직 한 번도 못 불러왔을 때만 스피너를 보여준다 — 이미 상품이 있는 상태에서 재조회
+            // 중일 땐(예: 구매 후 새로고침) 목록을 스피너로 덮어 깜빡이지 않게 유지한다.
+            if (isLoading && products.isEmpty()) {
+                Box(modifier = Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
+                }
+            } else {
+                Column(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 16.dp, vertical = 10.dp)
+                        .verticalScroll(rememberScrollState()),
+                ) {
+                    CurrencyProductList(
+                        items = products,
+                        selectedProductId = selectedProductId,
+                        onProductClick = actions::onProductClick,
+                        modifier = Modifier.fillMaxWidth(),
+                    )
+                }
             }
         }
     }

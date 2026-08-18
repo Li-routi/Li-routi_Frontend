@@ -3,7 +3,6 @@ package com.li_routi.core.data.di
 import com.li_routi.core.data.appearance.MemberAppearanceStore
 import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.preference.AuthTokenPreference
-import com.li_routi.core.data.preference.SelectedCharacterPreference
 import com.li_routi.core.data.repository.ShopRepositoryImpl
 import com.li_routi.core.domain.shop.ExchangeCurrencyUseCase
 import com.li_routi.core.domain.shop.GetChargeProductsUseCase
@@ -28,16 +27,11 @@ object ShopContainer {
         ShopRepositoryImpl(NetworkModule.shopApiService)
     }
 
-    /** 캐릭터 본체는 서버 필드가 없어 기기에 남김. 착장과 함께 [memberAppearanceStore]가 기억함 */
-    val selectedCharacterPreference: SelectedCharacterPreference by lazy {
-        SelectedCharacterPreference(NetworkModule.appContext)
-    }
-
     /** 홈/상점이 같이 보는 착장·캐릭터. 정보가 없을 때만 GET 하고, 저장하면 여기도 갱신함 */
     val memberAppearanceStore: MemberAppearanceStore by lazy {
         MemberAppearanceStore(
             repository = repository,
-            characterPreference = selectedCharacterPreference,
+            characterRepository = CharacterContainer.repository,
             tokenPreference = AuthTokenPreference(NetworkModule.appContext),
         )
     }

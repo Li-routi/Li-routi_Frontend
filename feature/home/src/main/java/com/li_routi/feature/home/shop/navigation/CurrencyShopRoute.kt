@@ -96,6 +96,7 @@ fun CurrencyShopRoute(
             blueProducts = uiState.blueProducts,
             selectedProductId = uiState.selectedProductId,
             chargeDialogProduct = uiState.chargeDialogProduct,
+            isLoading = uiState.isLoading,
             initialTabIndex = initialTabIndex,
         )
 

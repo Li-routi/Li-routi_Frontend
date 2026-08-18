@@ -26,6 +26,12 @@ fun AchievementRoute(
         onClaimClick = viewModel::onClaimClick,
         claimMessage = uiState.claimMessage,
         onClaimMessageDismissed = viewModel::onClaimMessageDismissed,
+        waveRoutineStatus = uiState.waveRoutineStatus,
+        isWaveRoutinePickerVisible = uiState.isWaveRoutinePickerVisible,
+        myRoutines = uiState.myRoutines,
+        onWaveRoutinePickerOpen = viewModel::onWaveRoutinePickerOpen,
+        onWaveRoutinePickerDismiss = viewModel::onWaveRoutinePickerDismiss,
+        onWaveRoutineChosen = viewModel::onWaveRoutineChosen,
         modifier = modifier,
     )
 }

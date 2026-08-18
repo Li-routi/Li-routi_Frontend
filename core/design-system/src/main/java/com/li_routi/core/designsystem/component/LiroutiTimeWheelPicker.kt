@@ -19,6 +19,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.Dp
@@ -173,7 +174,10 @@ fun WheelNumberPicker(
     val currentOnSelectedIndexChange by rememberUpdatedState(onSelectedIndexChange)
 
     AndroidView(
-        modifier = modifier.height(height),
+        // 네이티브 NumberPicker가 셀렉터 휠의 위/아래 값을 그릴 때 지정한 height보다 살짝 더 크게
+        // 그려서(스크롤 애니메이션용), 강제로 높이를 줄여도 위아래 옆 값이 몇 px씩 삐져나와 보인다 —
+        // clipToBounds로 이 높이 밖 렌더링을 확실히 잘라낸다.
+        modifier = modifier.height(height).clipToBounds(),
         factory = { context ->
             val themedContext = ContextThemeWrapper(context, R.style.LiroutiNumberPicker)
             NumberPicker(themedContext).apply picker@{

@@ -1,7 +1,7 @@
 package com.li_routi.feature.home.vm
 
+import com.li_routi.core.data.appearance.FallbackCharacterId
 import com.li_routi.core.domain.routine.RoutineCategory
-import com.li_routi.feature.home.component.DefaultCharacterId
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
 import com.li_routi.feature.home.component.SampleGroupRoomFilters
 import com.li_routi.feature.home.component.SampleGroupRoomItems
@@ -18,8 +18,10 @@ data class HomeUiState(
     val nickname: String = "닉네임",
     /** 홈 캐릭터에 겹쳐 그릴 착용 아이템 이미지. 겹칠 순서대로 들어있음 */
     val equippedImageUrls: List<String> = emptyList(),
-    /** 상점에서 고른 캐릭터. 공용 캐시에 기억된 값이고 없으면 기본 파랑새 */
-    val characterId: String = DefaultCharacterId,
+    /** 상점에서 고른 캐릭터. 공용 캐시에 기억된 값이고 없으면 기본값 */
+    val characterId: Long = FallbackCharacterId,
+    /** 서버가 이미 알/성체 중 보여줄 그림을 골라 내려준 것. 없으면 로컬 기본 실루엣으로 대체됨 */
+    val characterImageUrl: String? = null,
     val hasActiveRoutine: Boolean = false,
     val hasGroupRoom: Boolean = false,
     val myRoutineItems: List<RoutineChecklistItemUiModel> = emptyList(),

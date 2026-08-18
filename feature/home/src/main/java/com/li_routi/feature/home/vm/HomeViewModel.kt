@@ -54,6 +54,7 @@ class HomeViewModel(
         nickname = MemberProfileCache.nickname.value ?: "닉네임",
         hasUnreadNotification = MemberProfileCache.hasUnreadNotification.value,
         characterId = MemberProfileCache.characterId.value ?: FallbackCharacterId,
+        characterImageUrl = MemberProfileCache.characterImageUrl.value,
     ),
 ) : BaseViewModel(), HomeScreenActions {
 
@@ -96,12 +97,13 @@ class HomeViewModel(
                 val urls = equippedImageUrlsOf(
                     appearance.equipped.associate { it.slot to it.imageUrl },
                 )
-                val characterId = appearance.characterId.ifBlank { FallbackCharacterId }
-                MemberProfileCache.characterId.value = characterId
+                MemberProfileCache.characterId.value = appearance.characterId
+                MemberProfileCache.characterImageUrl.value = appearance.characterImageUrl
                 _uiState.update {
                     it.copy(
                         equippedImageUrls = urls,
-                        characterId = characterId,
+                        characterId = appearance.characterId,
+                        characterImageUrl = appearance.characterImageUrl,
                     )
                 }
             }
@@ -166,7 +168,8 @@ class HomeViewModel(
                             equippedImageUrls = equippedImageUrlsOf(
                                 appearance.equipped.associate { it.slot to it.imageUrl },
                             ),
-                            characterId = appearance.characterId.ifBlank { FallbackCharacterId },
+                            characterId = appearance.characterId,
+                            characterImageUrl = appearance.characterImageUrl,
                             hasUnreadNotification = it.hasUnreadNotification,
                         )
                     }

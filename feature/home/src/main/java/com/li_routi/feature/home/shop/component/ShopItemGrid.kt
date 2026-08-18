@@ -56,6 +56,11 @@ data class ShopItemUiModel(
     @DrawableRes val imageRes: Int? = null,
     /** 보유한 아이템도 같은 목록에 섞여 내려옴 — 구매 대신 착용만 하면 됨 */
     val owned: Boolean = false,
+    /**
+     * 캐릭터 탭 전용 — 업적으로 해금했는가. 아바타 아이템은 항상 true(구매 여부와 무관하게 선택은
+     * 늘 가능하므로). 알 상태(false)인 캐릭터는 서버가 선택을 거절해 미리보기 자체를 막아야 한다.
+     */
+    val unlocked: Boolean = true,
 )
 
 /** 모르는 재화가 와도 화면이 비지 않게 파란보석으로 둠 */

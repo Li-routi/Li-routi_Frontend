@@ -5,6 +5,8 @@ import com.li_routi.core.data.repository.AchievementRepositoryImpl
 import com.li_routi.core.domain.achievement.AchievementRepository
 import com.li_routi.core.domain.achievement.ClaimAchievementUseCase
 import com.li_routi.core.domain.achievement.GetAchievementsUseCase
+import com.li_routi.core.domain.achievement.GetWaveRoutineStatusUseCase
+import com.li_routi.core.domain.achievement.SelectWaveRoutineUseCase
 
 /**
  * Hilt 등 DI 프레임워크가 붙기 전까지 사용하는 수동 구성 root.
@@ -22,5 +24,13 @@ object AchievementContainer {
 
     val claimAchievementUseCase: ClaimAchievementUseCase by lazy {
         ClaimAchievementUseCase(repository)
+    }
+
+    val getWaveRoutineStatusUseCase: GetWaveRoutineStatusUseCase by lazy {
+        GetWaveRoutineStatusUseCase(repository)
+    }
+
+    val selectWaveRoutineUseCase: SelectWaveRoutineUseCase by lazy {
+        SelectWaveRoutineUseCase(repository)
     }
 }

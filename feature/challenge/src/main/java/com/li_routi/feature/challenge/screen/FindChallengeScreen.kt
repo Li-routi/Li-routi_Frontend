@@ -123,6 +123,7 @@ fun FindChallengeScreen(
                 LiroutiSearchField(
                     value = uiState.searchQuery,
                     onValueChange = actions::onSearchQueryChanged,
+                    placeholder = "챌린지 검색",
                 )
 
                 // ---------- 필터 칩 ----------

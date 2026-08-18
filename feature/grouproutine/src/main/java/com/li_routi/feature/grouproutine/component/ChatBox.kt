@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.DropdownMenu
@@ -72,6 +73,9 @@ private val BubbleStartOffset = LeftMargin + AvatarSize + AvatarToNicknameGap
 
 // 말풍선을 스와이프하면 답장 대상으로 지정한다 — 최대 64dp까지만 밀리고, 48dp를 넘겨야
 // 답장이 확정된다(안 넘기고 손을 떼면 스프링으로 원위치 복귀). 내 메시지/상대 메시지 모두
+/** 말풍선(답장 인용 포함) 최대 폭. 화면(360dp 기준) 대비 아바타/여백을 뺀 채팅 UI 통상 비율. */
+private val ChatBubbleMaxWidth = 240.dp
+
 // 오른쪽에서 왼쪽으로 밀어야 한다([replySwipeGesture]의 dragToRight = false).
 private val ReplySwipeMaxOffset = 64.dp
 private val ReplySwipeTriggerThreshold = 48.dp
@@ -463,6 +467,10 @@ private fun ChatBubble(
 ) {
     Column(
         modifier = modifier
+            // 답장 인용 블록(ChatBubbleReplyQuote)이 fillMaxWidth라 이 상한이 없으면 화면 거의
+            // 끝까지 늘어나 버블만 유독 길어 보였다 — 말풍선 자체에 상한을 둬서 인용 블록도 같이
+            // 눌러준다. 일반 메시지 텍스트는 원래도 이 폭 안에서 줄바꿈되므로 영향 없다.
+            .widthIn(max = ChatBubbleMaxWidth)
             .clip(RoundedCornerShape(6.dp))
             .background(if (isMine) LiroutiTheme.colors.primaryNormal else LiroutiTheme.colors.backgroundDefault)
             .padding(horizontal = 16.dp, vertical = 8.dp),

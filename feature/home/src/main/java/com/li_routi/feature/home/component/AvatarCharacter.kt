@@ -1,6 +1,5 @@
 package com.li_routi.feature.home.component
 
-import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -33,16 +32,28 @@ fun equippedImageUrlsOf(equipped: Map<String, String?>): List<String> =
 fun AvatarCharacter(
     modifier: Modifier = Modifier,
     equippedImageUrls: List<String> = emptyList(),
-    /** 겹쳐 입기의 바탕이 되는 캐릭터. 캐릭터 탭에서 고른 것이 여기로 들어옴 */
-    @DrawableRes characterRes: Int = R.drawable.default_character,
+    /**
+     * 겹쳐 입기의 바탕이 되는 캐릭터. `GET /api/characters`가 이미 알/성체 중 보여줄 그림을 골라
+     * 내려준다 — 아직 안 받아왔거나(로딩) 실패했으면 null로 두면 로컬 기본 실루엣으로 대체된다.
+     */
+    characterImageUrl: String? = null,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Image(
-            painter = painterResource(id = characterRes),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize(),
-        )
+        if (characterImageUrl.isNullOrBlank()) {
+            Image(
+                painter = painterResource(id = R.drawable.default_character),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        } else {
+            AsyncImage(
+                model = characterImageUrl,
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
         equippedImageUrls.forEach { url ->
             key(url) {
                 AsyncImage(

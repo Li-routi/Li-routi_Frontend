@@ -35,6 +35,11 @@ data class Achievement(
     val claimedAt: String?,
     /** 서버가 제공하는 업적 뱃지 이미지. 없는 업적도 있어(null) 그럴 땐 앱 내장 이미지로 대체한다. */
     val badgeImageUrl: String? = null,
+    /** 숨김(시크릿) 업적 여부. 달성 전에는 목록에서 감춰야 한다. */
+    val hiddenYn: Boolean = false,
+    /** 조건이 여러 개인 업적의 조건별 진행도. 단일 조건 업적은 비어 있거나 [progressCurrent]/
+     * [progressTarget]과 같은 값 하나만 담겨 온다. */
+    val conditionProgresses: List<AchievementConditionProgress> = emptyList(),
 ) {
     val isInProgress: Boolean get() = status == "IN_PROGRESS"
     val isAchieved: Boolean get() = achievedAt != null
@@ -42,6 +47,13 @@ data class Achievement(
     /** 달성했지만 보상을 아직 수령하지 않아, [ClaimAchievementUseCase]를 호출할 수 있는 상태인지. */
     val isClaimable: Boolean get() = status == "ACHIEVED"
 }
+
+/** 업적 조건 하나의 진행도. */
+data class AchievementConditionProgress(
+    val conditionKey: String,
+    val current: Int,
+    val target: Int,
+)
 
 /** POST .../claim 응답 — 수령 처리 후의 무료(토파즈) 잔액과 보상 지급 여부. */
 data class AchievementClaimResult(

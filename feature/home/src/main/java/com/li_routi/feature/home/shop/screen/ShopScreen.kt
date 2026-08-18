@@ -18,6 +18,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
@@ -41,9 +42,8 @@ import com.li_routi.feature.home.shop.component.ShopItemUiModel
 import com.li_routi.feature.home.shop.component.ShopTopBar
 import com.li_routi.feature.home.shop.component.currencyIconOf
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
+import com.li_routi.core.data.appearance.FallbackCharacterId
 import com.li_routi.feature.home.component.AvatarCharacter
-import com.li_routi.feature.home.component.DefaultCharacterId
-import com.li_routi.feature.home.component.characterImageResOf
 import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.feature.home.shop.vm.EquippedUiModel
 import com.li_routi.feature.home.shop.vm.ShopCategoryUiModel
@@ -83,10 +83,14 @@ fun ShopScreen(
     purchaseTargets: List<ShopItemUiModel> = emptyList(),
     /** 미리보기 중인 모습이 저장된 모습과 다른지. 하단 버튼 활성화 여부를 가름 */
     hasUnsavedChanges: Boolean = false,
+    /** 격자를 처음(또는 탭 전환 직후) 불러오는 중인지 — 비어 있는 격자가 잠깐 보이는 걸 막는다. */
+    isLoading: Boolean = false,
     /** 지금 캐릭터 카드에 그릴 캐릭터. 캐릭터 탭에서 고르면 저장 전에도 바로 바뀜 */
-    previewCharacterId: String = DefaultCharacterId,
-    /** 기기에 저장된 캐릭터. 격자 `착용중`은 이걸 따름 */
-    savedCharacterId: String = DefaultCharacterId,
+    previewCharacterId: Long = FallbackCharacterId,
+    /** [previewCharacterId]의 그림 */
+    previewCharacterImageUrl: String? = null,
+    /** 서버에 저장된 캐릭터. 격자 `착용중`은 이걸 따름 */
+    savedCharacterId: Long = FallbackCharacterId,
     modifier: Modifier = Modifier,
 ) {
 
@@ -169,7 +173,7 @@ fun ShopScreen(
                 Spacer(modifier = Modifier.height(20.dp))
                 AvatarCharacter(
                     equippedImageUrls = equippedImageUrlsOf(equipped.mapValues { it.value.imageUrl }),
-                    characterRes = characterImageResOf(previewCharacterId),
+                    characterImageUrl = previewCharacterImageUrl,
                     modifier = Modifier.size(width = CharacterWidth, height = CharacterHeight),
                 )
             }
@@ -230,16 +234,29 @@ fun ShopScreen(
                 Spacer(modifier = Modifier.height(14.dp))
             }
 
-            ShopItemGrid(
-                items = items,
-                selectedItemIds = selectedItemIds,
-                onItemClick = actions::onItemClick,
-                modifier = Modifier
-                    .weight(1f)
-                    .padding(horizontal = 16.dp),
-                equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() } +
-                    savedCharacterId,
-            )
+            // 탭/카테고리를 바꿀 때마다 다시 조회하는데, 아직 하나도 못 받아온 순간엔 격자가
+            // 비어 있어 "빈 상점"처럼 보였다 — 그 순간만 스피너로 대체한다.
+            if (isLoading && items.isEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .weight(1f)
+                        .fillMaxWidth(),
+                    contentAlignment = Alignment.Center,
+                ) {
+                    CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
+                }
+            } else {
+                ShopItemGrid(
+                    items = items,
+                    selectedItemIds = selectedItemIds,
+                    onItemClick = actions::onItemClick,
+                    modifier = Modifier
+                        .weight(1f)
+                        .padding(horizontal = 16.dp),
+                    equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() } +
+                        savedCharacterId.toString(),
+                )
+            }
         }
     }
 }

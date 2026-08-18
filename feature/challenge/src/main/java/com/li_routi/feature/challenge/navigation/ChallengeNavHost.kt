@@ -5,7 +5,10 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
@@ -64,6 +67,16 @@ fun ChallengeNavHost(
                 ChallengeViewModel(ChallengeContainer.getMyChallengesUseCase)
             }
             val challengeUiState by challengeViewModel.uiState.collectAsStateWithLifecycle()
+
+            // 챌린지 찾기 → 참여 → 뒤로가기로 돌아와도 이 화면의 ViewModel은 백스택에 남아 있던 게
+            // 그대로라 init{}이 다시 안 불린다 — 화면이 다시 보일 때(RESUMED)마다 새로 불러서, 방금
+            // 참여한 챌린지가 탭을 나갔다 와야만 반영되던 문제를 없앤다.
+            val lifecycleOwner = LocalLifecycleOwner.current
+            LaunchedEffect(lifecycleOwner, challengeViewModel) {
+                lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+                    challengeViewModel.refresh()
+                }
+            }
 
             ChallengeScreen(
                 uiState = challengeUiState,

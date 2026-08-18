@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -30,7 +31,6 @@ import com.li_routi.core.designsystem.foundation.color.Neutral99
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 
-val BottomSheetHeight = 211.dp
 val BottomSheetCornerRadius = 20.dp
 val BottomSheetShadowElevation = 8.dp
 val BottomSheetShadowColor = Color.Black.copy(alpha = 0.25f)
@@ -41,6 +41,7 @@ val BottomSheetHandleAreaPaddingBottom = 12.dp
 val BottomSheetHandleIconWidth = 50.dp
 val BottomSheetHandleIconHeight = 4.dp
 
+val BottomSheetBoxHeight = 40.dp
 val BottomSheetBoxTopSpacing = 26.dp
 val BottomSheetBoxGapAfterFirst = 1.dp
 val BottomSheetBoxGapAfterSecond = 8.dp
@@ -54,7 +55,6 @@ fun BottomScreen(
     onDismiss: () -> Unit = {},
     onTakePhotoClick: () -> Unit = {},
     onPickAlbumClick: () -> Unit = {},
-    sheetHeight: Dp = BottomSheetHeight,
     sheetCornerRadius: Dp = BottomSheetCornerRadius,
     sheetBackgroundColor: Color = LiroutiTheme.colors.backgroundDefault,
     sheetShadowElevation: Dp = BottomSheetShadowElevation,
@@ -64,6 +64,7 @@ fun BottomScreen(
     handleAreaPaddingBottom: Dp = BottomSheetHandleAreaPaddingBottom,
     handleIconWidth: Dp = BottomSheetHandleIconWidth,
     handleIconHeight: Dp = BottomSheetHandleIconHeight,
+    boxHeight: Dp = BottomSheetBoxHeight,
     boxTopSpacing: Dp = BottomSheetBoxTopSpacing,
     boxGapAfterFirst: Dp = BottomSheetBoxGapAfterFirst,
     boxGapAfterSecond: Dp = BottomSheetBoxGapAfterSecond,
@@ -73,26 +74,24 @@ fun BottomScreen(
 ) {
     val sheetShape: Shape = RoundedCornerShape(topStart = sheetCornerRadius, topEnd = sheetCornerRadius)
 
-    // 헤더 아이콘 아래 세 상자 + 상/하 간격을 뺀 나머지를 3등분해, 세 상자의 세로 길이를 동일하게 맞춘다.
-    val boxHeight = (
-        sheetHeight - handleAreaHeight - boxTopSpacing -
-            boxGapAfterFirst - boxGapAfterSecond - boxBottomSpacing
-        ) / 3
-
     Box(modifier = modifier.fillMaxSize()) {
         LiroutiDim(modifier = Modifier.fillMaxSize(), onClick = onDismiss)
         Column(
+            // 고정 높이 대신 내용 크기에 맞추고 navigationBarsPadding()으로 제스처 네비게이션 바
+            // 영역만큼 아래 여백을 더해준다 — 이전엔 fillMaxWidth().height(고정값)이라 기기의
+            // 시스템 내비게이션 바가 시트 하단(특히 "닫기" 항목)을 가려서 잘려 보이고, 그 안의
+            // 항목들이 자연스럽게 스크롤/배치되지 못하고 딱딱 끊겨 보이는 문제가 있었다.
             modifier = Modifier
                 .align(Alignment.BottomCenter)
                 .fillMaxWidth()
-                .height(sheetHeight)
                 .shadow(
                     elevation = sheetShadowElevation,
                     shape = sheetShape,
                     ambientColor = sheetShadowColor,
                     spotColor = sheetShadowColor,
                 )
-                .background(color = sheetBackgroundColor, shape = sheetShape),
+                .background(color = sheetBackgroundColor, shape = sheetShape)
+                .navigationBarsPadding(),
         ) {
             Box(
                 modifier = Modifier
