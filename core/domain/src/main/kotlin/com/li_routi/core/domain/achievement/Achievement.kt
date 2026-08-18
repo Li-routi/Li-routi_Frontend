@@ -24,7 +24,8 @@ data class Achievement(
     val achievementId: Long,
     val code: String,
     val name: String,
-    val conditionDesc: String,
+    /** 숨김(시크릿) 업적([hiddenYn])은 실제로 이 필드가 null로 내려온다 — 달성 전까지 조건을 감추는 의도. */
+    val conditionDesc: String?,
     val status: String,
     val progressCurrent: Int,
     val progressTarget: Int,

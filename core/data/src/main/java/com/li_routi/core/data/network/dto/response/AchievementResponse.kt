@@ -10,7 +10,9 @@ data class AchievementResponse(
     val achievementId: Long,
     val code: String,
     val name: String,
-    val conditionDesc: String,
+    // 숨김(시크릿) 업적(hiddenYn=true)은 실측상 conditionDesc가 null로 내려온다 — 이걸 non-null로
+    // 선언해뒀다가 Achievement(도메인) 생성자의 null 체크에서 NPE가 나 목록 조회 전체가 실패했었다.
+    val conditionDesc: String?,
     val status: String,
     val progress: AchievementProgressResponse?,
     val conditionProgresses: List<ConditionProgressResponse>? = null,
