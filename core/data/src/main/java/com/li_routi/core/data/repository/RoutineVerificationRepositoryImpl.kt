@@ -44,6 +44,24 @@ class RoutineVerificationRepositoryImpl(
             ),
         ).unwrap().toDomain()
     }
+
+    override suspend fun reverifyGroupRoutine(
+        groupId: Long,
+        routineId: Long,
+        verificationId: Long,
+        mediaKey: String,
+        content: String?,
+    ): ResultState<GroupRoutineVerification> = safeDataApiCall {
+        api.reverifyGroupRoutine(
+            groupId = groupId,
+            routineId = routineId,
+            verificationId = verificationId,
+            body = RoutineVerificationRequest(
+                mediaKey = mediaKey,
+                content = content?.takeIf { it.isNotBlank() },
+            ),
+        ).unwrap().toDomain()
+    }
 }
 
 private fun <T> ApiResponse<T>.unwrap(): T {

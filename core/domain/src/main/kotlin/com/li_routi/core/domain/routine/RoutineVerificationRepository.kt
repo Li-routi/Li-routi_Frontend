@@ -18,4 +18,12 @@ interface RoutineVerificationRepository {
         mediaKey: String,
         content: String?,
     ): ResultState<GroupRoutineVerification>
+
+    suspend fun reverifyGroupRoutine(
+        groupId: Long,
+        routineId: Long,
+        verificationId: Long,
+        mediaKey: String,
+        content: String?,
+    ): ResultState<GroupRoutineVerification>
 }

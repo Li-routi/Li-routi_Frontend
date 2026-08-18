@@ -12,6 +12,7 @@ import com.li_routi.core.domain.media.UploadMediaUseCase
 class SubmitGroupRoutineAuthUseCase(
     private val uploadMediaUseCase: UploadMediaUseCase,
     private val verifyGroupRoutineUseCase: VerifyGroupRoutineUseCase,
+    private val reverifyGroupRoutineUseCase: ReverifyGroupRoutineUseCase,
 ) {
     suspend operator fun invoke(
         contentType: String,
@@ -34,14 +35,21 @@ class SubmitGroupRoutineAuthUseCase(
             ResultState.Loading -> return ResultState.Loading
         }
         for (target in targets) {
-            when (
-                val verified = verifyGroupRoutineUseCase(
+            val verified = target.verificationId?.let { verificationId ->
+                reverifyGroupRoutineUseCase(
                     groupId = target.groupId,
                     routineId = target.routineId,
+                    verificationId = verificationId,
                     mediaKey = mediaKey,
                     content = content,
                 )
-            ) {
+            } ?: verifyGroupRoutineUseCase(
+                groupId = target.groupId,
+                routineId = target.routineId,
+                mediaKey = mediaKey,
+                content = content,
+            )
+            when (verified) {
                 is ResultState.Success -> Unit
                 is ResultState.Error -> return verified
                 ResultState.Loading -> return ResultState.Loading

@@ -92,7 +92,11 @@ internal suspend fun submitRoutineAuthUpload(
         val groupId = item.groupId
         val routineId = item.groupRoutineId
         if (groupId != null && routineId != null) {
-            GroupRoutineTarget(groupId = groupId, routineId = routineId)
+            GroupRoutineTarget(
+                groupId = groupId,
+                routineId = routineId,
+                verificationId = item.groupRoutineVerificationId,
+            )
         } else {
             parseGroupRoutineTarget(item.id)
         }

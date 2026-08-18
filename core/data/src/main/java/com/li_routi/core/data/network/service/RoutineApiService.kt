@@ -79,4 +79,12 @@ interface RoutineApiService {
         @Path("routineId") routineId: Long,
         @Body body: RoutineVerificationRequest,
     ): ApiResponse<GroupRoutineVerificationResponse>
+
+    @PATCH("api/groups/{groupId}/routines/{routineId}/verifications/{verificationId}")
+    suspend fun reverifyGroupRoutine(
+        @Path("groupId") groupId: Long,
+        @Path("routineId") routineId: Long,
+        @Path("verificationId") verificationId: Long,
+        @Body body: RoutineVerificationRequest,
+    ): ApiResponse<GroupRoutineVerificationResponse>
 }

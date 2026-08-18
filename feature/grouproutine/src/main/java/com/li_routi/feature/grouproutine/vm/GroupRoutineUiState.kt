@@ -62,6 +62,7 @@ data class GroupTodoUiModel(
 
 data class CertificationPostUiModel(
     val id: Long,
+    val routineId: Long = 0L,
     val memberId: Long,
     val userName: String,
     val body: String,

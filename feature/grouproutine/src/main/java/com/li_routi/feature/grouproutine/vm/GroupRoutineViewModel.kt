@@ -1033,6 +1033,7 @@ class GroupRoutineViewModel(
                         posts += result.data.verifications.map { item ->
                             CertificationPostUiModel(
                                 id = item.verificationId,
+                                routineId = routineId,
                                 memberId = item.memberId,
                                 userName = item.nickname,
                                 body = item.content.orEmpty(),

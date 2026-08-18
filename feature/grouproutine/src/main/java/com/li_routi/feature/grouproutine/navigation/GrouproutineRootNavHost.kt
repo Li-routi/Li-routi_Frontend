@@ -11,6 +11,7 @@ import com.li_routi.feature.grouproutine.screen.GroupRoutineRoute
 data class GroupRoutineVerificationTarget(
     val groupId: Long,
     val routineId: Long,
+    val verificationId: Long? = null,
     val roomName: String,
     val title: String,
     val category: String,
