@@ -9,4 +9,10 @@ interface AchievementRepository {
 
     /** 달성한 업적의 보상(토파즈/한정 의상 등)을 수령한다. */
     suspend fun claimAchievement(achievementId: Long): ResultState<AchievementClaimResult>
+
+    /** "파도타기"(연속 기록) 업적이 추적 중인 루틴과 현재/목표 연속 기록을 조회한다. */
+    suspend fun getWaveRoutineStatus(): ResultState<WaveRoutineStatus>
+
+    /** 연속 기록을 추적할 개인 루틴을 지정(변경)한다. */
+    suspend fun selectWaveRoutine(memberRoutineId: Long): ResultState<Unit>
 }

@@ -3,11 +3,13 @@ package com.li_routi.feature.home.shop.vm
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
 import com.li_routi.core.common.kotlin.util.ResultState
-import com.li_routi.core.data.appearance.FallbackCharacterId
 import com.li_routi.core.data.appearance.MemberAppearanceStore
 import com.li_routi.core.data.di.AuthContainer
+import com.li_routi.core.data.di.CharacterContainer
 import com.li_routi.core.data.di.ShopContainer
 import com.li_routi.core.domain.auth.GetMyInfoUseCase
+import com.li_routi.core.domain.character.Character
+import com.li_routi.core.domain.character.GetCharactersUseCase
 import com.li_routi.core.domain.shop.CurrencyBalance
 import com.li_routi.core.domain.shop.EquipAvatarUseCase
 import com.li_routi.core.domain.shop.GetShopAvatarItemsUseCase
@@ -17,8 +19,6 @@ import com.li_routi.core.domain.shop.PurchaseShopItemsUseCase
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopAvatarItem
 import com.li_routi.core.domain.shop.ShopPurchasePayment
-import com.li_routi.feature.home.component.CharacterCatalog
-import com.li_routi.feature.home.component.CharacterUiModel
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
 import java.util.UUID
@@ -45,6 +45,7 @@ class ShopViewModel(
     private val getWalletBalancesUseCase: GetWalletBalancesUseCase = ShopContainer.getWalletBalancesUseCase,
     private val getMyInfoUseCase: GetMyInfoUseCase = AuthContainer.getMyInfoUseCase,
     private val equipAvatarUseCase: EquipAvatarUseCase = ShopContainer.equipAvatarUseCase,
+    private val getCharactersUseCase: GetCharactersUseCase = CharacterContainer.getCharactersUseCase,
     private val appearanceStore: MemberAppearanceStore = ShopContainer.memberAppearanceStore,
 ) : BaseViewModel(), ShopScreenActions {
 
@@ -117,19 +118,19 @@ class ShopViewModel(
         viewModelScope.launch {
             appearanceStore.reloadAvatar()
             val appearance = appearanceStore.appearance.value
-            val characterId = appearance.characterId.ifBlank { FallbackCharacterId }
             val saved = MemberAvatar(equipped = appearance.equipped)
             _uiState.update { state ->
                 val hydrated = state.applyServerAvatar(saved)
                 if (hasUserPreviewed) {
                     state.copy(
                         savedEquippedItemIds = hydrated.savedEquippedItemIds,
-                        savedCharacterId = characterId,
+                        savedCharacterId = appearance.characterId,
                     )
                 } else {
                     hydrated.copy(
-                        savedCharacterId = characterId,
-                        previewCharacterId = characterId,
+                        savedCharacterId = appearance.characterId,
+                        previewCharacterId = appearance.characterId,
+                        previewCharacterImageUrl = appearance.characterImageUrl,
                     )
                 }
             }
@@ -202,7 +203,16 @@ class ShopViewModel(
     private suspend fun refreshItems() {
         val state = _uiState.value
         if (state.selectedMainTab == ShopMainTab.CHARACTER) {
-            _uiState.update { it.copy(isLoading = false, items = CharacterCatalog.map { it.toShopItem() }) }
+            _uiState.update { it.copy(isLoading = true) }
+            when (val result = getCharactersUseCase()) {
+                is ResultState.Success -> _uiState.update {
+                    it.copy(isLoading = false, items = result.data.map { character -> character.toShopItem() })
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isLoading = false, items = emptyList(), message = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
             return
         }
         // 전체 탭은 slot 없이 부르는 것이라 null을 그대로 넘김
@@ -247,8 +257,16 @@ class ShopViewModel(
         hasUserPreviewed = true
         _uiState.update { state ->
             val item = state.items.firstOrNull { it.id == itemId } ?: return@update state
-            if (item.imageRes != null) {
-                return@update state.copy(previewCharacterId = item.id)
+            if (state.selectedMainTab == ShopMainTab.CHARACTER) {
+                // 알 상태(unlocked=false)는 서버가 선택을 거절하므로 미리보기 자체를 막는다 —
+                // ShopItemUiModel.owned는 여기서 항상 true로 채워져 있어(등급 격자 UI 유지용) 대신
+                // unlocked로 가른다.
+                if (!item.unlocked) return@update state
+                val characterId = item.id.toLongOrNull() ?: return@update state
+                return@update state.copy(
+                    previewCharacterId = characterId,
+                    previewCharacterImageUrl = item.imageUrl,
+                )
             }
             val numericId = item.id.toLongOrNull() ?: return@update state
             val slot = item.slot.uppercase()
@@ -313,16 +331,16 @@ class ShopViewModel(
         emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = if (state.isGemShort) 1 else 0))
     }
 
-    /**
-     * 고른 캐릭터를 앱이 기억하게 함. 본체 id를 받을 서버 필드가 아직 없어 기기+로컬 캐시에 남김.
-     * 홈은 같은 캐시를 보고 바로 따라옴
-     */
+    /** 고른 캐릭터를 서버에 저장함(`PUT /api/characters/selection`). 홈은 같은 캐시를 보고 바로 따라옴 */
     private fun persistPreviewCharacter() {
         val state = _uiState.value
         if (state.previewCharacterId == state.savedCharacterId) return
         viewModelScope.launch {
-            appearanceStore.saveCharacter(state.previewCharacterId)
-            _uiState.update { it.copy(savedCharacterId = it.previewCharacterId) }
+            when (val result = appearanceStore.saveCharacter(state.previewCharacterId, state.previewCharacterImageUrl)) {
+                is ResultState.Success -> _uiState.update { it.copy(savedCharacterId = it.previewCharacterId) }
+                is ResultState.Error -> _uiState.update { it.copy(message = result.message) }
+                ResultState.Loading -> Unit
+            }
         }
     }
 
@@ -428,12 +446,16 @@ class ShopViewModel(
     }
 }
 
-private fun CharacterUiModel.toShopItem(): ShopItemUiModel = ShopItemUiModel(
-    id = id,
+// 캐릭터는 상점에서 사는 게 아니라 업적으로 해금하는 것이라 price는 항상 0, owned는 항상 true로
+// 채운다(그리드가 가격 대신 보유/장착 표시 쪽 분기를 타게 함). 실제 해금 여부는 onItemClick이
+// 참고하는 unlocked로 따로 가른다 — 알 상태(unlocked=false)는 서버가 선택을 거절한다.
+private fun Character.toShopItem(): ShopItemUiModel = ShopItemUiModel(
+    id = id.toString(),
     name = name,
     price = 0,
-    imageRes = imageRes,
+    imageUrl = imageUrl,
     owned = true,
+    unlocked = unlocked,
 )
 
 private fun List<CurrencyBalance>.balanceOf(currency: String): Int? =

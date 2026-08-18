@@ -62,8 +62,8 @@ fun ShopEntryCard(
     showRepresentativeBadge: Boolean = false,
     /** 착용 중인 아이템 이미지. 겹칠 순서대로 들어옴 */
     equippedImageUrls: List<String> = emptyList(),
-    /** 겹쳐 입기의 바탕이 되는 캐릭터 */
-    characterRes: Int = R.drawable.default_character,
+    /** 겹쳐 입기의 바탕이 되는 캐릭터. 서버가 이미 알/성체 중 보여줄 그림을 골라 내려준다 */
+    characterImageUrl: String? = null,
 ) {
     Column(
         modifier = modifier
@@ -146,7 +146,7 @@ fun ShopEntryCard(
         ) {
             AvatarCharacter(
                 equippedImageUrls = equippedImageUrls,
-                characterRes = characterRes,
+                characterImageUrl = characterImageUrl,
                 modifier = Modifier
                     .sizeIn(maxWidth = CharacterMaxSize, maxHeight = CharacterMaxSize)
                     .fillMaxHeight()

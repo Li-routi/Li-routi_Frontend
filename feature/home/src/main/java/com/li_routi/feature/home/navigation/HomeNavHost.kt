@@ -52,6 +52,13 @@ fun HomeNavHost(
     initialEntryPoint: HomeEntryPoint? = null,
     /** [initialEntryPoint] 처리가 끝났음을 알리는 콜백 — 처리 후 값을 null로 되돌려 재진입 시 재실행을 막는다. */
     onInitialEntryPointConsumed: () -> Unit = {},
+    /**
+     * [initialEntryPoint]로 진입시킨 탭이 있으면 그 탭. null이면 홈 자신의 벨/설정 아이콘으로
+     * 들어온 것이라 평소처럼 홈 메인으로 되돌아가면 된다.
+     */
+    entryPointOriginTab: AppBottomTab? = null,
+    /** [entryPointOriginTab]가 있는 화면에서 뒤로가기 — 홈 메인이 아니라 원래 탭으로 돌려보내 달라는 요청. */
+    onExitEntryPoint: () -> Unit = {},
     modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
 ) {
@@ -106,7 +113,12 @@ fun HomeNavHost(
             NotificationRoute(
                 onEvent = { event ->
                     when (event) {
-                        NotificationUiEvent.NavigateBack -> navController.popBackStack()
+                        // 이 화면은 항상 홈 메인 바로 위에서 시작하므로(entryPointOriginTab이 있든
+                        // 없든), origin 탭이 있으면 거기로, 없으면(홈 자신의 벨 아이콘) 평소처럼
+                        // 홈 메인으로 popBackStack.
+                        NotificationUiEvent.NavigateBack -> {
+                            if (entryPointOriginTab != null) onExitEntryPoint() else navController.popBackStack()
+                        }
                         NotificationUiEvent.NavigateToSettings -> {
                             navController.navigate(RouteNotificationSettings)
                         }
@@ -124,7 +136,18 @@ fun HomeNavHost(
 
         composable(RouteNotificationSettings) {
             NotificationSettingsRoute(
-                onNavigateBack = { navController.popBackStack() },
+                onNavigateBack = {
+                    // 알림 목록을 거쳐 설정으로 들어온 경우("설정" 링크)엔 origin 탭과 무관하게 항상
+                    // 목록으로 돌아간다. 목록 없이 설정으로 곧장 진입한 경우(마이페이지 설정 아이콘)만
+                    // origin 탭으로 돌아간다.
+                    val enteredDirectlyFromHomeMain =
+                        navController.previousBackStackEntry?.destination?.route == RouteHomeMain
+                    if (entryPointOriginTab != null && enteredDirectlyFromHomeMain) {
+                        onExitEntryPoint()
+                    } else {
+                        navController.popBackStack()
+                    }
+                },
             )
         }
 

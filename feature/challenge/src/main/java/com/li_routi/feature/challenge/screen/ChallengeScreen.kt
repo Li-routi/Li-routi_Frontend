@@ -68,7 +68,8 @@ fun ChallengeScreen(
             ) {
                 Text(
                     text = "챌린지",
-                    style = LiroutiTheme.typography.heading2SemiBold,
+                    // 마이페이지 타이틀(MyPageTopBar)과 굵기를 맞춤 — SemiBold였던 게 미묘하게 더 얇아 보였음.
+                    style = LiroutiTheme.typography.heading2Bold,
                     color = LiroutiTheme.colors.labelDefault,
                 )
                 Image(

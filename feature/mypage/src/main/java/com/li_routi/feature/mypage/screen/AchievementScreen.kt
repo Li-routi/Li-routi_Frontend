@@ -2,6 +2,7 @@ package com.li_routi.feature.mypage.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -12,9 +13,13 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.Text
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -22,6 +27,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
 import androidx.compose.ui.tooling.preview.Preview
@@ -33,6 +39,8 @@ import com.li_routi.core.designsystem.component.LiroutiLineTab
 import com.li_routi.core.designsystem.component.LiroutiToast
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.core.domain.achievement.WaveRoutineStatus
+import com.li_routi.core.domain.routine.CreatedRoutine
 import com.li_routi.feature.mypage.component.AchievementBadgeGrid
 import com.li_routi.feature.mypage.component.AchievementBadgeUiModel
 import com.li_routi.feature.mypage.component.AchievementListItem
@@ -68,6 +76,13 @@ fun AchievementScreen(
     onClaimClick: (Long) -> Unit = {},
     claimMessage: String? = null,
     onClaimMessageDismissed: () -> Unit = {},
+    /** "파도타기"(연속 기록) 업적이 추적 중인 루틴. null이면 아직 못 불러온 상태(카드 자체를 숨김) */
+    waveRoutineStatus: WaveRoutineStatus? = null,
+    isWaveRoutinePickerVisible: Boolean = false,
+    myRoutines: List<CreatedRoutine> = emptyList(),
+    onWaveRoutinePickerOpen: () -> Unit = {},
+    onWaveRoutinePickerDismiss: () -> Unit = {},
+    onWaveRoutineChosen: (Long) -> Unit = {},
 ) {
     var selectedTab by remember { mutableStateOf(AchievementStatusTab.All) }
     var selectedRarity by remember { mutableStateOf<AchievementRarity?>(null) }
@@ -92,6 +107,13 @@ fun AchievementScreen(
                 onTabSelected = { index -> selectedTab = AchievementStatusTab.entries[index] },
                 equalWidth = true,
             )
+            if (waveRoutineStatus != null) {
+                WaveRoutineStatusRow(
+                    status = waveRoutineStatus,
+                    onClick = onWaveRoutinePickerOpen,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 12.dp),
+                )
+            }
             if (isLoading) {
                 Box(modifier = Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                     CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
@@ -161,6 +183,115 @@ fun AchievementScreen(
                     .navigationBarsPadding()
                     .padding(16.dp),
             )
+        }
+    }
+
+    if (isWaveRoutinePickerVisible) {
+        WaveRoutinePickerSheet(
+            routines = myRoutines,
+            selectedRoutineId = waveRoutineStatus?.memberRoutineId,
+            onRoutineClick = onWaveRoutineChosen,
+            onDismissRequest = onWaveRoutinePickerDismiss,
+        )
+    }
+}
+
+/**
+ * "파도타기"(연속 기록) 업적 상태 카드. Figma 시안이 따로 없어 기존 라벨 칩과 톤을 맞춘 최소
+ * 구현이다 — 지정한 루틴이 있으면 이름+현재/목표 연속 기록을, 없으면 선택을 유도하는 문구를 보여준다.
+ */
+@Composable
+private fun WaveRoutineStatusRow(
+    status: WaveRoutineStatus,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+) {
+    Row(
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(6.dp))
+            .background(LiroutiTheme.colors.backgroundFill)
+            .clickable(onClick = onClick)
+            .padding(horizontal = 14.dp, vertical = 12.dp),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Text(
+            text = if (status.isSelected) {
+                "🌊 ${status.routineName} · ${status.currentStreak}/${status.targetStreak}일 연속"
+            } else {
+                "🌊 연속 기록을 추적할 루틴을 선택해보세요"
+            },
+            style = LiroutiTheme.typography.body2LongMedium,
+            color = LiroutiTheme.colors.labelStrong,
+        )
+        Text(
+            text = if (status.isSelected) "변경" else "선택",
+            style = LiroutiTheme.typography.body3Bold,
+            color = LiroutiTheme.colors.primaryNormal,
+        )
+    }
+}
+
+/** 연속 기록을 추적할 루틴을 고르는 시트. 별도 Figma 없이 단순 목록으로 구현했다. */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun WaveRoutinePickerSheet(
+    routines: List<CreatedRoutine>,
+    selectedRoutineId: Long?,
+    onRoutineClick: (Long) -> Unit,
+    onDismissRequest: () -> Unit,
+) {
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true),
+        containerColor = LiroutiTheme.colors.backgroundDefault,
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .navigationBarsPadding()
+                .padding(horizontal = 20.dp, vertical = 12.dp),
+            verticalArrangement = Arrangement.spacedBy(4.dp),
+        ) {
+            Text(
+                text = "연속 기록 추적할 루틴 선택",
+                style = LiroutiTheme.typography.heading2,
+                color = LiroutiTheme.colors.labelStrong,
+                modifier = Modifier.padding(bottom = 12.dp),
+            )
+            if (routines.isEmpty()) {
+                Text(
+                    text = "선택할 수 있는 루틴이 없어요",
+                    style = LiroutiTheme.typography.body2LongRegular,
+                    color = LiroutiTheme.colors.labelInfo,
+                    modifier = Modifier.padding(vertical = 20.dp),
+                )
+            }
+            routines.forEach { routine ->
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .clip(RoundedCornerShape(6.dp))
+                        .clickable { onRoutineClick(routine.routineId) }
+                        .padding(vertical = 12.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Text(
+                        text = routine.name,
+                        style = LiroutiTheme.typography.body2LongMedium,
+                        color = LiroutiTheme.colors.labelStrong,
+                    )
+                    if (routine.routineId == selectedRoutineId) {
+                        Text(
+                            text = "선택됨",
+                            style = LiroutiTheme.typography.body3Bold,
+                            color = LiroutiTheme.colors.primaryNormal,
+                        )
+                    }
+                }
+            }
         }
     }
 }

@@ -68,10 +68,12 @@ fun ShopRoute(
             selectedCategoryIndex = uiState.selectedCategoryIndex,
             showOwnedOnly = uiState.showOwnedOnly,
             items = uiState.items,
+            isLoading = uiState.isLoading,
             selectedItemIds = uiState.selectedItems.keys,
             purchaseTargets = uiState.purchaseTargets,
             hasUnsavedChanges = uiState.hasUnsavedChanges,
             previewCharacterId = uiState.previewCharacterId,
+            previewCharacterImageUrl = uiState.previewCharacterImageUrl,
             savedCharacterId = uiState.savedCharacterId,
         )
 

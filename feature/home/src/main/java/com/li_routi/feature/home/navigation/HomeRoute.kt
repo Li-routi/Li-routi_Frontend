@@ -13,7 +13,6 @@ import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.HomeContainer
 import com.li_routi.core.data.di.RoutineContainer
-import com.li_routi.feature.home.component.characterImageResOf
 import com.li_routi.feature.home.screen.HomeScreen
 import com.li_routi.feature.home.vm.HomeUiEvent
 import com.li_routi.feature.home.vm.HomeUiState
@@ -102,7 +101,7 @@ private fun HomeScreenContent(
         hasGroupRoom = uiState.hasGroupRoom,
         nickname = uiState.nickname,
         equippedImageUrls = uiState.equippedImageUrls,
-        characterRes = characterImageResOf(uiState.characterId),
+        characterImageUrl = uiState.characterImageUrl,
         myRoutineItems = uiState.myRoutineItems,
         myRoutineFilters = uiState.myRoutineFilters,
         groupRoomFilters = uiState.groupRoomFilters,

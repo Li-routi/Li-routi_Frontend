@@ -1,11 +1,13 @@
 package com.li_routi.feature.grouproutine.screen
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.ime
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.isImeVisible
 import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
@@ -36,6 +39,7 @@ import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.TextStyle
@@ -81,6 +85,7 @@ private val DefaultEmojiSize = 40.dp
  * 실제 채팅/인증/방 관리 등은 별도 디자인 섹션(06번)이라 이번 범위에서 빠지고,
  * "그룹 루틴" 탭 접근 흐름을 확인할 수 있을 정도로만 이름·멤버·루틴 수를 보여준다.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun RoomDetailScreen(
     room: GroupRoomUiModel,
@@ -110,6 +115,15 @@ fun RoomDetailScreen(
     var chatInputMode by remember { mutableStateOf(ChatInputMode.NONE) }
     val chatFieldFocusRequester = remember { FocusRequester() }
     val keyboardController = LocalSoftwareKeyboardController.current
+    val focusManager = LocalFocusManager.current
+
+    // 키보드가 떠 있는 채로 시스템 뒤로가기를 누르면(채팅 입력 중) 이 화면을 나가는(진입했던
+    // 그룹 목록으로 돌아가는) 대신 키보드부터 내린다 — 안드로이드 기본 동작(뒤로가기=키보드 먼저
+    // 닫힘)과 맞추기 위함(RoutineManageRoute의 동일 패턴 참고).
+    BackHandler(enabled = WindowInsets.isImeVisible) {
+        keyboardController?.hide()
+        focusManager.clearFocus()
+    }
 
     // 이모지 버튼을 누르는 "그 순간"의 키보드 높이(ime 인셋)를 스냅샷으로 찍어 패널 높이로 쓴다.
     // keyboardController.hide()를 부르고 나서 값을 읽으면 키보드가 내려가는 애니메이션 도중의

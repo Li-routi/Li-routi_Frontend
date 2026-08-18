@@ -131,30 +131,40 @@ data class RoutineManageUiState(
                     selectable = true,
                 )
             }
-            val customs = customItems.mapIndexed { index, item ->
+            // templates는 카테고리를 바꿀 때마다 그 카테고리로 다시 조회해 온 목록이라(자연히
+            // 카테고리별로 갈림) 별도 필터가 필요 없다. 반면 customItems/registeredCustomRoutines는
+            // 카테고리 전환과 무관하게 세션 내내 통째로 들고 있는 목록이라, 필터를 안 걸면 다른
+            // 카테고리 탭에서 추가/등록한 커스텀 루틴까지 지금 탭에 그대로 새어 보인다.
+            val matchesSelectedCategory = { category: String ->
+                selectedCategoryName == AllCategoryLabel || category == selectedCategoryName
+            }
+            val customs = customItems.mapIndexedNotNull { index, item ->
+                val category = categories.firstOrNull { it.categoryId == item.categoryId }?.name.orEmpty()
+                if (!matchesSelectedCategory(category)) return@mapIndexedNotNull null
                 val id = "$CustomIdPrefix$index"
                 RoutineChecklistItem(
                     id = id,
                     name = item.name,
                     checked = id in selectedIds,
-                    category = categories.firstOrNull { it.categoryId == item.categoryId }?.name
-                        .orEmpty(),
+                    category = category,
                     selectable = true,
                 )
             }
             // 이미 등록된 커스텀 루틴 — 다른 루틴처럼 체크된 상태의 체크박스를 보여주되(탭해서 해제할
             // 수는 없다), 행을 탭하면 수정 시트가 연다.
-            val registered = registeredCustomRoutines.map { routine ->
-                RoutineChecklistItem(
-                    id = "$RegisteredCustomIdPrefix${routine.routineId}",
-                    name = routine.name,
-                    checked = true,
-                    category = routine.categoryName,
-                    selectable = false,
-                    showCheckbox = true,
-                    editable = true,
-                )
-            }
+            val registered = registeredCustomRoutines
+                .filter { matchesSelectedCategory(it.categoryName) }
+                .map { routine ->
+                    RoutineChecklistItem(
+                        id = "$RegisteredCustomIdPrefix${routine.routineId}",
+                        name = routine.name,
+                        checked = true,
+                        category = routine.categoryName,
+                        selectable = false,
+                        showCheckbox = true,
+                        editable = true,
+                    )
+                }
             return (templateItems + customs + registered).sortedByDescending { it.checked }
         }
 

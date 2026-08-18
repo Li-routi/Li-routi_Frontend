@@ -341,9 +341,10 @@ fun RoutineChecklistSection(
         )
 
         if (showFilters) {
-            // Figma Bottom Sheet: 오늘의 루틴 필터 행은 좌우 20dp(320폭), 그룹 탭은 16dp.
+            // Figma상 오늘의 루틴 필터 행은 좌우 20dp, 그룹 탭은 16dp로 서로 달랐으나, 탭을 오갈 때
+            // 카테고리 칩 시작 위치가 어긋나 보인다는 피드백으로 16dp로 통일함.
             LazyRow(
-                modifier = Modifier.padding(horizontal = if (isGroupTab) 16.dp else 20.dp),
+                modifier = Modifier.padding(horizontal = 16.dp),
                 horizontalArrangement = Arrangement.spacedBy(6.dp),
                 verticalAlignment = Alignment.CenterVertically,
             ) {

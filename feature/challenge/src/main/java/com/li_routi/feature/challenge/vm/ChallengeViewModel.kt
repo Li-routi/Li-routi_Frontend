@@ -20,6 +20,16 @@ class ChallengeViewModel(
     val uiState: StateFlow<ChallengeUiState> = _uiState.asStateFlow()
 
     init {
+        refresh()
+    }
+
+    /**
+     * 목록을 다시 불러온다. 챌린지 찾기에서 새로 참여하고 뒤로가기로 이 화면에 돌아와도
+     * ViewModel은 백스택에 남아 있던 게 그대로 재사용되어(재생성이 아님) init{}이 다시 안 불려서,
+     * 이 화면이 다시 보일 때(ON_RESUME)마다 [ChallengeNavHost]가 호출해 새로 참여한 챌린지가
+     * 바로 반영되게 한다.
+     */
+    fun refresh() {
         viewModelScope.launch {
             when (val result = getMyChallengesUseCase()) {
                 is ResultState.Success -> _uiState.update {

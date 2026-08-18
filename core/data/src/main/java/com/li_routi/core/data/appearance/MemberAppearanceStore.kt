@@ -2,7 +2,7 @@ package com.li_routi.core.data.appearance
 
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.preference.AuthTokenPreference
-import com.li_routi.core.data.preference.SelectedCharacterPreference
+import com.li_routi.core.domain.character.CharacterRepository
 import com.li_routi.core.domain.shop.AvatarEquippedItem
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopRepository
@@ -14,17 +14,19 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 
-/** 서버/기기에 캐릭터 id가 없을 때 쓰는 값. 상점 카탈로그 `blue_bird`와 같아야 함 */
-const val FallbackCharacterId: String = "blue_bird"
+/** 서버/기기에 캐릭터 id가 없을 때(로딩 전/비로그인) 쓰는 값. 실제 캐릭터 id로는 안 옴 */
+const val FallbackCharacterId: Long = 0L
 
 /**
  * 홈과 상점이 같이 보는 내 외형.
  *
- * 착장은 [GET /api/members/me/avatar]로 받고, 캐릭터 본체는 아직 서버 필드가 없어 기기에 둔다.
+ * 착장은 `GET /api/members/me/avatar`로, 캐릭터 본체는 `GET /api/characters`(선택된 것)로 받는다.
  */
 data class MemberAppearance(
     val equipped: List<AvatarEquippedItem> = emptyList(),
-    val characterId: String = FallbackCharacterId,
+    val characterId: Long = FallbackCharacterId,
+    /** 서버가 이미 알/성체 중 보여줄 그림을 골라서 내려준 것. null이면 로컬 기본 이미지로 대체한다. */
+    val characterImageUrl: String? = null,
 )
 
 /**
@@ -35,7 +37,7 @@ data class MemberAppearance(
  */
 class MemberAppearanceStore(
     private val repository: ShopRepository,
-    private val characterPreference: SelectedCharacterPreference,
+    private val characterRepository: CharacterRepository,
     private val tokenPreference: AuthTokenPreference,
 ) {
     private val _appearance = MutableStateFlow(MemberAppearance())
@@ -43,29 +45,27 @@ class MemberAppearanceStore(
 
     private val loadMutex = Mutex()
     private var avatarLoaded = false
+    private var characterLoaded = false
     private var loadedForToken: String? = null
 
     /**
-     * 착장이 아직 없으면 서버에서 받아 기억함. 이미 있으면 네트워크를 다시 치지 않음.
-     *
-     * 캐릭터 본체 API는 스웨거에 없어서, 기기에 없으면 기본 캐릭터를 기억해 둠
+     * 착장/캐릭터가 아직 없으면 서버에서 받아 기억함. 이미 있으면 네트워크를 다시 치지 않음.
      */
     suspend fun ensureLoaded() {
         val token = tokenPreference.accessTokenFlow.first()
         loadMutex.withLock {
             if (loadedForToken != token) {
                 avatarLoaded = false
+                characterLoaded = false
                 if (token.isNullOrBlank()) {
                     _appearance.value = MemberAppearance()
                     loadedForToken = token
                     return@withLock
                 }
             }
-            // 캐릭터 본체는 기기 로컬(DataStore)에 있어 네트워크보다 훨씬 빨리 읽을 수 있다.
-            // 착장 GET(네트워크, 느림)보다 먼저 반영해야 앱 시작 시 기본 캐릭터("파랑이")가
-            // 잠깐 보였다가 실제 캐릭터로 바뀌는 깜빡임이 없다 — appearance는 StateFlow라
-            // 여기서 갱신하는 즉시 이미 구독 중인 화면에 반영된다.
-            hydrateCharacterLocked()
+            if (!characterLoaded) {
+                fetchCharacterLocked(token)
+            }
             if (!avatarLoaded) {
                 fetchAvatarLocked(token)
             }
@@ -73,7 +73,7 @@ class MemberAppearanceStore(
     }
 
     /**
-     * 서버에서 착장을 다시 받아 기억을 맞춤.
+     * 서버에서 착장/캐릭터를 다시 받아 기억을 맞춤.
      *
      * 상점에 들어올 때·홈으로 돌아올 때 씀. 한 번 받은 뒤로는 GET을 안 치면
      * 저장 실패한 착장이나 빈 캐시가 계속 남음
@@ -84,10 +84,11 @@ class MemberAppearanceStore(
             if (token.isNullOrBlank()) {
                 _appearance.value = MemberAppearance()
                 avatarLoaded = false
+                characterLoaded = false
                 loadedForToken = token
                 return@withLock
             }
-            hydrateCharacterLocked()
+            fetchCharacterLocked(token)
             fetchAvatarLocked(token)
         }
     }
@@ -103,13 +104,23 @@ class MemberAppearanceStore(
         }
     }
 
-    private suspend fun hydrateCharacterLocked() {
-        val savedCharacterId = characterPreference.characterId.first()
-        if (savedCharacterId.isNullOrBlank()) {
-            characterPreference.save(FallbackCharacterId)
-            _appearance.update { it.copy(characterId = FallbackCharacterId) }
-        } else {
-            _appearance.update { it.copy(characterId = savedCharacterId) }
+    private suspend fun fetchCharacterLocked(token: String?) {
+        when (val result = characterRepository.getCharacters()) {
+            is ResultState.Success -> {
+                // 가입 직후에도 조건 없는 기본 캐릭터 하나는 항상 selected로 옴(스웨거 문서 기준).
+                // 못 찾으면 아무 해금 캐릭터나 추측해서 고르지 않는다 — 서버 목록 순서상 우연히
+                // 앞에 온 캐릭터를 잘못 기본값처럼 보여줄 수 있어(실제로 파랑이 대신 노랑이가 뜨는
+                // 문제가 있었음), 차라리 폴백 값(로컬 기본 파랑이 실루엣)을 그대로 두는 편이 안전하다.
+                val selected = result.data.firstOrNull { it.selected }
+                if (selected != null) {
+                    _appearance.update {
+                        it.copy(characterId = selected.id, characterImageUrl = selected.imageUrl)
+                    }
+                }
+                characterLoaded = true
+                loadedForToken = token
+            }
+            is ResultState.Error, ResultState.Loading -> Unit
         }
     }
 
@@ -119,9 +130,16 @@ class MemberAppearanceStore(
         _appearance.update { it.copy(equipped = avatar.equipped) }
     }
 
-    /** 고른 캐릭터를 기기에 남기고 홈/상점이 같은 값을 보게 함. 서버에 보낼 필드가 아직 없음 */
-    suspend fun saveCharacter(characterId: String) {
-        characterPreference.save(characterId)
-        _appearance.update { it.copy(characterId = characterId) }
+    /**
+     * 쓸 캐릭터를 바꿔 서버에 저장하고 홈/상점이 같은 값을 보게 함.
+     * 보유(해금)한 캐릭터만 고를 수 있다 — 서버가 그 외엔 거절한다.
+     */
+    suspend fun saveCharacter(characterId: Long, imageUrl: String?): ResultState<Unit> {
+        val result = characterRepository.selectCharacter(characterId)
+        if (result is ResultState.Success) {
+            characterLoaded = true
+            _appearance.update { it.copy(characterId = characterId, characterImageUrl = imageUrl) }
+        }
+        return result
     }
 }

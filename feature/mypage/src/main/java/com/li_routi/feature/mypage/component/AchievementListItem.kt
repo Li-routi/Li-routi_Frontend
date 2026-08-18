@@ -66,6 +66,18 @@ data class AchievementUiModel(
     val achievementId: Long = -1L,
     /** 달성했지만 보상을 아직 수령하지 않은 상태 — true면 "받기" 버튼을 보여준다. */
     val isClaimable: Boolean = false,
+    /**
+     * 조건이 여러 개인 업적의 조건별 진행도. 1개 이하면(단일 조건이거나 없음) 위 [progressLabel]/
+     * [progress] 하나만 보여주고, 2개 이상이면 조건별 줄을 추가로 보여준다.
+     */
+    val conditions: List<AchievementConditionUiModel> = emptyList(),
+)
+
+data class AchievementConditionUiModel(
+    /** 서버 조건 키를 그대로 라벨로 쓴다 — 조건별 한글 문구를 내려주는 필드가 없다. */
+    val label: String,
+    val progressLabel: String,
+    val progress: Float,
 )
 
 private val TitleTextStyle = TextStyle(fontWeight = FontWeight.Bold, fontSize = 14.sp, lineHeight = 22.sp, letterSpacing = (-0.35).sp)
@@ -147,22 +159,51 @@ fun AchievementListItem(
                 }
                 Text(text = item.description, style = DescriptionTextStyle, color = LiroutiTheme.colors.labelSub)
             }
-            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            // 조건이 2개 이상인 업적만 조건별 줄로 나눠 보여준다 — 그 외(0/1개)는 기존처럼 위
+            // progressLabel/progress 하나로 충분하다.
+            if (item.conditions.size > 1) {
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    item.conditions.forEach { condition ->
+                        AchievementProgressRow(
+                            label = condition.label,
+                            progress = condition.progress,
+                            progressLabel = condition.progressLabel,
+                        )
+                    }
+                }
+            } else {
+                AchievementProgressRow(progress = item.progress, progressLabel = item.progressLabel)
+            }
+        }
+    }
+}
+
+@Composable
+private fun AchievementProgressRow(
+    progress: Float,
+    progressLabel: String,
+    label: String? = null,
+    modifier: Modifier = Modifier,
+) {
+    Column(modifier = modifier) {
+        if (label != null) {
+            Text(text = label, style = DescriptionTextStyle, color = LiroutiTheme.colors.labelInfo)
+        }
+        Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+            Box(
+                modifier = Modifier
+                    .weight(1f)
+                    .height(6.dp)
+                    .background(LiroutiTheme.colors.borderDefault, RoundedCornerShape(10.dp)),
+            ) {
                 Box(
                     modifier = Modifier
-                        .weight(1f)
-                        .height(6.dp)
-                        .background(LiroutiTheme.colors.borderDefault, RoundedCornerShape(10.dp)),
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .fillMaxHeight()
-                            .fillMaxWidth(item.progress.coerceIn(0f, 1f))
-                            .background(LiroutiTheme.colors.primaryNormal, RoundedCornerShape(10.dp)),
-                    )
-                }
-                Text(text = item.progressLabel, style = ProgressCountTextStyle, color = ProgressCountColor)
+                        .fillMaxHeight()
+                        .fillMaxWidth(progress.coerceIn(0f, 1f))
+                        .background(LiroutiTheme.colors.primaryNormal, RoundedCornerShape(10.dp)),
+                )
             }
+            Text(text = progressLabel, style = ProgressCountTextStyle, color = ProgressCountColor)
         }
     }
 }

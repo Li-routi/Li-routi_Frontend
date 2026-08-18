@@ -218,9 +218,9 @@ fun ChallengeDetailScreen(
                                 onVerifyClick = onStartVerification,
                             )
                             LiroutiRoutineStatsRow(
-                                participants = uiState.participantCount.toString(),
-                                activity = uiState.rewardCount.toString(),
-                                posts = uiState.postCount.toString(),
+                                participants = uiState.participantCount.toCompactCountString(),
+                                activity = uiState.rewardCount.toCompactCountString(),
+                                posts = uiState.postCount.toCompactCountString(),
                                 activityLabel = "리워드",
                             )
                         }
@@ -269,13 +269,10 @@ fun ChallengeDetailScreen(
                     items(uiState.visibleCertifications, key = { it.id }) { certification ->
                         CertificationCard(
                             certification = certification,
-                            // "인증"(전체) 탭에서 본인 글은 신고할 수 없어야 하므로 더보기 버튼 자체를 숨긴다.
-                            // "내 인증 보기" 탭은 항상 본인 글이라 수정하기/삭제하기를 위해 그대로 노출한다.
-                            onMoreClick = if (uiState.selectedTab == CertificationTab.All && certification.isMine) {
-                                null
-                            } else {
-                                { moreSheetCertification = certification }
-                            },
+                            // 더보기 시트 자체가 isMine 기준으로 수정하기/신고하기를 이미 가르기 때문에
+                            // ("인증" 탭 내 글도 신고 대신 수정하기가 뜸), 탭과 무관하게 항상 노출한다 —
+                            // 예전엔 "인증" 탭의 내 글에서 더보기 버튼 자체를 숨겨 수정할 방법이 없었다.
+                            onMoreClick = { moreSheetCertification = certification },
                             // "내 인증 보기" 응답 자체엔 liked가 없지만 ViewModel이 "인증"(전체) 쪽 값으로
                             // 맞춰주므로, 두 탭 모두 좋아요를 누를 수 있다(자기 글에도 좋아요 가능).
                             onLikeClick = { actions.onLikeToggleClick(certification.id) },
@@ -548,6 +545,21 @@ private fun ChallengeInfoSection(
             onClick = { if (uiState.isJoined) onVerifyClick() else onJoinClick() },
         )
     }
+}
+
+/**
+ * 참여자/리워드/인증 게시글 수가 커지면 자릿수가 늘어 줄바꿈이 생길 수 있어 K/M 단위로 줄인다.
+ * 소수점은 1자리까지만 보여주고 ".0"이면 생략한다(예: 1_200 -> "1.2K", 5_000 -> "5K").
+ */
+private fun Int.toCompactCountString(): String = when {
+    this < 1_000 -> toString()
+    this < 1_000_000 -> (this / 1_000.0).toCompactSuffixString("K")
+    else -> (this / 1_000_000.0).toCompactSuffixString("M")
+}
+
+private fun Double.toCompactSuffixString(suffix: String): String {
+    val rounded = "%.1f".format(this)
+    return (if (rounded.endsWith(".0")) rounded.dropLast(2) else rounded) + suffix
 }
 
 private object PreviewChallengeDetailScreenActions : ChallengeDetailScreenActions {

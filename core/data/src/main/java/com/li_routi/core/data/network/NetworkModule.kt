@@ -5,6 +5,7 @@ import com.li_routi.core.data.BuildConfig
 import com.li_routi.core.data.network.service.AchievementApiService
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.ChallengeApiService
+import com.li_routi.core.data.network.service.CharacterApiService
 import com.li_routi.core.data.network.service.ShopApiService
 import com.li_routi.core.data.network.service.ChatApiService
 import com.li_routi.core.data.network.service.GroupRoutineApiService
@@ -137,5 +138,9 @@ object NetworkModule {
 
     val reportApiService: ReportApiService by lazy {
         retrofit.create(ReportApiService::class.java)
+    }
+
+    val characterApiService: CharacterApiService by lazy {
+        retrofit.create(CharacterApiService::class.java)
     }
 }

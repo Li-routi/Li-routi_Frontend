@@ -2,7 +2,6 @@ package com.li_routi.feature.mypage.screen
 
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
-import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -26,7 +25,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.graphics.ColorFilter
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
@@ -66,7 +64,6 @@ fun MyVerificationScreen(
     pendingVerifications: List<PendingVerificationUiModel> = SamplePendingVerifications,
     isLoading: Boolean = false,
     isError: Boolean = false,
-    onMenuClick: () -> Unit = {},
 ) {
     var showDatePicker by remember { mutableStateOf(false) }
 
@@ -75,19 +72,10 @@ fun MyVerificationScreen(
             .fillMaxSize()
             .background(LiroutiTheme.colors.backgroundDefault),
     ) {
+        // 더보기(점 세 개) 버튼은 실제로 아무 기능도 연결돼 있지 않던 장식용 아이콘이라 제거함.
         EditProfileTopBar(
             title = "내 인증",
             onBackClick = onBackClick,
-            trailingContent = {
-                Image(
-                    painter = painterResource(id = R.drawable.overflow_menu__vertical),
-                    contentDescription = "더보기",
-                    modifier = Modifier
-                        .size(20.dp)
-                        .clickable(onClick = onMenuClick),
-                    colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelDefault),
-                )
-            },
         )
         ReportPeriodHeader(
             label = selectedDate.toDisplayLabel(),

@@ -4,10 +4,14 @@ import com.li_routi.core.data.network.dto.response.AchievementCategoryResponse
 import com.li_routi.core.data.network.dto.response.AchievementResponse
 import com.li_routi.core.data.network.dto.response.AchievementsResponse
 import com.li_routi.core.data.network.dto.response.ClaimResponse
+import com.li_routi.core.data.network.dto.response.ConditionProgressResponse
+import com.li_routi.core.data.network.dto.response.WaveRoutineStatusResponse
 import com.li_routi.core.domain.achievement.Achievement
 import com.li_routi.core.domain.achievement.AchievementCategory
 import com.li_routi.core.domain.achievement.AchievementCategoryGroup
 import com.li_routi.core.domain.achievement.AchievementClaimResult
+import com.li_routi.core.domain.achievement.AchievementConditionProgress
+import com.li_routi.core.domain.achievement.WaveRoutineStatus
 
 fun AchievementsResponse.toDomain(): List<AchievementCategoryGroup> = categories.map { it.toDomain() }
 
@@ -34,13 +38,29 @@ fun AchievementResponse.toDomain(): Achievement = Achievement(
     topazReward = topazReward,
     badgeYn = badgeYn,
     limitedOutfitYn = limitedOutfitYn,
+    hiddenYn = hiddenYn,
     achievedAt = achievedAt,
     claimedAt = claimedAt,
     badgeImageUrl = badgeImageUrl?.takeIf { it.isNotBlank() },
+    conditionProgresses = conditionProgresses.orEmpty().map { it.toDomain() },
+)
+
+fun ConditionProgressResponse.toDomain(): AchievementConditionProgress = AchievementConditionProgress(
+    conditionKey = conditionKey.orEmpty(),
+    current = current,
+    target = target,
 )
 
 fun ClaimResponse.toDomain(): AchievementClaimResult = AchievementClaimResult(
     achievementId = achievementId,
     freeBalanceAfter = freeBalanceAfter,
     rewardApplied = rewardApplied,
+)
+
+// 지정한 적 없으면 memberRoutineId가 안 오거나 0/음수로 올 수 있어 방어적으로 0 이하는 "미지정"으로 통일한다.
+fun WaveRoutineStatusResponse.toDomain(): WaveRoutineStatus = WaveRoutineStatus(
+    memberRoutineId = (memberRoutineId ?: 0L).coerceAtLeast(0L),
+    routineName = routineName.orEmpty(),
+    currentStreak = currentStreak ?: 0,
+    targetStreak = targetStreak ?: 0,
 )
