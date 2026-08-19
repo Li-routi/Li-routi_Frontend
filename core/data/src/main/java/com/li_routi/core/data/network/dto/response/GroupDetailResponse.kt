@@ -22,6 +22,13 @@ data class GroupMemberActivityResponse(
     val dailyProgress: DailyProgressResponse?,
     /** 구성원의 현재 조합 아바타(착용 아이템). 안 입은 자리는 실리지 않는다. */
     val avatar: GroupMemberAvatarResponse?,
+    /** 구성원이 대표로 설정한 업적 배지. 대표 업적이 없으면 null. */
+    val representativeAchievement: RepresentativeAchievementResponse?,
+)
+
+data class RepresentativeAchievementResponse(
+    val name: String?,
+    val badgeImageUrl: String?,
 )
 
 data class DailyProgressResponse(

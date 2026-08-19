@@ -941,6 +941,8 @@ class GroupRoutineViewModel(
                                     pokeCount = member.totalPokeCount,
                                     isMe = member.memberId == myMemberId,
                                     equippedImageUrls = member.equippedImageUrls,
+                                    representativeBadgeName = member.representativeBadgeName,
+                                    representativeBadgeImageUrl = member.representativeBadgeImageUrl,
                                 )
                             },
                             routines = state.routines.map { routine ->
