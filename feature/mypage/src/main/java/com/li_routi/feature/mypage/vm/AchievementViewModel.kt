@@ -169,6 +169,11 @@ class AchievementViewModel(
      */
     fun onClaimClick(achievementId: Long) {
         if (_uiState.value.isClaiming) return
+        // 알(EGG) 업적은 캐릭터 해금용이라 전용 문구를 보여준다 — claim 응답엔 카테고리가 없어서
+        // 클릭 시점에 화면이 이미 들고 있는 목록에서 등급을 찾아둔다.
+        val isCharacterReward = _uiState.value.achievements
+            .firstOrNull { it.achievementId == achievementId }
+            ?.rarity == AchievementRarity.Character
         viewModelScope.launch {
             _uiState.update { it.copy(isClaiming = true) }
             when (val result = claimAchievementUseCase(achievementId)) {
@@ -176,7 +181,7 @@ class AchievementViewModel(
                     _uiState.update { state ->
                         state.copy(
                             isClaiming = false,
-                            claimMessage = result.data.toMessage(),
+                            claimMessage = result.data.toMessage(isCharacterReward),
                             // load()가 새 목록을 받아오기 전까지도 이 항목은 즉시 "받기" 불가로 바꿔둔다.
                             // isClaiming은 이 요청 하나만 막는 전역 가드라, 응답 직후부터 load() 완료
                             // 전까지의 틈에 같은 업적을 다시 탭하면 수령 API가 중복 호출될 수 있었다.
@@ -263,8 +268,11 @@ data class AchievementUiState(
     val isRepresentativeLoaded: Boolean = false,
 )
 
-private fun AchievementClaimResult.toMessage(): String =
-    if (rewardApplied) "보상을 받았어요!" else "이미 받은 보상이에요."
+private fun AchievementClaimResult.toMessage(isCharacterReward: Boolean): String = when {
+    !rewardApplied -> "이미 받은 보상이에요."
+    isCharacterReward -> "새로운 캐릭터가 해금되었습니다!"
+    else -> "보상을 받았어요!"
+}
 
 private fun Achievement.toUiModel(category: AchievementCategory): AchievementUiModel = AchievementUiModel(
     title = name,
