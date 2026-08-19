@@ -287,7 +287,12 @@ fun AppNavHost(
                         groupRoutineEntryPoint = GrouproutineEntryPoint.JoinWithInviteCode
                         selectTab(AppBottomTab.GroupRoutine)
                     },
-                    onStartVerification = { routineId -> startVerificationFlow(routineId) },
+                    onStartVerification = { routineId ->
+                        startVerificationFlow(
+                            preselectedId = routineId,
+                            isGroupRoutine = routineId.startsWith("group_"),
+                        )
+                    },
                     verificationRefreshSignal = homeRefreshSignal,
                     onTabSelected = ::selectTab,
                     onNavigateToChallengeHome = { selectTab(AppBottomTab.Challenge) },

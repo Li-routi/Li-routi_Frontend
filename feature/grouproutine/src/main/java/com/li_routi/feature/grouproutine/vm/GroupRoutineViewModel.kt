@@ -210,6 +210,7 @@ class GroupRoutineViewModel(
         }
         loadGroupRoutineCategories()
         loadTodayRoutines(groupId)
+        loadParticipatingGroups()
     }
 
     fun markRoutineVerified(routineId: Long?) {
