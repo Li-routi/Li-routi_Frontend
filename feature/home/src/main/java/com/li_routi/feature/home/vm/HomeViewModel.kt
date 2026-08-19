@@ -9,14 +9,17 @@ import com.li_routi.core.data.appearance.FallbackCharacterId
 import com.li_routi.core.data.appearance.MemberAppearanceStore
 import com.li_routi.core.data.di.NotificationContainer
 import com.li_routi.core.data.di.ShopContainer
+import com.li_routi.core.data.home.HomeReadinessCache
 import com.li_routi.core.data.profile.MemberProfileCache
 import com.li_routi.core.domain.home.GetHomeSummaryUseCase
+import com.li_routi.core.domain.home.HomeSummary
 import com.li_routi.core.domain.notification.HasUnreadNotificationUseCase
 import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.GetRoutineCategoriesUseCase
 import com.li_routi.core.domain.routine.RoutineCategory
+import com.li_routi.core.domain.routine.RoutineCategoryList
 import com.li_routi.core.domain.routine.RoutineCategoryName
 import com.li_routi.core.domain.routine.UpdateRoutineCategoryUseCase
 import com.li_routi.feature.home.navigation.HomeScreenActions
@@ -65,9 +68,19 @@ class HomeViewModel(
     val uiEvent: SharedFlow<HomeUiEvent> = _uiEvent.asSharedFlow()
 
     init {
-        // refresh()가 loadUnreadNotificationStatus()도 같이 호출하므로 여기서 따로 부르지 않는다
-        // — 안 그러면 최초 진입 시 같은 조회가 두 번 나간다.
-        refresh()
+        // 로그인 로딩 화면(또는 앱 재실행 직후)이 이미 홈 데이터를 미리 받아뒀으면, 그 값으로 먼저
+        // 그려서 로딩 스피너 없이 시작한다. 그래도 최신 상태를 보장하려면 뒤에서 조용히
+        // (showLoading = false) 한 번 더 조회한다 — 프리페치 이후 값이 바뀌었을 수도 있어서다.
+        val prefetched = HomeReadinessCache.consume()
+        if (prefetched != null) {
+            val (summary, categories) = prefetched
+            applyHomeData(summary, ResultState.Success(categories))
+            refresh(showLoading = false)
+        } else {
+            // refresh()가 loadUnreadNotificationStatus()도 같이 호출하므로 여기서 따로 부르지 않는다
+            // — 안 그러면 최초 진입 시 같은 조회가 두 번 나간다.
+            refresh()
+        }
         observeAppearance()
     }
 
@@ -123,62 +136,78 @@ class HomeViewModel(
         }
     }
 
-    /** 홈 요약을 다시 불러온다. 인증 업로드 성공 후 등에서 호출한다. */
-    fun refresh() {
+    /**
+     * 홈 요약을 다시 불러온다. 인증 업로드 성공 후 등에서 호출한다.
+     *
+     * [showLoading]이 false면 로딩 스피너([HomeUiState.isLoading])를 켜지 않고 조용히 새로고침한다 —
+     * 로그인 로딩 화면이 미리 받아둔 값으로 이미 완성된 화면을 그려둔 뒤, 최신화만 뒤에서 조용히
+     * 하고 싶을 때 쓴다([init] 참고).
+     */
+    fun refresh(showLoading: Boolean = true) {
         loadUnreadNotificationStatus()
         viewModelScope.launch {
             // 첫 GET이 실패했으면 홈 재시도에서 착장도 다시 받아 둠
             appearanceStore.ensureLoaded()
-            _uiState.update { it.copy(isLoading = true, loadError = false) }
+            if (showLoading) {
+                _uiState.update { it.copy(isLoading = true, loadError = false) }
+            }
             val summaryDeferred = async { getHomeSummaryUseCase() }
             val categoriesDeferred = async { getRoutineCategoriesUseCase() }
             when (val result = summaryDeferred.await()) {
-                is ResultState.Success -> {
-                    var next = result.data.toHomeUiState()
-                    when (val categoriesResult = categoriesDeferred.await()) {
-                        is ResultState.Success -> {
-                            val categories = categoriesResult.data.categories
-                            val colorById = categories.associate { it.categoryId to it.color }
-                            next = next.copy(
-                                myCategories = categories,
-                                addableCategoryCount = categoriesResult.data.addableCount,
-                                myRoutineFilters = mergeCategoryFilters(
-                                    routineFilters = next.myRoutineFilters,
-                                    categories = categories,
-                                    hasActiveRoutine = next.hasActiveRoutine,
-                                ),
-                                myRoutineItems = next.myRoutineItems.map { item ->
-                                    item.withCategoryColor(colorById)
-                                },
-                                groupRoomItems = next.groupRoomItems.map { item ->
-                                    item.withCategoryColor(colorById)
-                                },
-                            )
-                        }
-                        is ResultState.Error, ResultState.Loading -> Unit
-                    }
-                    MemberProfileCache.nickname.value = next.nickname
-                    // 요약으로 상태를 통째로 새로 만들기 때문에, 요약 응답에 없는 필드(착장/캐릭터,
-                    // 알림 뱃지)는 여기서 명시적으로 다시 채워 넣지 않으면 next의 기본값(예: 뱃지
-                    // false)으로 덮어써진다 — loadUnreadNotificationStatus()가 먼저 true로 반영해도
-                    // 뒤이어 이 요약 응답이 도착하면서 다시 꺼지는 깜빡임이 있었다.
-                    _uiState.update {
-                        val appearance = appearanceStore.appearance.value
-                        next.copy(
-                            equippedImageUrls = equippedImageUrlsOf(
-                                appearance.equipped.associate { it.slot to it.imageUrl },
-                            ),
-                            characterId = appearance.characterId,
-                            characterImageUrl = appearance.characterImageUrl,
-                            hasUnreadNotification = it.hasUnreadNotification,
-                        )
-                    }
-                }
+                is ResultState.Success -> applyHomeData(result.data, categoriesDeferred.await())
                 is ResultState.Error -> {
                     _uiState.update { it.copy(isLoading = false, loadError = true) }
                 }
                 ResultState.Loading -> Unit
             }
+        }
+    }
+
+    /**
+     * [summary]/[categoriesResult]로 [uiState]를 완성해서 채운다. 이미 완료된 결과(네트워크 응답이든,
+     * 로그인 로딩 화면이 미리 받아둔 프리페치 값이든)를 받아 순수하게 상태만 만드는 함수라 suspend가
+     * 아니다 — [init]에서 프리페치 값으로 동기 호출할 수도, [refresh]가 네트워크 응답으로 호출할 수도
+     * 있다.
+     */
+    private fun applyHomeData(summary: HomeSummary, categoriesResult: ResultState<RoutineCategoryList>) {
+        var next = summary.toHomeUiState()
+        when (categoriesResult) {
+            is ResultState.Success -> {
+                val categories = categoriesResult.data.categories
+                val colorById = categories.associate { it.categoryId to it.color }
+                next = next.copy(
+                    myCategories = categories,
+                    addableCategoryCount = categoriesResult.data.addableCount,
+                    myRoutineFilters = mergeCategoryFilters(
+                        routineFilters = next.myRoutineFilters,
+                        categories = categories,
+                        hasActiveRoutine = next.hasActiveRoutine,
+                    ),
+                    myRoutineItems = next.myRoutineItems.map { item ->
+                        item.withCategoryColor(colorById)
+                    },
+                    groupRoomItems = next.groupRoomItems.map { item ->
+                        item.withCategoryColor(colorById)
+                    },
+                )
+            }
+            is ResultState.Error, ResultState.Loading -> Unit
+        }
+        MemberProfileCache.nickname.value = next.nickname
+        // 요약으로 상태를 통째로 새로 만들기 때문에, 요약 응답에 없는 필드(착장/캐릭터,
+        // 알림 뱃지)는 여기서 명시적으로 다시 채워 넣지 않으면 next의 기본값(예: 뱃지
+        // false)으로 덮어써진다 — loadUnreadNotificationStatus()가 먼저 true로 반영해도
+        // 뒤이어 이 요약 응답이 도착하면서 다시 꺼지는 깜빡임이 있었다.
+        _uiState.update {
+            val appearance = appearanceStore.appearance.value
+            next.copy(
+                equippedImageUrls = equippedImageUrlsOf(
+                    appearance.equipped.associate { it.slot to it.imageUrl },
+                ),
+                characterId = appearance.characterId,
+                characterImageUrl = appearance.characterImageUrl,
+                hasUnreadNotification = it.hasUnreadNotification,
+            )
         }
     }
 

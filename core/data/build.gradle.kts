@@ -54,6 +54,9 @@ dependencies {
 
     implementation(libs.kotlinx.coroutines.android)
 
+    // 로그인 로딩 화면에서 홈 캐릭터/착장 이미지를 미리 받아두기 위한 헤드리스 이미지 로더
+    implementation(libs.coil)
+
     // DataStore (토큰 저장용)
     implementation(libs.androidx.datastore.preferences)
 

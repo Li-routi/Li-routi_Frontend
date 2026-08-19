@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import com.li_routi.core.data.home.HomeContentPrefetcher
 import com.li_routi.feature.login.auth.findActivity
 import com.li_routi.feature.login.screen.LoadingScreen
 import com.li_routi.feature.login.screen.LoginScreen
@@ -19,13 +20,9 @@ import com.li_routi.feature.login.screen.ProfileDefaultNickname
 import com.li_routi.feature.login.screen.ProfileScreen
 import com.li_routi.feature.login.vm.LoginUiEvent
 import com.li_routi.feature.login.vm.LoginViewModel
-import kotlinx.coroutines.delay
 
 
 private const val MainActivityClassName = "com.cmc.li_routi_frontend.MainActivity"
-
-// 홈으로 넘어가기 전, 사용자 화면에 LoadingScreen이 떠 있는 시간.
-private const val LoadingScreenDurationMillis = 2000L
 
 private enum class LoginRouteScreen { Login, Profile, Loading }
 
@@ -92,8 +89,10 @@ fun LoginRoute(
             )
         }
         LoginRouteScreen.Loading -> {
+            // 이 화면이 떠 있는 동안 홈 데이터/이미지를 미리 받아둔다 — 완료(또는 타임아웃)되기
+            // 전까지는 넘어가지 않아서, 홈 화면이 뜨자마자 깜빡임 없이 완성된 상태로 보인다.
             LaunchedEffect(Unit) {
-                delay(LoadingScreenDurationMillis)
+                HomeContentPrefetcher.prefetchWithMinDuration()
                 goToMainActivity()
             }
             LoadingScreen(modifier = modifier)

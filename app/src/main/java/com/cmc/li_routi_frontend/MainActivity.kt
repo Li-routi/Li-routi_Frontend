@@ -24,6 +24,7 @@ import com.cmc.li_routi_frontend.fcm.FcmNotificationPresenter
 import com.cmc.li_routi_frontend.navigation.AppNavHost
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
+import com.li_routi.core.data.home.HomeContentPrefetcher
 import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.common.ui.payment.LocalPaymentLauncher
 import com.li_routi.core.common.ui.payment.LocalPaymentResultHandlerSetter
@@ -36,6 +37,7 @@ import io.portone.sdk.android.type.response.PaymentResponse
 import com.li_routi.core.domain.notification.NotificationNavigationTarget
 import com.li_routi.core.domain.notification.resolveNotificationNavigationTarget
 import com.li_routi.feature.login.LoginActivity
+import com.li_routi.feature.login.screen.LoadingScreen
 import kotlinx.coroutines.launch
 
 /**
@@ -99,6 +101,16 @@ class MainActivity : ComponentActivity() {
                 finish()
                 return@launch
             }
+            // 토큰이 남아있어 로그인/로딩 화면을 거치지 않고 앱이 곧장 여기로 들어온 경우에도,
+            // 로그인 경로(LoginRoute)와 동일하게 로딩화면을 잠깐 띄우고 그 뒤에서 홈 데이터/이미지를
+            // 미리 받아둔다 — 안 그러면 이 경로만 홈 화면 자체의 로딩 스피너/이미지 깜빡임을 그대로
+            // 겪는다.
+            setContent {
+                LiroutiFrontendTheme {
+                    LoadingScreen()
+                }
+            }
+            HomeContentPrefetcher.prefetchWithMinDuration()
             proceedToHome()
         }
     }

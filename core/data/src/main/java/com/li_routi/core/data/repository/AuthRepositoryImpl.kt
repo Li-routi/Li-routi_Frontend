@@ -13,6 +13,7 @@ import com.li_routi.core.data.network.dto.request.UpdateProfileRequest
 import com.li_routi.core.data.network.dto.request.WithdrawRequest
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.network.service.NotificationApiService
+import com.li_routi.core.data.home.HomeReadinessCache
 import com.li_routi.core.data.notification.FcmDeviceSyncGate
 import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.data.preference.FcmTokenPreference
@@ -74,6 +75,7 @@ class AuthRepositoryImpl(
             // 안 지우면 같은 기기에서 다른 계정으로 다시 로그인했을 때, 새 세션 조회가 끝나기 전까지
             // 이전 계정의 닉네임/캐릭터/알림 상태가 잠깐 그대로 보인다.
             MemberProfileCache.clear()
+            HomeReadinessCache.clear()
         }
     }
 
@@ -149,6 +151,7 @@ class AuthRepositoryImpl(
             fcmTokenPreference.clear()
             tokenPreference.clear()
             MemberProfileCache.clear()
+            HomeReadinessCache.clear()
         }
     }
 
