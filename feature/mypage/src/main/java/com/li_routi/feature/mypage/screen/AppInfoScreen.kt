@@ -28,7 +28,7 @@ fun AppInfoScreen(
     modifier: Modifier = Modifier,
     appVersion: String = "v1.0.0",
     onNoticeClick: () -> Unit = {},
-    onInquiryClick: () -> Unit = {},
+    onSuggestionClick: () -> Unit = {},
     onTermsOfServiceClick: () -> Unit = {},
     onPrivacyPolicyClick: () -> Unit = {},
     onCoinRefundPolicyClick: () -> Unit = {},
@@ -44,7 +44,7 @@ fun AppInfoScreen(
         Column(modifier = Modifier.padding(horizontal = 16.dp, vertical = 14.dp)) {
             SettingsSectionLabel(title = "고객 지원")
             SettingsListItem(title = "공지사항", onClick = onNoticeClick)
-            SettingsListItem(title = "문의하기", onClick = onInquiryClick)
+            SettingsListItem(title = "건의하기", onClick = onSuggestionClick)
 
             LiroutiDivider(color = SettingsSectionDividerColor, modifier = Modifier.padding(vertical = 8.dp))
 
