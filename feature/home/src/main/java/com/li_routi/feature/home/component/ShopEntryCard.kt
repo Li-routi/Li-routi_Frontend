@@ -31,6 +31,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
 import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeBackground
@@ -60,7 +61,10 @@ fun ShopEntryCard(
     nickname: String,
     onNavigateToShop: () -> Unit,
     modifier: Modifier = Modifier,
-    showRepresentativeBadge: Boolean = false,
+    /** 대표로 설정한 업적 배지 이름. 대표 업적이 없으면 null — 배지를 안 보여준다. */
+    representativeBadgeName: String? = null,
+    /** 대표로 설정한 업적 배지 이미지. 대표 업적이 없으면 null. */
+    representativeBadgeImageUrl: String? = null,
     /** 아바타를 겹쳐 그릴 레이어(캐릭터·둥지·착장). 받은 순서대로 그리면 됨 */
     layers: List<AvatarLayer> = emptyList(),
 ) {
@@ -93,22 +97,35 @@ fun ShopEntryCard(
                     color = LiroutiTheme.colors.labelDefault,
                     maxLines = 1,
                 )
-                if (showRepresentativeBadge) {
+                if (representativeBadgeName != null) {
                     Spacer(modifier = Modifier.width(6.dp))
-                    Text(
-                        text = "대표 배지",
-                        // Figma badge: Caption Bold 11
-                        style = LiroutiTheme.typography.captionSemiBold.copy(
-                            fontSize = 11.sp,
-                            lineHeight = 16.sp,
-                        ),
-                        color = RepresentativeBadgeText,
-                        textAlign = TextAlign.Center,
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                         modifier = Modifier
                             .clip(RoundedCornerShape(8.dp))
                             .background(RepresentativeBadgeBackground)
                             .padding(start = 8.dp, top = 4.dp, end = 8.dp, bottom = 4.dp),
-                    )
+                    ) {
+                        if (representativeBadgeImageUrl != null) {
+                            AsyncImage(
+                                model = representativeBadgeImageUrl,
+                                contentDescription = null,
+                                modifier = Modifier.size(16.dp),
+                            )
+                        }
+                        Text(
+                            text = representativeBadgeName,
+                            // Figma badge: Caption Bold 11
+                            style = LiroutiTheme.typography.captionSemiBold.copy(
+                                fontSize = 11.sp,
+                                lineHeight = 16.sp,
+                            ),
+                            color = RepresentativeBadgeText,
+                            textAlign = TextAlign.Center,
+                            maxLines = 1,
+                        )
+                    }
                 }
             }
             Row(
@@ -172,7 +189,7 @@ private fun ShopEntryCardWithBadgePreview() {
         ShopEntryCard(
             nickname = "닉네임",
             onNavigateToShop = {},
-            showRepresentativeBadge = true,
+            representativeBadgeName = "불꽃 연속",
         )
     }
 }

@@ -29,4 +29,8 @@ data class GroupMemberActivity(
      * 캐릭터를 하나도 못 열었으면 `CHARACTER`·둥지 레이어가 빠져서 옴 — 그때만 기본 캐릭터로 대체함
      */
     val layers: List<AvatarLayer> = emptyList(),
+    /** 구성원이 대표로 설정한 업적 배지 이름. 대표 업적이 없으면 null. */
+    val representativeBadgeName: String? = null,
+    /** 구성원이 대표로 설정한 업적 배지 이미지. 대표 업적이 없으면 null. */
+    val representativeBadgeImageUrl: String? = null,
 )

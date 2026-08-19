@@ -7,6 +7,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -136,6 +137,7 @@ fun LiroutiRoutineSimpleCard(
     subtitle: String,
     modifier: Modifier = Modifier,
     badgeText: String? = "참여중",
+    showIcon: Boolean = true,
     onClick: () -> Unit = {},
     icon: @Composable () -> Unit = { LiroutiRoutineIcon() },
 ) {
@@ -144,11 +146,14 @@ fun LiroutiRoutineSimpleCard(
             .fillMaxWidth()
             .clickable(onClick = onClick)
             .background(LiroutiTheme.colors.backgroundDefault, CardShape)
-            .padding(16.dp),
+            .padding(16.dp)
+            .heightIn(min = 50.dp),
         horizontalArrangement = Arrangement.spacedBy(12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        RoutineIconBox(content = icon)
+        if (showIcon) {
+            RoutineIconBox(content = icon)
+        }
         Column(modifier = Modifier.weight(1f)) {
             Text(text = title, style = CardTitleTextStyle, color = LiroutiTheme.colors.labelDefault)
             Text(
@@ -174,6 +179,7 @@ fun LiroutiRoutineDetailCard(
     tagText: String? = null,
     badgeText: String? = "매일 루틴",
     activityLabel: String = "활동",
+    showIcon: Boolean = true,
     icon: @Composable () -> Unit = { LiroutiRoutineIcon() },
 ) {
     Column(
@@ -184,10 +190,13 @@ fun LiroutiRoutineDetailCard(
         verticalArrangement = Arrangement.spacedBy(20.dp),
     ) {
         Row(
+            modifier = Modifier.heightIn(min = 50.dp),
             horizontalArrangement = Arrangement.spacedBy(12.dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
-            RoutineIconBox(content = icon)
+            if (showIcon) {
+                RoutineIconBox(content = icon)
+            }
             Column(modifier = Modifier.weight(1f)) {
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(4.dp),

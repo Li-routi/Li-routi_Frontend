@@ -1,5 +1,6 @@
 package com.li_routi.core.data.network
 
+import com.li_routi.core.data.home.HomeReadinessCache
 import com.li_routi.core.data.network.dto.request.ReissueRequest
 import com.li_routi.core.data.network.service.AuthApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
@@ -62,6 +63,7 @@ class TokenAuthenticator(
             // 세션이 강제로 끊겼으니, 다음 사용자가 로그인했을 때 이전 세션의 닉네임/캐릭터/알림
             // 상태가 잠깐이라도 남아 보이지 않게 같이 지운다.
             MemberProfileCache.clear()
+            HomeReadinessCache.clear()
             return null
         }
 

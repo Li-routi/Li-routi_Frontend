@@ -15,4 +15,13 @@ interface AchievementRepository {
 
     /** 연속 기록을 추적할 개인 루틴을 지정(변경)한다. */
     suspend fun selectWaveRoutine(memberRoutineId: Long): ResultState<Unit>
+
+    /** 대표 업적으로 선택 가능한(배지 이미지가 있고 CLAIMED된) 업적 목록을 조회한다. */
+    suspend fun getSelectableRepresentativeAchievements(): ResultState<List<SelectableAchievement>>
+
+    /** [achievementId]를 대표 업적으로 설정한다 — 이미 설정된 게 있으면 덮어쓴다. */
+    suspend fun setRepresentativeAchievement(achievementId: Long): ResultState<Unit>
+
+    /** 설정된 대표 업적을 해제한다. */
+    suspend fun clearRepresentativeAchievement(): ResultState<Unit>
 }

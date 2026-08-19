@@ -100,6 +100,8 @@ private fun HomeScreenContent(
         hasActiveRoutine = uiState.hasActiveRoutine,
         hasGroupRoom = uiState.hasGroupRoom,
         nickname = uiState.nickname,
+        representativeBadgeName = uiState.representativeBadgeName,
+        representativeBadgeImageUrl = uiState.representativeBadgeImageUrl,
         layers = uiState.layers,
         myRoutineItems = uiState.myRoutineItems,
         myRoutineFilters = uiState.myRoutineFilters,

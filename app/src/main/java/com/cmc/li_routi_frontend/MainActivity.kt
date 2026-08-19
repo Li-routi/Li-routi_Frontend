@@ -24,6 +24,7 @@ import com.cmc.li_routi_frontend.fcm.FcmNotificationPresenter
 import com.cmc.li_routi_frontend.navigation.AppNavHost
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.AuthContainer
+import com.li_routi.core.data.home.HomeContentPrefetcher
 import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.common.ui.payment.LocalPaymentLauncher
 import com.li_routi.core.common.ui.payment.LocalPaymentResultHandlerSetter
@@ -36,6 +37,7 @@ import io.portone.sdk.android.type.response.PaymentResponse
 import com.li_routi.core.domain.notification.NotificationNavigationTarget
 import com.li_routi.core.domain.notification.resolveNotificationNavigationTarget
 import com.li_routi.feature.login.LoginActivity
+import com.li_routi.feature.login.screen.LoadingScreen
 import kotlinx.coroutines.launch
 
 /**
@@ -76,10 +78,25 @@ class MainActivity : ComponentActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        // 로그인 화면(LoginActivity)과 동일한 스타일로 항상 먼저 호출해 둔다 — LoadingScreen을
+        // 띄운 뒤에 호출하면 그사이 시스템 바 인셋이 달라져 로그인 쪽 로딩화면과 이어질 때
+        // LoadingBird/문구 위치가 미세하게 튀어 보인다.
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
+            navigationBarStyle = SystemBarStyle.light(Color.WHITE, Color.WHITE),
+        )
 
         if (AuthTokenPreference(applicationContext).getAccessTokenBlocking().isNullOrBlank()) {
             startActivity(Intent(this, LoginActivity::class.java))
             finish()
+            return
+        }
+
+        if (intent.getBooleanExtra(ExtraSkipOnboardingRecheck, false)) {
+            // LoginRoute(신규가입/재로그인 경로)가 이미 온보딩 완료 여부를 확인하고 홈 데이터/이미지
+            // 프리페치까지 끝낸 채 넘어온 경우. 여기서 서버를 또 조회하고 로딩화면을 새로 띄우면
+            // "로딩→흰 화면→로딩"처럼 두 번 겹쳐 보이므로 곧장 홈으로 진행한다.
+            proceedToHome()
             return
         }
 
@@ -99,6 +116,16 @@ class MainActivity : ComponentActivity() {
                 finish()
                 return@launch
             }
+            // 토큰이 남아있어 로그인/로딩 화면을 거치지 않고 앱이 곧장 여기로 들어온 경우에도,
+            // 로그인 경로(LoginRoute)와 동일하게 로딩화면을 잠깐 띄우고 그 뒤에서 홈 데이터/이미지를
+            // 미리 받아둔다 — 안 그러면 이 경로만 홈 화면 자체의 로딩 스피너/이미지 깜빡임을 그대로
+            // 겪는다.
+            setContent {
+                LiroutiFrontendTheme {
+                    LoadingScreen()
+                }
+            }
+            HomeContentPrefetcher.prefetchWithMinDuration()
             proceedToHome()
         }
     }
@@ -108,10 +135,6 @@ class MainActivity : ComponentActivity() {
         requestPostNotificationsIfNeeded()
         consumeNotificationIntent(intent)
 
-        enableEdgeToEdge(
-            statusBarStyle = SystemBarStyle.light(Color.TRANSPARENT, Color.TRANSPARENT),
-            navigationBarStyle = SystemBarStyle.light(Color.WHITE, Color.WHITE),
-        )
         setContent {
             LiroutiFrontendTheme {
                 CompositionLocalProvider(
@@ -189,5 +212,13 @@ class MainActivity : ComponentActivity() {
         if (!granted) {
             requestNotificationPermission.launch(Manifest.permission.POST_NOTIFICATIONS)
         }
+    }
+
+    companion object {
+        /**
+         * feature:login 모듈은 app 모듈을 참조할 수 없어(module 방향), 로그인 화면(LoginRoute)이
+         * 이 값과 동일한 문자열 리터럴을 그대로 써서 extra를 채운다 — 값을 바꾸면 그쪽도 맞춰야 함.
+         */
+        const val ExtraSkipOnboardingRecheck = "extra_skip_onboarding_recheck"
     }
 }

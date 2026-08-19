@@ -50,6 +50,10 @@ data class GroupMemberUiModel(
     val isMe: Boolean = false,
     /** 아바타를 겹쳐 그릴 레이어(캐릭터·둥지·착장). 받은 순서대로 그리면 됨. 비었으면 기본 캐릭터만 보여준다. */
     val layers: List<AvatarLayer> = emptyList(),
+    /** 대표로 설정한 업적 배지 이름. 대표 업적이 없으면 null — 뱃지를 안 보여준다. */
+    val representativeBadgeName: String? = null,
+    /** 대표로 설정한 업적 배지 이미지. 대표 업적이 없으면 null. */
+    val representativeBadgeImageUrl: String? = null,
 )
 
 data class GroupTodoUiModel(

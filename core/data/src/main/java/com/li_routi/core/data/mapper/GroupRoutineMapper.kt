@@ -100,6 +100,8 @@ fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberAct
     totalCount = dailyProgress?.totalCount ?: 0L,
     // 개인 아바타와 같은 스키마라 ShopMapper의 매핑을 그대로 재사용함
     layers = avatar?.layers.toAvatarLayers(),
+    representativeBadgeName = representativeAchievement?.name,
+    representativeBadgeImageUrl = representativeAchievement?.badgeImageUrl,
 )
 
 fun GroupJoinResultResponse.toDomain(): GroupJoinResult = GroupJoinResult(
