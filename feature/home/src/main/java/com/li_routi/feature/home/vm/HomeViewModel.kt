@@ -12,7 +12,6 @@ import com.li_routi.core.data.di.ShopContainer
 import com.li_routi.core.data.profile.MemberProfileCache
 import com.li_routi.core.domain.home.GetHomeSummaryUseCase
 import com.li_routi.core.domain.notification.HasUnreadNotificationUseCase
-import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.core.domain.routine.CreateRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.GetRoutineCategoriesUseCase
@@ -54,7 +53,7 @@ class HomeViewModel(
         nickname = MemberProfileCache.nickname.value ?: "닉네임",
         hasUnreadNotification = MemberProfileCache.hasUnreadNotification.value,
         characterId = MemberProfileCache.characterId.value ?: FallbackCharacterId,
-        characterImageUrl = MemberProfileCache.characterImageUrl.value,
+        layers = MemberProfileCache.layers.value,
     ),
 ) : BaseViewModel(), HomeScreenActions {
 
@@ -94,16 +93,12 @@ class HomeViewModel(
     private fun observeAppearance() {
         viewModelScope.launch {
             appearanceStore.appearance.collect { appearance ->
-                val urls = equippedImageUrlsOf(
-                    appearance.equipped.associate { it.slot to it.imageUrl },
-                )
                 MemberProfileCache.characterId.value = appearance.characterId
-                MemberProfileCache.characterImageUrl.value = appearance.characterImageUrl
+                MemberProfileCache.layers.value = appearance.layers
                 _uiState.update {
                     it.copy(
-                        equippedImageUrls = urls,
+                        layers = appearance.layers,
                         characterId = appearance.characterId,
-                        characterImageUrl = appearance.characterImageUrl,
                     )
                 }
             }
@@ -165,11 +160,8 @@ class HomeViewModel(
                     _uiState.update {
                         val appearance = appearanceStore.appearance.value
                         next.copy(
-                            equippedImageUrls = equippedImageUrlsOf(
-                                appearance.equipped.associate { it.slot to it.imageUrl },
-                            ),
+                            layers = appearance.layers,
                             characterId = appearance.characterId,
-                            characterImageUrl = appearance.characterImageUrl,
                             hasUnreadNotification = it.hasUnreadNotification,
                         )
                     }

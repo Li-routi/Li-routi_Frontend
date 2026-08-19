@@ -121,7 +121,8 @@ private fun ShopItemCell(
     // 지금 장착 중인 아이템은 계속 파란 테두리+연한 파란 배경을 유지한다(Figma `background/alram`
     // #F2F8FF — 알림 미읽음 배경과 같은 토큰을 재사용). 그 외 보유중은 눌러 있는 동안만, 안 산
     // 아이템은 구매 대상으로 고른 동안만 파란 테두리가 보인다.
-    val showBlueBorder = equipped || selected || (item.owned && pressed)
+    // 캐릭터는 owned가 항상 true라, 해금 전 알을 누르면 테두리가 깜빡이므로 unlocked도 같이 본다.
+    val showBlueBorder = equipped || selected || (item.owned && item.unlocked && pressed)
     val borderWidth = if (showBlueBorder) 1.5.dp else 1.dp
     val borderColor = if (showBlueBorder) {
         LiroutiTheme.colors.primaryNormal
@@ -140,6 +141,7 @@ private fun ShopItemCell(
                 shape = RoundedCornerShape(6.dp),
             )
             .clickable(
+                enabled = item.unlocked,
                 interactionSource = interactionSource,
                 indication = LocalIndication.current,
                 onClick = onClick,
@@ -171,8 +173,16 @@ private fun ShopItemCell(
             }
         }
         Spacer(modifier = Modifier.height(10.dp))
-        // 이미 산 아이템은 다시 살 수 없어서 가격 대신 보유/착용 상태를 보여줌
-        if (item.owned) {
+        // 이미 산 아이템은 다시 살 수 없어서 가격 대신 보유/착용 상태를 보여줌.
+        // 캐릭터는 owned가 항상 true로 채워져 오므로(선택은 늘 가능해야 해서), 해금 전 알은
+        // unlocked로 먼저 걸러야 "보유 중"으로 잘못 뜨지 않는다
+        if (!item.unlocked) {
+            Text(
+                text = "해금 전",
+                style = LiroutiTheme.typography.body3SemiBold.copy(lineHeight = 16.sp),
+                color = LiroutiTheme.colors.labelSub,
+            )
+        } else if (item.owned) {
             Text(
                 text = if (equipped) "장착 중" else "보유 중",
                 style = LiroutiTheme.typography.body3SemiBold.copy(lineHeight = 16.sp),

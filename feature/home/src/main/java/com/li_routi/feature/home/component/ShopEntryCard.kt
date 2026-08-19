@@ -37,6 +37,7 @@ import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeBackgr
 import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeText
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
+import com.li_routi.core.domain.shop.AvatarLayer
 
 /** Figma `comp/myVehicle` 그라데이션 끝색 `rgba(207,228,255,0.2)` — 그룹 루틴 화면과 동일한 값. */
 private val CharacterCardGradientEnd = MemberHeroGradientEnd
@@ -60,10 +61,8 @@ fun ShopEntryCard(
     onNavigateToShop: () -> Unit,
     modifier: Modifier = Modifier,
     showRepresentativeBadge: Boolean = false,
-    /** 착용 중인 아이템 이미지. 겹칠 순서대로 들어옴 */
-    equippedImageUrls: List<String> = emptyList(),
-    /** 겹쳐 입기의 바탕이 되는 캐릭터. 서버가 이미 알/성체 중 보여줄 그림을 골라 내려준다 */
-    characterImageUrl: String? = null,
+    /** 아바타를 겹쳐 그릴 레이어(캐릭터·둥지·착장). 받은 순서대로 그리면 됨 */
+    layers: List<AvatarLayer> = emptyList(),
 ) {
     Column(
         modifier = modifier
@@ -145,8 +144,7 @@ fun ShopEntryCard(
             contentAlignment = Alignment.Center,
         ) {
             AvatarCharacter(
-                equippedImageUrls = equippedImageUrls,
-                characterImageUrl = characterImageUrl,
+                layers = layers,
                 modifier = Modifier
                     .sizeIn(maxWidth = CharacterMaxSize, maxHeight = CharacterMaxSize)
                     .fillMaxHeight()

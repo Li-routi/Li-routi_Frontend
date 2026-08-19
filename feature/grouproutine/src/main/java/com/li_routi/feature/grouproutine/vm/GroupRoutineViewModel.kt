@@ -212,6 +212,22 @@ class GroupRoutineViewModel(
         loadTodayRoutines(groupId)
     }
 
+    /**
+     * 그룹 탭이 다시 보일 때 구성원 아바타(캐릭터·둥지)를 다시 받음.
+     * 인증 직후 둥지가 바뀌었거나, 상점에서 캐릭터를 바꾼 뒤 돌아왔을 때 옛 그림이 남는 걸 막음.
+     */
+    fun refreshMemberAvatarsOnResume() {
+        val groupId = currentGroupId()?.takeIf { it > 0L } ?: return
+        when (_uiState.value.screenMode) {
+            GroupRoutineScreenMode.List,
+            GroupRoutineScreenMode.CreateRoomName,
+            GroupRoutineScreenMode.CreateRoutineSelect,
+            GroupRoutineScreenMode.JoinByCode,
+            -> return
+            else -> loadGroupDetail(groupId)
+        }
+    }
+
     fun markRoutineVerified(routineId: Long?) {
         if (routineId == null) return
         val groupId = currentGroupId() ?: return
@@ -934,7 +950,7 @@ class GroupRoutineViewModel(
                                         ?: 0,
                                     pokeCount = member.totalPokeCount,
                                     isMe = member.memberId == myMemberId,
-                                    equippedImageUrls = member.equippedImageUrls,
+                                    layers = member.layers,
                                 )
                             },
                             routines = state.routines.map { routine ->

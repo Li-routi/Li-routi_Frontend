@@ -1,5 +1,7 @@
 package com.li_routi.core.domain.grouproutine
 
+import com.li_routi.core.domain.shop.AvatarLayer
+
 /** 그룹방 상세 정보. ACTIVE 구성원만 조회할 수 있음 */
 data class GroupDetail(
     val groupId: Long,
@@ -22,7 +24,9 @@ data class GroupMemberActivity(
     val completedCount: Long,
     /** 금일 전체 그룹 루틴 할당 수. 할당이 없으면 0 */
     val totalCount: Long,
-    /** 현재 착용 중인 아이템 이미지. 겹칠 순서대로(BODY→HEAD→HAND) 옴. 캐릭터 본체(어떤 동물/색)는
-     * 서버에 없어(로컬 전용 선택) 포함되지 않는다 — 기본 캐릭터 위에 이 이미지들만 겹쳐 그린다. */
-    val equippedImageUrls: List<String> = emptyList(),
+    /**
+     * 이 구성원의 아바타를 겹쳐 그릴 레이어. 캐릭터·둥지까지 포함해 받은 순서대로 그리면 됨.
+     * 캐릭터를 하나도 못 열었으면 `CHARACTER`·둥지 레이어가 빠져서 옴 — 그때만 기본 캐릭터로 대체함
+     */
+    val layers: List<AvatarLayer> = emptyList(),
 )

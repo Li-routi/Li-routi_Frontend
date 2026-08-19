@@ -28,9 +28,26 @@ data class ShopAvatarItem(
     val onSale: Boolean,
 )
 
-/** 구매 직후의 착용 상태. 산 아이템의 자리만 바뀜 */
+/**
+ * 구매 직후의 착용 상태. 산 아이템의 자리만 바뀜.
+ *
+ * [equipped]는 순서가 없어 겹쳐 그릴 수 없다 — 무엇을 입었는지 다루는 화면(상점의 보유 표시
+ * 등)에만 쓴다. 그리는 데는 [layers]를 쓴다.
+ */
 data class MemberAvatar(
     val equipped: List<AvatarEquippedItem>,
+    val layers: List<AvatarLayer> = emptyList(),
+)
+
+/**
+ * 겹쳐 그릴 레이어 한 장. 받은 순서대로 그리면 캐릭터·둥지·착용템이 다 맞게 겹침 —
+ * [layer] 이름으로 깊이를 판단하지 않는다(레이어가 늘어도 앱을 안 고치려는 서버 쪽 계약).
+ *
+ * 캐릭터를 하나도 못 열었으면 `CHARACTER`·둥지 레이어가 통째로 빠져서 옴.
+ */
+data class AvatarLayer(
+    val layer: String,
+    val imageUrl: String,
 )
 
 /**

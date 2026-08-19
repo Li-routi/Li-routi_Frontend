@@ -61,6 +61,13 @@ data class ShopAvatarItemResponse(
 /** GET /api/members/me/avatar, PUT /api/members/me/avatar 응답 result. 현재 착용 상태. */
 data class MemberAvatarResponse(
     val equipped: List<AvatarEquippedItemResponse>?,
+    val layers: List<AvatarLayerResponse>?,
+)
+
+/** 겹쳐 그릴 레이어 한 장. 개인/그룹 구성원 아바타가 같은 스키마를 씀 */
+data class AvatarLayerResponse(
+    val layer: String?,
+    val imageUrl: String?,
 )
 
 data class AvatarEquippedItemResponse(

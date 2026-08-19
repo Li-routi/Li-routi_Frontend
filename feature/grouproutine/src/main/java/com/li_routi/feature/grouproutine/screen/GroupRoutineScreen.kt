@@ -101,11 +101,15 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.window.Dialog
 import androidx.compose.ui.window.DialogProperties
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.domain.shop.AvatarLayer
 import com.li_routi.core.designsystem.component.CheckBoxState
 import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
@@ -224,6 +228,13 @@ fun GroupRoutineRoute(
     LaunchedEffect(verificationRefreshSignal) {
         if (verificationRefreshSignal > 0) {
             viewModel.markRoutineVerified(verifiedRoutineId)
+        }
+    }
+
+    val lifecycleOwner = LocalLifecycleOwner.current
+    LaunchedEffect(lifecycleOwner, viewModel) {
+        lifecycleOwner.lifecycle.repeatOnLifecycle(Lifecycle.State.RESUMED) {
+            viewModel.refreshMemberAvatarsOnResume()
         }
     }
 
@@ -3233,28 +3244,30 @@ private fun LeaderSettingsScreen(
 }
 
 /**
- * 그룹 구성원 아바타. 기본 캐릭터 실루엣(design-system의 default_character — 홈/상점과 같은
- * 파랑새) 위에 그 구성원이 실제 착용 중인 아이템([equippedImageUrls], `GET /api/groups/{groupId}`
- * 응답의 avatar.equipped)을 겹쳐 그린다. 다른 구성원이 고른 캐릭터 본체(어떤 동물/색)는 서버에
- * 없어(로컬 전용 선택이라) 알 수 없으므로 기본 캐릭터로 통일해서 보여준다 — feature/home의
- * AvatarCharacter.kt와 같은 방식이지만, feature 모듈 간 의존을 새로 만들지 않으려고 여기 따로 둔다.
+ * 그룹 구성원 아바타. [layers]를 받은 순서 그대로 겹쳐 그린다(`GET /api/groups/{groupId}` 응답의
+ * avatar.layers) — 서버가 캐릭터·둥지·착장을 이미 겹칠 순서로 계산해서 내려준다.
+ * 캐릭터를 하나도 못 열었으면 `CHARACTER`·둥지 레이어가 빠져서 오는데, 그때만 기본 캐릭터 실루엣
+ * (design-system의 default_character)으로 대체한다 — feature/home의 AvatarCharacter.kt와 같은
+ * 방식이지만, feature 모듈 간 의존을 새로 만들지 않으려고 여기 따로 둔다.
  */
 @Composable
 private fun MemberAvatarImage(
-    equippedImageUrls: List<String>,
+    layers: List<AvatarLayer>,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        Image(
-            painter = painterResource(id = DesignSystemR.drawable.default_character),
-            contentDescription = null,
-            contentScale = ContentScale.Fit,
-            modifier = Modifier.fillMaxSize(),
-        )
-        equippedImageUrls.forEach { url ->
-            key(url) {
+        if (layers.none { it.layer == "CHARACTER" }) {
+            Image(
+                painter = painterResource(id = DesignSystemR.drawable.default_character),
+                contentDescription = null,
+                contentScale = ContentScale.Fit,
+                modifier = Modifier.fillMaxSize(),
+            )
+        }
+        layers.forEach { layer ->
+            key(layer.layer) {
                 AsyncImage(
-                    model = url,
+                    model = layer.imageUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),
@@ -3282,7 +3295,7 @@ private fun LeaderMemberRow(
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
         MemberAvatarImage(
-            equippedImageUrls = member.equippedImageUrls,
+            layers = member.layers,
             modifier = Modifier
                 .size(32.dp)
                 .clip(CircleShape)
@@ -3739,7 +3752,7 @@ private fun MemberSeat(
                 contentAlignment = Alignment.Center,
             ) {
                 MemberAvatarImage(
-                    equippedImageUrls = member.equippedImageUrls,
+                    layers = member.layers,
                     modifier = Modifier.requiredSize(48.dp),
                 )
             }
@@ -3826,7 +3839,7 @@ private fun MemberProfileDialog(
                         contentAlignment = Alignment.Center,
                     ) {
                         MemberAvatarImage(
-                            equippedImageUrls = member.equippedImageUrls,
+                            layers = member.layers,
                             modifier = Modifier.size(60.dp),
                         )
                     }
