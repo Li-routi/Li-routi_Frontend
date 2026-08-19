@@ -14,6 +14,7 @@ import com.li_routi.core.data.network.service.MediaApiService
 import com.li_routi.core.data.network.service.NotificationApiService
 import com.li_routi.core.data.network.service.ReportApiService
 import com.li_routi.core.data.network.service.RoutineApiService
+import com.li_routi.core.data.network.service.SuggestionApiService
 import com.li_routi.core.data.preference.AuthTokenPreference
 import okhttp3.OkHttpClient
 import okhttp3.logging.HttpLoggingInterceptor
@@ -138,6 +139,10 @@ object NetworkModule {
 
     val reportApiService: ReportApiService by lazy {
         retrofit.create(ReportApiService::class.java)
+    }
+
+    val suggestionApiService: SuggestionApiService by lazy {
+        retrofit.create(SuggestionApiService::class.java)
     }
 
     val characterApiService: CharacterApiService by lazy {

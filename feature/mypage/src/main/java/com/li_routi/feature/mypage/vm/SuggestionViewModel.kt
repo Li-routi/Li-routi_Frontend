@@ -1,0 +1,252 @@
+package com.li_routi.feature.mypage.vm
+
+import androidx.lifecycle.viewModelScope
+import com.li_routi.core.common.android.architecture.BaseViewModel
+import com.li_routi.core.common.kotlin.util.ResultState
+import com.li_routi.core.data.di.SuggestionContainer
+import com.li_routi.core.domain.suggestion.CreateSuggestionResult
+import com.li_routi.core.domain.suggestion.CreateSuggestionUseCase
+import com.li_routi.core.domain.suggestion.GetMySuggestionsUseCase
+import com.li_routi.core.domain.suggestion.GetSuggestionCategoriesUseCase
+import com.li_routi.core.domain.suggestion.Suggestion
+import com.li_routi.core.domain.suggestion.SuggestionCategory
+import com.li_routi.core.domain.suggestion.SuggestionPageSize
+import com.li_routi.feature.mypage.component.SuggestionCategoryUiModel
+import com.li_routi.feature.mypage.component.SuggestionUiModel
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
+import java.util.TimeZone
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.SharedFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.launch
+
+const val SuggestionContentMaxLength = 2000
+
+private const val CategoryUnavailableMessage = "선택할 수 없는 분류입니다. 다시 골라 주세요."
+
+data class SuggestionUiState(
+    val items: List<SuggestionUiModel> = emptyList(),
+    val nextCursor: Long? = null,
+    val hasNext: Boolean = false,
+    val isLoading: Boolean = false,
+    val isLoadingMore: Boolean = false,
+    val listError: String? = null,
+    val categories: List<SuggestionCategoryUiModel> = emptyList(),
+    val selectedCategoryId: Long? = null,
+    val isCategoriesLoading: Boolean = false,
+    val categoriesError: String? = null,
+    val isSaving: Boolean = false,
+)
+
+sealed interface SuggestionUiEvent {
+    data object Created : SuggestionUiEvent
+    data class ShowError(val message: String) : SuggestionUiEvent
+}
+
+/**
+ * 건의하기 ViewModel. 목록은 커서 페이지네이션, 작성은 서버 분류 + 본문만 받는다.
+ */
+class SuggestionViewModel(
+    private val getMySuggestionsUseCase: GetMySuggestionsUseCase =
+        SuggestionContainer.getMySuggestionsUseCase,
+    private val getSuggestionCategoriesUseCase: GetSuggestionCategoriesUseCase =
+        SuggestionContainer.getSuggestionCategoriesUseCase,
+    private val createSuggestionUseCase: CreateSuggestionUseCase =
+        SuggestionContainer.createSuggestionUseCase,
+) : BaseViewModel() {
+
+    private val _uiState = MutableStateFlow(SuggestionUiState())
+    val uiState: StateFlow<SuggestionUiState> = _uiState.asStateFlow()
+
+    private val _uiEvent = MutableSharedFlow<SuggestionUiEvent>(extraBufferCapacity = 1)
+    val uiEvent: SharedFlow<SuggestionUiEvent> = _uiEvent.asSharedFlow()
+
+    private var listGeneration = 0
+    private var categoriesGeneration = 0
+
+    fun refresh() {
+        loadSuggestions(reset = true)
+    }
+
+    fun loadMore() {
+        val state = _uiState.value
+        if (state.isLoading || state.isLoadingMore || !state.hasNext) return
+        loadSuggestions(reset = false)
+    }
+
+    fun loadCategories() {
+        val generation = ++categoriesGeneration
+        _uiState.update { it.copy(isCategoriesLoading = true, categoriesError = null) }
+        viewModelScope.launch {
+            when (val result = getSuggestionCategoriesUseCase()) {
+                is ResultState.Success -> {
+                    if (generation != categoriesGeneration) return@launch
+                    val mapped = result.data.map { it.toUiModel() }
+                    val selectedStillValid = mapped.any { it.id == _uiState.value.selectedCategoryId }
+                    _uiState.update {
+                        it.copy(
+                            categories = mapped,
+                            selectedCategoryId = if (selectedStillValid) it.selectedCategoryId else null,
+                            isCategoriesLoading = false,
+                            categoriesError = null,
+                        )
+                    }
+                }
+                is ResultState.Error -> {
+                    if (generation != categoriesGeneration) return@launch
+                    _uiState.update {
+                        it.copy(isCategoriesLoading = false, categoriesError = result.message)
+                    }
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    fun onCreateCategorySelected(categoryId: Long) {
+        _uiState.update { it.copy(selectedCategoryId = categoryId) }
+    }
+
+    fun create(content: String) {
+        val categoryId = _uiState.value.selectedCategoryId ?: return
+        val trimmed = content.trim()
+        if (trimmed.isEmpty() || _uiState.value.isSaving || _uiState.value.isCategoriesLoading) return
+
+        _uiState.update { it.copy(isSaving = true) }
+        viewModelScope.launch {
+            when (val result = createSuggestionUseCase(categoryId, trimmed.take(SuggestionContentMaxLength))) {
+                is ResultState.Success -> when (result.data) {
+                    is CreateSuggestionResult.Success -> {
+                        _uiState.update {
+                            it.copy(isSaving = false, selectedCategoryId = null)
+                        }
+                        _uiEvent.emit(SuggestionUiEvent.Created)
+                        loadSuggestions(reset = true)
+                    }
+                    CreateSuggestionResult.CategoryUnavailable -> {
+                        // 새로고침이 끝나기 전에 거절된 분류를 다시 고르지 못하도록 목록을 먼저 비운다.
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                selectedCategoryId = null,
+                                categories = emptyList(),
+                            )
+                        }
+                        _uiEvent.emit(SuggestionUiEvent.ShowError(CategoryUnavailableMessage))
+                        loadCategories()
+                    }
+                }
+                is ResultState.Error -> {
+                    _uiState.update { it.copy(isSaving = false) }
+                    _uiEvent.emit(SuggestionUiEvent.ShowError(result.message))
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    private fun loadSuggestions(reset: Boolean) {
+        val generation = ++listGeneration
+        val cursor = if (reset) null else _uiState.value.nextCursor
+        _uiState.update {
+            it.copy(
+                isLoading = reset,
+                isLoadingMore = !reset,
+                listError = null,
+            )
+        }
+        viewModelScope.launch {
+            when (val result = getMySuggestionsUseCase(cursor = cursor, size = SuggestionPageSize)) {
+                is ResultState.Success -> {
+                    if (generation != listGeneration) return@launch
+                    val mapped = result.data.suggestions.map { it.toUiModel() }
+                    _uiState.update { state ->
+                        state.copy(
+                            isLoading = false,
+                            isLoadingMore = false,
+                            items = if (reset) {
+                                mapped
+                            } else {
+                                // 커서 겹침 등으로 이전 페이지와 id가 중복되면 LazyColumn 키 충돌로
+                                // 크래시하므로 이어붙일 때 중복 id를 제거한다.
+                                (state.items + mapped).distinctBy { it.id }
+                            },
+                            nextCursor = result.data.nextCursor,
+                            hasNext = result.data.hasNext && result.data.nextCursor != null,
+                            listError = null,
+                        )
+                    }
+                }
+                is ResultState.Error -> {
+                    if (generation != listGeneration) return@launch
+                    _uiState.update {
+                        it.copy(
+                            isLoading = false,
+                            isLoadingMore = false,
+                            listError = result.message,
+                        )
+                    }
+                }
+                ResultState.Loading -> Unit
+            }
+        }
+    }
+}
+
+private fun Suggestion.toUiModel(): SuggestionUiModel = SuggestionUiModel(
+    id = id,
+    categoryName = category.name,
+    date = createdAt.toDisplayDate(),
+    content = content,
+)
+
+private fun SuggestionCategory.toUiModel(): SuggestionCategoryUiModel =
+    SuggestionCategoryUiModel(id = id, name = name)
+
+private fun String.toDisplayDate(): String {
+    val millis = toEpochMillisOrNull() ?: return this
+    return SimpleDateFormat("yyyy. MM. dd", Locale.KOREA).apply {
+        timeZone = TimeZone.getDefault()
+    }.format(Date(millis))
+}
+
+private fun String.toEpochMillisOrNull(): Long? {
+    val normalized = trim()
+        .withMillisFraction()
+        .replace("Z", "+0000")
+        .replace(Regex("([+-]\\d{2}):(\\d{2})$"), "$1$2")
+    val patterns = listOf(
+        "yyyy-MM-dd'T'HH:mm:ss.SSSZ",
+        "yyyy-MM-dd'T'HH:mm:ssZ",
+        "yyyy-MM-dd'T'HH:mm:ss.SSS",
+        "yyyy-MM-dd'T'HH:mm:ss",
+    )
+    for (pattern in patterns) {
+        val millis = runCatching {
+            SimpleDateFormat(pattern, Locale.US).apply {
+                // 오프셋이 문자열에 포함된 경우(Z 패턴)는 그 오프셋이 우선 적용된다.
+                // 오프셋 없는 문자열은 서버가 KST 로컬 시각으로 내려주므로 Asia/Seoul로 해석한다.
+                timeZone = TimeZone.getTimeZone("Asia/Seoul")
+                isLenient = false
+            }.parse(normalized)?.time
+        }.getOrNull()
+        if (millis != null) return millis
+    }
+    return null
+}
+
+/**
+ * SimpleDateFormat의 `SSS`는 소수부 전체를 밀리초로 읽는다. 6자리·9자리 소수가 오면 시각이 밀리므로
+ * 표시용 날짜는 밀리초 3자리만 남긴다. java.time은 minSdk 24에서 데슈가링 없이 쓰지 않는다.
+ */
+private fun String.withMillisFraction(): String =
+    replace(Regex("""\.(\d+)(?=Z|[+-]\d{2}:?\d{2}|$)""")) { match ->
+        val millis = match.groupValues[1].padEnd(3, '0').take(3)
+        ".$millis"
+    }

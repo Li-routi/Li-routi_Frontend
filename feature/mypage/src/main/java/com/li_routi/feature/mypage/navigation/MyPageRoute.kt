@@ -43,6 +43,7 @@ private enum class MyPageDestination {
     MyVerification,
     Achievement,
     Report,
+    Suggestion,
     AppInfo,
     AccountManage,
     NoticeList,
@@ -54,8 +55,6 @@ private enum class MyPageDestination {
     CoinRefundPolicy,
 }
 
-private const val InquiryComingSoonMessage = "아직 준비중인 서비스에요"
-
 /**
  * 로컬 destination 전환의 상위 화면. 시스템/제스처 Back이 각 화면의 뒤로가기 버튼과 같은 곳으로
  * 가도록 계층을 매핑한다 — 이게 없으면(모두 MyPage로 보내면) 공지사항 상세처럼 4단계 깊이인
@@ -66,6 +65,7 @@ private val MyPageDestination.parent: MyPageDestination?
         MyPageDestination.MyPage -> null
         MyPageDestination.NoticeList -> MyPageDestination.AppInfo
         MyPageDestination.NoticeDetail -> MyPageDestination.NoticeList
+        MyPageDestination.Suggestion -> MyPageDestination.AppInfo
         MyPageDestination.TermsOfService,
         MyPageDestination.PrivacyPolicy,
         MyPageDestination.ReportPolicy,
@@ -177,12 +177,22 @@ fun MyPageRoute(
             modifier = modifier,
         )
 
+        MyPageDestination.Suggestion -> SuggestionRoute(
+            onBackClick = { destination = MyPageDestination.AppInfo },
+            onTabSelected = { tab ->
+                if (tab == AppBottomTab.My) {
+                    destination = MyPageDestination.MyPage
+                } else {
+                    onTabSelected(tab)
+                }
+            },
+            modifier = modifier,
+        )
+
         MyPageDestination.AppInfo -> AppInfoScreen(
             onBackClick = { destination = MyPageDestination.MyPage },
             onNoticeClick = { destination = MyPageDestination.NoticeList },
-            onInquiryClick = {
-                Toast.makeText(context, InquiryComingSoonMessage, Toast.LENGTH_SHORT).show()
-            },
+            onSuggestionClick = { destination = MyPageDestination.Suggestion },
             onTermsOfServiceClick = { destination = MyPageDestination.TermsOfService },
             onPrivacyPolicyClick = { destination = MyPageDestination.PrivacyPolicy },
             onCoinRefundPolicyClick = { destination = MyPageDestination.CoinRefundPolicy },
