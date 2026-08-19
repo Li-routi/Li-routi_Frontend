@@ -69,15 +69,22 @@ class AchievementViewModel(
     /**
      * 현재 대표로 설정된 업적 id를 서버에서 읽어온다. 대표 업적 상태는 서버가 진실의 원천이라(장착
      * 상태가 앱 재시작에도 유지돼야 하는 요구사항) 화면 로컬 상태(remember)로 관리하지 않는다.
+     *
+     * [onBadgeEquipClick]은 이 조회가 끝나기 전까지 막아둔다 — load()와 이 조회가 동시에 돌기 때문에,
+     * 조회가 끝나기 전에 배지를 탭하면 representativeAchievementId가 아직 null이라 "해제"해야 할
+     * 배지를 "설정" 요청으로 잘못 보낼 수 있었다(CodeRabbit 리뷰 지적).
      */
     private fun loadRepresentativeAchievement() {
         viewModelScope.launch {
             when (val result = getSelectableRepresentativeAchievementsUseCase()) {
                 is ResultState.Success -> {
                     val representativeId = result.data.firstOrNull { it.isRepresentative }?.achievementId
-                    _uiState.update { it.copy(representativeAchievementId = representativeId) }
+                    _uiState.update {
+                        it.copy(representativeAchievementId = representativeId, isRepresentativeLoaded = true)
+                    }
                 }
-                is ResultState.Error, ResultState.Loading -> Unit
+                is ResultState.Error -> _uiState.update { it.copy(isRepresentativeLoaded = true) }
+                ResultState.Loading -> Unit
             }
         }
     }
@@ -88,7 +95,7 @@ class AchievementViewModel(
      * 수령하지 않은 업적을 선택하면 서버가 400/409로 거절하는데, 그 메시지를 그대로 토스트로 보여준다.
      */
     fun onBadgeEquipClick(achievementId: Long) {
-        if (_uiState.value.isEquippingBadge) return
+        if (!_uiState.value.isRepresentativeLoaded || _uiState.value.isEquippingBadge) return
         val isUnequip = _uiState.value.representativeAchievementId == achievementId
         viewModelScope.launch {
             _uiState.update { it.copy(isEquippingBadge = true) }
@@ -248,6 +255,12 @@ data class AchievementUiState(
     val representativeAchievementId: Long? = null,
     /** 대표 업적 설정/해제 요청 진행 중 — 중복 탭 방지. */
     val isEquippingBadge: Boolean = false,
+    /**
+     * [representativeAchievementId]를 서버에서 한 번이라도 읽어왔는지 — 이게 true가 되기 전까지는
+     * [AchievementViewModel.onBadgeEquipClick]이 배지 탭을 무시한다(해제/설정 방향을 잘못 판단하는
+     * 레이스를 막기 위함).
+     */
+    val isRepresentativeLoaded: Boolean = false,
 )
 
 private fun AchievementClaimResult.toMessage(): String =
