@@ -319,8 +319,7 @@ class ShopViewModel(
         // 캐릭터 선택을 먼저 서버에 반영한 뒤 착장을 저장함. 동시에 보내면 착장 PUT 응답
         // layers가 옛 CHARACTER를 들고 와 홈이 잠깐 이전 새를 그릴 수 있음.
         viewModelScope.launch {
-            persistPreviewCharacter()
-            equipSelected()
+            if (persistPreviewCharacter()) equipSelected()
         }
     }
 
@@ -334,8 +333,7 @@ class ShopViewModel(
         val state = _uiState.value
         _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
         viewModelScope.launch {
-            persistPreviewCharacter()
-            purchaseAll(state.purchaseTargets)
+            if (persistPreviewCharacter()) purchaseAll(state.purchaseTargets)
         }
     }
 
@@ -351,18 +349,24 @@ class ShopViewModel(
     }
 
     /** 고른 캐릭터를 서버에 저장함(`PUT /api/characters/selection`). 홈은 같은 캐시를 보고 바로 따라옴 */
-    private suspend fun persistPreviewCharacter() {
+    private suspend fun persistPreviewCharacter(): Boolean {
         val state = _uiState.value
-        if (state.previewCharacterId == state.savedCharacterId) return
-        when (val result = appearanceStore.saveCharacter(state.previewCharacterId, state.previewCharacterImageUrl)) {
-            is ResultState.Success -> _uiState.update {
-                it.copy(
-                    savedCharacterId = it.previewCharacterId,
-                    savedLayers = appearanceStore.appearance.value.layers,
-                )
+        if (state.previewCharacterId == state.savedCharacterId) return true
+        return when (val result = appearanceStore.saveCharacter(state.previewCharacterId, state.previewCharacterImageUrl)) {
+            is ResultState.Success -> {
+                _uiState.update {
+                    it.copy(
+                        savedCharacterId = it.previewCharacterId,
+                        savedLayers = appearanceStore.appearance.value.layers,
+                    )
+                }
+                true
             }
-            is ResultState.Error -> _uiState.update { it.copy(message = result.message) }
-            ResultState.Loading -> Unit
+            is ResultState.Error -> {
+                _uiState.update { it.copy(message = result.message) }
+                false
+            }
+            ResultState.Loading -> false
         }
     }
 

@@ -135,21 +135,39 @@ data class ShopUiState(
      * 캐릭터 카드에 지금 그릴 레이어. 미리보기(안 산 아이템, 안 고른 캐릭터)를 얹어야 해서
      * 저장된 [savedLayers]를 그대로 쓸 수 없다.
      *
-     * 둥지는 상점에서 고르는 게 아니라 [savedLayers]에서 그대로 가져오고, 캐릭터/BODY/HEAD/HAND만
-     * 지금 미리보기 값으로 바꿔 끼움. 자리가 비었으면(안 입음) 그 레이어를 통째로 뺌
+     * 서버가 준 순서는 유지하고, CHARACTER/BODY/HEAD/HAND만 지금 미리보기 값으로 바꿔 끼움.
+     * 의상 자리를 벗었으면 그 레이어를 빼고, 저장된 목록에 없던 미리보기만 맨 뒤에 붙임
      */
     val previewLayers: List<AvatarLayer>
-        get() = buildList {
-            savedLayers.firstOrNull { it.layer == "NEST_BACK" }?.let(::add)
-            previewCharacterImageUrl?.takeIf { it.isNotBlank() }
-                ?.let { add(AvatarLayer(layer = "CHARACTER", imageUrl = it)) }
-            equipped["BODY"]?.imageUrl?.takeIf { it.isNotBlank() }
-                ?.let { add(AvatarLayer(layer = "BODY", imageUrl = it)) }
-            savedLayers.firstOrNull { it.layer == "NEST_FRONT" }?.let(::add)
-            equipped["HEAD"]?.imageUrl?.takeIf { it.isNotBlank() }
-                ?.let { add(AvatarLayer(layer = "HEAD", imageUrl = it)) }
-            equipped["HAND"]?.imageUrl?.takeIf { it.isNotBlank() }
-                ?.let { add(AvatarLayer(layer = "HAND", imageUrl = it)) }
+        get() {
+            val previewByLayer = buildMap {
+                previewCharacterImageUrl?.takeIf { it.isNotBlank() }?.let { put("CHARACTER", it) }
+                equipped.forEach { (slot, item) ->
+                    item.imageUrl?.takeIf { it.isNotBlank() }?.let { put(slot.uppercase(), it) }
+                }
+            }
+            val clothingSlots = setOf("BODY", "HEAD", "HAND")
+            val used = mutableSetOf<String>()
+            return buildList {
+                for (layer in savedLayers) {
+                    when (layer.layer) {
+                        "CHARACTER" -> {
+                            val url = previewByLayer["CHARACTER"] ?: layer.imageUrl
+                            add(layer.copy(imageUrl = url))
+                            used += "CHARACTER"
+                        }
+                        in clothingSlots -> {
+                            val url = previewByLayer[layer.layer] ?: continue
+                            add(layer.copy(imageUrl = url))
+                            used += layer.layer
+                        }
+                        else -> add(layer)
+                    }
+                }
+                previewByLayer.forEach { (slot, url) ->
+                    if (slot !in used) add(AvatarLayer(layer = slot, imageUrl = url))
+                }
+            }
         }
 }
 

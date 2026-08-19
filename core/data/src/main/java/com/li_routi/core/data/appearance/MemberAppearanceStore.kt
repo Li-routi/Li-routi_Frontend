@@ -154,30 +154,23 @@ class MemberAppearanceStore(
                     characterId = characterId,
                     characterImageUrl = imageUrl,
                     // 홈은 layers로 그리므로 characterImageUrl만 바꾸면 옛 캐릭터가 남음.
-                    // 착장 PUT 응답이 오기 전에도 CHARACTER 레이어를 같이 갈아끼움.
+                    // 착장 PUT 응답이 오기 전에도 CHARACTER 레이어 URL만 갈아끼움.
                     layers = current.layers.withCharacterLayer(imageUrl),
                 )
+            }
+            // CHARACTER가 없던 첫 해금은 클라이언트에서 깊이를 추측하지 않고 서버 순서를 다시 받음
+            if (_appearance.value.layers.none { it.layer == "CHARACTER" }) {
+                reloadAvatar()
             }
         }
         return result
     }
 }
 
-/** 저장된 레이어에서 CHARACTER만 [imageUrl]로 바꾸고, 없으면 NEST_BACK 뒤에 끼움 */
+/** 저장된 레이어에서 CHARACTER URL만 바꿈. 없으면 순서를 추측해 끼우지 않음 — 서버 목록을 다시 받는다 */
 private fun List<AvatarLayer>.withCharacterLayer(imageUrl: String?): List<AvatarLayer> {
     val url = imageUrl?.takeIf { it.isNotBlank() } ?: return this
-    var replaced = false
-    val mapped = map { layer ->
-        if (layer.layer == "CHARACTER") {
-            replaced = true
-            layer.copy(imageUrl = url)
-        } else {
-            layer
-        }
+    return map { layer ->
+        if (layer.layer == "CHARACTER") layer.copy(imageUrl = url) else layer
     }
-    if (replaced) return mapped
-    val insertAt = indexOfFirst { it.layer == "NEST_BACK" }.let { index ->
-        if (index >= 0) index + 1 else 0
-    }
-    return take(insertAt) + AvatarLayer(layer = "CHARACTER", imageUrl = url) + drop(insertAt)
 }
