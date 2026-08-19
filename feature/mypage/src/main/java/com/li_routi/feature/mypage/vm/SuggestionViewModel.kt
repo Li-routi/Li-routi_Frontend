@@ -116,7 +116,7 @@ class SuggestionViewModel(
     fun create(content: String) {
         val categoryId = _uiState.value.selectedCategoryId ?: return
         val trimmed = content.trim()
-        if (trimmed.isEmpty() || _uiState.value.isSaving) return
+        if (trimmed.isEmpty() || _uiState.value.isSaving || _uiState.value.isCategoriesLoading) return
 
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
@@ -130,7 +130,14 @@ class SuggestionViewModel(
                         loadSuggestions(reset = true)
                     }
                     CreateSuggestionResult.CategoryUnavailable -> {
-                        _uiState.update { it.copy(isSaving = false, selectedCategoryId = null) }
+                        // 새로고침이 끝나기 전에 거절된 분류를 다시 고르지 못하도록 목록을 먼저 비운다.
+                        _uiState.update {
+                            it.copy(
+                                isSaving = false,
+                                selectedCategoryId = null,
+                                categories = emptyList(),
+                            )
+                        }
                         _uiEvent.emit(SuggestionUiEvent.ShowError(CategoryUnavailableMessage))
                         loadCategories()
                     }
@@ -205,6 +212,7 @@ private fun String.toDisplayDate(): String {
 
 private fun String.toEpochMillisOrNull(): Long? {
     val normalized = trim()
+        .withMillisFraction()
         .replace("Z", "+0000")
         .replace(Regex("([+-]\\d{2}):(\\d{2})$"), "$1$2")
     val patterns = listOf(
@@ -224,3 +232,13 @@ private fun String.toEpochMillisOrNull(): Long? {
     }
     return null
 }
+
+/**
+ * SimpleDateFormat의 `SSS`는 소수부 전체를 밀리초로 읽는다. 6자리·9자리 소수가 오면 시각이 밀리므로
+ * 표시용 날짜는 밀리초 3자리만 남긴다. java.time은 minSdk 24에서 데슈가링 없이 쓰지 않는다.
+ */
+private fun String.withMillisFraction(): String =
+    replace(Regex("""\.(\d+)(?=Z|[+-]\d{2}:?\d{2}|$)""")) { match ->
+        val millis = match.groupValues[1].padEnd(3, '0').take(3)
+        ".$millis"
+    }
