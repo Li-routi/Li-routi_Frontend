@@ -7,6 +7,8 @@ import com.li_routi.core.domain.shop.AvatarEquippedItem
 import com.li_routi.core.domain.shop.AvatarLayer
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopRepository
+import com.li_routi.core.domain.shop.hasCharacterLayer
+import com.li_routi.core.domain.shop.withCharacterImageUrl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -136,7 +138,7 @@ class MemberAppearanceStore(
                 equipped = avatar.equipped,
                 // 착장 PUT이 캐릭터 선택보다 늦게 반영되면 layers의 CHARACTER가 옛값일 수 있음.
                 // 이미 저장한 캐릭터 그림이 있으면 그 URL로 맞춰 둠.
-                layers = avatar.layers.withCharacterLayer(current.characterImageUrl),
+                layers = avatar.layers.withCharacterImageUrl(current.characterImageUrl),
             )
         }
     }
@@ -155,22 +157,14 @@ class MemberAppearanceStore(
                     characterImageUrl = imageUrl,
                     // 홈은 layers로 그리므로 characterImageUrl만 바꾸면 옛 캐릭터가 남음.
                     // 착장 PUT 응답이 오기 전에도 CHARACTER 레이어 URL만 갈아끼움.
-                    layers = current.layers.withCharacterLayer(imageUrl),
+                    layers = current.layers.withCharacterImageUrl(imageUrl),
                 )
             }
             // CHARACTER가 없던 첫 해금은 클라이언트에서 깊이를 추측하지 않고 서버 순서를 다시 받음
-            if (_appearance.value.layers.none { it.layer == "CHARACTER" }) {
+            if (!_appearance.value.layers.hasCharacterLayer()) {
                 reloadAvatar()
             }
         }
         return result
-    }
-}
-
-/** 저장된 레이어에서 CHARACTER URL만 바꿈. 없으면 순서를 추측해 끼우지 않음 — 서버 목록을 다시 받는다 */
-private fun List<AvatarLayer>.withCharacterLayer(imageUrl: String?): List<AvatarLayer> {
-    val url = imageUrl?.takeIf { it.isNotBlank() } ?: return this
-    return map { layer ->
-        if (layer.layer == "CHARACTER") layer.copy(imageUrl = url) else layer
     }
 }

@@ -111,6 +111,7 @@ import coil.compose.AsyncImage
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.domain.shop.AvatarLayer
+import com.li_routi.core.domain.shop.hasCharacterLayer
 import com.li_routi.core.designsystem.component.CheckBoxState
 import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
@@ -3249,7 +3250,7 @@ private fun MemberAvatarImage(
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (layers.none { it.layer == "CHARACTER" }) {
+        if (!layers.hasCharacterLayer()) {
             Image(
                 painter = painterResource(id = DesignSystemR.drawable.default_character),
                 contentDescription = null,

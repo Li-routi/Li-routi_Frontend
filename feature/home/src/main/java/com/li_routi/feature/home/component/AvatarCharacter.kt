@@ -12,6 +12,7 @@ import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.domain.shop.AvatarLayer
+import com.li_routi.core.domain.shop.hasCharacterLayer
 
 /**
  * 아바타를 [layers] 순서 그대로 겹쳐 그림.
@@ -26,7 +27,7 @@ fun AvatarCharacter(
     layers: List<AvatarLayer> = emptyList(),
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (layers.none { it.layer == "CHARACTER" }) {
+        if (!layers.hasCharacterLayer()) {
             Image(
                 painter = painterResource(id = R.drawable.default_character),
                 contentDescription = null,

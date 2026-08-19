@@ -2,13 +2,9 @@ package com.li_routi.feature.home.shop.vm
 
 import com.li_routi.core.data.appearance.FallbackCharacterId
 import com.li_routi.core.domain.shop.AvatarLayer
+import com.li_routi.core.domain.shop.previewAvatarLayers
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 
-/**
- * 상점 상단 탭 하나.
- *
- * 이름으로 분기하지 않고 [slot]을 그대로 조회에 실어 보냄 — 탭이 늘어도 앱을 안 고치려는 것임
- */
 /**
  * 캐릭터 위에 겹쳐 그릴 착용 아이템 한 건.
  *
@@ -134,41 +130,13 @@ data class ShopUiState(
     /**
      * 캐릭터 카드에 지금 그릴 레이어. 미리보기(안 산 아이템, 안 고른 캐릭터)를 얹어야 해서
      * 저장된 [savedLayers]를 그대로 쓸 수 없다.
-     *
-     * 서버가 준 순서는 유지하고, CHARACTER/BODY/HEAD/HAND만 지금 미리보기 값으로 바꿔 끼움.
-     * 의상 자리를 벗었으면 그 레이어를 빼고, 저장된 목록에 없던 미리보기만 맨 뒤에 붙임
      */
     val previewLayers: List<AvatarLayer>
-        get() {
-            val previewByLayer = buildMap {
-                previewCharacterImageUrl?.takeIf { it.isNotBlank() }?.let { put("CHARACTER", it) }
-                equipped.forEach { (slot, item) ->
-                    item.imageUrl?.takeIf { it.isNotBlank() }?.let { put(slot.uppercase(), it) }
-                }
-            }
-            val clothingSlots = setOf("BODY", "HEAD", "HAND")
-            val used = mutableSetOf<String>()
-            return buildList {
-                for (layer in savedLayers) {
-                    when (layer.layer) {
-                        "CHARACTER" -> {
-                            val url = previewByLayer["CHARACTER"] ?: layer.imageUrl
-                            add(layer.copy(imageUrl = url))
-                            used += "CHARACTER"
-                        }
-                        in clothingSlots -> {
-                            val url = previewByLayer[layer.layer] ?: continue
-                            add(layer.copy(imageUrl = url))
-                            used += layer.layer
-                        }
-                        else -> add(layer)
-                    }
-                }
-                previewByLayer.forEach { (slot, url) ->
-                    if (slot !in used) add(AvatarLayer(layer = slot, imageUrl = url))
-                }
-            }
-        }
+        get() = previewAvatarLayers(
+            savedLayers = savedLayers,
+            previewCharacterImageUrl = previewCharacterImageUrl,
+            equippedImageUrls = equipped.mapValues { it.value.imageUrl },
+        )
 }
 
 /**
