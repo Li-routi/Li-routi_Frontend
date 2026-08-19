@@ -112,8 +112,8 @@ import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.designsystem.foundation.color.ChatSendBackground
-import com.li_routi.core.designsystem.foundation.color.EarlyBirdBackground
-import com.li_routi.core.designsystem.foundation.color.EarlyBirdText
+import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeBackground
+import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeText
 import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
 import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
@@ -3842,21 +3842,34 @@ private fun MemberProfileDialog(
                                 StatusBadge(label = "\uB098", completed = false)
                             }
                         }
-                        if (!member.isMe) {
+                        if (member.representativeBadgeName != null || !member.isMe) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
-                                Text(
-                                    text = "\uC5BC\uB9AC\uBC84\uB4DC",
-                                    color = EarlyBirdText,
-                                    style = LiroutiTheme.typography.caption,
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(EarlyBirdBackground)
-                                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                                )
-                                Text(text = "\uD83D\uDD25${member.streak}", color = LiroutiTheme.colors.dangerBase, fontSize = 10.sp)
+                                if (member.representativeBadgeName != null) {
+                                    if (member.representativeBadgeImageUrl != null) {
+                                        AsyncImage(
+                                            model = member.representativeBadgeImageUrl,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                    Text(
+                                        text = member.representativeBadgeName,
+                                        color = RepresentativeBadgeText,
+                                        style = LiroutiTheme.typography.caption,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(RepresentativeBadgeBackground)
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    )
+                                }
+                                if (!member.isMe) {
+                                    Text(text = "\uD83D\uDD25${member.streak}", color = LiroutiTheme.colors.dangerBase, fontSize = 10.sp)
+                                }
                             }
                         }
                     }

@@ -13,6 +13,8 @@ fun HomeSummaryResponse.toDomain(): HomeSummary = HomeSummary(
     userInfo = HomeUserInfo(
         memberId = userInfo.memberId,
         nickname = userInfo.nickname,
+        representativeBadgeName = userInfo.representativeAchievement?.name,
+        representativeBadgeImageUrl = userInfo.representativeAchievement?.badgeImageUrl,
     ),
     myRoutines = myRoutines.routines.map { it.toDomain() },
     groupRoutines = groupRoutines.routines.map { it.toDomain() },

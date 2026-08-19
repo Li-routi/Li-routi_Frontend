@@ -108,6 +108,8 @@ fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberAct
     completedCount = dailyProgress?.completedCount ?: 0L,
     totalCount = dailyProgress?.totalCount ?: 0L,
     equippedImageUrls = avatar.toEquippedImageUrls(),
+    representativeBadgeName = representativeAchievement?.name,
+    representativeBadgeImageUrl = representativeAchievement?.badgeImageUrl,
 )
 
 fun GroupJoinResultResponse.toDomain(): GroupJoinResult = GroupJoinResult(

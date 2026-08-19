@@ -32,6 +32,8 @@ fun HomeSummary.toHomeUiState(): HomeUiState {
         .distinct()
     return HomeUiState(
         nickname = userInfo.nickname.ifBlank { "닉네임" },
+        representativeBadgeName = userInfo.representativeBadgeName,
+        representativeBadgeImageUrl = userInfo.representativeBadgeImageUrl,
         hasActiveRoutine = myRoutines.isNotEmpty(),
         hasGroupRoom = groupRoutines.isNotEmpty(),
         myRoutineItems = myItems,
