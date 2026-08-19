@@ -1,15 +1,17 @@
 package com.li_routi.core.data.repository
 
-import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.common.kotlin.util.safeApiCall
 import com.li_routi.core.data.mapper.toDomain
 import com.li_routi.core.data.network.apiCall
+import com.li_routi.core.data.network.apiCallUnit
+import com.li_routi.core.data.network.dto.request.RepresentativeAchievementRequest
 import com.li_routi.core.data.network.dto.request.SelectWaveRoutineRequest
 import com.li_routi.core.data.network.service.AchievementApiService
 import com.li_routi.core.domain.achievement.AchievementCategoryGroup
 import com.li_routi.core.domain.achievement.AchievementClaimResult
 import com.li_routi.core.domain.achievement.AchievementRepository
+import com.li_routi.core.domain.achievement.SelectableAchievement
 import com.li_routi.core.domain.achievement.WaveRoutineStatus
 
 class AchievementRepositoryImpl(
@@ -29,7 +31,19 @@ class AchievementRepositoryImpl(
     }
 
     override suspend fun selectWaveRoutine(memberRoutineId: Long): ResultState<Unit> = safeApiCall {
-        val response = api.selectWaveRoutine(SelectWaveRoutineRequest(memberRoutineId))
-        if (!response.isSuccess) throw ApiException(response.message)
+        apiCallUnit { api.selectWaveRoutine(SelectWaveRoutineRequest(memberRoutineId)) }
+    }
+
+    override suspend fun getSelectableRepresentativeAchievements(): ResultState<List<SelectableAchievement>> =
+        safeApiCall {
+            apiCall { api.getSelectableRepresentativeAchievements() }.toDomain()
+        }
+
+    override suspend fun setRepresentativeAchievement(achievementId: Long): ResultState<Unit> = safeApiCall {
+        apiCallUnit { api.setRepresentativeAchievement(RepresentativeAchievementRequest(achievementId)) }
+    }
+
+    override suspend fun clearRepresentativeAchievement(): ResultState<Unit> = safeApiCall {
+        apiCallUnit { api.clearRepresentativeAchievement() }
     }
 }

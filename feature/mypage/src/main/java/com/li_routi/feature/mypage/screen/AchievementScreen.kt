@@ -83,10 +83,13 @@ fun AchievementScreen(
     onWaveRoutinePickerOpen: () -> Unit = {},
     onWaveRoutinePickerDismiss: () -> Unit = {},
     onWaveRoutineChosen: (Long) -> Unit = {},
+    /** 서버에 저장된 대표 업적 id — `PUT/DELETE /api/achievements/representative`로 관리돼 앱을
+     * 재시작해도 유지된다. null이면 대표 업적 없음. */
+    equippedBadgeId: Long? = null,
+    onBadgeEquipClick: (Long) -> Unit = {},
 ) {
     var selectedTab by remember { mutableStateOf(AchievementStatusTab.All) }
     var selectedRarity by remember { mutableStateOf<AchievementRarity?>(null) }
-    var equippedBadgeId by remember { mutableStateOf<Long?>(null) }
 
     val filteredAchievements = achievements.filter { item ->
         (selectedRarity == null || item.rarity == selectedRarity) &&
@@ -153,7 +156,7 @@ fun AchievementScreen(
                             AchievementBadgeGrid(
                                 badges = filteredBadges,
                                 equippedBadgeId = equippedBadgeId,
-                                onBadgeClick = { badge -> equippedBadgeId = badge.id },
+                                onBadgeClick = { badge -> onBadgeEquipClick(badge.id) },
                             )
                         }
                     } else {

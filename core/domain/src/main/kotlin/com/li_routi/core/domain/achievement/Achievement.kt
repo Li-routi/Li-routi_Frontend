@@ -62,3 +62,14 @@ data class AchievementClaimResult(
     val freeBalanceAfter: Int,
     val rewardApplied: Boolean,
 )
+
+/**
+ * GET /api/achievements/representative/selectable 조회 결과 — 대표 업적으로 선택 가능한 업적 하나.
+ * 배지 이미지가 등록돼 있고 보상까지 수령(CLAIMED)한 업적만 이 목록에 온다.
+ */
+data class SelectableAchievement(
+    val achievementId: Long,
+    val name: String,
+    val badgeImageUrl: String?,
+    val isRepresentative: Boolean,
+)

@@ -50,3 +50,18 @@ data class WaveRoutineStatusResponse(
     val currentStreak: Int?,
     val targetStreak: Int?,
 )
+
+/**
+ * GET api/achievements/representative/selectable 응답. totalCount는 achievements.size로 대신할 수 있어
+ * 매핑하지 않는다(GET /api/achievements의 summary와 같은 이유).
+ */
+data class SelectableAchievementsResponse(
+    val achievements: List<SelectableAchievementResponse>,
+)
+
+data class SelectableAchievementResponse(
+    val achievementId: Long,
+    val name: String,
+    val badgeImageUrl: String?,
+    val representative: Boolean,
+)

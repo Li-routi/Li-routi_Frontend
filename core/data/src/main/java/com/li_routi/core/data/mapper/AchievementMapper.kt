@@ -5,12 +5,15 @@ import com.li_routi.core.data.network.dto.response.AchievementResponse
 import com.li_routi.core.data.network.dto.response.AchievementsResponse
 import com.li_routi.core.data.network.dto.response.ClaimResponse
 import com.li_routi.core.data.network.dto.response.ConditionProgressResponse
+import com.li_routi.core.data.network.dto.response.SelectableAchievementResponse
+import com.li_routi.core.data.network.dto.response.SelectableAchievementsResponse
 import com.li_routi.core.data.network.dto.response.WaveRoutineStatusResponse
 import com.li_routi.core.domain.achievement.Achievement
 import com.li_routi.core.domain.achievement.AchievementCategory
 import com.li_routi.core.domain.achievement.AchievementCategoryGroup
 import com.li_routi.core.domain.achievement.AchievementClaimResult
 import com.li_routi.core.domain.achievement.AchievementConditionProgress
+import com.li_routi.core.domain.achievement.SelectableAchievement
 import com.li_routi.core.domain.achievement.WaveRoutineStatus
 
 fun AchievementsResponse.toDomain(): List<AchievementCategoryGroup> = categories.map { it.toDomain() }
@@ -63,4 +66,13 @@ fun WaveRoutineStatusResponse.toDomain(): WaveRoutineStatus = WaveRoutineStatus(
     routineName = routineName.orEmpty(),
     currentStreak = currentStreak ?: 0,
     targetStreak = targetStreak ?: 0,
+)
+
+fun SelectableAchievementsResponse.toDomain(): List<SelectableAchievement> = achievements.map { it.toDomain() }
+
+fun SelectableAchievementResponse.toDomain(): SelectableAchievement = SelectableAchievement(
+    achievementId = achievementId,
+    name = name,
+    badgeImageUrl = badgeImageUrl?.takeIf { it.isNotBlank() },
+    isRepresentative = representative,
 )
