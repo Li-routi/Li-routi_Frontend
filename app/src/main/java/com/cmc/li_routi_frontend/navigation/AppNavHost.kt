@@ -290,7 +290,7 @@ fun AppNavHost(
                     onStartVerification = { routineId ->
                         startVerificationFlow(
                             preselectedId = routineId,
-                            isGroupRoutine = routineId.startsWith("group_"),
+                            isGroupRoutine = routineId?.startsWith("group_") == true,
                         )
                     },
                     verificationRefreshSignal = homeRefreshSignal,
