@@ -7,7 +7,9 @@ import com.li_routi.core.domain.suggestion.GetMySuggestionsUseCase
 import com.li_routi.core.domain.suggestion.GetSuggestionCategoriesUseCase
 import com.li_routi.core.domain.suggestion.SuggestionRepository
 
-/** 건의하기 API 수동 구성 root. feature 모듈은 여기서 UseCase만 가져다 쓴다. */
+/**
+ * 건의하기 API 수동 구성 root.
+ */
 object SuggestionContainer {
 
     private val repository: SuggestionRepository by lazy {

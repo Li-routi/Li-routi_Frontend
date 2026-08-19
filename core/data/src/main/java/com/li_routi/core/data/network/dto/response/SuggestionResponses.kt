@@ -9,6 +9,7 @@ data class SuggestionCategoryResponse(
 data class SuggestionItemResponse(
     val id: Long,
     val category: SuggestionCategoryResponse,
+    val title: String,
     val content: String,
     val status: String,
     val createdAt: String,

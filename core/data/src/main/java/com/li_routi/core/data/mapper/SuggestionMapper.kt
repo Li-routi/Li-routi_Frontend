@@ -17,6 +17,7 @@ fun SuggestionCategoryResponse.toDomain(): SuggestionCategory = SuggestionCatego
 fun SuggestionItemResponse.toDomain(): Suggestion = Suggestion(
     id = id,
     category = category.toDomain(),
+    title = title,
     content = content,
     status = status,
     createdAt = createdAt,

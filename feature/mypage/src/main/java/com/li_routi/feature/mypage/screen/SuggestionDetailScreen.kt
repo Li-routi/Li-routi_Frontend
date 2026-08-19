@@ -20,7 +20,7 @@ import com.li_routi.feature.mypage.component.SettingsSectionDividerColor
 import com.li_routi.feature.mypage.component.SuggestionUiModel
 
 /**
- * 건의하기 상세. 제목 자리에 분류 이름을 보여 준다. 상세 GET이 없어 목록에서 받은 본문을 쓴다.
+ * 건의하기 상세. 목록에서 고른 제목·날짜·본문을 보여 준다.
  */
 @Composable
 fun SuggestionDetailScreen(
@@ -44,7 +44,7 @@ fun SuggestionDetailScreen(
             Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     Text(
-                        text = suggestion.categoryName,
+                        text = suggestion.title,
                         style = LiroutiTheme.typography.heading2Bold,
                         color = LiroutiTheme.colors.labelDefault,
                     )
@@ -72,8 +72,9 @@ private fun SuggestionDetailScreenPreview() {
         SuggestionDetailScreen(
             suggestion = SuggestionUiModel(
                 id = 1,
-                categoryName = "버그 신고",
-                date = "2026. 08. 19",
+                title = "건의사항 1",
+                categoryName = "메인",
+                date = "2026. 08. 21",
                 content = "메인 화면에서 오늘 루틴이 더 잘 보이면 좋겠어요.",
             ),
             onBackClick = {},

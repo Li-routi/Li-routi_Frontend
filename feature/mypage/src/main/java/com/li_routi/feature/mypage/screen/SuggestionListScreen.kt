@@ -3,10 +3,12 @@ package com.li_routi.feature.mypage.screen
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
@@ -14,6 +16,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.lazy.rememberLazyListState
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -38,15 +41,20 @@ import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
 import com.li_routi.core.designsystem.R
 import com.li_routi.core.designsystem.component.LiroutiDivider
+import com.li_routi.core.designsystem.component.LiroutiLabel
+import com.li_routi.core.designsystem.component.LiroutiSearchField
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.mypage.component.EditProfileTopBar
 import com.li_routi.feature.mypage.component.SettingsSectionDividerColor
+import com.li_routi.feature.mypage.component.SuggestionCategoryUiModel
 import com.li_routi.feature.mypage.component.SuggestionUiModel
 import kotlinx.coroutines.launch
 
+private const val AllCategoryLabel = "전체"
+
 /**
- * 건의하기 목록. 내가 보낸 건의만 보여 주고, 제목 자리에는 분류 이름을 쓴다.
+ * 건의하기 목록. 검색·분류는 서버 필터이고, 글이 없으면 알림 화면과 같은 빈 상태를 보여 준다.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -55,9 +63,14 @@ fun SuggestionListScreen(
     onSuggestionClick: (Long) -> Unit,
     onCreateClick: () -> Unit,
     onTabSelected: (AppBottomTab) -> Unit,
+    onSearchQueryChange: (String) -> Unit,
+    onCategorySelected: (Long?) -> Unit,
     onLoadMore: () -> Unit,
     onRetryClick: () -> Unit,
     modifier: Modifier = Modifier,
+    searchQuery: String = "",
+    selectedCategoryId: Long? = null,
+    categories: List<SuggestionCategoryUiModel> = emptyList(),
     suggestions: List<SuggestionUiModel> = emptyList(),
     isLoading: Boolean = false,
     hasNext: Boolean = false,
@@ -86,104 +99,132 @@ fun SuggestionListScreen(
             )
         },
         bottomBar = {
-                AppBottomNavBar(
-                    selectedTab = AppBottomTab.My,
-                    onTabSelected = onTabSelected,
-                )
+            AppBottomNavBar(
+                selectedTab = AppBottomTab.My,
+                onTabSelected = onTabSelected,
+            )
         },
     ) { innerPadding ->
-        Box(
+        Column(
             modifier = Modifier
                 .fillMaxSize()
                 .padding(innerPadding),
         ) {
-            when {
-                isLoading && suggestions.isEmpty() && errorMessage == null -> {
-                    CircularProgressIndicator(
-                        color = LiroutiTheme.colors.primaryNormal,
-                        modifier = Modifier.align(Alignment.Center),
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp)
+                    .padding(top = 12.dp, bottom = 8.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                LiroutiSearchField(
+                    value = searchQuery,
+                    onValueChange = onSearchQueryChange,
+                )
+                Row(
+                    modifier = Modifier.horizontalScroll(rememberScrollState()),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                ) {
+                    LiroutiLabel(
+                        text = AllCategoryLabel,
+                        selected = selectedCategoryId == null,
+                        onClick = { onCategorySelected(null) },
                     )
-                }
-                errorMessage != null && suggestions.isEmpty() -> {
-                    SuggestionStatusMessage(
-                        message = errorMessage,
-                        actionLabel = "다시 시도",
-                        onActionClick = onRetryClick,
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-                suggestions.isEmpty() -> {
-                    SuggestionStatusMessage(
-                        message = "건의가 없어요",
-                        modifier = Modifier.align(Alignment.Center),
-                    )
-                }
-                else -> {
-                    val itemCount = suggestions.size
-                    val shouldLoadMore by remember(itemCount) {
-                        derivedStateOf {
-                            val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
-                            val totalItems = listState.layoutInfo.totalItemsCount
-                            lastVisible != null &&
-                                totalItems > 0 &&
-                                lastVisible >= totalItems - 3
-                        }
-                    }
-                    LaunchedEffect(shouldLoadMore, hasNext, errorMessage) {
-                        if (shouldLoadMore && hasNext && errorMessage == null) onLoadMore()
-                    }
-                    LazyColumn(
-                        state = listState,
-                        modifier = Modifier.fillMaxSize(),
-                        contentPadding = PaddingValues(bottom = 72.dp),
-                    ) {
-                        itemsIndexed(
-                            items = suggestions,
-                            key = { _, item -> item.id },
-                        ) { index, suggestion ->
-                            Column(modifier = Modifier.padding(horizontal = 16.dp)) {
-                                if (index > 0) {
-                                    LiroutiDivider(color = SettingsSectionDividerColor)
-                                }
-                                SuggestionListItem(
-                                    suggestion = suggestion,
-                                    onClick = { onSuggestionClick(suggestion.id) },
-                                )
-                            }
-                        }
-                        if (errorMessage != null) {
-                            item(key = "load_more_error") {
-                                SuggestionStatusMessage(
-                                    message = errorMessage,
-                                    actionLabel = "다시 시도",
-                                    onActionClick = onLoadMore,
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 16.dp, vertical = 12.dp),
-                                )
-                            }
-                        }
-                    }
-                    Box(
-                        modifier = Modifier
-                            .align(Alignment.BottomEnd)
-                            .padding(end = 16.dp, bottom = 16.dp)
-                            .size(48.dp)
-                            .clip(CircleShape)
-                            .background(LiroutiTheme.colors.labelDefault)
-                            .clickable {
-                                coroutineScope.launch { listState.animateScrollToItem(0) }
-                            },
-                        contentAlignment = Alignment.Center,
-                    ) {
-                        Image(
-                            painter = painterResource(id = R.drawable.chevron__left),
-                            contentDescription = "맨 위로",
-                            modifier = Modifier
-                                .size(20.dp)
-                                .rotate(90f),
-                            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelReverse),
+                    categories.forEach { category ->
+                        LiroutiLabel(
+                            text = category.name,
+                            selected = selectedCategoryId == category.id,
+                            onClick = { onCategorySelected(category.id) },
                         )
+                    }
+                }
+            }
+            Box(modifier = Modifier.weight(1f).fillMaxWidth()) {
+                when {
+                    isLoading && suggestions.isEmpty() && errorMessage == null -> {
+                        CircularProgressIndicator(
+                            color = LiroutiTheme.colors.primaryNormal,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    errorMessage != null && suggestions.isEmpty() -> {
+                        SuggestionStatusMessage(
+                            message = errorMessage,
+                            actionLabel = "다시 시도",
+                            onActionClick = onRetryClick,
+                            modifier = Modifier.align(Alignment.Center),
+                        )
+                    }
+                    suggestions.isEmpty() -> {
+                        SuggestionEmptyContent(modifier = Modifier.fillMaxSize())
+                    }
+                    else -> {
+                        val itemCount = suggestions.size
+                        val shouldLoadMore by remember(itemCount) {
+                            derivedStateOf {
+                                val lastVisible = listState.layoutInfo.visibleItemsInfo.lastOrNull()?.index
+                                val totalItems = listState.layoutInfo.totalItemsCount
+                                lastVisible != null &&
+                                    totalItems > 0 &&
+                                    lastVisible >= totalItems - 3
+                            }
+                        }
+                        LaunchedEffect(shouldLoadMore, hasNext, errorMessage) {
+                            if (shouldLoadMore && hasNext && errorMessage == null) onLoadMore()
+                        }
+                        LazyColumn(
+                            state = listState,
+                            modifier = Modifier.fillMaxSize(),
+                            contentPadding = PaddingValues(bottom = 72.dp),
+                        ) {
+                            itemsIndexed(
+                                items = suggestions,
+                                key = { _, item -> item.id },
+                            ) { index, suggestion ->
+                                Column(modifier = Modifier.padding(horizontal = 16.dp)) {
+                                    if (index > 0) {
+                                        LiroutiDivider(color = SettingsSectionDividerColor)
+                                    }
+                                    SuggestionListItem(
+                                        suggestion = suggestion,
+                                        onClick = { onSuggestionClick(suggestion.id) },
+                                    )
+                                }
+                            }
+                            if (errorMessage != null) {
+                                item(key = "load_more_error") {
+                                    SuggestionStatusMessage(
+                                        message = errorMessage,
+                                        actionLabel = "다시 시도",
+                                        onActionClick = onLoadMore,
+                                        modifier = Modifier
+                                            .fillMaxWidth()
+                                            .padding(horizontal = 16.dp, vertical = 12.dp),
+                                    )
+                                }
+                            }
+                        }
+                        Box(
+                            modifier = Modifier
+                                .align(Alignment.BottomEnd)
+                                .padding(end = 16.dp, bottom = 16.dp)
+                                .size(48.dp)
+                                .clip(CircleShape)
+                                .background(LiroutiTheme.colors.labelDefault)
+                                .clickable {
+                                    coroutineScope.launch { listState.animateScrollToItem(0) }
+                                },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Image(
+                                painter = painterResource(id = R.drawable.chevron__left),
+                                contentDescription = "맨 위로",
+                                modifier = Modifier
+                                    .size(20.dp)
+                                    .rotate(90f),
+                                colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelReverse),
+                            )
+                        }
                     }
                 }
             }
@@ -205,7 +246,7 @@ private fun SuggestionListItem(
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Text(
-            text = suggestion.categoryName,
+            text = suggestion.title,
             style = LiroutiTheme.typography.body1Bold,
             color = LiroutiTheme.colors.labelDefault,
         )
@@ -214,6 +255,32 @@ private fun SuggestionListItem(
             style = LiroutiTheme.typography.body2LongRegular,
             color = LiroutiTheme.colors.labelInfo,
         )
+    }
+}
+
+@Composable
+private fun SuggestionEmptyContent(modifier: Modifier = Modifier) {
+    Box(
+        modifier = modifier,
+        contentAlignment = Alignment.Center,
+    ) {
+        Column(
+            horizontalAlignment = Alignment.CenterHorizontally,
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Image(
+                painter = painterResource(id = R.drawable.warning),
+                contentDescription = null,
+                modifier = Modifier.size(28.dp),
+                colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelInfo),
+            )
+            Text(
+                text = "건의사항이 없어요!",
+                style = LiroutiTheme.typography.body2,
+                color = LiroutiTheme.colors.labelInfo,
+                textAlign = TextAlign.Center,
+            )
+        }
     }
 }
 
@@ -246,18 +313,28 @@ private fun SuggestionStatusMessage(
     }
 }
 
+private val PreviewCategories = listOf(
+    SuggestionCategoryUiModel(id = 1, name = "메인"),
+    SuggestionCategoryUiModel(id = 2, name = "그룹"),
+    SuggestionCategoryUiModel(id = 3, name = "그룹채팅"),
+    SuggestionCategoryUiModel(id = 4, name = "챌린지"),
+    SuggestionCategoryUiModel(id = 5, name = "기타"),
+)
+
 private val PreviewSuggestions = listOf(
     SuggestionUiModel(
         id = 1,
-        categoryName = "버그 신고",
-        date = "2026. 08. 19",
+        title = "건의사항 1",
+        categoryName = "메인",
+        date = "2026. 08. 21",
         content = "메인 화면에서 오늘 루틴이 더 잘 보이면 좋겠어요.",
     ),
     SuggestionUiModel(
         id = 2,
-        categoryName = "기능 제안",
-        date = "2026. 08. 18",
-        content = "루틴 알림 시간을 분 단위로 설정할 수 있으면 좋겠습니다.",
+        title = "건의사항 2",
+        categoryName = "그룹",
+        date = "2026. 08. 21",
+        content = "그룹 루틴 알림을 더 자주 받고 싶습니다.",
     ),
 )
 
@@ -270,9 +347,30 @@ private fun SuggestionListScreenPreview() {
             onSuggestionClick = {},
             onCreateClick = {},
             onTabSelected = {},
+            onSearchQueryChange = {},
+            onCategorySelected = {},
             onLoadMore = {},
             onRetryClick = {},
+            categories = PreviewCategories,
             suggestions = PreviewSuggestions,
+        )
+    }
+}
+
+@Preview(showBackground = true, heightDp = 800)
+@Composable
+private fun SuggestionListScreenEmptyPreview() {
+    LiroutiFrontendTheme {
+        SuggestionListScreen(
+            onBackClick = {},
+            onSuggestionClick = {},
+            onCreateClick = {},
+            onTabSelected = {},
+            onSearchQueryChange = {},
+            onCategorySelected = {},
+            onLoadMore = {},
+            onRetryClick = {},
+            categories = PreviewCategories,
         )
     }
 }

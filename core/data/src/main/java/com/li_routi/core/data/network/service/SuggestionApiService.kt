@@ -12,11 +12,12 @@ import retrofit2.http.Query
 
 interface SuggestionApiService {
 
-    /** 내가 보낸 건의만, 최신순 커서 페이지네이션. 첫 요청은 [cursor] 없이 보낸다. */
     @GET("api/members/me/suggestions")
     suspend fun getMySuggestions(
         @Query("cursor") cursor: Long?,
         @Query("size") size: Int?,
+        @Query("keyword") keyword: String?,
+        @Query("categoryId") categoryId: Long?,
     ): ApiResponse<SuggestionListResponse>
 
     @POST("api/members/me/suggestions")

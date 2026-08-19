@@ -2,13 +2,17 @@ package com.li_routi.core.domain.suggestion
 
 import com.li_routi.core.common.kotlin.util.ResultState
 
+const val SuggestionPageSize = 20
+
 class GetMySuggestionsUseCase(
     private val repository: SuggestionRepository,
 ) {
     suspend operator fun invoke(
         cursor: Long? = null,
         size: Int = SuggestionPageSize,
-    ): ResultState<SuggestionPage> = repository.getMySuggestions(cursor, size)
+        keyword: String? = null,
+        categoryId: Long? = null,
+    ): ResultState<SuggestionPageResult> = repository.getMySuggestions(cursor, size, keyword, categoryId)
 }
 
 class GetSuggestionCategoriesUseCase(
@@ -22,9 +26,7 @@ class CreateSuggestionUseCase(
 ) {
     suspend operator fun invoke(
         categoryId: Long,
+        title: String,
         content: String,
-    ): ResultState<CreateSuggestionResult> = repository.createSuggestion(categoryId, content)
+    ): ResultState<CreateSuggestionResult> = repository.createSuggestion(categoryId, title, content)
 }
-
-/** 서버 기본값과 같다. 1~50 밖이면 400이라 클라에서 깎지 않는다. */
-const val SuggestionPageSize = 20
