@@ -35,7 +35,12 @@ class SuggestionRepositoryImpl(
             )
         } catch (e: ApiException) {
             // SUGGESTION404_1 없는 분류 — 빈 목록으로 읽히지 않게 별도 결과로 둔다.
-            if (e.statusCode == 404) SuggestionPageResult.CategoryNotFound else throw e
+            // 분류를 안 고른 요청의 404는 다른 실패이므로 그대로 올린다.
+            if (e.statusCode == 404 && categoryId != null) {
+                SuggestionPageResult.CategoryNotFound
+            } else {
+                throw e
+            }
         }
     }
 
