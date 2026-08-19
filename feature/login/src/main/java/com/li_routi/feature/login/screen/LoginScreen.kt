@@ -1,5 +1,6 @@
 package com.li_routi.feature.login.screen
 
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -14,6 +15,8 @@ import androidx.compose.foundation.pager.rememberPagerState
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.R
@@ -21,7 +24,6 @@ import com.li_routi.core.designsystem.foundation.color.BackgroundFill
 import com.li_routi.core.designsystem.foundation.color.KakaoBrandYellow
 import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
-import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.login.component.LoginPageText
 import com.li_routi.feature.login.component.LoginProgressBar
 import com.li_routi.feature.login.component.SocialLoginButton
@@ -63,7 +65,7 @@ fun LoginScreen(
     Box(
         modifier = modifier
             .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundDefault),
+            .background(BackgroundFill),
     ) {
         Column(modifier = Modifier.fillMaxSize()) {
             Box(
@@ -87,16 +89,24 @@ fun LoginScreen(
                                 .padding(top = 94.dp)
                                 .fillMaxWidth(),
                         )
+                        val frameRes = when (page) {
+                            0 -> R.drawable.first_frame
+                            1 -> R.drawable.second_frame
+                            2 -> R.drawable.third_frame
+                            else -> R.drawable.fourth_frame
+                        }
+                        Image(
+                            painter = painterResource(id = frameRes),
+                            contentDescription = null,
+                            contentScale = ContentScale.Crop,
+                            modifier = Modifier
+                                .align(Alignment.TopCenter)
+                                .padding(top = 240.dp)
+                                .fillMaxWidth()
+                                .aspectRatio(1f),
+                        )
                     }
                 }
-                Box(
-                    modifier = Modifier
-                        .align(Alignment.TopCenter)
-                        .padding(top = 240.dp)
-                        .fillMaxWidth()
-                        .aspectRatio(1f)
-                        .background(BackgroundFill),
-                )
                 LoginProgressBar(
                     currentPage = pagerState.currentPage,
                     modifier = Modifier
