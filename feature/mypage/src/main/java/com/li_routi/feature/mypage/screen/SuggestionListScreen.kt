@@ -169,7 +169,7 @@ fun SuggestionListScreen(
                                     lastVisible >= totalItems - 3
                             }
                         }
-                        LaunchedEffect(shouldLoadMore, hasNext, errorMessage) {
+                        LaunchedEffect(shouldLoadMore, hasNext, errorMessage, itemCount) {
                             if (shouldLoadMore && hasNext && errorMessage == null) onLoadMore()
                         }
                         LazyColumn(
