@@ -10,9 +10,12 @@ import com.li_routi.core.domain.achievement.AchievementCategory
 import com.li_routi.core.domain.achievement.AchievementClaimResult
 import com.li_routi.core.domain.achievement.AchievementConditionProgress
 import com.li_routi.core.domain.achievement.ClaimAchievementUseCase
+import com.li_routi.core.domain.achievement.ClearRepresentativeAchievementUseCase
 import com.li_routi.core.domain.achievement.GetAchievementsUseCase
+import com.li_routi.core.domain.achievement.GetSelectableRepresentativeAchievementsUseCase
 import com.li_routi.core.domain.achievement.GetWaveRoutineStatusUseCase
 import com.li_routi.core.domain.achievement.SelectWaveRoutineUseCase
+import com.li_routi.core.domain.achievement.SetRepresentativeAchievementUseCase
 import com.li_routi.core.domain.achievement.WaveRoutineStatus
 import com.li_routi.core.domain.routine.CreatedRoutine
 import com.li_routi.core.domain.routine.GetMemberRoutinesUseCase
@@ -46,6 +49,12 @@ class AchievementViewModel(
     private val getWaveRoutineStatusUseCase: GetWaveRoutineStatusUseCase = AchievementContainer.getWaveRoutineStatusUseCase,
     private val selectWaveRoutineUseCase: SelectWaveRoutineUseCase = AchievementContainer.selectWaveRoutineUseCase,
     private val getMemberRoutinesUseCase: GetMemberRoutinesUseCase = RoutineContainer.getMemberRoutinesUseCase,
+    private val getSelectableRepresentativeAchievementsUseCase: GetSelectableRepresentativeAchievementsUseCase =
+        AchievementContainer.getSelectableRepresentativeAchievementsUseCase,
+    private val setRepresentativeAchievementUseCase: SetRepresentativeAchievementUseCase =
+        AchievementContainer.setRepresentativeAchievementUseCase,
+    private val clearRepresentativeAchievementUseCase: ClearRepresentativeAchievementUseCase =
+        AchievementContainer.clearRepresentativeAchievementUseCase,
 ) : BaseViewModel() {
 
     private val _uiState = MutableStateFlow(AchievementUiState(isLoading = true))
@@ -54,6 +63,53 @@ class AchievementViewModel(
     init {
         load()
         loadWaveRoutineStatus()
+        loadRepresentativeAchievement()
+    }
+
+    /**
+     * 현재 대표로 설정된 업적 id를 서버에서 읽어온다. 대표 업적 상태는 서버가 진실의 원천이라(장착
+     * 상태가 앱 재시작에도 유지돼야 하는 요구사항) 화면 로컬 상태(remember)로 관리하지 않는다.
+     */
+    private fun loadRepresentativeAchievement() {
+        viewModelScope.launch {
+            when (val result = getSelectableRepresentativeAchievementsUseCase()) {
+                is ResultState.Success -> {
+                    val representativeId = result.data.firstOrNull { it.isRepresentative }?.achievementId
+                    _uiState.update { it.copy(representativeAchievementId = representativeId) }
+                }
+                is ResultState.Error, ResultState.Loading -> Unit
+            }
+        }
+    }
+
+    /**
+     * "달성" 탭에서 배지를 탭함 — 이미 대표로 설정된 배지를 다시 탭하면 해제(DELETE)하고, 아니면 그
+     * 배지로 새로 설정(PUT, 기존 대표는 자동으로 덮어써짐)한다. 배지 이미지가 없거나 아직 보상을
+     * 수령하지 않은 업적을 선택하면 서버가 400/409로 거절하는데, 그 메시지를 그대로 토스트로 보여준다.
+     */
+    fun onBadgeEquipClick(achievementId: Long) {
+        if (_uiState.value.isEquippingBadge) return
+        val isUnequip = _uiState.value.representativeAchievementId == achievementId
+        viewModelScope.launch {
+            _uiState.update { it.copy(isEquippingBadge = true) }
+            val result = if (isUnequip) {
+                clearRepresentativeAchievementUseCase()
+            } else {
+                setRepresentativeAchievementUseCase(achievementId)
+            }
+            when (result) {
+                is ResultState.Success -> _uiState.update {
+                    it.copy(
+                        isEquippingBadge = false,
+                        representativeAchievementId = if (isUnequip) null else achievementId,
+                    )
+                }
+                is ResultState.Error -> _uiState.update {
+                    it.copy(isEquippingBadge = false, claimMessage = result.message)
+                }
+                ResultState.Loading -> Unit
+            }
+        }
     }
 
     private fun loadWaveRoutineStatus() {
@@ -188,6 +244,10 @@ data class AchievementUiState(
     /** 루틴 선택 시트에 뿌릴 내 루틴 목록. 시트를 처음 열 때 한 번만 불러와 캐싱한다 */
     val myRoutines: List<CreatedRoutine> = emptyList(),
     val isSelectingWaveRoutine: Boolean = false,
+    /** 현재 대표로 설정된 업적 id. null이면 대표 업적 없음(또는 아직 서버 조회 전). */
+    val representativeAchievementId: Long? = null,
+    /** 대표 업적 설정/해제 요청 진행 중 — 중복 탭 방지. */
+    val isEquippingBadge: Boolean = false,
 )
 
 private fun AchievementClaimResult.toMessage(): String =

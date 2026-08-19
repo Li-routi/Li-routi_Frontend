@@ -1,11 +1,14 @@
 package com.li_routi.core.data.network.service
 
+import com.li_routi.core.data.network.dto.request.RepresentativeAchievementRequest
 import com.li_routi.core.data.network.dto.request.SelectWaveRoutineRequest
 import com.li_routi.core.data.network.dto.response.AchievementsResponse
 import com.li_routi.core.data.network.dto.response.ApiResponse
 import com.li_routi.core.data.network.dto.response.ClaimResponse
+import com.li_routi.core.data.network.dto.response.SelectableAchievementsResponse
 import com.li_routi.core.data.network.dto.response.WaveRoutineStatusResponse
 import retrofit2.http.Body
+import retrofit2.http.DELETE
 import retrofit2.http.GET
 import retrofit2.http.POST
 import retrofit2.http.PUT
@@ -30,4 +33,21 @@ interface AchievementApiService {
     suspend fun selectWaveRoutine(
         @Body request: SelectWaveRoutineRequest,
     ): ApiResponse<Unit?>
+
+    /**
+     * "달성" 탭에서 대표 업적으로 선택 가능한(배지 이미지가 있고 CLAIMED된) 업적 목록을 조회한다.
+     * 현재 대표로 설정된 항목엔 `representative=true`가 표시된다.
+     */
+    @GET("api/achievements/representative/selectable")
+    suspend fun getSelectableRepresentativeAchievements(): ApiResponse<SelectableAchievementsResponse>
+
+    /** 대표 업적을 선택한다 — 이미 다른 업적이 설정돼 있으면 이번 선택으로 덮어쓴다. */
+    @PUT("api/achievements/representative")
+    suspend fun setRepresentativeAchievement(
+        @Body request: RepresentativeAchievementRequest,
+    ): ApiResponse<Unit?>
+
+    /** 설정된 대표 업적을 해제한다. 멱등 — 이미 해제된 상태에서 다시 호출해도 안전하다. */
+    @DELETE("api/achievements/representative")
+    suspend fun clearRepresentativeAchievement(): ApiResponse<Unit?>
 }
