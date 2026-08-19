@@ -3,6 +3,7 @@ package com.li_routi.feature.mypage.screen
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -135,7 +136,10 @@ fun AchievementScreen(
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
                     if (selectedTab != AchievementStatusTab.Achieved) {
-                        Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        Row(
+                            modifier = Modifier.horizontalScroll(rememberScrollState()),
+                            horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        ) {
                             LiroutiLabel(text = "전체", selected = selectedRarity == null, onClick = { selectedRarity = null })
                             AchievementRarity.entries.forEach { rarity ->
                                 LiroutiLabel(
