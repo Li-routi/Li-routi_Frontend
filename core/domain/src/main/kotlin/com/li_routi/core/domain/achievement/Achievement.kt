@@ -24,7 +24,8 @@ data class Achievement(
     val achievementId: Long,
     val code: String,
     val name: String,
-    val conditionDesc: String,
+    /** 숨김(시크릿) 업적([hiddenYn])은 실제로 이 필드가 null로 내려온다 — 달성 전까지 조건을 감추는 의도. */
+    val conditionDesc: String?,
     val status: String,
     val progressCurrent: Int,
     val progressTarget: Int,
@@ -60,4 +61,15 @@ data class AchievementClaimResult(
     val achievementId: Long,
     val freeBalanceAfter: Int,
     val rewardApplied: Boolean,
+)
+
+/**
+ * GET /api/achievements/representative/selectable 조회 결과 — 대표 업적으로 선택 가능한 업적 하나.
+ * 배지 이미지가 등록돼 있고 보상까지 수령(CLAIMED)한 업적만 이 목록에 온다.
+ */
+data class SelectableAchievement(
+    val achievementId: Long,
+    val name: String,
+    val badgeImageUrl: String?,
+    val isRepresentative: Boolean,
 )

@@ -208,7 +208,13 @@ class SuggestionViewModel(
                                 state.copy(
                                     isLoading = false,
                                     isLoadingMore = false,
-                                    items = if (reset) mapped else state.items + mapped,
+                                    items = if (reset) {
+                                        mapped
+                                    } else {
+                                        // 커서 겹침 등으로 이전 페이지와 id가 중복되면 LazyColumn 키 충돌로
+                                        // 크래시하므로 이어붙일 때 중복 id를 제거한다.
+                                        (state.items + mapped).distinctBy { it.id }
+                                    },
                                     nextCursor = pageResult.page.nextCursor,
                                     hasNext = pageResult.page.hasNext && pageResult.page.nextCursor != null,
                                     listError = null,
@@ -280,7 +286,9 @@ private fun String.toEpochMillisOrNull(): Long? {
     for (pattern in patterns) {
         val millis = runCatching {
             SimpleDateFormat(pattern, Locale.US).apply {
-                timeZone = TimeZone.getTimeZone("UTC")
+                // 오프셋이 문자열에 포함된 경우(Z 패턴)는 그 오프셋이 우선 적용된다.
+                // 오프셋 없는 문자열은 서버가 KST 로컬 시각으로 내려주므로 Asia/Seoul로 해석한다.
+                timeZone = TimeZone.getTimeZone("Asia/Seoul")
                 isLenient = false
             }.parse(normalized)?.time
         }.getOrNull()

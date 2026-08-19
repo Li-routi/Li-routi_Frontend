@@ -25,4 +25,8 @@ data class GroupMemberActivity(
     /** 현재 착용 중인 아이템 이미지. 겹칠 순서대로(BODY→HEAD→HAND) 옴. 캐릭터 본체(어떤 동물/색)는
      * 서버에 없어(로컬 전용 선택) 포함되지 않는다 — 기본 캐릭터 위에 이 이미지들만 겹쳐 그린다. */
     val equippedImageUrls: List<String> = emptyList(),
+    /** 구성원이 대표로 설정한 업적 배지 이름. 대표 업적이 없으면 null. */
+    val representativeBadgeName: String? = null,
+    /** 구성원이 대표로 설정한 업적 배지 이미지. 대표 업적이 없으면 null. */
+    val representativeBadgeImageUrl: String? = null,
 )

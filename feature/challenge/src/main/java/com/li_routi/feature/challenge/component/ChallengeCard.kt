@@ -39,6 +39,7 @@ fun ChallengeCard(
         activityLabel = "리워드",
         posts = challenge.postCount.toString(),
         badgeText = challenge.badge,
+        showIcon = false,
         modifier = modifier.clickable(onClick = onClick),
     )
 }

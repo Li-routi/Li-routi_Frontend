@@ -32,6 +32,8 @@ fun AchievementRoute(
         onWaveRoutinePickerOpen = viewModel::onWaveRoutinePickerOpen,
         onWaveRoutinePickerDismiss = viewModel::onWaveRoutinePickerDismiss,
         onWaveRoutineChosen = viewModel::onWaveRoutineChosen,
+        equippedBadgeId = uiState.representativeAchievementId,
+        onBadgeEquipClick = viewModel::onBadgeEquipClick,
         modifier = modifier,
     )
 }

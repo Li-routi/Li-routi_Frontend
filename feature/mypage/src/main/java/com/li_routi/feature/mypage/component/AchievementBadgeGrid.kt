@@ -55,7 +55,9 @@ private const val ColumnCount = 3
  * 채운다 — 안 그러면 `weight(1f)`가 남은 셀에 다 몰려서 폭이 어긋난다.
  *
  * 배지를 탭하면 [onBadgeClick]으로 알리고, [equippedBadgeId]와 일치하는 배지에 파란 테두리 +
- * "장착 중" 표시를 보여준다 — 장착 상태를 서버에 저장하는 API가 아직 없어 화면 로컬 상태로만 관리한다.
+ * "장착 중" 표시를 보여준다. [equippedBadgeId]는 `PUT/DELETE /api/achievements/representative`로
+ * 서버에 저장되는 "대표 업적" 상태다([AchievementViewModel][com.li_routi.feature.mypage.vm.AchievementViewModel]
+ * 참고) — 배지 이미지가 없거나 아직 보상을 수령하지 않은 업적을 선택하면 서버가 거절한다.
  */
 @Composable
 fun AchievementBadgeGrid(

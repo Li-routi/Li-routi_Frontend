@@ -79,6 +79,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.rotate
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
@@ -111,11 +112,13 @@ import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.designsystem.foundation.color.ChatSendBackground
-import com.li_routi.core.designsystem.foundation.color.EarlyBirdBackground
-import com.li_routi.core.designsystem.foundation.color.EarlyBirdText
+import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeBackground
+import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeText
 import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
 import com.li_routi.core.designsystem.foundation.color.Neutral10
 import com.li_routi.core.designsystem.component.LiroutiBottomSheet
+import com.li_routi.core.designsystem.component.LiroutiBottomSheetCloseButton
+import com.li_routi.core.designsystem.component.LiroutiBottomSheetDeleteButton
 import com.li_routi.core.designsystem.component.LiroutiBadge
 import com.li_routi.core.designsystem.component.LiroutiBadgeColor
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
@@ -753,7 +756,7 @@ private fun GroupRoutineListScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundDefault),
+            .background(LiroutiTheme.colors.backgroundSecondary),
     ) {
         GroupRoutineTopBar(
             title = "그룹 루틴",
@@ -1101,16 +1104,8 @@ private fun RoutineColorBottomSheet(
                 horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
             ) {
-                GroupRoutineCloseButton(
-                    onClick = onDismissRequest,
-                    modifier = Modifier.size(24.dp),
-                )
-                Text(
-                    text = "삭제",
-                    color = LiroutiTheme.colors.dangerBase,
-                    style = LiroutiTheme.typography.body2Long,
-                    modifier = Modifier.clickable(onClick = onDeleteClick),
-                )
+                LiroutiBottomSheetCloseButton(onClick = onDismissRequest)
+                LiroutiBottomSheetDeleteButton(onClick = onDeleteClick)
             }
 
             Box(
@@ -1496,18 +1491,13 @@ private fun RoutineSettingSheet(
         contentPadding = PaddingValues(start = 16.dp, top = 30.dp, end = 16.dp, bottom = 32.dp),
     ) {
         Column(verticalArrangement = Arrangement.spacedBy(20.dp)) {
-            Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-                GroupRoutineCloseButton(
-                    onClick = onDismissRequest,
-                    modifier = Modifier.size(28.dp),
-                )
-                Spacer(modifier = Modifier.weight(1f))
-                Text(
-                    text = "삭제",
-                    color = LiroutiTheme.colors.dangerBase,
-                    style = LiroutiTheme.typography.body2Long,
-                    modifier = Modifier.clickable(onClick = onDeleteClick),
-                )
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
+                LiroutiBottomSheetCloseButton(onClick = onDismissRequest)
+                LiroutiBottomSheetDeleteButton(onClick = onDeleteClick)
             }
             BasicInputBox(
                 value = routineName,
@@ -1640,11 +1630,14 @@ private fun RoutineSettingExpandableRow(
             color = LiroutiTheme.colors.labelSub,
             style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
         )
-        Text(
-            text = if (expanded) "⌃" else "⌄",
-            color = LiroutiTheme.colors.labelSub,
-            style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Bold),
-            modifier = Modifier.padding(start = 4.dp),
+        Image(
+            painter = painterResource(id = DesignSystemR.drawable.chevron__right),
+            contentDescription = if (expanded) "접기" else "펼치기",
+            modifier = Modifier
+                .padding(start = 4.dp)
+                .size(16.dp)
+                .rotate(if (expanded) -90f else 90f),
+            colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelSub),
         )
     }
 }
@@ -2389,7 +2382,7 @@ private fun GroupRoutineDetailScreen(
                     onSettingsClick = onSettingsClick,
                 )
             },
-            sheetPeekHeight = 360.dp,
+            sheetPeekHeight = if (uiState.members.size in 1..3) 480.dp else 400.dp,
             sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             sheetContainerColor = LiroutiTheme.colors.backgroundDefault,
             containerColor = LiroutiTheme.colors.backgroundSecondary,
@@ -3733,14 +3726,14 @@ private fun MemberSeat(
             }
             Box(
                 modifier = Modifier
-                    .requiredSize(48.dp)
+                    .requiredSize(56.dp)
                     .clip(CircleShape)
                     .background(LiroutiTheme.colors.backgroundDefault),
                 contentAlignment = Alignment.Center,
             ) {
                 MemberAvatarImage(
                     equippedImageUrls = member.equippedImageUrls,
-                    modifier = Modifier.requiredSize(48.dp),
+                    modifier = Modifier.requiredSize(56.dp),
                 )
             }
         }
@@ -3849,21 +3842,34 @@ private fun MemberProfileDialog(
                                 StatusBadge(label = "\uB098", completed = false)
                             }
                         }
-                        if (!member.isMe) {
+                        if (member.representativeBadgeName != null || !member.isMe) {
                             Row(
                                 verticalAlignment = Alignment.CenterVertically,
                                 horizontalArrangement = Arrangement.spacedBy(4.dp),
                             ) {
-                                Text(
-                                    text = "\uC5BC\uB9AC\uBC84\uB4DC",
-                                    color = EarlyBirdText,
-                                    style = LiroutiTheme.typography.caption,
-                                    modifier = Modifier
-                                        .clip(RoundedCornerShape(6.dp))
-                                        .background(EarlyBirdBackground)
-                                        .padding(horizontal = 6.dp, vertical = 3.dp),
-                                )
-                                Text(text = "\uD83D\uDD25${member.streak}", color = LiroutiTheme.colors.dangerBase, fontSize = 10.sp)
+                                if (member.representativeBadgeName != null) {
+                                    if (member.representativeBadgeImageUrl != null) {
+                                        AsyncImage(
+                                            model = member.representativeBadgeImageUrl,
+                                            contentDescription = null,
+                                            modifier = Modifier.size(16.dp),
+                                        )
+                                    }
+                                    Text(
+                                        text = member.representativeBadgeName,
+                                        color = RepresentativeBadgeText,
+                                        style = LiroutiTheme.typography.caption,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier
+                                            .clip(RoundedCornerShape(8.dp))
+                                            .background(RepresentativeBadgeBackground)
+                                            .padding(horizontal = 8.dp, vertical = 4.dp),
+                                    )
+                                }
+                                if (!member.isMe) {
+                                    Text(text = "\uD83D\uDD25${member.streak}", color = LiroutiTheme.colors.dangerBase, fontSize = 10.sp)
+                                }
                             }
                         }
                     }
@@ -4364,12 +4370,11 @@ private fun GroupRoutineTopBar(
             if (showAdd) {
                 Image(
                     painter = painterResource(id = DesignSystemR.drawable.add__alt),
-                    contentDescription = "방 만들기",
-                    modifier = Modifier
-                        .align(Alignment.CenterEnd)
-                        .padding(end = 16.dp)
-                        .size(20.dp)
-                        .clickable(onClick = onAddClick),
+                      contentDescription = "방 만들기",
+                      modifier = Modifier
+                          .align(Alignment.CenterEnd)
+                          .size(20.dp)
+                          .clickable(onClick = onAddClick),
                     colorFilter = ColorFilter.tint(LiroutiTheme.colors.labelStrong),
                 )
             }

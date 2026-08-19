@@ -4,9 +4,12 @@ import com.li_routi.core.data.network.NetworkModule
 import com.li_routi.core.data.repository.AchievementRepositoryImpl
 import com.li_routi.core.domain.achievement.AchievementRepository
 import com.li_routi.core.domain.achievement.ClaimAchievementUseCase
+import com.li_routi.core.domain.achievement.ClearRepresentativeAchievementUseCase
 import com.li_routi.core.domain.achievement.GetAchievementsUseCase
+import com.li_routi.core.domain.achievement.GetSelectableRepresentativeAchievementsUseCase
 import com.li_routi.core.domain.achievement.GetWaveRoutineStatusUseCase
 import com.li_routi.core.domain.achievement.SelectWaveRoutineUseCase
+import com.li_routi.core.domain.achievement.SetRepresentativeAchievementUseCase
 
 /**
  * Hilt 등 DI 프레임워크가 붙기 전까지 사용하는 수동 구성 root.
@@ -32,5 +35,17 @@ object AchievementContainer {
 
     val selectWaveRoutineUseCase: SelectWaveRoutineUseCase by lazy {
         SelectWaveRoutineUseCase(repository)
+    }
+
+    val getSelectableRepresentativeAchievementsUseCase: GetSelectableRepresentativeAchievementsUseCase by lazy {
+        GetSelectableRepresentativeAchievementsUseCase(repository)
+    }
+
+    val setRepresentativeAchievementUseCase: SetRepresentativeAchievementUseCase by lazy {
+        SetRepresentativeAchievementUseCase(repository)
+    }
+
+    val clearRepresentativeAchievementUseCase: ClearRepresentativeAchievementUseCase by lazy {
+        ClearRepresentativeAchievementUseCase(repository)
     }
 }

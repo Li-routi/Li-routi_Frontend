@@ -91,6 +91,8 @@ androidx-datastore-preferences = { group = "androidx.datastore", name = "datasto
 
 # Coil (인증 게시글 이미지 등 네트워크 이미지 로딩)
 coil-compose = { group = "io.coil-kt", name = "coil-compose", version.ref = "coil" }
+# Compose 없이 헤드리스로 이미지를 미리 받아둘 때(core:data의 홈 프리페치)만 쓰는 base 아티팩트
+coil = { group = "io.coil-kt", name = "coil", version.ref = "coil" }
 portone-android-sdk = { group = "com.github.portone-io", name = "android-sdk", version.ref = "portone" }
 
 # Krossbow (채팅 STOMP over WebSocket)

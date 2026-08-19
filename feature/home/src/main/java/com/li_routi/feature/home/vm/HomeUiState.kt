@@ -16,6 +16,10 @@ import com.li_routi.feature.home.component.SampleMyRoutineItemsOnly
  */
 data class HomeUiState(
     val nickname: String = "닉네임",
+    /** 대표로 설정한 업적 배지 이름. 대표 업적이 없으면 null — 배지를 안 보여준다. */
+    val representativeBadgeName: String? = null,
+    /** 대표로 설정한 업적 배지 이미지. 대표 업적이 없으면 null. */
+    val representativeBadgeImageUrl: String? = null,
     /** 홈 캐릭터에 겹쳐 그릴 착용 아이템 이미지. 겹칠 순서대로 들어있음 */
     val equippedImageUrls: List<String> = emptyList(),
     /** 상점에서 고른 캐릭터. 공용 캐시에 기억된 값이고 없으면 기본값 */

@@ -88,6 +88,10 @@ fun HomeScreen(
     hasActiveRoutine: Boolean = false,
     hasGroupRoom: Boolean = false,
     nickname: String = "닉네임",
+    /** 대표로 설정한 업적 배지 이름. 대표 업적이 없으면 null — 배지를 안 보여준다. */
+    representativeBadgeName: String? = null,
+    /** 대표로 설정한 업적 배지 이미지. 대표 업적이 없으면 null. */
+    representativeBadgeImageUrl: String? = null,
     /** 홈 캐릭터에 겹쳐 그릴 착용 아이템 이미지 */
     equippedImageUrls: List<String> = emptyList(),
     /** 상점에서 고른 캐릭터. 서버가 이미 알/성체 중 보여줄 그림을 골라 내려준다 */
@@ -312,8 +316,8 @@ fun HomeScreen(
                 ShopEntryCard(
                     nickname = nickname,
                     onNavigateToShop = actions::onNavigateToShop,
-                    // Figma `처음 진입 시` 포함 홈 메인에서 대표 배지 노출
-                    showRepresentativeBadge = true,
+                    representativeBadgeName = representativeBadgeName,
+                    representativeBadgeImageUrl = representativeBadgeImageUrl,
                     equippedImageUrls = equippedImageUrls,
                     characterImageUrl = characterImageUrl,
                     modifier = Modifier.fillMaxSize(),

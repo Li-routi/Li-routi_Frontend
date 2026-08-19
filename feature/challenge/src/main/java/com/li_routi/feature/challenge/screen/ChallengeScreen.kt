@@ -179,6 +179,7 @@ private fun ChallengeListContent(routines: List<RoutineUiModel>, onChallengeClic
             LiroutiSearchField(
                 value = searchQuery,
                 onValueChange = { searchQuery = it },
+                placeholder = "챌린지 검색",
             )
 
             // (Figma: Dim > Filter, node 2187:22130)
@@ -210,6 +211,7 @@ private fun ChallengeListContent(routines: List<RoutineUiModel>, onChallengeClic
                     title = routine.title,
                     subtitle = "${routine.categories.joinToString(", ")} | ${routine.description}",
                     badgeText = routine.badge,
+                    showIcon = false,
                     onClick = { onChallengeClick(routine.id) },
                 )
             }

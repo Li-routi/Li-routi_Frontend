@@ -10,7 +10,9 @@ data class AchievementResponse(
     val achievementId: Long,
     val code: String,
     val name: String,
-    val conditionDesc: String,
+    // 숨김(시크릿) 업적(hiddenYn=true)은 실측상 conditionDesc가 null로 내려온다 — 이걸 non-null로
+    // 선언해뒀다가 Achievement(도메인) 생성자의 null 체크에서 NPE가 나 목록 조회 전체가 실패했었다.
+    val conditionDesc: String?,
     val status: String,
     val progress: AchievementProgressResponse?,
     val conditionProgresses: List<ConditionProgressResponse>? = null,
@@ -47,4 +49,19 @@ data class WaveRoutineStatusResponse(
     val routineName: String?,
     val currentStreak: Int?,
     val targetStreak: Int?,
+)
+
+/**
+ * GET api/achievements/representative/selectable 응답. totalCount는 achievements.size로 대신할 수 있어
+ * 매핑하지 않는다(GET /api/achievements의 summary와 같은 이유).
+ */
+data class SelectableAchievementsResponse(
+    val achievements: List<SelectableAchievementResponse>,
+)
+
+data class SelectableAchievementResponse(
+    val achievementId: Long,
+    val name: String,
+    val badgeImageUrl: String?,
+    val representative: Boolean,
 )
