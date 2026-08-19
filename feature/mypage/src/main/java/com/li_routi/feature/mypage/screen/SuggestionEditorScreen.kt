@@ -56,7 +56,7 @@ fun SuggestionEditorScreen(
     onRetryCategories: () -> Unit = {},
 ) {
     var content by rememberSaveable { mutableStateOf("") }
-    val canSave = selectedCategoryId != null && content.isNotBlank() && !isSaving
+    val canSave = selectedCategoryId != null && content.isNotBlank() && !isSaving && !isCategoriesLoading
 
     Column(
         modifier = modifier
