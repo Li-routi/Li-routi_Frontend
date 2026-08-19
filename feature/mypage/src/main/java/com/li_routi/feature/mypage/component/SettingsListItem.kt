@@ -86,7 +86,7 @@ private fun SettingsListItemPreview() {
         Column {
             SettingsSectionLabel(title = "고객 지원")
             SettingsListItem(title = "공지사항", onClick = {})
-            SettingsListItem(title = "문의하기", onClick = {})
+            SettingsListItem(title = "건의하기", onClick = {})
             SettingsSectionLabel(title = "기타")
             SettingsListItem(title = "로그아웃", onClick = {})
             SettingsListItem(title = "회원 탈퇴", titleColor = LiroutiTheme.colors.dangerText, onClick = {})
