@@ -133,5 +133,7 @@ sealed interface RoutineAuthUploadUiEvent {
     data object NavigateClose : RoutineAuthUploadUiEvent
 
     /** 업로드 성공 → 홈 화면으로 */
-    data object NavigateToHome : RoutineAuthUploadUiEvent
+    data class NavigateToHome(
+        val selectedRoutineIds: Set<String>,
+    ) : RoutineAuthUploadUiEvent
 }

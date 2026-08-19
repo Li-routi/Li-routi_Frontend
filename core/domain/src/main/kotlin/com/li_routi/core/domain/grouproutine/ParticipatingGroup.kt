@@ -11,4 +11,5 @@ data class ParticipatingGroup(
     val monthlyAchievementRate: Int,
     val todayGroupVerificationCount: Int,
     val lastVerificationAt: String?,
+    val profileImageKeys: List<String?> = emptyList(),
 )

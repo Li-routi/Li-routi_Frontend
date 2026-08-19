@@ -167,7 +167,7 @@ fun GroupRoutineRoute(
     onTabSelected: (AppBottomTab) -> Unit = {},
     onStartVerification: (GroupRoutineVerificationTarget) -> Unit = {},
     verificationRefreshSignal: Int = 0,
-    verifiedRoutineId: Long? = null,
+    verifiedRoutineIds: Set<Long> = emptySet(),
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -231,7 +231,7 @@ fun GroupRoutineRoute(
 
     LaunchedEffect(verificationRefreshSignal) {
         if (verificationRefreshSignal > 0) {
-            viewModel.markRoutineVerified(verifiedRoutineId)
+            viewModel.markRoutinesVerified(verifiedRoutineIds)
         }
     }
 
@@ -1003,23 +1003,31 @@ private fun CreateRoutineSelectScreen(
             }
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
                 .background(LiroutiTheme.colors.backgroundDefault)
                 .navigationBarsPadding()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             DashedRoutineAddButton(onClick = onRoutineAddClick)
+        Text(
+            text = "총 ${selectedCount}개 선택됨",
+            color = LiroutiTheme.colors.labelSub,
+            style = LiroutiTheme.typography.body3,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        uiState.createRoutineSelectionOverLimitMessage?.let { message ->
             Text(
-                text = "총 ${selectedCount}개 선택됨",
+                text = message,
                 color = LiroutiTheme.colors.labelSub,
                 style = LiroutiTheme.typography.body3,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
-            PrimaryButton(text = "방 만들기", enabled = true, onClick = onDoneClick)
         }
+        PrimaryButton(text = "방 만들기", enabled = uiState.canCreateRoom, onClick = onDoneClick)
+    }
     }
 }
 
@@ -2011,7 +2019,7 @@ private fun NewCertificationDialog(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(146.dp)
+                    .height(180.dp)
                         .clip(RoundedCornerShape(4.dp)),
                 )
             }
@@ -2241,7 +2249,10 @@ private fun GroupRoutineCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            AvatarStack(memberCount = routine.memberCount)
+            AvatarStack(
+                memberCount = routine.memberCount,
+                profileImageKeys = routine.memberProfileImageKeys,
+            )
             Text(
                 text = "오늘 ${routine.todayCompletedCount}/${routine.todayTotalCount} 완료",
                 color = LiroutiTheme.colors.labelInfo,
@@ -2272,10 +2283,12 @@ private fun StatusBadge(
 @Composable
 private fun AvatarStack(
     memberCount: Int,
+    profileImageKeys: List<String?>,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
-        repeat(memberCount.coerceIn(1, 3)) {
+        repeat(memberCount.coerceIn(1, 3)) { index ->
+            val profileImageUrl = profileImageKeys.getOrNull(index)?.takeIf { it.isNotBlank() }
             Box(
                 modifier = Modifier
                     .size(24.dp)
@@ -2284,11 +2297,21 @@ private fun AvatarStack(
                     .border(0.6.dp, LiroutiTheme.colors.borderDefault, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_group_routine_member),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                )
+                if (profileImageUrl != null) {
+                    AsyncImage(
+                        model = profileImageUrl,
+                        contentDescription = "참여 멤버 프로필",
+                        modifier = Modifier.size(24.dp),
+                        contentScale = ContentScale.Crop,
+                        error = painterResource(DesignSystemR.drawable.default_character),
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = DesignSystemR.drawable.default_character),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
     }
@@ -2394,7 +2417,7 @@ private fun GroupRoutineDetailScreen(
                     onSettingsClick = onSettingsClick,
                 )
             },
-            sheetPeekHeight = if (uiState.members.size in 1..3) 480.dp else 400.dp,
+            sheetPeekHeight = 360.dp,
             sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             sheetContainerColor = LiroutiTheme.colors.backgroundDefault,
             containerColor = LiroutiTheme.colors.backgroundSecondary,
@@ -2788,7 +2811,7 @@ private fun CertificationCollectionScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundSecondary),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "인증 모아보기",
@@ -4182,9 +4205,10 @@ private fun CertificationPostItem(
             if (post.isMine) {
                 Box {
                     Text(
-                        text = "...",
+                        text = "⋮",
                         color = LiroutiTheme.colors.labelInfo,
-                        fontSize = 18.sp,
+                        fontSize = 24.sp,
+                        lineHeight = 24.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .size(40.dp)
@@ -4207,8 +4231,6 @@ private fun CertificationPostItem(
                         )
                     }
                 }
-            } else {
-                Text(text = "...", color = LiroutiTheme.colors.labelInfo, fontSize = 18.sp)
             }
         }
         Text(
@@ -4224,7 +4246,7 @@ private fun CertificationPostItem(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(144.dp)
+                .height(180.dp)
                 .clip(RoundedCornerShape(6.dp)),
         )
         Row(

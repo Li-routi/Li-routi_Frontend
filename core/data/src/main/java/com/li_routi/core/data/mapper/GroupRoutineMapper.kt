@@ -77,6 +77,7 @@ fun ParticipatingGroupResponse.toDomain(): ParticipatingGroup = ParticipatingGro
     monthlyAchievementRate = monthlyAchievementRate,
     todayGroupVerificationCount = todayGroupVerificationCount,
     lastVerificationAt = lastVerificationAt,
+    profileImageKeys = profileImageKeys,
 )
 
 fun GroupDetailResponse.toDomain(): GroupDetail = GroupDetail(

@@ -7,6 +7,8 @@ import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
 import java.time.LocalDate
 
+private const val MaxGroupRoutineSelectionCount = 30
+
 enum class GroupRoutineScreenMode {
     List,
     Detail,
@@ -27,6 +29,7 @@ data class GroupRoutineUiModel(
     val title: String,
     val lastActiveLabel: String,
     val memberCount: Int,
+    val memberProfileImageKeys: List<String?> = emptyList(),
     val routineCount: Int,
     val statusLabel: String,
     val isCompleted: Boolean,
@@ -99,6 +102,7 @@ data class CreateRoutineOptionUiModel(
     val repeatLabel: String = "없음",
     val repeatDays: Set<String> = emptySet(),
     val isSelected: Boolean = false,
+    val isDefaultRoutine: Boolean = false,
     val categoryColor: CategoryColor? = null,
 )
 
@@ -193,10 +197,20 @@ data class GroupRoutineUiState(
     val selectedMember: GroupMemberUiModel?
         get() = members.firstOrNull { it.id == selectedMemberId }
 
-    val selectedCreateRoutineCount: Int
-        get() = routineOptions.count { it.isSelected }
+val selectedCreateRoutineCount: Int
+    get() = routineOptions.count { it.isSelected }
 
-    val visibleRoutineOptions: List<CreateRoutineOptionUiModel>
+val createRoutineSelectionOverLimitMessage: String?
+    get() {
+        val total = selectedCreateRoutineCount
+        return "루틴은 최대 ${MaxGroupRoutineSelectionCount}개까지 등록할 수 있어요 (현재 ${total}개 선택됨)"
+            .takeIf { total > MaxGroupRoutineSelectionCount }
+    }
+
+val canCreateRoom: Boolean
+    get() = !isSubmitting && selectedCreateRoutineCount <= MaxGroupRoutineSelectionCount
+
+val visibleRoutineOptions: List<CreateRoutineOptionUiModel>
         get() = if (selectedCategory == "전체") {
             routineOptions
         } else {
@@ -298,7 +312,7 @@ private val SampleCreateRoutineOptions = listOf(
     CreateRoutineOptionUiModel(16L, "그림 그리기", "20:00", "취미", repeatLabel = "주말", repeatDays = setOf("토", "일")),
     CreateRoutineOptionUiModel(17L, "음악 듣기", "19:00", "취미", repeatLabel = "매일", repeatDays = setOf("일", "월", "화", "수", "목", "금", "토")),
     CreateRoutineOptionUiModel(18L, "악기 연습하기", "20:30", "취미", repeatLabel = "화,목", repeatDays = setOf("화", "목")),
-)
+).map { it.copy(isDefaultRoutine = true) }
 
 val DefaultCreateRoutineOptions = SampleCreateRoutineOptions
 
