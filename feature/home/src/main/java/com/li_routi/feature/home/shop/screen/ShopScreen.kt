@@ -22,6 +22,7 @@ import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.key
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -43,8 +44,8 @@ import com.li_routi.feature.home.shop.component.ShopTopBar
 import com.li_routi.feature.home.shop.component.currencyIconOf
 import com.li_routi.feature.home.shop.navigation.ShopScreenActions
 import com.li_routi.core.data.appearance.FallbackCharacterId
+import com.li_routi.core.domain.shop.AvatarLayer
 import com.li_routi.feature.home.component.AvatarCharacter
-import com.li_routi.feature.home.component.equippedImageUrlsOf
 import com.li_routi.feature.home.shop.vm.EquippedUiModel
 import com.li_routi.feature.home.shop.vm.ShopCategoryUiModel
 import com.li_routi.feature.home.shop.vm.ShopMainTab
@@ -71,7 +72,7 @@ fun ShopScreen(
     nickname: String = "닉네임",
     coinBalance: Int = 450,
     gemBalance: Int = 30,
-    selectedMainTab: ShopMainTab = ShopMainTab.CLOTHING,
+    selectedMainTab: ShopMainTab = ShopMainTab.CHARACTER,
     categories: List<ShopCategoryUiModel> = emptyList(),
     equipped: Map<String, EquippedUiModel> = emptyMap(),
     savedEquippedItemIds: Set<Long> = emptySet(),
@@ -87,8 +88,8 @@ fun ShopScreen(
     isLoading: Boolean = false,
     /** 지금 캐릭터 카드에 그릴 캐릭터. 캐릭터 탭에서 고르면 저장 전에도 바로 바뀜 */
     previewCharacterId: Long = FallbackCharacterId,
-    /** [previewCharacterId]의 그림 */
-    previewCharacterImageUrl: String? = null,
+    /** 캐릭터 카드에 지금 그릴 레이어(캐릭터·둥지·착장 미리보기 반영됨) */
+    previewLayers: List<AvatarLayer> = emptyList(),
     /** 서버에 저장된 캐릭터. 격자 `착용중`은 이걸 따름 */
     savedCharacterId: Long = FallbackCharacterId,
     modifier: Modifier = Modifier,
@@ -172,8 +173,7 @@ fun ShopScreen(
                 )
                 Spacer(modifier = Modifier.height(20.dp))
                 AvatarCharacter(
-                    equippedImageUrls = equippedImageUrlsOf(equipped.mapValues { it.value.imageUrl }),
-                    characterImageUrl = previewCharacterImageUrl,
+                    layers = previewLayers,
                     modifier = Modifier.size(width = CharacterWidth, height = CharacterHeight),
                 )
             }
@@ -246,16 +246,20 @@ fun ShopScreen(
                     CircularProgressIndicator(color = LiroutiTheme.colors.primaryNormal)
                 }
             } else {
-                ShopItemGrid(
-                    items = items,
-                    selectedItemIds = selectedItemIds,
-                    onItemClick = actions::onItemClick,
-                    modifier = Modifier
-                        .weight(1f)
-                        .padding(horizontal = 16.dp),
-                    equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() } +
-                        savedCharacterId.toString(),
-                )
+                // 탭/카테고리가 바뀌면 그리드를 통째로 새로 만들어서 스크롤이 맨 위로 돌아가게 함 —
+                // 안 그러면 이전 목록의 스크롤 위치가 새 목록에 그대로 남아 있었다
+                key(selectedMainTab, selectedCategoryIndex, showOwnedOnly) {
+                    ShopItemGrid(
+                        items = items,
+                        selectedItemIds = selectedItemIds,
+                        onItemClick = actions::onItemClick,
+                        modifier = Modifier
+                            .weight(1f)
+                            .padding(horizontal = 16.dp),
+                        equippedItemIds = savedEquippedItemIds.mapTo(mutableSetOf()) { it.toString() } +
+                            savedCharacterId.toString(),
+                    )
+                }
             }
         }
     }
@@ -382,6 +386,7 @@ private fun ShopScreenSelectedPreview() {
         val selected = SampleShopItems.filter { it.id in setOf("item_1", "item_2", "item_3") }
         ShopScreen(
             actions = PreviewShopScreenActions,
+            selectedMainTab = ShopMainTab.CLOTHING,
             selectedItemIds = selected.mapTo(mutableSetOf()) { it.id },
             purchaseTargets = selected,
         )

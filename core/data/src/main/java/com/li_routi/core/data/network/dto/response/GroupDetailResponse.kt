@@ -38,6 +38,8 @@ data class DailyProgressResponse(
 
 data class GroupMemberAvatarResponse(
     val equipped: List<GroupMemberAvatarEquippedItemResponse>?,
+    /** 개인 아바타와 같은 스키마([AvatarLayerResponse]) — 캐릭터·둥지까지 포함해 받은 순서대로 그림 */
+    val layers: List<AvatarLayerResponse>?,
 )
 
 data class GroupMemberAvatarEquippedItemResponse(

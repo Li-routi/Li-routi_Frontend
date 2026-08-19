@@ -46,6 +46,7 @@ import com.li_routi.core.designsystem.foundation.color.DragHandleColor
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.core.domain.routine.RoutineCategory
+import com.li_routi.core.domain.shop.AvatarLayer
 import com.li_routi.feature.home.component.AddMenuBottomSheet
 import com.li_routi.feature.home.component.HomeTopBar
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
@@ -92,10 +93,8 @@ fun HomeScreen(
     representativeBadgeName: String? = null,
     /** 대표로 설정한 업적 배지 이미지. 대표 업적이 없으면 null. */
     representativeBadgeImageUrl: String? = null,
-    /** 홈 캐릭터에 겹쳐 그릴 착용 아이템 이미지 */
-    equippedImageUrls: List<String> = emptyList(),
-    /** 상점에서 고른 캐릭터. 서버가 이미 알/성체 중 보여줄 그림을 골라 내려준다 */
-    characterImageUrl: String? = null,
+    /** 홈 캐릭터를 겹쳐 그릴 레이어(캐릭터·둥지·착장) */
+    layers: List<AvatarLayer> = emptyList(),
     myRoutineItems: List<RoutineChecklistItemUiModel> = when {
         !hasActiveRoutine -> emptyList()
         hasGroupRoom -> SampleMyRoutineItems
@@ -318,8 +317,7 @@ fun HomeScreen(
                     onNavigateToShop = actions::onNavigateToShop,
                     representativeBadgeName = representativeBadgeName,
                     representativeBadgeImageUrl = representativeBadgeImageUrl,
-                    equippedImageUrls = equippedImageUrls,
-                    characterImageUrl = characterImageUrl,
+                    layers = layers,
                     modifier = Modifier.fillMaxSize(),
                 )
             }

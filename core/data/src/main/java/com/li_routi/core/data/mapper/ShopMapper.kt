@@ -2,6 +2,7 @@ package com.li_routi.core.data.mapper
 
 import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.data.network.dto.response.AvatarEquippedItemResponse
+import com.li_routi.core.data.network.dto.response.AvatarLayerResponse
 import com.li_routi.core.data.network.dto.response.ChargeProductItemResponse
 import com.li_routi.core.data.network.dto.response.ChargeProductsResponse
 import com.li_routi.core.data.network.dto.response.ChargeSettledResponse
@@ -17,6 +18,7 @@ import com.li_routi.core.data.network.dto.response.ShopPurchasePaymentResponse
 import com.li_routi.core.data.network.dto.response.ShopPurchaseResultResponse
 import com.li_routi.core.data.network.dto.response.WalletBalancesResponse
 import com.li_routi.core.domain.shop.AvatarEquippedItem
+import com.li_routi.core.domain.shop.AvatarLayer
 import com.li_routi.core.domain.shop.ChargeProduct
 import com.li_routi.core.domain.shop.ChargeSettled
 import com.li_routi.core.domain.shop.ChargeStarted
@@ -90,6 +92,7 @@ fun ShopAvatarItemResponse.toDomain(): ShopAvatarItem = ShopAvatarItem(
 
 fun MemberAvatarResponse.toDomain(): MemberAvatar = MemberAvatar(
     equipped = equipped.orEmpty().map { it.toDomain() },
+    layers = layers.toAvatarLayers(),
 )
 
 fun AvatarEquippedItemResponse.toDomain(): AvatarEquippedItem = AvatarEquippedItem(
@@ -98,6 +101,15 @@ fun AvatarEquippedItemResponse.toDomain(): AvatarEquippedItem = AvatarEquippedIt
     name = name.orEmpty(),
     imageUrl = imageUrl,
 )
+
+/** 개인/그룹 구성원 아바타가 같은 스키마를 써서 GroupRoutineMapper에서도 재사용함 */
+fun List<AvatarLayerResponse>?.toAvatarLayers(): List<AvatarLayer> =
+    orEmpty().mapNotNull { it.toDomain() }
+
+private fun AvatarLayerResponse.toDomain(): AvatarLayer? {
+    val url = imageUrl?.takeIf { it.isNotBlank() } ?: return null
+    return AvatarLayer(layer = layer.orEmpty(), imageUrl = url)
+}
 
 fun ChargeProductsResponse.toDomain(): List<ChargeProduct> = items.orEmpty().map { it.toDomain() }
 

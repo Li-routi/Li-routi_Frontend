@@ -81,14 +81,18 @@ class ShopViewModel(
         viewModelScope.launch {
             val result = getShopCategoriesUseCase()
             if (result is ResultState.Success) {
-                val categories = result.data.map {
-                    ShopCategoryUiModel(
-                        key = it.key,
-                        name = it.name,
-                        source = it.source,
-                        slot = it.slot,
-                    )
-                }
+                val categories = result.data
+                    // 캐릭터는 별도 최상위 탭이라 "의상" 하위 필터에 섞으면 안 되는데, 그동안
+                    // 걸러내는 코드가 없어서 그대로 새고 있었음
+                    .filterNot { it.source == "CHARACTER" }
+                    .map {
+                        ShopCategoryUiModel(
+                            key = it.key,
+                            name = it.name,
+                            source = it.source,
+                            slot = it.slot,
+                        )
+                    }
                 _uiState.update { state ->
                     state.copy(
                         categories = categories,
@@ -102,10 +106,15 @@ class ShopViewModel(
         }
     }
 
-    /** 최상위 탭("캐릭터"/"의상") 전환. 하위 필터 선택은 유지해서 "의상"으로 돌아오면 그대로 보임 */
+    /**
+     * 최상위 탭("캐릭터"/"의상") 전환. 하위 필터 선택은 유지해서 "의상"으로 돌아오면 그대로 보임.
+     *
+     * 새 목록이 올 때까지 이전 탭 것을 그대로 두면, 캐릭터 id와 상점 아이템 id가 같은 문자열로
+     * 우연히 겹칠 때 그리드가 서로 다른 아이템을 같은 자리로 착각해 잠깐 깜빡인다 — 바로 비운다
+     */
     override fun onMainTabSelected(tab: ShopMainTab) {
         if (_uiState.value.selectedMainTab == tab) return
-        _uiState.update { it.copy(selectedMainTab = tab) }
+        _uiState.update { it.copy(selectedMainTab = tab, items = emptyList()) }
         loadItems()
     }
 
@@ -118,12 +127,13 @@ class ShopViewModel(
         viewModelScope.launch {
             appearanceStore.reloadAvatar()
             val appearance = appearanceStore.appearance.value
-            val saved = MemberAvatar(equipped = appearance.equipped)
+            val saved = MemberAvatar(equipped = appearance.equipped, layers = appearance.layers)
             _uiState.update { state ->
                 val hydrated = state.applyServerAvatar(saved)
                 if (hasUserPreviewed) {
                     state.copy(
                         savedEquippedItemIds = hydrated.savedEquippedItemIds,
+                        savedLayers = hydrated.savedLayers,
                         savedCharacterId = appearance.characterId,
                     )
                 } else {
@@ -239,10 +249,12 @@ class ShopViewModel(
     }
 
     override fun onOrangeGemClick() {
+        onDismissMessage()
         emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = 0))
     }
 
     override fun onBlueGemClick() {
+        onDismissMessage()
         emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = 1))
     }
 
@@ -304,8 +316,11 @@ class ShopViewModel(
             _uiState.update { it.copy(isPurchaseConfirmVisible = true) }
             return
         }
-        persistPreviewCharacter()
-        equipSelected()
+        // 캐릭터 선택을 먼저 서버에 반영한 뒤 착장을 저장함. 동시에 보내면 착장 PUT 응답
+        // layers가 옛 CHARACTER를 들고 와 홈이 잠깐 이전 새를 그릴 수 있음.
+        viewModelScope.launch {
+            if (persistPreviewCharacter()) equipSelected()
+        }
     }
 
     /** 구매 확인 다이얼로그의 "취소" 또는 바깥 탭 — 선택은 그대로 두고 다이얼로그만 닫음 */
@@ -317,8 +332,9 @@ class ShopViewModel(
     fun onPurchaseConfirmClick() {
         val state = _uiState.value
         _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
-        persistPreviewCharacter()
-        purchaseAll(state.purchaseTargets)
+        viewModelScope.launch {
+            if (persistPreviewCharacter()) purchaseAll(state.purchaseTargets)
+        }
     }
 
     /**
@@ -328,19 +344,29 @@ class ShopViewModel(
     fun onPurchaseChargeClick() {
         val state = _uiState.value
         _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
+        onDismissMessage()
         emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = if (state.isGemShort) 1 else 0))
     }
 
     /** 고른 캐릭터를 서버에 저장함(`PUT /api/characters/selection`). 홈은 같은 캐시를 보고 바로 따라옴 */
-    private fun persistPreviewCharacter() {
+    private suspend fun persistPreviewCharacter(): Boolean {
         val state = _uiState.value
-        if (state.previewCharacterId == state.savedCharacterId) return
-        viewModelScope.launch {
-            when (val result = appearanceStore.saveCharacter(state.previewCharacterId, state.previewCharacterImageUrl)) {
-                is ResultState.Success -> _uiState.update { it.copy(savedCharacterId = it.previewCharacterId) }
-                is ResultState.Error -> _uiState.update { it.copy(message = result.message) }
-                ResultState.Loading -> Unit
+        if (state.previewCharacterId == state.savedCharacterId) return true
+        return when (val result = appearanceStore.saveCharacter(state.previewCharacterId, state.previewCharacterImageUrl)) {
+            is ResultState.Success -> {
+                _uiState.update {
+                    it.copy(
+                        savedCharacterId = it.previewCharacterId,
+                        savedLayers = appearanceStore.appearance.value.layers,
+                    )
+                }
+                true
             }
+            is ResultState.Error -> {
+                _uiState.update { it.copy(message = result.message) }
+                false
+            }
+            ResultState.Loading -> false
         }
     }
 
@@ -475,6 +501,7 @@ private fun ShopUiState.applyServerAvatar(avatar: MemberAvatar): ShopUiState = c
         it.slot.uppercase() to EquippedUiModel(itemId = it.itemId, imageUrl = it.imageUrl)
     },
     savedEquippedItemIds = avatar.equipped.mapTo(mutableSetOf()) { it.itemId },
+    savedLayers = avatar.layers,
 )
 
 private fun ShopAvatarItem.toUiModel(): ShopItemUiModel = ShopItemUiModel(

@@ -96,8 +96,8 @@ class CurrencyShopViewModel(
                         .orEmpty(),
                     blueProducts = (charge as? ResultState.Success)?.data?.map { it.toUiModel() }
                         .orEmpty(),
-                    message = (exchange as? ResultState.Error)?.message
-                        ?: (charge as? ResultState.Error)?.message,
+                    message = (exchange as? ResultState.Error)?.message?.toUserFacingCurrencyMessage()
+                        ?: (charge as? ResultState.Error)?.message?.toUserFacingCurrencyMessage(),
                 )
             }
         }
@@ -155,7 +155,9 @@ class CurrencyShopViewModel(
                     }
 
                     // 실패한 키는 남겨둬야 재시도할 때 중복 차감되지 않음
-                    is ResultState.Error -> _uiState.update { it.copy(message = result.message) }
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(message = result.message.toUserFacingCurrencyMessage())
+                    }
                     ResultState.Loading -> Unit
                 }
             } finally {
@@ -181,7 +183,7 @@ class CurrencyShopViewModel(
             when (val result = startChargeUseCase(chargeId)) {
                 is ResultState.Success -> emitEvent(CurrencyShopUiEvent.OpenPaymentSheet(result.data))
                 is ResultState.Error -> _uiState.update {
-                    it.copy(isCharging = false, message = result.message)
+                    it.copy(isCharging = false, message = result.message.toUserFacingCurrencyMessage())
                 }
 
                 ResultState.Loading -> Unit
@@ -207,7 +209,9 @@ class CurrencyShopViewModel(
                         }
                     }
 
-                    is ResultState.Error -> _uiState.update { it.copy(message = result.message) }
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(message = result.message.toUserFacingCurrencyMessage())
+                    }
                     ResultState.Loading -> Unit
                 }
             } finally {
@@ -247,11 +251,20 @@ private fun com.li_routi.core.domain.shop.ExchangeResult.balanceOf(currency: Str
 }
 
 // Figma(node 6389:17225/17281/18526) 표기 기준 — "다이아"/"토파즈"가 아니라 "오렌지젬"/"블루젬".
-private fun String.toDisplayCurrency(): String = when (this) {
+private fun String.toDisplayCurrency(): String = when (uppercase()) {
     "GEM" -> "블루젬"
     "TOPAZ" -> "오렌지젬"
+    "", "UNKNOWN" -> "젬"
     else -> this
 }
+
+/** 서버가 내부 enum 실패를 그대로 내려주는 경우를 사용자 문구로 바꿈 */
+private fun String.toUserFacingCurrencyMessage(): String =
+    if (contains("알수없는 재화") || contains("알 수 없는 재화")) {
+        "재화 정보를 확인하지 못했어요. 잠시 후 다시 시도해 주세요."
+    } else {
+        this
+    }
 
 private fun Long.formatted(): String = NumberFormat.getNumberInstance(Locale.KOREA).format(this)
 

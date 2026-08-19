@@ -4,8 +4,11 @@ import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.preference.AuthTokenPreference
 import com.li_routi.core.domain.character.CharacterRepository
 import com.li_routi.core.domain.shop.AvatarEquippedItem
+import com.li_routi.core.domain.shop.AvatarLayer
 import com.li_routi.core.domain.shop.MemberAvatar
 import com.li_routi.core.domain.shop.ShopRepository
+import com.li_routi.core.domain.shop.hasCharacterLayer
+import com.li_routi.core.domain.shop.withCharacterImageUrl
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -23,7 +26,10 @@ const val FallbackCharacterId: Long = 0L
  * 착장은 `GET /api/members/me/avatar`로, 캐릭터 본체는 `GET /api/characters`(선택된 것)로 받는다.
  */
 data class MemberAppearance(
+    /** 무엇을 입었는지(보유 표시 등)에만 쓴다 — 순서가 없어 겹쳐 그릴 수 없음 */
     val equipped: List<AvatarEquippedItem> = emptyList(),
+    /** 그리는 데 쓴다. 받은 순서대로 겹치면 캐릭터·둥지·착장이 다 맞게 겹침 */
+    val layers: List<AvatarLayer> = emptyList(),
     val characterId: Long = FallbackCharacterId,
     /** 서버가 이미 알/성체 중 보여줄 그림을 골라서 내려준 것. null이면 로컬 기본 이미지로 대체한다. */
     val characterImageUrl: String? = null,
@@ -96,7 +102,7 @@ class MemberAppearanceStore(
     private suspend fun fetchAvatarLocked(token: String?) {
         when (val result = repository.getMyAvatar()) {
             is ResultState.Success -> {
-                _appearance.update { it.copy(equipped = result.data.equipped) }
+                _appearance.update { it.copy(equipped = result.data.equipped, layers = result.data.layers) }
                 avatarLoaded = true
                 loadedForToken = token
             }
@@ -127,7 +133,14 @@ class MemberAppearanceStore(
     /** 구매/착장 저장 응답으로 로컬 기억을 맞춤. 홈이 이 흐름을 보고 바로 따라옴 */
     fun applyAvatar(avatar: MemberAvatar) {
         avatarLoaded = true
-        _appearance.update { it.copy(equipped = avatar.equipped) }
+        _appearance.update { current ->
+            current.copy(
+                equipped = avatar.equipped,
+                // 착장 PUT이 캐릭터 선택보다 늦게 반영되면 layers의 CHARACTER가 옛값일 수 있음.
+                // 이미 저장한 캐릭터 그림이 있으면 그 URL로 맞춰 둠.
+                layers = avatar.layers.withCharacterImageUrl(current.characterImageUrl),
+            )
+        }
     }
 
     /**
@@ -138,7 +151,19 @@ class MemberAppearanceStore(
         val result = characterRepository.selectCharacter(characterId)
         if (result is ResultState.Success) {
             characterLoaded = true
-            _appearance.update { it.copy(characterId = characterId, characterImageUrl = imageUrl) }
+            _appearance.update { current ->
+                current.copy(
+                    characterId = characterId,
+                    characterImageUrl = imageUrl,
+                    // 홈은 layers로 그리므로 characterImageUrl만 바꾸면 옛 캐릭터가 남음.
+                    // 착장 PUT 응답이 오기 전에도 CHARACTER 레이어 URL만 갈아끼움.
+                    layers = current.layers.withCharacterImageUrl(imageUrl),
+                )
+            }
+            // CHARACTER가 없던 첫 해금은 클라이언트에서 깊이를 추측하지 않고 서버 순서를 다시 받음
+            if (!_appearance.value.layers.hasCharacterLayer()) {
+                reloadAvatar()
+            }
         }
         return result
     }

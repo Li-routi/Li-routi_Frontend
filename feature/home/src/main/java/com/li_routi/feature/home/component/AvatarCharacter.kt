@@ -11,53 +11,34 @@ import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.painterResource
 import coil.compose.AsyncImage
 import com.li_routi.core.designsystem.R
-
-/** 옷 위에 모자, 그 위에 손에 든 것 순으로 겹침 */
-private val EquipSlotOrder = listOf("BODY", "HEAD", "HAND")
-
-/** 자리별 착용 아이템을 겹칠 순서대로 폄. 안 입은 자리는 빠짐 */
-fun equippedImageUrlsOf(equipped: Map<String, String?>): List<String> =
-    EquipSlotOrder.mapNotNull { slot ->
-        equipped.entries.firstOrNull { it.key.equals(slot, ignoreCase = true) }
-            ?.value
-            ?.takeIf { it.isNotBlank() }
-    }
+import com.li_routi.core.domain.shop.AvatarLayer
+import com.li_routi.core.domain.shop.hasCharacterLayer
 
 /**
- * 캐릭터 위에 착용 아이템을 겹쳐 그림.
+ * 아바타를 [layers] 순서 그대로 겹쳐 그림.
  *
- * 아이템 이미지가 캐릭터와 같은 캔버스로 그려져 있어서 크기만 맞추면 위치가 따로 필요 없음
+ * 서버가 캐릭터·둥지·착장을 이미 겹칠 순서로 계산해서 내려준다 — 레이어 이름으로 깊이를
+ * 다시 판단하지 않는다. 캐릭터를 하나도 못 열었으면 `CHARACTER`·둥지 레이어가 통째로 빠져서
+ * 오는데, 그때만 로컬 기본 실루엣으로 대체한다.
  */
 @Composable
 fun AvatarCharacter(
     modifier: Modifier = Modifier,
-    equippedImageUrls: List<String> = emptyList(),
-    /**
-     * 겹쳐 입기의 바탕이 되는 캐릭터. `GET /api/characters`가 이미 알/성체 중 보여줄 그림을 골라
-     * 내려준다 — 아직 안 받아왔거나(로딩) 실패했으면 null로 두면 로컬 기본 실루엣으로 대체된다.
-     */
-    characterImageUrl: String? = null,
+    layers: List<AvatarLayer> = emptyList(),
 ) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
-        if (characterImageUrl.isNullOrBlank()) {
+        if (!layers.hasCharacterLayer()) {
             Image(
                 painter = painterResource(id = R.drawable.default_character),
                 contentDescription = null,
                 contentScale = ContentScale.Fit,
                 modifier = Modifier.fillMaxSize(),
             )
-        } else {
-            AsyncImage(
-                model = characterImageUrl,
-                contentDescription = null,
-                contentScale = ContentScale.Fit,
-                modifier = Modifier.fillMaxSize(),
-            )
         }
-        equippedImageUrls.forEach { url ->
-            key(url) {
+        layers.forEach { layer ->
+            key(layer.layer) {
                 AsyncImage(
-                    model = url,
+                    model = layer.imageUrl,
                     contentDescription = null,
                     contentScale = ContentScale.Fit,
                     modifier = Modifier.fillMaxSize(),

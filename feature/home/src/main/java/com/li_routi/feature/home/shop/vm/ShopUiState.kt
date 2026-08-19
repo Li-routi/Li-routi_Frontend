@@ -1,13 +1,10 @@
 package com.li_routi.feature.home.shop.vm
 
 import com.li_routi.core.data.appearance.FallbackCharacterId
+import com.li_routi.core.domain.shop.AvatarLayer
+import com.li_routi.core.domain.shop.previewAvatarLayers
 import com.li_routi.feature.home.shop.component.ShopItemUiModel
 
-/**
- * 상점 상단 탭 하나.
- *
- * 이름으로 분기하지 않고 [slot]을 그대로 조회에 실어 보냄 — 탭이 늘어도 앱을 안 고치려는 것임
- */
 /**
  * 캐릭터 위에 겹쳐 그릴 착용 아이템 한 건.
  *
@@ -49,8 +46,8 @@ data class ShopUiState(
     val nickname: String = "닉네임",
     val coinBalance: Int = 450,
     val gemBalance: Int = 30,
-    /** 상위 탭. "의상"일 때만 [categories] 하위 필터가 보인다 */
-    val selectedMainTab: ShopMainTab = ShopMainTab.CLOTHING,
+    /** 상위 탭. "의상"일 때만 [categories] 하위 필터가 보인다. 기본은 "캐릭터" */
+    val selectedMainTab: ShopMainTab = ShopMainTab.CHARACTER,
     /** 서버가 내려준 의상 하위 필터. 받은 순서대로 그린다 */
     val categories: List<ShopCategoryUiModel> = emptyList(),
     val selectedCategoryIndex: Int = 0,
@@ -69,6 +66,11 @@ data class ShopUiState(
      * [equipped]를 쓰면 고르자마자 착용중이 돼서 저장한 것과 구분이 안 됨
      */
     val savedEquippedItemIds: Set<Long> = emptySet(),
+    /**
+     * 서버에 저장된 아바타 레이어(캐릭터·둥지 포함). 미리보기 캐릭터 카드는 이 중 둥지 레이어를
+     * 그대로 가져다 쓴다 — 둥지는 상점에서 직접 고르는 게 아니라 서버가 계산해서 내려줌
+     */
+    val savedLayers: List<AvatarLayer> = emptyList(),
     /**
      * 서버에 저장된(선택된) 캐릭터. 캐릭터 탭의 `착용중` 표시는 이걸 따름.
      *
@@ -124,6 +126,17 @@ data class ShopUiState(
     /** 오렌지젬(TOPAZ)이 모자란지 — 부족분 계산에도 씀 */
     val isTopazShort: Boolean
         get() = purchaseTopazTotal > coinBalance
+
+    /**
+     * 캐릭터 카드에 지금 그릴 레이어. 미리보기(안 산 아이템, 안 고른 캐릭터)를 얹어야 해서
+     * 저장된 [savedLayers]를 그대로 쓸 수 없다.
+     */
+    val previewLayers: List<AvatarLayer>
+        get() = previewAvatarLayers(
+            savedLayers = savedLayers,
+            previewCharacterImageUrl = previewCharacterImageUrl,
+            equippedImageUrls = equipped.mapValues { it.value.imageUrl },
+        )
 }
 
 /**

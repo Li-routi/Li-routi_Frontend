@@ -1,5 +1,6 @@
 package com.li_routi.core.data.profile
 
+import com.li_routi.core.domain.shop.AvatarLayer
 import kotlinx.coroutines.flow.MutableStateFlow
 
 /**
@@ -21,6 +22,9 @@ object MemberProfileCache {
     val characterId = MutableStateFlow<Long?>(null)
     val characterImageUrl = MutableStateFlow<String?>(null)
 
+    /** 아바타 겹쳐 그리기용 레이어(캐릭터·둥지·착장). 같은 이유로 같이 기억해둔다 */
+    val layers = MutableStateFlow<List<AvatarLayer>>(emptyList())
+
     /** 로그아웃/회원 탈퇴/토큰 갱신 실패 등 세션이 끝날 때 호출한다.
      * 안 그러면 다음 로그인 사용자가 화면을 열자마자 이전 사용자의 닉네임/캐릭터/알림 상태가
      * 잠깐 보일 수 있다. */
@@ -29,5 +33,6 @@ object MemberProfileCache {
         hasUnreadNotification.value = false
         characterId.value = null
         characterImageUrl.value = null
+        layers.value = emptyList()
     }
 }

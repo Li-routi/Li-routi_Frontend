@@ -1,6 +1,7 @@
 package com.li_routi.feature.grouproutine.vm
 
 import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.domain.shop.AvatarLayer
 
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
 import com.li_routi.feature.grouproutine.component.ChatMessageUiModel
@@ -47,8 +48,8 @@ data class GroupMemberUiModel(
     val totalDisappointmentCount: Int = 0,
     val pokeCount: Long = 0L,
     val isMe: Boolean = false,
-    /** 현재 착용 중인 아이템 이미지(겹칠 순서대로). 서버에 없으면 빈 목록 — 기본 캐릭터만 보여준다. */
-    val equippedImageUrls: List<String> = emptyList(),
+    /** 아바타를 겹쳐 그릴 레이어(캐릭터·둥지·착장). 받은 순서대로 그리면 됨. 비었으면 기본 캐릭터만 보여준다. */
+    val layers: List<AvatarLayer> = emptyList(),
     /** 대표로 설정한 업적 배지 이름. 대표 업적이 없으면 null — 뱃지를 안 보여준다. */
     val representativeBadgeName: String? = null,
     /** 대표로 설정한 업적 배지 이미지. 대표 업적이 없으면 null. */

@@ -69,12 +69,12 @@ object HomeContentPrefetcher {
             val appearance = ShopContainer.memberAppearanceStore.appearance.value
             MemberProfileCache.characterId.value = appearance.characterId
             MemberProfileCache.characterImageUrl.value = appearance.characterImageUrl
+            MemberProfileCache.layers.value = appearance.layers
 
             val imageUrls = buildSet {
                 appearance.characterImageUrl?.takeIf { it.isNotBlank() }?.let(::add)
-                for (item in appearance.equipped) {
-                    val url = item.imageUrl
-                    if (!url.isNullOrBlank()) add(url)
+                for (layer in appearance.layers) {
+                    if (layer.imageUrl.isNotBlank()) add(layer.imageUrl)
                 }
             }
             val imageLoader = Coil.imageLoader(NetworkModule.appContext)

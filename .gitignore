@@ -14,3 +14,12 @@
 .externalNativeBuild
 .cxx
 local.properties
+
+# 로컬 시안/인수인계 — 앱에서 안 씀
+HANDOFF_*.md
+core/design-system/src/main/res/drawable/home.png
+core/design-system/src/main/res/drawable/shop_character.png
+core/design-system/src/main/res/drawable/shop_default.png
+core/design-system/src/main/res/drawable/shop_dialog.png
+core/design-system/src/main/res/drawable/shop_set.png
+

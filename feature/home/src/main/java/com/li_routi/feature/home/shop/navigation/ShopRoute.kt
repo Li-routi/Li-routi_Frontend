@@ -73,7 +73,7 @@ fun ShopRoute(
             purchaseTargets = uiState.purchaseTargets,
             hasUnsavedChanges = uiState.hasUnsavedChanges,
             previewCharacterId = uiState.previewCharacterId,
-            previewCharacterImageUrl = uiState.previewCharacterImageUrl,
+            previewLayers = uiState.previewLayers,
             savedCharacterId = uiState.savedCharacterId,
         )
 

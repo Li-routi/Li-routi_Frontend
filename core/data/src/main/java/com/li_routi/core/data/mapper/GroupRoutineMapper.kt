@@ -8,7 +8,6 @@ import com.li_routi.core.data.network.dto.response.GroupInviteCodeResponse
 import com.li_routi.core.data.network.dto.response.GroupJoinPreviewResponse
 import com.li_routi.core.data.network.dto.response.GroupJoinResultResponse
 import com.li_routi.core.data.network.dto.response.GroupMemberActivityResponse
-import com.li_routi.core.data.network.dto.response.GroupMemberAvatarResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineLikeResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineListItemResponse
 import com.li_routi.core.data.network.dto.response.GroupRoutineListResponse
@@ -88,14 +87,6 @@ fun GroupDetailResponse.toDomain(): GroupDetail = GroupDetail(
     members = members.orEmpty().map { it.toDomain() },
 )
 
-/** 옷 위에 모자, 그 위에 손에 든 것 순으로 겹침(feature/home AvatarCharacter.kt와 동일한 순서). */
-private val GroupAvatarSlotOrder = listOf("BODY", "HEAD", "HAND")
-
-private fun GroupMemberAvatarResponse?.toEquippedImageUrls(): List<String> {
-    val bySlot = this?.equipped.orEmpty().associate { it.slot.orEmpty().uppercase() to it.imageUrl }
-    return GroupAvatarSlotOrder.mapNotNull { slot -> bySlot[slot]?.takeIf { it.isNotBlank() } }
-}
-
 fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberActivity(
     memberId = memberId.requireId("memberId"),
     name = name.orEmpty(),
@@ -107,7 +98,8 @@ fun GroupMemberActivityResponse.toDomain(): GroupMemberActivity = GroupMemberAct
     // 할당이 없는 구성원은 서버가 dailyProgress를 안 내려줄 수 있어서 0/0으로 채움
     completedCount = dailyProgress?.completedCount ?: 0L,
     totalCount = dailyProgress?.totalCount ?: 0L,
-    equippedImageUrls = avatar.toEquippedImageUrls(),
+    // 개인 아바타와 같은 스키마라 ShopMapper의 매핑을 그대로 재사용함
+    layers = avatar?.layers.toAvatarLayers(),
     representativeBadgeName = representativeAchievement?.name,
     representativeBadgeImageUrl = representativeAchievement?.badgeImageUrl,
 )
