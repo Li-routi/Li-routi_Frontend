@@ -314,6 +314,7 @@ class GroupRoutineViewModel(
 
     fun onBackClick() {
         val leavingDetail = _uiState.value.screenMode == GroupRoutineScreenMode.Detail
+        val returningToDetail = _uiState.value.screenMode == GroupRoutineScreenMode.GroupSettings
         _uiState.update { state ->
             when (state.screenMode) {
                 GroupRoutineScreenMode.Detail -> state.copy(
@@ -371,6 +372,7 @@ class GroupRoutineViewModel(
             backendGroupId = null
             leaveChatSocket()
         }
+        if (returningToDetail) refreshSelectedGroup()
     }
 
     fun onCreateFlowCloseClick() {
@@ -782,6 +784,7 @@ class GroupRoutineViewModel(
     }
 
     fun onSettingsClick() {
+        val isOwner = _uiState.value.isConfirmedOwner
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.GroupSettings,
@@ -789,7 +792,9 @@ class GroupRoutineViewModel(
                 actionMessage = null,
             )
         }
-        loadInviteCode()
+        if (isOwner) {
+            loadInviteCode()
+        }
     }
 
     fun onLeaveRoomClick() {

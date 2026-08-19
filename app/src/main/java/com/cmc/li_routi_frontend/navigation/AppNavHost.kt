@@ -214,13 +214,16 @@ fun AppNavHost(
     var challengeRefreshSignal by remember { mutableIntStateOf(0) }
     var groupRoutineRefreshSignal by remember { mutableIntStateOf(0) }
     var verifiedGroupRoutineId by rememberSaveable { mutableStateOf<Long?>(null) }
+    var isGroupRoutineVerification by rememberSaveable { mutableStateOf(false) }
 
     fun startVerificationFlow(
         preselectedId: String?,
         preselectedRoutine: RoutineAuthSelectableUiModel? = null,
+        isGroupRoutine: Boolean = false,
     ) {
         verificationPreselectedId = preselectedId
         verificationPreselectedRoutine = preselectedRoutine
+        isGroupRoutineVerification = isGroupRoutine
         capturedVerificationPhotoUri = null
         showVerificationFlow = true
     }
@@ -230,6 +233,7 @@ fun AppNavHost(
         capturedVerificationPhotoUri = null
         verificationPreselectedId = null
         verificationPreselectedRoutine = null
+        isGroupRoutineVerification = false
     }
 
     // 개인 루틴 + 그룹 루틴(홈 요약) + 참여 중인 챌린지를 한 목록으로 합친다. 플로우가 열릴 때마다
@@ -310,7 +314,11 @@ fun AppNavHost(
                     onTabSelected = ::selectTab,
                     onStartVerification = { target ->
                         val selectable = target.toAuthSelectable()
-                        startVerificationFlow(selectable.id, selectable)
+                        startVerificationFlow(
+                            preselectedId = selectable.id,
+                            preselectedRoutine = selectable,
+                            isGroupRoutine = true,
+                        )
                     },
                     verificationRefreshSignal = groupRoutineRefreshSignal,
                     verifiedRoutineId = verifiedGroupRoutineId,
@@ -415,7 +423,8 @@ fun AppNavHost(
                             }
                             RoutineAuthUploadUiEvent.NavigateClose -> closeVerificationFlow()
                             RoutineAuthUploadUiEvent.NavigateToHome -> {
-                                val completedGroupRoutineId = if (selectedTab == AppBottomTab.GroupRoutine) {
+                                val shouldReturnToGroupRoutine = isGroupRoutineVerification
+                                val completedGroupRoutineId = if (shouldReturnToGroupRoutine) {
                                     verificationPreselectedId
                                         ?.takeIf { it.startsWith("group_") }
                                         ?.substringAfterLast('_')
@@ -428,6 +437,9 @@ fun AppNavHost(
                                 challengeRefreshSignal++
                                 verifiedGroupRoutineId = completedGroupRoutineId
                                 groupRoutineRefreshSignal++
+                                if (shouldReturnToGroupRoutine) {
+                                    selectedTab = AppBottomTab.GroupRoutine
+                                }
                             }
                         }
                     },
