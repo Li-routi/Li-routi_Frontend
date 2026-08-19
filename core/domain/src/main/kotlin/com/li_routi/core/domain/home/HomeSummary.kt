@@ -13,6 +13,10 @@ data class HomeSummary(
 data class HomeUserInfo(
     val memberId: Long,
     val nickname: String,
+    /** 대표로 설정한 업적 배지 이름. 대표 업적이 없으면 null. */
+    val representativeBadgeName: String? = null,
+    /** 대표로 설정한 업적 배지 이미지. 대표 업적이 없으면 null. */
+    val representativeBadgeImageUrl: String? = null,
 )
 
 data class MyRoutine(

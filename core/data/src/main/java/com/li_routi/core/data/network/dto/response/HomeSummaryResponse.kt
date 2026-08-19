@@ -10,6 +10,14 @@ data class HomeSummaryResponse(
 data class HomeUserInfoResponse(
     val memberId: Long,
     val nickname: String,
+    /** 대표로 설정한 업적 배지. 대표 업적이 없으면 null. */
+    val representativeAchievement: HomeRepresentativeAchievementResponse?,
+)
+
+data class HomeRepresentativeAchievementResponse(
+    val achievementId: Long,
+    val name: String?,
+    val badgeImageUrl: String?,
 )
 
 data class MyRoutinesSectionResponse(
