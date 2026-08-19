@@ -33,19 +33,21 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.li_routi.core.designsystem.component.LiroutiLabel
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
+import com.li_routi.core.designsystem.component.LiroutiTextField
 import com.li_routi.core.designsystem.theme.LiroutiFrontendTheme
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.mypage.component.EditProfileTopBar
 import com.li_routi.feature.mypage.component.SuggestionCategoryUiModel
 import com.li_routi.feature.mypage.vm.SuggestionContentMaxLength
+import com.li_routi.feature.mypage.vm.SuggestionTitleMaxLength
 
 /**
- * 건의하기 작성. 제목 대신 서버 분류를 고르고, 본문은 최대 2000자다.
+ * 건의하기 작성. 서버 분류와 제목(100자)·본문(2000자)을 받고, 모두 채워져야 저장할 수 있다.
  */
 @Composable
 fun SuggestionEditorScreen(
     onBackClick: () -> Unit,
-    onSaveClick: (content: String) -> Unit,
+    onSaveClick: (title: String, content: String) -> Unit,
     modifier: Modifier = Modifier,
     categories: List<SuggestionCategoryUiModel> = emptyList(),
     selectedCategoryId: Long? = null,
@@ -55,8 +57,13 @@ fun SuggestionEditorScreen(
     categoriesError: String? = null,
     onRetryCategories: () -> Unit = {},
 ) {
+    var title by rememberSaveable { mutableStateOf("") }
     var content by rememberSaveable { mutableStateOf("") }
-    val canSave = selectedCategoryId != null && content.isNotBlank() && !isSaving && !isCategoriesLoading
+    val canSave = selectedCategoryId != null &&
+        title.isNotBlank() &&
+        content.isNotBlank() &&
+        !isSaving &&
+        !isCategoriesLoading
 
     Column(
         modifier = modifier
@@ -126,6 +133,14 @@ fun SuggestionEditorScreen(
                 }
             }
             Spacer(modifier = Modifier.height(20.dp))
+            LiroutiTextField(
+                value = title,
+                onValueChange = { title = it.take(SuggestionTitleMaxLength) },
+                placeholder = "제목을 입력해 주세요",
+                labelText = "제목",
+                showHelper = false,
+            )
+            Spacer(modifier = Modifier.height(20.dp))
             SuggestionContentField(
                 value = content,
                 onValueChange = { content = it.take(SuggestionContentMaxLength) },
@@ -133,7 +148,7 @@ fun SuggestionEditorScreen(
         }
         LiroutiPrimaryButton(
             text = "저장하기",
-            onClick = { onSaveClick(content) },
+            onClick = { onSaveClick(title, content) },
             enabled = canSave,
             modifier = Modifier.padding(horizontal = 16.dp, vertical = 16.dp),
         )
@@ -192,10 +207,11 @@ private fun SuggestionEditorScreenPreview() {
     LiroutiFrontendTheme {
         SuggestionEditorScreen(
             onBackClick = {},
-            onSaveClick = {},
+            onSaveClick = { _, _ -> },
             categories = listOf(
-                SuggestionCategoryUiModel(id = 1, name = "버그 신고"),
-                SuggestionCategoryUiModel(id = 2, name = "기능 제안"),
+                SuggestionCategoryUiModel(id = 1, name = "메인"),
+                SuggestionCategoryUiModel(id = 2, name = "그룹"),
+                SuggestionCategoryUiModel(id = 3, name = "기타"),
             ),
             selectedCategoryId = 1,
         )

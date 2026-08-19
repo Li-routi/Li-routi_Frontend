@@ -26,7 +26,7 @@ private enum class SuggestionDestination {
 }
 
 /**
- * 건의하기 진입점. 목록은 커서 페이지네이션, 작성은 서버 분류 + 본문만 받는다.
+ * 건의하기 진입점. 목록은 커서 페이지네이션 + 서버 검색/분류, 작성은 서버 분류 + 제목 + 본문을 보낸다.
  */
 @Composable
 fun SuggestionRoute(
@@ -41,6 +41,7 @@ fun SuggestionRoute(
     val context = LocalContext.current
 
     LaunchedEffect(Unit) {
+        viewModel.loadCategories()
         viewModel.refresh()
     }
 
@@ -53,7 +54,10 @@ fun SuggestionRoute(
     LaunchedEffect(viewModel) {
         viewModel.uiEvent.collect { event ->
             when (event) {
-                SuggestionUiEvent.Created -> destination = SuggestionDestination.List
+                SuggestionUiEvent.Created -> {
+                    destination = SuggestionDestination.List
+                    selectedId = null
+                }
                 is SuggestionUiEvent.ShowError -> {
                     Toast.makeText(context, event.message, Toast.LENGTH_SHORT).show()
                 }
@@ -75,8 +79,13 @@ fun SuggestionRoute(
             },
             onCreateClick = { destination = SuggestionDestination.Create },
             onTabSelected = onTabSelected,
+            onSearchQueryChange = viewModel::onSearchQueryChange,
+            onCategorySelected = viewModel::onCategorySelected,
             onLoadMore = viewModel::loadMore,
             onRetryClick = viewModel::refresh,
+            searchQuery = uiState.searchQuery,
+            selectedCategoryId = uiState.selectedCategoryId,
+            categories = uiState.categories,
             suggestions = uiState.items,
             isLoading = uiState.isLoading,
             hasNext = uiState.hasNext,
@@ -107,7 +116,7 @@ fun SuggestionRoute(
             onBackClick = { destination = SuggestionDestination.List },
             onSaveClick = viewModel::create,
             categories = uiState.categories,
-            selectedCategoryId = uiState.selectedCategoryId,
+            selectedCategoryId = uiState.createSelectedCategoryId,
             onCategorySelected = viewModel::onCreateCategorySelected,
             isSaving = uiState.isSaving,
             isCategoriesLoading = uiState.isCategoriesLoading,

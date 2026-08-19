@@ -9,15 +9,34 @@ import com.li_routi.core.data.network.dto.request.CreateSuggestionRequest
 import com.li_routi.core.data.network.service.SuggestionApiService
 import com.li_routi.core.domain.suggestion.CreateSuggestionResult
 import com.li_routi.core.domain.suggestion.SuggestionCategory
-import com.li_routi.core.domain.suggestion.SuggestionPage
+import com.li_routi.core.domain.suggestion.SuggestionPageResult
 import com.li_routi.core.domain.suggestion.SuggestionRepository
 
 class SuggestionRepositoryImpl(
     private val api: SuggestionApiService,
 ) : SuggestionRepository {
 
-    override suspend fun getMySuggestions(cursor: Long?, size: Int): ResultState<SuggestionPage> = safeApiCall {
-        apiCall { api.getMySuggestions(cursor = cursor, size = size) }.toDomain()
+    override suspend fun getMySuggestions(
+        cursor: Long?,
+        size: Int,
+        keyword: String?,
+        categoryId: Long?,
+    ): ResultState<SuggestionPageResult> = safeApiCall {
+        try {
+            SuggestionPageResult.Page(
+                apiCall {
+                    api.getMySuggestions(
+                        cursor = cursor,
+                        size = size,
+                        keyword = keyword,
+                        categoryId = categoryId,
+                    )
+                }.toDomain(),
+            )
+        } catch (e: ApiException) {
+            // SUGGESTION404_1 없는 분류 — 빈 목록으로 읽히지 않게 별도 결과로 둔다.
+            if (e.statusCode == 404) SuggestionPageResult.CategoryNotFound else throw e
+        }
     }
 
     override suspend fun getCategories(): ResultState<List<SuggestionCategory>> = safeApiCall {
@@ -26,11 +45,12 @@ class SuggestionRepositoryImpl(
 
     override suspend fun createSuggestion(
         categoryId: Long,
+        title: String,
         content: String,
     ): ResultState<CreateSuggestionResult> = safeApiCall {
         try {
             CreateSuggestionResult.Success(
-                apiCall { api.createSuggestion(CreateSuggestionRequest(categoryId, content)) }.toDomain(),
+                apiCall { api.createSuggestion(CreateSuggestionRequest(categoryId, title, content)) }.toDomain(),
             )
         } catch (e: ApiException) {
             // SUGGESTION404_1 없는 분류 / SUGGESTION409_1 내려간 분류 — 작성 분류 목록을 다시 받는다.

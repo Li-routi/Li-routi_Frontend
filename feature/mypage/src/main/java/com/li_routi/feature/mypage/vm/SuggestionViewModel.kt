@@ -10,6 +10,7 @@ import com.li_routi.core.domain.suggestion.GetMySuggestionsUseCase
 import com.li_routi.core.domain.suggestion.GetSuggestionCategoriesUseCase
 import com.li_routi.core.domain.suggestion.Suggestion
 import com.li_routi.core.domain.suggestion.SuggestionCategory
+import com.li_routi.core.domain.suggestion.SuggestionPageResult
 import com.li_routi.core.domain.suggestion.SuggestionPageSize
 import com.li_routi.feature.mypage.component.SuggestionCategoryUiModel
 import com.li_routi.feature.mypage.component.SuggestionUiModel
@@ -17,6 +18,8 @@ import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
 import java.util.TimeZone
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -27,7 +30,9 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 const val SuggestionContentMaxLength = 2000
+const val SuggestionTitleMaxLength = 100
 
+private const val SearchDebounceMillis = 300L
 private const val CategoryUnavailableMessage = "선택할 수 없는 분류입니다. 다시 골라 주세요."
 
 data class SuggestionUiState(
@@ -37,8 +42,10 @@ data class SuggestionUiState(
     val isLoading: Boolean = false,
     val isLoadingMore: Boolean = false,
     val listError: String? = null,
-    val categories: List<SuggestionCategoryUiModel> = emptyList(),
+    val searchQuery: String = "",
     val selectedCategoryId: Long? = null,
+    val categories: List<SuggestionCategoryUiModel> = emptyList(),
+    val createSelectedCategoryId: Long? = null,
     val isCategoriesLoading: Boolean = false,
     val categoriesError: String? = null,
     val isSaving: Boolean = false,
@@ -50,7 +57,8 @@ sealed interface SuggestionUiEvent {
 }
 
 /**
- * 건의하기 ViewModel. 목록은 커서 페이지네이션, 작성은 서버 분류 + 본문만 받는다.
+ * 건의하기 ViewModel. 목록은 커서 페이지네이션 + 제목 keyword/분류 id 서버 필터,
+ * 작성은 서버 분류 + 제목(100) + 본문(2000)을 보낸다.
  */
 class SuggestionViewModel(
     private val getMySuggestionsUseCase: GetMySuggestionsUseCase =
@@ -69,6 +77,7 @@ class SuggestionViewModel(
 
     private var listGeneration = 0
     private var categoriesGeneration = 0
+    private var searchDebounceJob: Job? = null
 
     fun refresh() {
         loadSuggestions(reset = true)
@@ -80,6 +89,22 @@ class SuggestionViewModel(
         loadSuggestions(reset = false)
     }
 
+    fun onSearchQueryChange(query: String) {
+        _uiState.update { it.copy(searchQuery = query) }
+        searchDebounceJob?.cancel()
+        searchDebounceJob = viewModelScope.launch {
+            delay(SearchDebounceMillis)
+            loadSuggestions(reset = true)
+        }
+    }
+
+    fun onCategorySelected(categoryId: Long?) {
+        if (_uiState.value.selectedCategoryId == categoryId) return
+        searchDebounceJob?.cancel()
+        _uiState.update { it.copy(selectedCategoryId = categoryId) }
+        loadSuggestions(reset = true)
+    }
+
     fun loadCategories() {
         val generation = ++categoriesGeneration
         _uiState.update { it.copy(isCategoriesLoading = true, categoriesError = null) }
@@ -88,11 +113,13 @@ class SuggestionViewModel(
                 is ResultState.Success -> {
                     if (generation != categoriesGeneration) return@launch
                     val mapped = result.data.map { it.toUiModel() }
-                    val selectedStillValid = mapped.any { it.id == _uiState.value.selectedCategoryId }
+                    val listStillValid = mapped.any { it.id == _uiState.value.selectedCategoryId }
+                    val createStillValid = mapped.any { it.id == _uiState.value.createSelectedCategoryId }
                     _uiState.update {
                         it.copy(
                             categories = mapped,
-                            selectedCategoryId = if (selectedStillValid) it.selectedCategoryId else null,
+                            selectedCategoryId = if (listStillValid) it.selectedCategoryId else null,
+                            createSelectedCategoryId = if (createStillValid) it.createSelectedCategoryId else null,
                             isCategoriesLoading = false,
                             categoriesError = null,
                         )
@@ -110,31 +137,31 @@ class SuggestionViewModel(
     }
 
     fun onCreateCategorySelected(categoryId: Long) {
-        _uiState.update { it.copy(selectedCategoryId = categoryId) }
+        _uiState.update { it.copy(createSelectedCategoryId = categoryId) }
     }
 
-    fun create(content: String) {
-        val categoryId = _uiState.value.selectedCategoryId ?: return
-        val trimmed = content.trim()
-        if (trimmed.isEmpty() || _uiState.value.isSaving || _uiState.value.isCategoriesLoading) return
+    fun create(title: String, content: String) {
+        val categoryId = _uiState.value.createSelectedCategoryId ?: return
+        val trimmedTitle = title.trim().take(SuggestionTitleMaxLength)
+        val trimmedContent = content.trim().take(SuggestionContentMaxLength)
+        if (trimmedTitle.isEmpty() || trimmedContent.isEmpty() || _uiState.value.isSaving) return
 
         _uiState.update { it.copy(isSaving = true) }
         viewModelScope.launch {
-            when (val result = createSuggestionUseCase(categoryId, trimmed.take(SuggestionContentMaxLength))) {
+            when (val result = createSuggestionUseCase(categoryId, trimmedTitle, trimmedContent)) {
                 is ResultState.Success -> when (result.data) {
                     is CreateSuggestionResult.Success -> {
                         _uiState.update {
-                            it.copy(isSaving = false, selectedCategoryId = null)
+                            it.copy(isSaving = false, createSelectedCategoryId = null)
                         }
                         _uiEvent.emit(SuggestionUiEvent.Created)
                         loadSuggestions(reset = true)
                     }
                     CreateSuggestionResult.CategoryUnavailable -> {
-                        // 새로고침이 끝나기 전에 거절된 분류를 다시 고르지 못하도록 목록을 먼저 비운다.
                         _uiState.update {
                             it.copy(
                                 isSaving = false,
-                                selectedCategoryId = null,
+                                createSelectedCategoryId = null,
                                 categories = emptyList(),
                             )
                         }
@@ -154,6 +181,8 @@ class SuggestionViewModel(
     private fun loadSuggestions(reset: Boolean) {
         val generation = ++listGeneration
         val cursor = if (reset) null else _uiState.value.nextCursor
+        val keyword = _uiState.value.searchQuery.trim().takeIf { it.isNotEmpty() }
+        val categoryId = _uiState.value.selectedCategoryId
         _uiState.update {
             it.copy(
                 isLoading = reset,
@@ -162,25 +191,51 @@ class SuggestionViewModel(
             )
         }
         viewModelScope.launch {
-            when (val result = getMySuggestionsUseCase(cursor = cursor, size = SuggestionPageSize)) {
+            when (
+                val result = getMySuggestionsUseCase(
+                    cursor = cursor,
+                    size = SuggestionPageSize,
+                    keyword = keyword,
+                    categoryId = categoryId,
+                )
+            ) {
                 is ResultState.Success -> {
                     if (generation != listGeneration) return@launch
-                    val mapped = result.data.suggestions.map { it.toUiModel() }
-                    _uiState.update { state ->
-                        state.copy(
-                            isLoading = false,
-                            isLoadingMore = false,
-                            items = if (reset) {
-                                mapped
-                            } else {
-                                // 커서 겹침 등으로 이전 페이지와 id가 중복되면 LazyColumn 키 충돌로
-                                // 크래시하므로 이어붙일 때 중복 id를 제거한다.
-                                (state.items + mapped).distinctBy { it.id }
-                            },
-                            nextCursor = result.data.nextCursor,
-                            hasNext = result.data.hasNext && result.data.nextCursor != null,
-                            listError = null,
-                        )
+                    when (val pageResult = result.data) {
+                        is SuggestionPageResult.Page -> {
+                            val mapped = pageResult.page.suggestions.map { it.toUiModel() }
+                            _uiState.update { state ->
+                                state.copy(
+                                    isLoading = false,
+                                    isLoadingMore = false,
+                                    items = if (reset) {
+                                        mapped
+                                    } else {
+                                        // 커서 겹침 등으로 이전 페이지와 id가 중복되면 LazyColumn 키 충돌로
+                                        // 크래시하므로 이어붙일 때 중복 id를 제거한다.
+                                        (state.items + mapped).distinctBy { it.id }
+                                    },
+                                    nextCursor = pageResult.page.nextCursor,
+                                    hasNext = pageResult.page.hasNext && pageResult.page.nextCursor != null,
+                                    listError = null,
+                                )
+                            }
+                        }
+                        SuggestionPageResult.CategoryNotFound -> {
+                            _uiState.update {
+                                it.copy(
+                                    isLoading = false,
+                                    isLoadingMore = false,
+                                    selectedCategoryId = null,
+                                    items = emptyList(),
+                                    nextCursor = null,
+                                    hasNext = false,
+                                    listError = null,
+                                )
+                            }
+                            loadCategories()
+                            if (categoryId != null) loadSuggestions(reset = true)
+                        }
                     }
                 }
                 is ResultState.Error -> {
@@ -201,6 +256,7 @@ class SuggestionViewModel(
 
 private fun Suggestion.toUiModel(): SuggestionUiModel = SuggestionUiModel(
     id = id,
+    title = title,
     categoryName = category.name,
     date = createdAt.toDisplayDate(),
     content = content,
