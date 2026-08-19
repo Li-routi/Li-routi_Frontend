@@ -112,8 +112,10 @@ class SuggestionViewModel(
             when (val result = getSuggestionCategoriesUseCase()) {
                 is ResultState.Success -> {
                     if (generation != categoriesGeneration) return@launch
+                    val previousListCategoryId = _uiState.value.selectedCategoryId
                     val mapped = result.data.map { it.toUiModel() }
-                    val listStillValid = mapped.any { it.id == _uiState.value.selectedCategoryId }
+                    val listStillValid = previousListCategoryId == null ||
+                        mapped.any { it.id == previousListCategoryId }
                     val createStillValid = mapped.any { it.id == _uiState.value.createSelectedCategoryId }
                     _uiState.update {
                         it.copy(
@@ -123,6 +125,9 @@ class SuggestionViewModel(
                             isCategoriesLoading = false,
                             categoriesError = null,
                         )
+                    }
+                    if (previousListCategoryId != null && !listStillValid) {
+                        loadSuggestions(reset = true)
                     }
                 }
                 is ResultState.Error -> {
@@ -188,6 +193,9 @@ class SuggestionViewModel(
                 isLoading = reset,
                 isLoadingMore = !reset,
                 listError = null,
+                items = if (reset) emptyList() else it.items,
+                nextCursor = if (reset) null else it.nextCursor,
+                hasNext = if (reset) false else it.hasNext,
             )
         }
         viewModelScope.launch {
