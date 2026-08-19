@@ -18,9 +18,9 @@ import kotlinx.coroutines.delay
 // 프레임마다 유지 시간을 다르게 둬서 눈이 스냅하듯 감겼다 뜨는 깜빡임처럼 보이게 한다.
 private val BlinkFrames = listOf(
     R.drawable.bird1 to 700L,
-    R.drawable.bird2 to 400L,
+    R.drawable.bird2 to 100L,
     R.drawable.bird3 to 100L,
-    R.drawable.bird2 to 400L,
+    R.drawable.bird2 to 100L,
     R.drawable.bird1 to 700L,
 )
 
