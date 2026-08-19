@@ -213,7 +213,9 @@ fun AppNavHost(
     var homeRefreshSignal by remember { mutableIntStateOf(0) }
     var challengeRefreshSignal by remember { mutableIntStateOf(0) }
     var groupRoutineRefreshSignal by remember { mutableIntStateOf(0) }
-    var verifiedGroupRoutineIds by remember { mutableStateOf<Set<Long>>(emptySet()) }
+    var verifiedGroupRoutineIdsByGroup by remember {
+        mutableStateOf<Map<Long, Set<Long>>>(emptyMap())
+    }
     var isGroupRoutineVerification by rememberSaveable { mutableStateOf(false) }
 
     fun startVerificationFlow(
@@ -326,7 +328,7 @@ fun AppNavHost(
                         )
                     },
                     verificationRefreshSignal = groupRoutineRefreshSignal,
-                    verifiedRoutineIds = verifiedGroupRoutineIds,
+                    verifiedRoutineIdsByGroup = verifiedGroupRoutineIdsByGroup,
                     modifier = Modifier.fillMaxSize(),
                 )
             }
@@ -432,18 +434,30 @@ fun AppNavHost(
                                 val selectedRoutineIds = event.selectedRoutineIds.ifEmpty {
                                     verificationPreselectedId?.let { setOf(it) }.orEmpty()
                                 }
-                                val completedGroupRoutineIds = if (shouldReturnToGroupRoutine) {
+                                val completedGroupRoutineIdsByGroup = if (shouldReturnToGroupRoutine) {
                                     selectedRoutineIds
-                                        .filter { it.startsWith("group_") }
-                                        .mapNotNull { it.substringAfterLast('_').toLongOrNull() }
-                                        .toSet()
+                                        .mapNotNull { selectedId ->
+                                            val routine = verificationRoutines.firstOrNull { it.id == selectedId }
+                                            val groupId = routine?.groupId
+                                            val routineId = routine?.groupRoutineId
+                                            if (groupId != null && routineId != null) {
+                                                groupId to routineId
+                                            } else {
+                                                null
+                                            }
+                                        }
+                                        .groupBy(
+                                            keySelector = { it.first },
+                                            valueTransform = { it.second },
+                                        )
+                                        .mapValues { (_, routineIds) -> routineIds.toSet() }
                                 } else {
-                                    emptySet()
+                                    emptyMap()
                                 }
                                 closeVerificationFlow()
                                 homeRefreshSignal++
                                 challengeRefreshSignal++
-                                verifiedGroupRoutineIds = completedGroupRoutineIds
+                                verifiedGroupRoutineIdsByGroup = completedGroupRoutineIdsByGroup
                                 groupRoutineRefreshSignal++
                                 if (shouldReturnToGroupRoutine) {
                                     selectedTab = AppBottomTab.GroupRoutine

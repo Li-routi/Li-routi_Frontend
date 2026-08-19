@@ -26,7 +26,7 @@ fun GrouproutineRootNavHost(
     onTabSelected: (AppBottomTab) -> Unit,
     onStartVerification: (GroupRoutineVerificationTarget) -> Unit = {},
     verificationRefreshSignal: Int = 0,
-    verifiedRoutineIds: Set<Long> = emptySet(),
+    verifiedRoutineIdsByGroup: Map<Long, Set<Long>> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
     GroupRoutineRoute(
@@ -35,7 +35,7 @@ fun GrouproutineRootNavHost(
         onTabSelected = onTabSelected,
         onStartVerification = onStartVerification,
         verificationRefreshSignal = verificationRefreshSignal,
-        verifiedRoutineIds = verifiedRoutineIds,
+        verifiedRoutineIdsByGroup = verifiedRoutineIdsByGroup,
         modifier = modifier,
     )
 }

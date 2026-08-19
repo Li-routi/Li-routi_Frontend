@@ -167,7 +167,7 @@ fun GroupRoutineRoute(
     onTabSelected: (AppBottomTab) -> Unit = {},
     onStartVerification: (GroupRoutineVerificationTarget) -> Unit = {},
     verificationRefreshSignal: Int = 0,
-    verifiedRoutineIds: Set<Long> = emptySet(),
+    verifiedRoutineIdsByGroup: Map<Long, Set<Long>> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -231,7 +231,7 @@ fun GroupRoutineRoute(
 
     LaunchedEffect(verificationRefreshSignal) {
         if (verificationRefreshSignal > 0) {
-            viewModel.markRoutinesVerified(verifiedRoutineIds)
+            viewModel.markRoutinesVerified(verifiedRoutineIdsByGroup)
         }
     }
 
