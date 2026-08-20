@@ -62,7 +62,10 @@ data class RoutineChecklistItem(
     val selectable: Boolean = true,
     /** false면 체크박스를 그리지 않는다(선택 대상이 아니라 이미 등록된 항목을 그냥 보여줄 때). */
     val showCheckbox: Boolean = true,
-    /** true면 행을 탭했을 때 [RoutineChecklistScreen.onItemClick]이 불린다(예: 커스텀 루틴 수정). */
+    /**
+     * true면 카드를 탭했을 때 [RoutineChecklistScreen.onItemClick]이 불린다.
+     * 커스텀 수정 시트 또는 기본 루틴 잠금 토스트에 쓴다. 체크 토글과는 별개다.
+     */
     val editable: Boolean = false,
 )
 
@@ -93,7 +96,7 @@ fun RoutineChecklistScreen(
     addCategoryEnabled: Boolean = true,
     primaryButtonEnabled: Boolean = true,
     onCategoryLongClick: (String) -> Unit = {},
-    /** [RoutineChecklistItem.editable]이 true인 항목을 탭했을 때 호출(예: 커스텀 루틴 수정 시트 열기). */
+    /** [RoutineChecklistItem.editable]이 true인 카드(이름)를 탭했을 때 호출. 체크박스 탭과는 별개다. */
     onItemClick: ((String) -> Unit)? = null,
     /** 30개 한도 초과 등 제출을 막는 이유. null이 아니면 하단 "총 N개 선택됨" 대신 이 문구를 보여준다. */
     warningText: String? = null,
@@ -352,7 +355,7 @@ fun RoutineItemRow(
     repeatLabel: String = "",
     checked: Boolean? = null,
     onCheckedChange: ((Boolean) -> Unit)? = null,
-    /** null이 아니면 체크 토글 대신 이 콜백으로 행 전체 탭을 처리한다(예: 수정 시트 열기). */
+    /** null이 아니면 카드(이름) 탭에 쓴다. 체크 토글은 [onCheckedChange]만 담당한다. */
     onRowClick: (() -> Unit)? = null,
     bold: Boolean = false,
 ) {
@@ -366,12 +369,10 @@ fun RoutineItemRow(
             .clip(RoundedCornerShape(6.dp))
             .border(1.dp, LiroutiTheme.colors.borderAlternative, RoundedCornerShape(6.dp))
             .then(
-                when {
-                    onRowClick != null -> Modifier.clickable(onClick = onRowClick)
-                    onCheckedChange != null -> Modifier.clickable {
-                        onCheckedChange(!(checked ?: false))
-                    }
-                    else -> Modifier
+                if (onRowClick != null) {
+                    Modifier.clickable(onClick = onRowClick)
+                } else {
+                    Modifier
                 },
             )
             .padding(horizontal = 14.dp, vertical = 10.dp),

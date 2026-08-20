@@ -38,6 +38,7 @@ class RoutineCatalogRepositoryImpl(
                 routineId = routineId,
                 body = UpdateMemberRoutineRequest(
                     name = update.name,
+                    startTime = update.startTime,
                     endTime = update.endTime,
                     repeatDays = update.repeatDays,
                     alarmTime = update.alarmTime,

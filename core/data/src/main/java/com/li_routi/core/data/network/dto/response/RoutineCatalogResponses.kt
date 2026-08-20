@@ -35,6 +35,8 @@ data class CreatedRoutineResponse(
     val categoryName: String,
     val templateId: Long?,
     val name: String,
+    /** HH:mm. 설정하지 않은 기존 루틴에서는 생략될 수 있다. */
+    val startTime: String? = null,
     val endTime: String?,
     val repeatDays: List<String> = emptyList(),
     val alarmTime: String?,

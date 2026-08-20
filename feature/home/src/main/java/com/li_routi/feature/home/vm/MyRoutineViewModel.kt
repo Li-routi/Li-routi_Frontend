@@ -28,6 +28,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val AllCategoryLabel = "전체"
+internal const val DefaultRoutineLockedMessage = "기본 루틴은 수정할 수 없습니다."
 
 /** LiroutiDaySelector 인덱스: 0=일 … 6=토 */
 private val DayIndexToApi = listOf(
@@ -60,6 +61,7 @@ data class MyRoutineUiState(
     val selectedCategoryName: String = AllCategoryLabel,
     val routines: List<CreatedRoutine> = emptyList(),
     val errorMessage: String? = null,
+    val toastMessage: String? = null,
 ) {
     val categoryLabels: List<String>
         get() = listOf(AllCategoryLabel) + categories.map { it.name }
@@ -182,14 +184,33 @@ class MyRoutineViewModel(
         emitEvent(MyRoutineUiEvent.NavigateToAddRoutine)
     }
 
+    fun onDefaultRoutineLocked() {
+        _uiState.update {
+            it.copy(
+                errorMessage = null,
+                toastMessage = DefaultRoutineLockedMessage,
+            )
+        }
+    }
+
+    fun clearToast() {
+        _uiState.update { it.copy(toastMessage = null) }
+    }
+
     fun onUpdateRoutine(
         routineId: Long,
         name: String,
+        startTime: String?,
         endTime: String,
         selectedDayIndexes: Set<Int>,
         alarmTime: String?,
     ) {
         if (_uiState.value.isSaving) return
+        val current = _uiState.value.routineById(routineId)
+        if (current?.templateId != null) {
+            onDefaultRoutineLocked()
+            return
+        }
         val repeatDays = selectedDayIndexes
             .sorted()
             .mapNotNull { DayIndexToApi.getOrNull(it) }
@@ -200,6 +221,7 @@ class MyRoutineViewModel(
                     routineId = routineId,
                     update = UpdateMemberRoutine(
                         name = name,
+                        startTime = startTime.orDefaultPersonalStartTime(),
                         endTime = endTime.ifBlank { "23:59" },
                         repeatDays = repeatDays,
                         alarmTime = alarmTime,
@@ -365,10 +387,13 @@ class MyRoutineViewModel(
     }
 }
 
-internal fun CreatedRoutine.toDayIndexes(): Set<Int> =
-    repeatDays.mapNotNull { day -> DayIndexToApi.indexOf(day).takeIf { it >= 0 } }.toSet()
+internal fun List<String>.toDayIndexes(): Set<Int> =
+    mapNotNull { day -> DayIndexToApi.indexOf(day).takeIf { it >= 0 } }.toSet()
 
-internal fun CreatedRoutine.deadlineDisplay(): String = endTime.toDueLabel()
+internal fun CreatedRoutine.toDayIndexes(): Set<Int> = repeatDays.toDayIndexes()
+
+internal fun CreatedRoutine.deadlineDisplay(): String =
+    formatRoutineTimeRange(startTime.orDefaultPersonalStartTime(), endTime)
 
 internal fun CreatedRoutine.alarmDisplay(): String =
     alarmTime?.trim()?.takeIf { it.isNotEmpty() } ?: "없음"
@@ -379,7 +404,7 @@ private fun CreatedRoutine.toChecklistItem(): RoutineChecklistItem = RoutineChec
     id = routineId.toString(),
     name = name,
     checked = completedToday,
-    deadlineText = endTime.toDueLabel(),
+    deadlineText = formatRoutineTimeRange(startTime.orDefaultPersonalStartTime(), endTime),
     category = categoryName,
     repeatLabel = repeatDays.toRepeatLabel(),
 )

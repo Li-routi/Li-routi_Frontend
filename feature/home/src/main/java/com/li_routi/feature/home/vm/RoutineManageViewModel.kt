@@ -16,12 +16,14 @@ import com.li_routi.core.domain.routine.DeleteRoutineCategoryUseCase
 import com.li_routi.core.domain.routine.GetMemberRoutinesUseCase
 import com.li_routi.core.domain.routine.GetRoutineCategoriesUseCase
 import com.li_routi.core.domain.routine.GetRoutineTemplatesUseCase
+import com.li_routi.core.domain.routine.InvalidRoutineTimeRangeMessage
 import com.li_routi.core.domain.routine.RoutineCategory
 import com.li_routi.core.domain.routine.RoutineCategoryName
 import com.li_routi.core.domain.routine.RoutineTemplate
 import com.li_routi.core.domain.routine.UpdateMemberRoutine
 import com.li_routi.core.domain.routine.UpdateMemberRoutineUseCase
 import com.li_routi.core.domain.routine.UpdateRoutineCategoryUseCase
+import com.li_routi.core.domain.routine.isValidRoutineTimeRange
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharedFlow
@@ -32,7 +34,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 private const val AllCategoryLabel = "전체"
-private const val CustomIdPrefix = "custom_"
+/** 아직 제출 전인 세션 커스텀 루틴을 체크리스트에 표시할 때 쓰는 id 접두사. */
+internal const val CustomIdPrefix = "custom_"
 /** 이미 등록된 커스텀 루틴(templateId == null)을 체크리스트에 표시할 때 쓰는 id 접두사. */
 const val RegisteredCustomIdPrefix = "routine_"
 
@@ -129,6 +132,8 @@ data class RoutineManageUiState(
                     checked = id in selectedIds,
                     category = template.categoryName,
                     selectable = true,
+                    // 카드 탭은 잠금 토스트, 체크는 체크박스만 (그룹 루틴 추가와 동일).
+                    editable = true,
                 )
             }
             // templates는 카테고리를 바꿀 때마다 그 카테고리로 다시 조회해 온 목록이라(자연히
@@ -148,6 +153,8 @@ data class RoutineManageUiState(
                     checked = id in selectedIds,
                     category = category,
                     selectable = true,
+                    // 카드 탭은 수정 시트, 체크는 체크박스만.
+                    editable = true,
                 )
             }
             // 이미 등록된 커스텀 루틴 — 다른 루틴처럼 체크된 상태의 체크박스를 보여주되(탭해서 해제할
@@ -506,6 +513,7 @@ class RoutineManageViewModel(
     fun onAddCustomRoutine(
         name: String,
         categoryId: Long?,
+        startTime: String? = null,
         endTime: String? = null,
         repeatDays: List<String>? = null,
     ): Boolean {
@@ -522,6 +530,11 @@ class RoutineManageViewModel(
             _uiState.update { it.copy(errorMessage = "반복 요일을 선택해 주세요.") }
             return false
         }
+        val resolvedStart = startTime.orDefaultPersonalStartTime()
+        if (!isValidRoutineTimeRange(resolvedStart, endTime)) {
+            _uiState.update { it.copy(errorMessage = InvalidRoutineTimeRangeMessage) }
+            return false
+        }
         val customId = "$CustomIdPrefix${_uiState.value.customItems.size}"
         _uiState.update { state ->
             state.copy(
@@ -529,6 +542,7 @@ class RoutineManageViewModel(
                     categoryId = targetCategoryId,
                     templateId = null,
                     name = trimmed,
+                    startTime = resolvedStart,
                     endTime = endTime,
                     repeatDays = repeatDays?.takeIf { it.isNotEmpty() },
                 ),
@@ -539,10 +553,66 @@ class RoutineManageViewModel(
         return true
     }
 
+    /** 아직 제출 전인 세션 커스텀 루틴 수정. */
+    fun onUpdateDraftCustomRoutine(
+        index: Int,
+        name: String,
+        startTime: String?,
+        endTime: String?,
+        repeatDays: List<String>?,
+    ): Boolean {
+        if (_uiState.value.customItems.getOrNull(index) == null) return false
+        val trimmed = name.trim()
+        if (trimmed.isEmpty() || trimmed.length > 20 || trimmed.contains('\n')) {
+            _uiState.update { it.copy(errorMessage = "루틴 이름은 1~20자로 입력해 주세요.") }
+            return false
+        }
+        if (repeatDays.isNullOrEmpty()) {
+            _uiState.update { it.copy(errorMessage = "반복 요일을 선택해 주세요.") }
+            return false
+        }
+        val resolvedStart = startTime.orDefaultPersonalStartTime()
+        if (!isValidRoutineTimeRange(resolvedStart, endTime)) {
+            _uiState.update { it.copy(errorMessage = InvalidRoutineTimeRangeMessage) }
+            return false
+        }
+        _uiState.update { state ->
+            state.copy(
+                customItems = state.customItems.mapIndexed { itemIndex, item ->
+                    if (itemIndex != index) {
+                        item
+                    } else {
+                        item.copy(
+                            name = trimmed,
+                            startTime = resolvedStart,
+                            endTime = endTime,
+                            repeatDays = repeatDays,
+                        )
+                    }
+                },
+                errorMessage = null,
+            )
+        }
+        return true
+    }
+
+    /** 아직 제출 전인 세션 커스텀 루틴을 목록에서 뺀다. */
+    fun onRemoveDraftCustomRoutine(index: Int) {
+        _uiState.update { state ->
+            if (index !in state.customItems.indices) return@update state
+            val survivingIndexed = state.customItems.withIndex().filter { it.index != index }
+            state.copy(
+                customItems = survivingIndexed.map { it.value },
+                selectedIds = state.selectedIds.reindexedAfterCustomChange(survivingIndexed),
+            )
+        }
+    }
+
     /** 이미 등록된 커스텀 루틴 수정. name/repeatDays 검증은 [UpdateMemberRoutineUseCase]가 한다. */
     fun onUpdateCustomRoutine(
         routineId: Long,
         name: String,
+        startTime: String?,
         endTime: String,
         repeatDays: List<String>,
     ) {
@@ -552,7 +622,12 @@ class RoutineManageViewModel(
             when (
                 val result = updateMemberRoutineUseCase(
                     routineId = routineId,
-                    update = UpdateMemberRoutine(name = name, endTime = endTime, repeatDays = repeatDays),
+                    update = UpdateMemberRoutine(
+                        name = name,
+                        startTime = startTime.orDefaultPersonalStartTime(),
+                        endTime = endTime,
+                        repeatDays = repeatDays,
+                    ),
                 )
             ) {
                 is ResultState.Success -> {
@@ -787,6 +862,7 @@ class RoutineManageViewModel(
                     categoryId = template.categoryId,
                     templateId = template.templateId,
                     name = template.name,
+                    startTime = DefaultPersonalStartTimeHHmm,
                 )
             }
         val fromCustoms = state.customItems.mapIndexedNotNull { index, item ->
@@ -854,18 +930,26 @@ private fun RoutineManageUiState.withCategoryRemoved(deletedCategoryId: Long): R
     val removedTemplateIdStrings = removedTemplateIds.map { it.toString() }.toSet()
     val survivingIndexed = customItems.withIndex()
         .filter { it.value.categoryId != deletedCategoryId }
-    val newCustomItems = survivingIndexed.map { it.value }
-    val nonCustomSelectedIds = selectedIds.filterNot {
-        it.startsWith(CustomIdPrefix) || it in removedTemplateIdStrings
-    }
-    val newCustomSelectedIds = survivingIndexed.mapIndexedNotNull { newIndex, indexed ->
-        "$CustomIdPrefix$newIndex".takeIf { "$CustomIdPrefix${indexed.index}" in selectedIds }
-    }
     return copy(
         templateCache = templateCache.filterValues { it.categoryId != deletedCategoryId },
         knownAddedTemplateIds = knownAddedTemplateIds - removedTemplateIds,
-        customItems = newCustomItems,
-        selectedIds = (nonCustomSelectedIds + newCustomSelectedIds).toSet(),
+        customItems = survivingIndexed.map { it.value },
+        selectedIds = selectedIds.reindexedAfterCustomChange(
+            survivingIndexed = survivingIndexed,
+            alsoRemove = removedTemplateIdStrings,
+        ),
         userUncheckedIds = userUncheckedIds - removedTemplateIdStrings,
     )
+}
+
+/** `custom_N`이 리스트 인덱스라, 항목이 빠지면 남은 선택 id도 새 인덱스에 맞춰 다시 붙인다. */
+private fun Set<String>.reindexedAfterCustomChange(
+    survivingIndexed: List<IndexedValue<*>>,
+    alsoRemove: Set<String> = emptySet(),
+): Set<String> {
+    val nonCustom = filterNot { it.startsWith(CustomIdPrefix) || it in alsoRemove }
+    val custom = survivingIndexed.mapIndexedNotNull { newIndex, indexed ->
+        "$CustomIdPrefix$newIndex".takeIf { "$CustomIdPrefix${indexed.index}" in this }
+    }
+    return (nonCustom + custom).toSet()
 }

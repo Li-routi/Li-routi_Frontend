@@ -388,7 +388,7 @@ private fun RoutineSelectRow(
                     overflow = TextOverflow.Ellipsis,
                 )
             }
-            // Figma List: "카테고리 | 마감 HH:mm"
+            // Figma List: "카테고리 | HH:mm - HH:mm"
             if (item.dueLabel != null) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,

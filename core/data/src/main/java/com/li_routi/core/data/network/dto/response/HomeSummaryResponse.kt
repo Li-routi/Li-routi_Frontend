@@ -31,6 +31,8 @@ data class MyRoutineItemResponse(
     val categoryName: String,
     val templateId: Long?,
     val name: String,
+    /** HH:mm. 기존 루틴은 생략될 수 있다. */
+    val startTime: String? = null,
     val endTime: String?,
     val repeatDays: List<String> = emptyList(),
     val alarmTime: String?,

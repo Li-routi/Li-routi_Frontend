@@ -87,7 +87,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "my_0",
         title = "물 마시기",
-        dueLabel = "마감 22:00",
+        dueLabel = "08:00 - 22:00",
         categoryLabel = "건강",
         routineId = 0L,
         categoryColor = CategoryColor.Blue,
@@ -95,7 +95,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "my_1",
         title = "강아지 산책",
-        dueLabel = "마감 18:00",
+        dueLabel = "08:00 - 18:00",
         categoryLabel = "운동",
         routineId = 1L,
         categoryColor = CategoryColor.Orange,
@@ -103,7 +103,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "my_2",
         title = "아침 회의",
-        dueLabel = "마감 23:00",
+        dueLabel = "08:00 - 23:00",
         categoryLabel = "공부",
         isDone = true,
         routineId = 2L,
@@ -112,7 +112,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "my_3",
         title = "스트레칭하기",
-        dueLabel = "마감 23:00",
+        dueLabel = "08:00 - 23:00",
         categoryLabel = "운동",
         isDone = true,
         routineId = 3L,
@@ -121,7 +121,7 @@ val SampleMyRoutineItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "my_4",
         title = "물 마시기",
-        dueLabel = "마감 22:00",
+        dueLabel = "08:00 - 22:00",
         categoryLabel = "코딩",
         isDone = true,
         routineId = 4L,
@@ -139,7 +139,7 @@ val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "my_0",
         title = "물 마시기",
-        dueLabel = "마감 22:00",
+        dueLabel = "08:00 - 22:00",
         categoryLabel = "건강",
         routineId = 0L,
         categoryColor = CategoryColor.Blue,
@@ -147,7 +147,7 @@ val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "my_1",
         title = "강아지 산책",
-        dueLabel = "마감 18:00",
+        dueLabel = "08:00 - 18:00",
         categoryLabel = "운동",
         routineId = 1L,
         categoryColor = CategoryColor.Orange,
@@ -155,7 +155,7 @@ val SampleMyRoutineItemsOnly: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "my_2",
         title = "물 마시기",
-        dueLabel = "마감 22:00",
+        dueLabel = "08:00 - 22:00",
         categoryLabel = "건강",
         routineId = 2L,
         categoryColor = CategoryColor.Blue,
@@ -181,7 +181,7 @@ val SampleGroupRoomItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "group_10_100",
         title = "물 마시기",
-        dueLabel = "마감 22:00",
+        dueLabel = "08:00 - 22:00",
         categoryLabel = "건강",
         roomLabel = "바디프로필",
         kind = RoutineChecklistKind.Group,
@@ -192,7 +192,7 @@ val SampleGroupRoomItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "group_11_101",
         title = "스트레칭하기",
-        dueLabel = "마감 23:00",
+        dueLabel = "08:00 - 23:00",
         categoryLabel = "운동",
         roomLabel = "사이드 프로젝트",
         kind = RoutineChecklistKind.Group,
@@ -203,7 +203,7 @@ val SampleGroupRoomItems: List<RoutineChecklistItemUiModel> = listOf(
     RoutineChecklistItemUiModel(
         id = "group_10_102",
         title = "스트레칭하기",
-        dueLabel = "마감 23:00",
+        dueLabel = "08:00 - 23:00",
         categoryLabel = "공부",
         isDone = true,
         roomLabel = "바디프로필",
@@ -436,7 +436,7 @@ fun RoutineChecklistSection(
 
 /**
  * Figma List (`3962:11700` 미완료 / `3962:11702` 완료).
- * 미완료는 좌측 4dp 액센트 바(카테고리 색) + 메타(카테고리 | 마감), 완료는 제목·완료 배지만.
+ * 미완료는 좌측 4dp 액센트 바(카테고리 색) + 메타(카테고리 | 시작 - 마감), 완료는 제목·완료 배지만.
  *
  * 액센트 높이는 [IntrinsicSize.Min] + [fillMaxHeight]로 콘텐츠에 맞춘다.
  * Box 안에서 단독 `fillMaxHeight()`를 쓰면 부모(바텀시트) maxHeight를 통째로 받아
@@ -506,7 +506,7 @@ private fun RoutineChecklistItemRow(
                         verticalAlignment = Alignment.CenterVertically,
                         horizontalArrangement = Arrangement.spacedBy(6.dp),
                     ) {
-                        // Design Page [1.1]: "카테고리 | 마감 HH:mm" — Caption/s 11/14
+                        // Design Page [1.1]: "카테고리 | HH:mm - HH:mm" — Caption/s 11/14
                         val metaStyle = LiroutiTheme.typography.captionRegular.copy(
                             fontSize = 11.sp,
                             lineHeight = 14.sp,

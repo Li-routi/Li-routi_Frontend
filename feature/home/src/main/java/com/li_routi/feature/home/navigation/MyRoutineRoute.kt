@@ -2,9 +2,13 @@ package com.li_routi.feature.home.navigation
 
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -30,6 +34,8 @@ import com.li_routi.core.common.ui.routine.toCategoryColor
 import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.designsystem.component.LiroutiClockTime
 import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
+import com.li_routi.core.designsystem.component.LiroutiToast
+import com.li_routi.core.designsystem.component.LiroutiToastStyle
 import com.li_routi.core.designsystem.theme.LiroutiTheme
 import com.li_routi.feature.home.screen.MyRoutineScreen
 import com.li_routi.feature.home.vm.MyRoutineUiEvent
@@ -135,9 +141,16 @@ fun MyRoutineRoute(
             onRoutineClick = { id ->
                 val routineId = id.toLongOrNull() ?: return@MyRoutineScreen
                 val routine = uiState.routineById(routineId) ?: return@MyRoutineScreen
+                if (routine.templateId != null) {
+                    viewModel.onDefaultRoutineLocked()
+                    return@MyRoutineScreen
+                }
                 editingRoutineId = routineId
                 editName = routine.name
-                editStartTime = LiroutiClockTime.DefaultMorning
+                editStartTime = LiroutiClockTime.fromApiHHmm(
+                    value = routine.startTime,
+                    fallback = LiroutiClockTime.DefaultMorning,
+                )
                 editEndTime = LiroutiClockTime.fromApiHHmm(
                     value = routine.endTime,
                     fallback = LiroutiClockTime.DefaultEvening,
@@ -168,6 +181,22 @@ fun MyRoutineRoute(
                     .fillMaxWidth()
                     .clickable(onClick = viewModel::clearError)
                     .padding(16.dp),
+            )
+        }
+
+        uiState.toastMessage?.let { message ->
+            LiroutiToast(
+                message = message,
+                style = LiroutiToastStyle.Dimmer,
+                onCloseClick = viewModel::clearToast,
+                modifier = Modifier
+                    .align(Alignment.BottomCenter)
+                    .navigationBarsPadding()
+                    .padding(bottom = 92.dp)
+                    .widthIn(max = 332.dp)
+                    .fillMaxWidth()
+                    .height(54.dp),
+                contentPadding = PaddingValues(horizontal = 16.dp, vertical = 16.dp),
             )
         }
     }
@@ -226,7 +255,6 @@ fun MyRoutineRoute(
             name = editName,
             onNameChange = { editName = it.take(20) },
             startTime = editStartTime,
-            // API에 startTime 필드 없음 — UI만 유지, 저장은 endTime만 전송
             onStartTimeChange = { editStartTime = it },
             endTime = editEndTime,
             onEndTimeChange = { editEndTime = it },
@@ -243,6 +271,7 @@ fun MyRoutineRoute(
                 viewModel.onUpdateRoutine(
                     routineId = editingRoutineId!!,
                     name = editName,
+                    startTime = editStartTime.toApiHHmm(),
                     endTime = editEndTime.toApiHHmm(),
                     selectedDayIndexes = editSelectedDays,
                     // UI에서 편집하지 않음 — 기존 값 유지

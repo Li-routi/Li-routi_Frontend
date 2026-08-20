@@ -44,6 +44,9 @@ class CreateMemberRoutinesUseCase(
         if (routines.size > 30) {
             return ResultState.Error("루틴은 최대 30개까지 등록할 수 있습니다.")
         }
+        if (routines.any { !isValidRoutineTimeRange(it.startTime, it.endTime) }) {
+            return ResultState.Error(InvalidRoutineTimeRangeMessage)
+        }
         return repository.createRoutines(routines)
     }
 }
@@ -61,6 +64,9 @@ class UpdateMemberRoutineUseCase(
         }
         if (update.repeatDays.isEmpty()) {
             return ResultState.Error("반복 요일을 선택해 주세요.")
+        }
+        if (!isValidRoutineTimeRange(update.startTime, update.endTime)) {
+            return ResultState.Error(InvalidRoutineTimeRangeMessage)
         }
         return repository.updateRoutine(
             routineId = routineId,

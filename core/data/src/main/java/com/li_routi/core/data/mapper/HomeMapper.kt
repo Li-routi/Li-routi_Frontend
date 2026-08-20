@@ -26,6 +26,7 @@ fun MyRoutineItemResponse.toDomain(): MyRoutine = MyRoutine(
     categoryName = categoryName,
     templateId = templateId,
     name = name,
+    startTime = startTime,
     endTime = endTime,
     repeatDays = repeatDays,
     alarmTime = alarmTime,

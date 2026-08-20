@@ -25,6 +25,7 @@ data class MyRoutine(
     val categoryName: String,
     val templateId: Long?,
     val name: String,
+    val startTime: String? = null,
     val endTime: String?,
     val repeatDays: List<String>,
     val alarmTime: String?,
