@@ -133,6 +133,7 @@ import com.li_routi.core.designsystem.component.LiroutiBadgeColor
 import com.li_routi.core.designsystem.component.LiroutiChevronLeftIcon
 import com.li_routi.core.designsystem.component.LiroutiChevronRightIcon
 import com.li_routi.core.designsystem.component.LiroutiClockTime
+import com.li_routi.core.designsystem.component.LiroutiConfirmDialog
 import com.li_routi.core.designsystem.component.LiroutiDashedAddButton
 import com.li_routi.core.designsystem.component.LiroutiDaySelector
 import com.li_routi.core.designsystem.component.LiroutiPrimaryButton
@@ -370,6 +371,7 @@ fun GroupRoutineRoute(
         onRoomAlarmSettingsClick = viewModel::onRoomAlarmSettingsClick,
         onRoomLockClick = viewModel::onRoomLockClick,
         onRoomNameEditConfirmClick = viewModel::onRoomNameEditConfirmClick,
+        onSettingsFlowCloseClick = viewModel::onSettingsFlowCloseClick,
         onDismissActionMessage = viewModel::onDismissActionMessage,
         modifier = modifier,
     )
@@ -463,6 +465,7 @@ private fun GroupRoutineScreen(
     onRoomNameEditConfirmClick: () -> Unit,
     onDismissActionMessage: () -> Unit = {},
     onTabSelected: (AppBottomTab) -> Unit = {},
+    onSettingsFlowCloseClick: () -> Unit = onBackClick,
     modifier: Modifier = Modifier,
 ) {
     Box(modifier = modifier.fillMaxSize()) {
@@ -541,6 +544,7 @@ private fun GroupRoutineScreen(
             GroupRoutineScreenMode.GroupSettings -> GroupSettingsScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
+                onCloseClick = onSettingsFlowCloseClick,
                 onGroupRoutineManageClick = onGroupRoutineManageClick,
                 onRoomNameEditClick = onRoomNameEditClick,
                 onLeaderSettingsClick = onLeaderSettingsClick,
@@ -553,6 +557,7 @@ private fun GroupRoutineScreen(
             GroupRoutineScreenMode.GroupRoutineManage -> GroupRoutineManageScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
+                onCloseClick = onSettingsFlowCloseClick,
                 onOptionClick = onCreateRoutineOptionClick,
                 onSelectAllClick = onCreateRoutineSelectAllClick,
                 onCategoryClick = onCategoryClick,
@@ -567,18 +572,21 @@ private fun GroupRoutineScreen(
                 roomName = uiState.roomNameInput,
                 onRoomNameChange = onRoomNameChange,
                 onBackClick = onBackClick,
+                onCloseClick = onSettingsFlowCloseClick,
                 onConfirmClick = onRoomNameEditConfirmClick,
             )
 
             GroupRoutineScreenMode.LeaderSettings -> LeaderSettingsScreen(
                 uiState = uiState,
                 onBackClick = onBackClick,
+                onCloseClick = onSettingsFlowCloseClick,
                 onMemberClick = onLeaderMemberClick,
                 onConfirmClick = onLeaderTransferConfirmClick,
             )
 
             GroupRoutineScreenMode.RoomAlarmSettings -> RoomAlarmSettingsScreen(
                 onBackClick = onBackClick,
+                onCloseClick = onSettingsFlowCloseClick,
             )
 
             GroupRoutineScreenMode.CreateRoomName -> CreateRoomNameScreen(
@@ -1446,7 +1454,7 @@ private fun CreateRoutineOptionRow(
                 )
                 Row(horizontalArrangement = Arrangement.spacedBy(6.dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(
-                        text = "마감 ${option.deadline}",
+                        text = option.category,
                         color = LiroutiTheme.colors.labelInfo,
                         style = LiroutiTheme.typography.caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
                     )
@@ -1457,7 +1465,7 @@ private fun CreateRoutineOptionRow(
                             .background(LiroutiTheme.colors.borderStrong),
                     )
                     Text(
-                        text = option.category,
+                        text = "${option.startTime} - ${option.deadline}",
                         color = LiroutiTheme.colors.labelInfo,
                         style = LiroutiTheme.typography.caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
                     )
@@ -2421,7 +2429,7 @@ private fun AvatarStack(
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
-        repeat(memberCount.coerceIn(1, 3)) { index ->
+        repeat(memberCount.coerceIn(1, 6)) { index ->
             val profileImageUrl = profileImageKeys.getOrNull(index)?.takeIf { it.isNotBlank() }
             Box(
                 modifier = Modifier
@@ -2925,7 +2933,7 @@ private fun DetailRoutineTodoRow(
                                 .background(LiroutiTheme.colors.borderStrong),
                         )
                         Text(
-                            text = "마감 ${todo.deadline}",
+                            text = "${todo.startTime} - ${todo.deadline}",
                             color = LiroutiTheme.colors.labelInfo,
                             style = LiroutiTheme.typography.caption,
                             maxLines = 1,
@@ -3133,6 +3141,7 @@ private fun ChatInputBar(
 private fun GroupSettingsScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
+    onCloseClick: () -> Unit = onBackClick,
     onGroupRoutineManageClick: () -> Unit,
     onRoomNameEditClick: () -> Unit,
     onLeaderSettingsClick: () -> Unit,
@@ -3154,7 +3163,7 @@ private fun GroupSettingsScreen(
             showBack = true,
             showClose = true,
             onBackClick = onBackClick,
-            onCloseClick = onBackClick,
+            onCloseClick = onCloseClick,
         )
 
         LazyColumn(
@@ -3234,6 +3243,7 @@ private fun GroupSettingsScreen(
 private fun GroupRoutineManageScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
+    onCloseClick: () -> Unit = onBackClick,
     onOptionClick: (Long) -> Unit,
     onSelectAllClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
@@ -3244,6 +3254,19 @@ private fun GroupRoutineManageScreen(
     onDoneClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    var showExitConfirmDialog by remember { mutableStateOf(false) }
+    var pendingExitAction by remember { mutableStateOf<(() -> Unit)?>(null) }
+    val requestExit: (() -> Unit) -> Unit = { exitAction ->
+        if (uiState.selectedCreateRoutineCount > 0) {
+            pendingExitAction = exitAction
+            showExitConfirmDialog = true
+        } else {
+            exitAction()
+        }
+    }
+
+    BackHandler { requestExit(onBackClick) }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -3253,8 +3276,8 @@ private fun GroupRoutineManageScreen(
             title = "루틴 관리",
             showBack = true,
             showClose = true,
-            onBackClick = onBackClick,
-            onCloseClick = onBackClick,
+            onBackClick = { requestExit(onBackClick) },
+            onCloseClick = { requestExit(onCloseClick) },
         )
 
         Box(modifier = Modifier.weight(1f)) {
@@ -3316,6 +3339,24 @@ private fun GroupRoutineManageScreen(
             PrimaryButton(text = "완료", enabled = true, onClick = onDoneClick)
         }
     }
+
+    if (showExitConfirmDialog) {
+        LiroutiConfirmDialog(
+            title = "화면을 나가시겠어요?",
+            message = "작성 중인 내용이 사라져요.",
+            confirmText = "나가기",
+            isConfirmDestructive = false,
+            onConfirm = {
+                showExitConfirmDialog = false
+                pendingExitAction?.invoke()
+                pendingExitAction = null
+            },
+            onDismissRequest = {
+                showExitConfirmDialog = false
+                pendingExitAction = null
+            },
+        )
+    }
 }
 
 @Composable
@@ -3323,6 +3364,7 @@ private fun RoomNameEditScreen(
     roomName: String,
     onRoomNameChange: (String) -> Unit,
     onBackClick: () -> Unit,
+    onCloseClick: () -> Unit = onBackClick,
     onConfirmClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -3336,7 +3378,7 @@ private fun RoomNameEditScreen(
             showBack = true,
             showClose = true,
             onBackClick = onBackClick,
-            onCloseClick = onBackClick,
+            onCloseClick = onCloseClick,
         )
 
         Column(
@@ -3372,6 +3414,7 @@ private fun RoomNameEditScreen(
 private fun LeaderSettingsScreen(
     uiState: GroupRoutineUiState,
     onBackClick: () -> Unit,
+    onCloseClick: () -> Unit = onBackClick,
     onMemberClick: (Long) -> Unit,
     onConfirmClick: () -> Unit,
     modifier: Modifier = Modifier,
@@ -3386,7 +3429,7 @@ private fun LeaderSettingsScreen(
             showBack = true,
             showClose = true,
             onBackClick = onBackClick,
-            onCloseClick = onBackClick,
+            onCloseClick = onCloseClick,
         )
 
         LazyColumn(
@@ -3487,6 +3530,7 @@ private fun LeaderMemberRow(
 @Composable
 private fun RoomAlarmSettingsScreen(
     onBackClick: () -> Unit,
+    onCloseClick: () -> Unit = onBackClick,
     modifier: Modifier = Modifier,
 ) {
     Column(
@@ -3499,7 +3543,7 @@ private fun RoomAlarmSettingsScreen(
             showBack = true,
             showClose = true,
             onBackClick = onBackClick,
-            onCloseClick = onBackClick,
+            onCloseClick = onCloseClick,
         )
 
         LazyColumn(
@@ -4203,7 +4247,7 @@ private fun TodoRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
-                        text = "마감 ${todo.deadline}",
+                        text = "${todo.startTime} - ${todo.deadline}",
                         color = LiroutiTheme.colors.labelInfo,
                         style = LiroutiTheme.typography.caption,
                         maxLines = 1,
@@ -4287,10 +4331,7 @@ private fun CertificationMemberChip(
     selected: Boolean,
     onClick: () -> Unit,
 ) {
-    Text(
-        text = if (selected) "✓ $text" else text,
-        color = if (selected) LiroutiTheme.colors.labelReverse else LiroutiTheme.colors.labelDefault,
-        style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+    Row(
         modifier = Modifier
             .height(32.dp)
             .clip(RoundedCornerShape(40.dp))
@@ -4301,8 +4342,30 @@ private fun CertificationMemberChip(
                 shape = RoundedCornerShape(40.dp),
             )
             .clickable(onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 7.dp),
-    )
+            .padding(horizontal = 10.dp),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Box(
+            modifier = Modifier.width(10.dp),
+            contentAlignment = Alignment.Center,
+        ) {
+            if (selected) {
+                Text(
+                    text = "✓",
+                    color = LiroutiTheme.colors.labelReverse,
+                    style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+                )
+            }
+        }
+        Text(
+            text = text,
+            color = if (selected) LiroutiTheme.colors.labelReverse else LiroutiTheme.colors.labelDefault,
+            style = LiroutiTheme.typography.body3.copy(fontWeight = FontWeight.Medium),
+            textAlign = TextAlign.Center,
+            modifier = Modifier.padding(horizontal = 4.dp),
+        )
+        Spacer(modifier = Modifier.width(10.dp))
+    }
 }
 
 @Composable
