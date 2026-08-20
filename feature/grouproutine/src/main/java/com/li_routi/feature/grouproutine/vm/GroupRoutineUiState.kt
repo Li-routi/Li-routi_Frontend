@@ -1,6 +1,7 @@
 package com.li_routi.feature.grouproutine.vm
 
 import com.li_routi.core.common.ui.routine.CategoryColor
+import com.li_routi.core.domain.grouproutine.GroupJoinPreview
 import com.li_routi.core.domain.shop.AvatarLayer
 
 import com.li_routi.feature.grouproutine.component.ChatEmoticonUiModel
@@ -131,6 +132,8 @@ data class GroupRoutineUiState(
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",
     val groupInviteCode: String? = null,
+    val isJoinPreviewDialogVisible: Boolean = false,
+    val joinPreview: GroupJoinPreview? = null,
     val unreadChatCount: Int = 0,
     val categoryColors: Map<String, CategoryColor> = emptyMap(),
     val selectedCategory: String = "전체",

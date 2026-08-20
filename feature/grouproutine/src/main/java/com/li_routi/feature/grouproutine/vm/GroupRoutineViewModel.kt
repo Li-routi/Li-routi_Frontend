@@ -146,6 +146,7 @@ class GroupRoutineViewModel(
     private var groupRoutineCategoriesJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
     private var unreadRoutineVerificationsJob: Job? = null
+    private var joinPreviewJob: Job? = null
 
     private var backendGroupId: Long? = null
 
@@ -335,6 +336,7 @@ class GroupRoutineViewModel(
     fun onGroupRoutineTabExit() {
         backendGroupId = null
         cancelGroupScopedJobs()
+        joinPreviewJob?.cancel()
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.List,
@@ -345,6 +347,8 @@ class GroupRoutineViewModel(
                 showOnlyMyCertifications = false,
                 selectedCertificationMemberId = null,
                 isNewCertificationDialogVisible = false,
+                isJoinPreviewDialogVisible = false,
+                joinPreview = null,
                 actionMessage = null,
             )
         }
@@ -356,6 +360,11 @@ class GroupRoutineViewModel(
     fun onBackClick() {
         val leavingDetail = _uiState.value.screenMode == GroupRoutineScreenMode.Detail
         val returningToDetail = _uiState.value.screenMode == GroupRoutineScreenMode.GroupSettings
+        // 초대코드 입력 화면을 벗어나면 진행 중이던 Preview 조회는 더 이상 의미가 없다 — 취소하지 않으면
+        // 응답이 늦게 와서 이미 나간 화면 위에 참여 확인 팝업을 다시 띄우는 문제가 있었다.
+        if (_uiState.value.screenMode == GroupRoutineScreenMode.JoinByCode) {
+            joinPreviewJob?.cancel()
+        }
         _uiState.update { state ->
             when (state.screenMode) {
                 GroupRoutineScreenMode.Detail -> state.copy(
@@ -400,6 +409,8 @@ class GroupRoutineViewModel(
                 GroupRoutineScreenMode.JoinByCode -> state.copy(
                     screenMode = GroupRoutineScreenMode.List,
                     inviteCodeInput = "",
+                    isJoinPreviewDialogVisible = false,
+                    joinPreview = null,
                     actionMessage = null,
                 )
 
@@ -1848,6 +1859,7 @@ class GroupRoutineViewModel(
         }
     }
 
+    /** 참여 전, 입력한 초대코드로 그룹 미리보기를 받아와 확인 팝업을 띄운다. 실제 가입은 [onJoinPreviewConfirmClick]에서 한다. */
     fun onInviteCodeConfirmClick() {
         val inviteCode = _uiState.value.inviteCodeInput.trim()
         if (inviteCode.isBlank()) {
@@ -1857,21 +1869,50 @@ class GroupRoutineViewModel(
         if (_uiState.value.isSubmitting) return
 
         _uiState.update { it.copy(isSubmitting = true) }
+        joinPreviewJob?.cancel()
+        joinPreviewJob = viewModelScope.launch {
+            try {
+                when (val preview = getGroupJoinPreviewUseCase(inviteCode)) {
+                    is ResultState.Success -> {
+                        // 응답이 오는 사이 뒤로가기 등으로 초대코드 입력 화면을 벗어났다면(joinPreviewJob이
+                        // onBackClick/onGroupRoutineTabExit에서 취소됨) 여기 도달하지 않는다. 다만 취소가
+                        // 경합해서 늦게 도달하는 경우까지 대비해 화면 상태로도 한 번 더 확인한다.
+                        if (_uiState.value.screenMode != GroupRoutineScreenMode.JoinByCode) return@launch
+                        if (!preview.data.joinable) {
+                            _uiState.update {
+                                it.copy(actionMessage = preview.data.unavailableReason.toJoinUnavailableMessage())
+                            }
+                            return@launch
+                        }
+                        _uiState.update {
+                            it.copy(isJoinPreviewDialogVisible = true, joinPreview = preview.data)
+                        }
+                    }
+
+                    is ResultState.Error -> _uiState.update {
+                        it.copy(actionMessage = preview.message.toGroupJoinMessage())
+                    }
+                    ResultState.Loading -> Unit
+                }
+            } finally {
+                _uiState.update { it.copy(isSubmitting = false) }
+            }
+        }
+    }
+
+    fun onDismissJoinPreviewDialog() {
+        _uiState.update { it.copy(isJoinPreviewDialogVisible = false, joinPreview = null) }
+    }
+
+    /** 미리보기 팝업에서 "참여하기"를 눌렀을 때 실제 가입 API를 호출한다. */
+    fun onJoinPreviewConfirmClick() {
+        val previewData = _uiState.value.joinPreview ?: return
+        val inviteCode = _uiState.value.inviteCodeInput.trim()
+        if (inviteCode.isBlank() || _uiState.value.isSubmitting) return
+
+        _uiState.update { it.copy(isSubmitting = true) }
         viewModelScope.launch {
             try {
-                val preview = getGroupJoinPreviewUseCase(inviteCode)
-                if (preview is ResultState.Error) {
-                    _uiState.update { it.copy(actionMessage = preview.message.toGroupJoinMessage()) }
-                    return@launch
-                }
-                if (preview is ResultState.Success && !preview.data.joinable) {
-                    _uiState.update {
-                        it.copy(actionMessage = preview.data.unavailableReason ?: "참여할 수 없는 그룹이에요.")
-                    }
-                    return@launch
-                }
-
-                val previewData = (preview as? ResultState.Success)?.data
                 when (val result = joinGroupUseCase(inviteCode)) {
                     is ResultState.Success -> {
                         val joined = result.data
@@ -1880,8 +1921,8 @@ class GroupRoutineViewModel(
                             id = joined.groupId,
                             title = joined.name,
                             lastActiveLabel = "\uBC29\uAE08 \uC804 \uD65C\uB3D9",
-                            memberCount = previewData?.activeMemberCount ?: 1,
-                            routineCount = previewData?.totalRoutineCount ?: 0,
+                            memberCount = previewData.activeMemberCount,
+                            routineCount = previewData.totalRoutineCount,
                             statusLabel = "\uC9C4\uD589\uC911",
                             isCompleted = false,
                             todayCompletedCount = 0,
@@ -1899,6 +1940,8 @@ class GroupRoutineViewModel(
                                 inviteCodeInput = "",
                                 isCurrentUserLeader = false,
                                 isConfirmedOwner = false,
+                                isJoinPreviewDialogVisible = false,
+                                joinPreview = null,
                                 actionMessage = "그룹에 참여했어요.",
                             )
                         }
@@ -1910,7 +1953,11 @@ class GroupRoutineViewModel(
                     }
 
                     is ResultState.Error -> _uiState.update {
-                        it.copy(actionMessage = result.message.toGroupJoinMessage())
+                        it.copy(
+                            isJoinPreviewDialogVisible = false,
+                            joinPreview = null,
+                            actionMessage = result.message.toGroupJoinMessage(),
+                        )
                     }
                     ResultState.Loading -> Unit
                 }
@@ -2724,6 +2771,15 @@ private fun String.toGroupJoinMessage(): String {
         -> "잠겨 있어 참여할 수 없는 그룹방이에요."
         else -> this
     }
+}
+
+/** 참여 Preview의 unavailableReason 코드를 사용자에게 보여줄 문구로 바꾼다. 알 수 없는 코드는 기본 문구로 대체한다. */
+private fun String?.toJoinUnavailableMessage(): String = when (this) {
+    "ALREADY_ACTIVE_MEMBER" -> "이미 참여 중인 그룹이에요."
+    "KICKED_MEMBER" -> "강퇴된 그룹에는 다시 참여할 수 없어요."
+    "MEMBER_GROUP_LIMIT_EXCEEDED" -> "참여 가능한 그룹은 최대 6개예요."
+    "GROUP_MEMBER_LIMIT_EXCEEDED" -> "그룹 인원이 가득 찼어요. (최대 6명)"
+    else -> "참여할 수 없는 그룹이에요."
 }
 
 private val KoreanDayToRepeatDay = mapOf(
