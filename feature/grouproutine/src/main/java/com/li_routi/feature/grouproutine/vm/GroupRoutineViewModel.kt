@@ -146,6 +146,7 @@ class GroupRoutineViewModel(
     private var groupRoutineCategoriesJob: Job? = null
     private var latestChatReadTarget: ChatReadTarget? = null
     private var unreadRoutineVerificationsJob: Job? = null
+    private var joinPreviewJob: Job? = null
 
     private var backendGroupId: Long? = null
 
@@ -311,6 +312,7 @@ class GroupRoutineViewModel(
     fun onGroupRoutineTabExit() {
         backendGroupId = null
         cancelGroupScopedJobs()
+        joinPreviewJob?.cancel()
         _uiState.update {
             it.copy(
                 screenMode = GroupRoutineScreenMode.List,
@@ -334,6 +336,11 @@ class GroupRoutineViewModel(
     fun onBackClick() {
         val leavingDetail = _uiState.value.screenMode == GroupRoutineScreenMode.Detail
         val returningToDetail = _uiState.value.screenMode == GroupRoutineScreenMode.GroupSettings
+        // 초대코드 입력 화면을 벗어나면 진행 중이던 Preview 조회는 더 이상 의미가 없다 — 취소하지 않으면
+        // 응답이 늦게 와서 이미 나간 화면 위에 참여 확인 팝업을 다시 띄우는 문제가 있었다.
+        if (_uiState.value.screenMode == GroupRoutineScreenMode.JoinByCode) {
+            joinPreviewJob?.cancel()
+        }
         _uiState.update { state ->
             when (state.screenMode) {
                 GroupRoutineScreenMode.Detail -> state.copy(
@@ -1838,10 +1845,15 @@ class GroupRoutineViewModel(
         if (_uiState.value.isSubmitting) return
 
         _uiState.update { it.copy(isSubmitting = true) }
-        viewModelScope.launch {
+        joinPreviewJob?.cancel()
+        joinPreviewJob = viewModelScope.launch {
             try {
                 when (val preview = getGroupJoinPreviewUseCase(inviteCode)) {
                     is ResultState.Success -> {
+                        // 응답이 오는 사이 뒤로가기 등으로 초대코드 입력 화면을 벗어났다면(joinPreviewJob이
+                        // onBackClick/onGroupRoutineTabExit에서 취소됨) 여기 도달하지 않는다. 다만 취소가
+                        // 경합해서 늦게 도달하는 경우까지 대비해 화면 상태로도 한 번 더 확인한다.
+                        if (_uiState.value.screenMode != GroupRoutineScreenMode.JoinByCode) return@launch
                         if (!preview.data.joinable) {
                             _uiState.update {
                                 it.copy(actionMessage = preview.data.unavailableReason.toJoinUnavailableMessage())

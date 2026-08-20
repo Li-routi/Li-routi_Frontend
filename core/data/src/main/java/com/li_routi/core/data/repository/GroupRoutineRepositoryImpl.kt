@@ -324,15 +324,21 @@ private fun HttpException.toInviteCodeApiException(): ApiException {
     val serverCode = errorJson?.get("code")?.takeIf { !it.isJsonNull }?.asString
     val serverMessage = errorJson?.get("message")?.takeIf { !it.isJsonNull }?.asString?.takeIf(String::isNotBlank)
 
-    val fallbackMessage = when {
-        serverCode == "GROUP403_5" -> "잠겨 있어 참여할 수 없는 그룹방이에요."
-        serverCode == "GROUP403_1" -> "비활성화된 그룹이라 참여할 수 없어요."
-        code() == 403 -> "참여할 수 없는 그룹이에요."
-        else -> "요청에 실패했어요. (HTTP ${code()})"
+    // GROUP403_5/GROUP403_1은 서버 message가 비어 있지 않아도 고정 안내 문구를 그대로 보여준다 —
+    // 서버 메시지는 영문이거나 상황을 뭉뚱그린 문구일 수 있어, 잠긴/비활성 그룹은 항상 명확한
+    // 한국어 사유를 우선한다. 그 외 코드만 서버 메시지를 우선 쓰고, 없으면 기본 문구로 대체한다.
+    val message = when (serverCode) {
+        "GROUP403_5" -> "잠겨 있어 참여할 수 없는 그룹방이에요."
+        "GROUP403_1" -> "비활성화된 그룹이라 참여할 수 없어요."
+        else -> serverMessage ?: if (code() == 403) {
+            "참여할 수 없는 그룹이에요."
+        } else {
+            "요청에 실패했어요. (HTTP ${code()})"
+        }
     }
 
     return ApiException(
-        message = serverMessage ?: fallbackMessage,
+        message = message,
         statusCode = code(),
         cause = this,
     )
