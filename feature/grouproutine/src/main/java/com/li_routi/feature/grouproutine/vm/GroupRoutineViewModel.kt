@@ -1199,17 +1199,18 @@ class GroupRoutineViewModel(
 
     private fun markNewCertificationsRead(groupId: Long, verificationIds: List<Long>) {
         viewModelScope.launch {
+            var firstErrorMessage: String? = null
             verificationIds.distinct().forEach { verificationId ->
                 when (val result = markGroupRoutineVerificationsReadUseCase(groupId, verificationId)) {
                     is ResultState.Success -> Unit
-                    is ResultState.Error -> {
-                        if (currentGroupId() == groupId) {
-                            _uiState.update { it.copy(actionMessage = result.message) }
-                        }
-                        return@launch
+                    is ResultState.Error -> if (firstErrorMessage == null) {
+                        firstErrorMessage = result.message
                     }
                     ResultState.Loading -> Unit
                 }
+            }
+            if (firstErrorMessage != null && currentGroupId() == groupId) {
+                _uiState.update { it.copy(actionMessage = firstErrorMessage) }
             }
         }
     }
