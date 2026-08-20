@@ -393,7 +393,7 @@ internal fun List<String>.toDayIndexes(): Set<Int> =
 internal fun CreatedRoutine.toDayIndexes(): Set<Int> = repeatDays.toDayIndexes()
 
 internal fun CreatedRoutine.deadlineDisplay(): String =
-    formatRoutineTimeRange(startTime.orDefaultPersonalStartTime(), endTime)
+    formatPersonalRoutineTimeRange(startTime = startTime, endTime = endTime)
 
 internal fun CreatedRoutine.alarmDisplay(): String =
     alarmTime?.trim()?.takeIf { it.isNotEmpty() } ?: "없음"
@@ -404,7 +404,7 @@ private fun CreatedRoutine.toChecklistItem(): RoutineChecklistItem = RoutineChec
     id = routineId.toString(),
     name = name,
     checked = completedToday,
-    deadlineText = formatRoutineTimeRange(startTime.orDefaultPersonalStartTime(), endTime),
+    deadlineText = formatPersonalRoutineTimeRange(startTime = startTime, endTime = endTime),
     category = categoryName,
     repeatLabel = repeatDays.toRepeatLabel(),
 )

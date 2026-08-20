@@ -76,7 +76,7 @@ fun RoutineChecklistItemUiModel.withCategoryColor(
 private fun MyRoutine.toChecklistItem(): RoutineChecklistItemUiModel = RoutineChecklistItemUiModel(
     id = "my_$routineId",
     title = name,
-    dueLabel = formatRoutineTimeRange(startTime.orDefaultPersonalStartTime(), endTime),
+    dueLabel = formatPersonalRoutineTimeRange(startTime = startTime, endTime = endTime),
     categoryLabel = categoryName.trim(),
     isDone = completedToday,
     roomLabel = null,
@@ -117,6 +117,25 @@ internal const val DefaultPersonalStartTimeHHmm = "08:00"
 
 internal fun String?.orDefaultPersonalStartTime(): String =
     this?.trim()?.takeIf { it.isNotEmpty() } ?: DefaultPersonalStartTimeHHmm
+
+/**
+ * 개인 루틴의 API 시간 값을 목록용 `HH:mm ~ HH:mm` 문구로 변환한다.
+ *
+ * 기존 루틴처럼 [startTime]이 없으면 화면에만 오전 8시를 표시한다. 마감 시각이 비어 있는
+ * 이전 응답에는 서버 생성 기본값과 같은 23:59를 표시한다. 원본 nullable 값은 변경하지 않으므로
+ * 서버의 시작 제한 없음 정책과 클라이언트 인증 가능 시간 계산에는 영향을 주지 않는다.
+ *
+ * @param startTime API가 전달한 nullable 시작 시각.
+ * @param endTime API가 전달한 nullable 종료 시각.
+ * @return 개인 루틴 목록에 표시할 시간 범위 문구.
+ */
+internal fun formatPersonalRoutineTimeRange(
+    startTime: String?,
+    endTime: String?,
+): String {
+    val resolvedEndTime = endTime?.trim()?.takeIf { it.isNotEmpty() } ?: "23:59"
+    return "${startTime.orDefaultPersonalStartTime()} ~ $resolvedEndTime"
+}
 
 /** API `HH:mm` → UI `시작 - 마감`. 시작이 없으면 `마감 HH:mm`. */
 fun formatRoutineTimeRange(startTime: String?, endTime: String?): String {
