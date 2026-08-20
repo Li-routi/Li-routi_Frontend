@@ -76,7 +76,7 @@ fun RoutineChecklistItemUiModel.withCategoryColor(
 private fun MyRoutine.toChecklistItem(): RoutineChecklistItemUiModel = RoutineChecklistItemUiModel(
     id = "my_$routineId",
     title = name,
-    dueLabel = endTime.toDueLabel(),
+    dueLabel = formatRoutineTimeRange(startTime.orDefaultPersonalStartTime(), endTime),
     categoryLabel = categoryName.trim(),
     isDone = completedToday,
     roomLabel = null,
@@ -91,7 +91,7 @@ private fun MyRoutine.toChecklistItem(): RoutineChecklistItemUiModel = RoutineCh
 private fun GroupRoutine.toChecklistItem(): RoutineChecklistItemUiModel = RoutineChecklistItemUiModel(
     id = "group_${groupId}_$routineId",
     title = title,
-    dueLabel = scheduledEndTime.toDueLabel(),
+    dueLabel = formatRoutineTimeRange(scheduledStartTime, scheduledEndTime),
     categoryLabel = categoryName.trim(),
     isDone = status.isDone,
     roomLabel = groupName.trim(),
@@ -112,9 +112,20 @@ private fun categoryColorFromId(categoryId: Long): CategoryColor {
     return colors[index.toInt()]
 }
 
-/** API `HH:mm` → UI `마감 HH:mm`. 값이 없으면 빈 문자열. */
-private fun String?.toDueLabel(): String {
-    val time = this?.trim().orEmpty()
-    if (time.isEmpty()) return ""
-    return if (time.startsWith("마감")) time else "마감 $time"
+/** 개인 루틴 시트 기본 시작(오전 8시)과 동일. 값이 없으면 이 시각으로 둔다. */
+internal const val DefaultPersonalStartTimeHHmm = "08:00"
+
+internal fun String?.orDefaultPersonalStartTime(): String =
+    this?.trim()?.takeIf { it.isNotEmpty() } ?: DefaultPersonalStartTimeHHmm
+
+/** API `HH:mm` → UI `시작 - 마감`. 시작이 없으면 `마감 HH:mm`. */
+fun formatRoutineTimeRange(startTime: String?, endTime: String?): String {
+    val start = startTime?.trim().orEmpty()
+    val end = endTime?.trim().orEmpty().removePrefix("마감").trim()
+    return when {
+        start.isNotEmpty() && end.isNotEmpty() -> "$start - $end"
+        end.isNotEmpty() -> "마감 $end"
+        start.isNotEmpty() -> start
+        else -> ""
+    }
 }
