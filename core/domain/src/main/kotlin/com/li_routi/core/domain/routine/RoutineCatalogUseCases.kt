@@ -47,6 +47,15 @@ class CreateMemberRoutinesUseCase(
         if (routines.any { !isValidRoutineTimeRange(it.startTime, it.endTime) }) {
             return ResultState.Error(InvalidRoutineTimeRangeMessage)
         }
+        if (routines.any { routine ->
+                !isValidPersonalRoutineTimeRange(
+                    startTime = routine.startTime,
+                    endTime = routine.endTime ?: "23:59",
+                )
+            }
+        ) {
+            return ResultState.Error("시작 시각은 마감 시각보다 빨라야 합니다.")
+        }
         return repository.createRoutines(routines)
     }
 }
@@ -67,6 +76,9 @@ class UpdateMemberRoutineUseCase(
         }
         if (!isValidRoutineTimeRange(update.startTime, update.endTime)) {
             return ResultState.Error(InvalidRoutineTimeRangeMessage)
+        }
+        if (!isValidPersonalRoutineTimeRange(update.startTime, update.endTime)) {
+            return ResultState.Error("시작 시각은 마감 시각보다 빨라야 합니다.")
         }
         return repository.updateRoutine(
             routineId = routineId,
