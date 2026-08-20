@@ -67,6 +67,7 @@ data class GroupTodoUiModel(
     val category: String,
     val isDone: Boolean,
     val categoryColor: CategoryColor? = null,
+    val startTime: String = "08:00",
 )
 
 data class CertificationPostUiModel(
@@ -127,7 +128,6 @@ data class GroupRoutineUiState(
     val showOnlyMyCertifications: Boolean = false,
     val selectedCertificationMemberId: Long? = null,
     val isNewCertificationDialogVisible: Boolean = false,
-    val newCertificationLastReadId: Long? = null,
     val searchInput: String = "",
     val roomNameInput: String = "",
     val inviteCodeInput: String = "",

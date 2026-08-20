@@ -427,6 +427,17 @@ class GroupRoutineViewModel(
         if (returningToDetail) refreshSelectedGroup()
     }
 
+    fun onSettingsFlowCloseClick() {
+        _uiState.update {
+            it.copy(
+                screenMode = GroupRoutineScreenMode.Detail,
+                pendingLeaderMemberId = null,
+                actionMessage = null,
+            )
+        }
+        refreshSelectedGroup()
+    }
+
     fun onCreateFlowCloseClick() {
         _uiState.update {
             it.copy(
@@ -1173,52 +1184,50 @@ class GroupRoutineViewModel(
 
     fun onDismissNewCertificationDialog() {
         val groupId = currentGroupId()
-        val lastReadId = _uiState.value.newCertificationLastReadId
-            ?: _uiState.value.newCertifications.maxOfOrNull { it.id }
+        val verificationIds = _uiState.value.newCertifications.map { it.id }
         _uiState.update {
             it.copy(
                 isNewCertificationDialogVisible = false,
                 newCertifications = emptyList(),
-                newCertificationLastReadId = null,
             )
         }
 
-        if (groupId == null || lastReadId == null) return
+        if (groupId == null || verificationIds.isEmpty()) return
 
-        markNewCertificationsRead(groupId, lastReadId)
+        markNewCertificationsRead(groupId, verificationIds)
     }
 
-    private fun markNewCertificationsRead(groupId: Long, lastReadId: Long) {
+    private fun markNewCertificationsRead(groupId: Long, verificationIds: List<Long>) {
         viewModelScope.launch {
-            when (val result = markGroupRoutineVerificationsReadUseCase(groupId, lastReadId)) {
-                is ResultState.Success -> Unit
-                is ResultState.Error -> {
-                    if (currentGroupId() == groupId) {
-                        _uiState.update { it.copy(actionMessage = result.message) }
+            var firstErrorMessage: String? = null
+            verificationIds.distinct().forEach { verificationId ->
+                when (val result = markGroupRoutineVerificationsReadUseCase(groupId, verificationId)) {
+                    is ResultState.Success -> Unit
+                    is ResultState.Error -> if (firstErrorMessage == null) {
+                        firstErrorMessage = result.message
                     }
+                    ResultState.Loading -> Unit
                 }
-                ResultState.Loading -> Unit
+            }
+            if (firstErrorMessage != null && currentGroupId() == groupId) {
+                _uiState.update { it.copy(actionMessage = firstErrorMessage) }
             }
         }
     }
 
     private fun advanceNewCertification(verificationId: Long) {
         val groupId = currentGroupId()
-        val lastReadId = _uiState.value.newCertificationLastReadId
-        var finished = false
 
         _uiState.update { state ->
             val remaining = state.newCertifications.filterNot { it.id == verificationId }
-            finished = remaining.isEmpty()
             state.copy(
                 newCertifications = remaining,
                 isNewCertificationDialogVisible = remaining.isNotEmpty(),
-                newCertificationLastReadId = if (remaining.isEmpty()) null else state.newCertificationLastReadId,
             )
         }
 
-        if (finished && groupId != null && lastReadId != null) {
-            markNewCertificationsRead(groupId, lastReadId)
+        if (groupId != null) {
+            markNewCertificationsRead(groupId, listOf(verificationId))
         }
     }
 
@@ -1276,7 +1285,6 @@ class GroupRoutineViewModel(
                         it.copy(
                             newCertifications = unreadCertifications,
                             isNewCertificationDialogVisible = unreadCertifications.isNotEmpty(),
-                            newCertificationLastReadId = unreadCertifications.maxOfOrNull { certification -> certification.id },
                         )
                     }
                 }
@@ -1729,6 +1737,7 @@ class GroupRoutineViewModel(
                                 category = routine.categoryName,
                                 isDone = isCompletedOnServer || key in locallyCompletedRoutineKeys,
                                 categoryColor = _uiState.value.categoryColors[routine.categoryName],
+                                startTime = routine.scheduledStartTime,
                             )
                         }
                     _uiState.update { state ->
@@ -2621,6 +2630,7 @@ class GroupRoutineViewModel(
                                 category = option.category,
                                 isDone = false,
                                 categoryColor = option.categoryColor ?: _uiState.value.categoryColors[option.category],
+                                startTime = option.startTime,
                             )
                         }
                         _uiState.update {
