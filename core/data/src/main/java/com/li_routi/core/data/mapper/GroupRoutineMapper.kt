@@ -116,6 +116,8 @@ fun GroupJoinPreviewResponse.toDomain(): GroupJoinPreview = GroupJoinPreview(
     activeMemberCount = activeMemberCount,
     maxMemberCount = maxMemberCount,
     totalRoutineCount = totalRoutineCount,
+    // 개인/그룹 구성원 아바타와 같은 스키마라 ShopMapper의 toAvatarLayers()를 그대로 재사용함
+    memberAvatars = members.orEmpty().map { it.avatar?.layers.toAvatarLayers() },
     joinable = joinable,
     unavailableReason = unavailableReason,
 )
