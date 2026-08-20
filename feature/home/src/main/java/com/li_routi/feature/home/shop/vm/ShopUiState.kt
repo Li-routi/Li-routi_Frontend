@@ -44,8 +44,9 @@ enum class ShopMainTab {
  */
 data class ShopUiState(
     val nickname: String = "닉네임",
-    val coinBalance: Int = 450,
-    val gemBalance: Int = 30,
+    /** 서버 조회 전엔 null — 임의의 기본값을 보여주면 실제 잔액으로 바뀌는 순간 깜빡여서 null로 "아직 모름"을 표현한다. */
+    val coinBalance: Int? = null,
+    val gemBalance: Int? = null,
     /** 상위 탭. "의상"일 때만 [categories] 하위 필터가 보인다. 기본은 "캐릭터" */
     val selectedMainTab: ShopMainTab = ShopMainTab.CHARACTER,
     /** 서버가 내려준 의상 하위 필터. 받은 순서대로 그린다 */
@@ -119,13 +120,13 @@ data class ShopUiState(
     val purchaseTopazTotal: Int
         get() = purchaseTargets.filter { it.currency == "TOPAZ" }.sumOf { it.price }
 
-    /** 블루젬(GEM)이 모자란지 — 부족분 계산에도 씀 */
+    /** 블루젬(GEM)이 모자란지 — 부족분 계산에도 씀. 잔액을 아직 모르면(null) 구매 자체가 불가능하니 부족으로 본다. */
     val isGemShort: Boolean
-        get() = purchaseGemTotal > gemBalance
+        get() = purchaseGemTotal > (gemBalance ?: 0)
 
     /** 오렌지젬(TOPAZ)이 모자란지 — 부족분 계산에도 씀 */
     val isTopazShort: Boolean
-        get() = purchaseTopazTotal > coinBalance
+        get() = purchaseTopazTotal > (coinBalance ?: 0)
 
     /**
      * 캐릭터 카드에 지금 그릴 레이어. 미리보기(안 산 아이템, 안 고른 캐릭터)를 얹어야 해서
@@ -148,9 +149,17 @@ sealed interface ShopUiEvent {
     data object NavigateBack : ShopUiEvent
     /**
      * 잔액 chip 탭 → 재화 구매 화면.
+     *
+     * 여기서 이미 알고 있는 잔액을 실어 보낸다 — 재화 구매 화면이 처음부터 다시 서버에 물어보면
+     * 응답 오는 동안 기본값(더미)이 잠깐 보였다가 바뀌는 깜빡임이 생긴다.
      * @param tabIndex 0 = 주황보석, 1 = 파란보석
      */
-    data class NavigateToCurrencyShop(val tabIndex: Int = 0) : ShopUiEvent
+    data class NavigateToCurrencyShop(
+        val tabIndex: Int = 0,
+        /** 상점이 아직 조회 전이면 null — 여기서 0으로 바꾸면 재화상점이 "모름" 대신 진짜 0으로 잘못 표시한다. */
+        val coinBalance: Int?,
+        val gemBalance: Int?,
+    ) : ShopUiEvent
     /** 하단 저장 버튼 탭. API 연동 전: ShoppingRoute에서 no-op. */
     data object SaveSelectedItems : ShopUiEvent
 }

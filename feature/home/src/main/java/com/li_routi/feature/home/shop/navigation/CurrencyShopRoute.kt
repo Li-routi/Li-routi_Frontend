@@ -36,13 +36,28 @@ fun CurrencyShopRoute(
     onEvent: (CurrencyShopUiEvent) -> Unit = {},
     modifier: Modifier = Modifier,
     initialTabIndex: Int = 0,
+    /** 호출부(상점 화면)가 이미 받아온 잔액. null이면 상점도 아직 조회 전이라는 뜻. */
+    initialCoinBalance: Int? = null,
+    initialGemBalance: Int? = null,
     viewModel: CurrencyShopViewModel = viewModel {
-        CurrencyShopViewModel(initialState = CurrencyShopUiState())
+        CurrencyShopViewModel(
+            initialState = CurrencyShopUiState(
+                coinBalance = initialCoinBalance,
+                gemBalance = initialGemBalance,
+            ),
+        )
     },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val paymentLauncher = LocalPaymentLauncher.current
     val setPaymentResultHandler = LocalPaymentResultHandlerSetter.current
+
+    // viewModel { } 팩토리는 이 컴포저블 트리가 사라졌다 다시 나타나도(showCurrencyShop 토글) 같은
+    // ViewModelStoreOwner를 쓰면 재실행되지 않아, 재진입 시 새 잔액이 무시된 채 옛 값이 남을 수 있다.
+    // 재진입마다 명시적으로 반영한다.
+    LaunchedEffect(Unit) {
+        viewModel.syncKnownBalances(initialCoinBalance, initialGemBalance)
+    }
 
     // 결제 결과는 Activity가 받아서 넘겨줌 — 화면을 벗어나면 해제해야 다른 화면으로 새지 않음
     DisposableEffect(viewModel, setPaymentResultHandler) {

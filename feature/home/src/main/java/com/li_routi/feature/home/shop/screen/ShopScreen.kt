@@ -70,8 +70,8 @@ private val ShopMainTabLabels = listOf("캐릭터", "의상")
 fun ShopScreen(
     actions: ShopScreenActions,
     nickname: String = "닉네임",
-    coinBalance: Int = 450,
-    gemBalance: Int = 30,
+    coinBalance: Int? = null,
+    gemBalance: Int? = null,
     selectedMainTab: ShopMainTab = ShopMainTab.CHARACTER,
     categories: List<ShopCategoryUiModel> = emptyList(),
     equipped: Map<String, EquippedUiModel> = emptyMap(),

@@ -46,8 +46,8 @@ private const val TabBlue = 1
 @Composable
 fun CurrencyShopScreen(
     actions: CurrencyShopScreenActions,
-    coinBalance: Int = 450,
-    gemBalance: Int = 30,
+    coinBalance: Int? = null,
+    gemBalance: Int? = null,
     orangeProducts: List<CurrencyProductUiModel> = SampleOrangeGemProducts,
     blueProducts: List<CurrencyProductUiModel> = SampleBlueGemProducts,
     selectedProductId: String? = null,

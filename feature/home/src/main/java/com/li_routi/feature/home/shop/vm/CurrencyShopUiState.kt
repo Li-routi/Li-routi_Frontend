@@ -14,8 +14,9 @@ import com.li_routi.feature.home.shop.component.CurrencyProductUiModel
  * 교환을 현금 결제로 오인한다.
  */
 data class CurrencyShopUiState(
-    val coinBalance: Int = 450,
-    val gemBalance: Int = 30,
+    /** 상점 화면과 마찬가지로 조회 전엔 null — 임의의 기본값 대신 "아직 모름"을 표현한다. */
+    val coinBalance: Int? = null,
+    val gemBalance: Int? = null,
     val orangeProducts: List<CurrencyProductUiModel> = emptyList(),
     val blueProducts: List<CurrencyProductUiModel> = emptyList(),
     val selectedProductId: String? = null,

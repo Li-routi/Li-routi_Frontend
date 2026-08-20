@@ -250,12 +250,26 @@ class ShopViewModel(
 
     override fun onOrangeGemClick() {
         onDismissMessage()
-        emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = 0))
+        val state = _uiState.value
+        emitEvent(
+            ShopUiEvent.NavigateToCurrencyShop(
+                tabIndex = 0,
+                coinBalance = state.coinBalance,
+                gemBalance = state.gemBalance,
+            ),
+        )
     }
 
     override fun onBlueGemClick() {
         onDismissMessage()
-        emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = 1))
+        val state = _uiState.value
+        emitEvent(
+            ShopUiEvent.NavigateToCurrencyShop(
+                tabIndex = 1,
+                coinBalance = state.coinBalance,
+                gemBalance = state.gemBalance,
+            ),
+        )
     }
 
     /**
@@ -331,6 +345,9 @@ class ShopViewModel(
     /** 구매 확인 다이얼로그의 "구매하기" — 실제 결제를 진행함 */
     fun onPurchaseConfirmClick() {
         val state = _uiState.value
+        // 잔액 조회가 아직 안 끝났으면(드물지만 가능) 실제로는 부족한데 표시상 0으로 보여
+        // 통과됐을 수 있다 — 서버가 어차피 다시 검증하긴 하지만 클라이언트에서도 막아둔다.
+        if (state.coinBalance == null || state.gemBalance == null) return
         _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
         viewModelScope.launch {
             if (persistPreviewCharacter()) purchaseAll(state.purchaseTargets)
@@ -345,7 +362,13 @@ class ShopViewModel(
         val state = _uiState.value
         _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
         onDismissMessage()
-        emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = if (state.isGemShort) 1 else 0))
+        emitEvent(
+            ShopUiEvent.NavigateToCurrencyShop(
+                tabIndex = if (state.isGemShort) 1 else 0,
+                coinBalance = state.coinBalance,
+                gemBalance = state.gemBalance,
+            ),
+        )
     }
 
     /** 고른 캐릭터를 서버에 저장함(`PUT /api/characters/selection`). 홈은 같은 캐시를 보고 바로 따라옴 */
