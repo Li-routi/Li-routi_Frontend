@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
@@ -117,6 +119,7 @@ import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.designsystem.foundation.color.ChatSendBackground
+import com.li_routi.core.designsystem.foundation.color.DragHandleColor
 import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeBackground
 import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeText
 import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
@@ -2328,22 +2331,33 @@ private fun RoutineStatsRow(
             .height(66.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(LiroutiTheme.colors.backgroundFill)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        StatItem(value = "${routine.streakDays}일", label = "연속 달성")
+        StatItem(
+            value = "${routine.streakDays}일",
+            label = "연속 달성",
+            modifier = Modifier.weight(1f),
+        )
         VerticalStatDivider()
-        StatItem(value = "${routine.monthlyAchievementRate}%", label = "이번 달 달성률")
+        StatItem(
+            value = "${routine.monthlyAchievementRate}%",
+            label = "이번 달 달성률",
+            modifier = Modifier.weight(1f),
+        )
         VerticalStatDivider()
-        StatItem(value = "${routine.todayCertificationCount}건", label = "오늘 인증")
+        StatItem(
+            value = "${routine.todayCertificationCount}건",
+            label = "오늘 인증",
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
 @Composable
 private fun StatItem(value: String, label: String, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.width(76.dp),
+        modifier = modifier.fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -2352,6 +2366,7 @@ private fun StatItem(value: String, label: String, modifier: Modifier = Modifier
             color = LiroutiTheme.colors.labelSub,
             style = LiroutiTheme.typography.body1.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -2360,6 +2375,7 @@ private fun StatItem(value: String, label: String, modifier: Modifier = Modifier
             style = LiroutiTheme.typography.body3,
             textAlign = TextAlign.Center,
             maxLines = 1,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -2373,6 +2389,8 @@ private fun VerticalStatDivider() {
             .background(LiroutiTheme.colors.borderDefault),
     )
 }
+
+private val GroupRoutineSheetPeekHeight = 432.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2417,25 +2435,29 @@ private fun GroupRoutineDetailScreen(
                     onSettingsClick = onSettingsClick,
                 )
             },
-            sheetPeekHeight = 360.dp,
+            sheetPeekHeight = GroupRoutineSheetPeekHeight,
             sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             sheetContainerColor = LiroutiTheme.colors.backgroundDefault,
             containerColor = LiroutiTheme.colors.backgroundSecondary,
             sheetDragHandle = { GroupRoutineSheetDragHandle() },
             sheetContent = {
-                DetailRoutineTabSheet(
-                    title = "오늘의 루틴",
-                    todos = uiState.todos,
-                    categories = uiState.categories,
-                    selectedCategory = uiState.selectedCategory,
-                    categoryColors = uiState.categoryColors,
-                    progressLabel = uiState.todoProgressLabel,
-                    onRoutineVerificationClick = { routineId ->
-                        onRoutineVerificationClick(routine.id, routineId)
-                    },
-                    onRoutineColorLongClick = onRoutineColorLongClick,
-                    onCategoryClick = onCategoryClick,
-                )
+                val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    DetailRoutineTabSheet(
+                        title = "오늘의 루틴",
+                        todos = uiState.todos,
+                        categories = uiState.categories,
+                        selectedCategory = uiState.selectedCategory,
+                        categoryColors = uiState.categoryColors,
+                        progressLabel = uiState.todoProgressLabel,
+                        onRoutineVerificationClick = { routineId ->
+                            onRoutineVerificationClick(routine.id, routineId)
+                        },
+                        onRoutineColorLongClick = onRoutineColorLongClick,
+                        onCategoryClick = onCategoryClick,
+                        modifier = Modifier.heightIn(max = maxHeight - statusBarHeight),
+                    )
+                }
             },
         ) { innerPadding ->
             Box(
@@ -2479,15 +2501,14 @@ private fun GroupRoutineSheetDragHandle(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(20.dp),
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .width(44.dp)
-                .height(4.dp)
-                .clip(RoundedCornerShape(100.dp))
-                .background(LiroutiTheme.colors.borderDefault),
+                .size(width = 44.dp, height = 4.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(DragHandleColor),
         )
     }
 }
