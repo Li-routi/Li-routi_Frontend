@@ -185,7 +185,12 @@ class MyRoutineViewModel(
     }
 
     fun onDefaultRoutineLocked() {
-        _uiState.update { it.copy(toastMessage = DefaultRoutineLockedMessage) }
+        _uiState.update {
+            it.copy(
+                errorMessage = null,
+                toastMessage = DefaultRoutineLockedMessage,
+            )
+        }
     }
 
     fun clearToast() {

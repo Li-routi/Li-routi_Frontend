@@ -62,13 +62,25 @@ data class UpdateMemberRoutine(
     val alarmTime: String? = null,
 )
 
+private val HHmmPattern = Regex("^([01]\\d|2[0-3]):([0-5]\\d)$")
+
 /** ROUTINE400_5: startTime이 있으면 endTime보다 빨라야 한다. HH:mm. 생략/blank면 제한 없음. */
 fun isValidRoutineTimeRange(startTime: String?, endTime: String?): Boolean {
     val start = startTime?.trim().orEmpty()
     if (start.isEmpty()) return true
     val end = endTime?.trim().orEmpty()
     if (end.isEmpty()) return true
-    return start < end
+    val startMinutes = parseHHmmToMinutes(start) ?: return false
+    val endMinutes = parseHHmmToMinutes(end) ?: return false
+    return startMinutes < endMinutes
+}
+
+/** `HH:mm`(00:00–23:59). 형식이 아니면 null. */
+private fun parseHHmmToMinutes(value: String): Int? {
+    val match = HHmmPattern.matchEntire(value) ?: return null
+    val hour = match.groupValues[1].toInt()
+    val minute = match.groupValues[2].toInt()
+    return hour * 60 + minute
 }
 
 const val InvalidRoutineTimeRangeMessage = "시작 시간은 마감 시간보다 빨라야 해요."
