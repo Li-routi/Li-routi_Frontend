@@ -32,8 +32,9 @@ import com.li_routi.core.designsystem.theme.LiroutiTheme
 @Composable
 fun ShopTopBar(
     title: String,
-    coinBalance: Int,
-    gemBalance: Int,
+    /** null이면 아직 서버 조회 전 — 잔액 자리에 자리표시자를 보여준다. */
+    coinBalance: Int?,
+    gemBalance: Int?,
     onBackClick: () -> Unit,
     onOrangeGemClick: () -> Unit = {},
     onBlueGemClick: () -> Unit = {},
@@ -78,7 +79,7 @@ fun ShopTopBar(
 @Composable
 private fun CurrencyBalanceChip(
     @androidx.annotation.DrawableRes iconResId: Int,
-    balance: Int,
+    balance: Int?,
     onClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -99,7 +100,8 @@ private fun CurrencyBalanceChip(
         )
         Spacer(modifier = Modifier.width(4.dp))
         Text(
-            text = balance.toString(),
+            // 조회 전엔 숫자 대신 자리표시자 — 임의의 숫자를 보여줬다가 실제 값으로 바뀌면 깜빡인다.
+            text = balance?.toString() ?: "···",
             style = LiroutiTheme.typography.body2LongMedium,
             color = LiroutiTheme.colors.labelSub,
         )

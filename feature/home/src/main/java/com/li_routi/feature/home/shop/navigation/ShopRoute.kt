@@ -80,8 +80,9 @@ fun ShopRoute(
         if (uiState.isPurchaseConfirmVisible) {
             PurchaseConfirmDialog(
                 targets = uiState.purchaseTargets,
-                coinBalance = uiState.coinBalance,
-                gemBalance = uiState.gemBalance,
+                // 다이얼로그는 아이템을 고른 뒤에만 뜨므로 이 시점엔 잔액 조회가 이미 끝나 있다.
+                coinBalance = uiState.coinBalance ?: 0,
+                gemBalance = uiState.gemBalance ?: 0,
                 onRemoveItem = viewModel::onItemClick,
                 onDismissRequest = viewModel::onPurchaseDialogDismiss,
                 onConfirmPurchase = viewModel::onPurchaseConfirmClick,

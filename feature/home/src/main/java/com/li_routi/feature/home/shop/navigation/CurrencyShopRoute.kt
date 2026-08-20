@@ -36,8 +36,16 @@ fun CurrencyShopRoute(
     onEvent: (CurrencyShopUiEvent) -> Unit = {},
     modifier: Modifier = Modifier,
     initialTabIndex: Int = 0,
+    /** 호출부(상점 화면)가 이미 받아온 잔액. 서버 응답을 기다리는 동안 기본값이 비치는 깜빡임을 막는다. */
+    initialCoinBalance: Int = 0,
+    initialGemBalance: Int = 0,
     viewModel: CurrencyShopViewModel = viewModel {
-        CurrencyShopViewModel(initialState = CurrencyShopUiState())
+        CurrencyShopViewModel(
+            initialState = CurrencyShopUiState(
+                coinBalance = initialCoinBalance,
+                gemBalance = initialGemBalance,
+            ),
+        )
     },
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()

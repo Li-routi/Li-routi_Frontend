@@ -250,12 +250,26 @@ class ShopViewModel(
 
     override fun onOrangeGemClick() {
         onDismissMessage()
-        emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = 0))
+        val state = _uiState.value
+        emitEvent(
+            ShopUiEvent.NavigateToCurrencyShop(
+                tabIndex = 0,
+                coinBalance = state.coinBalance ?: 0,
+                gemBalance = state.gemBalance ?: 0,
+            ),
+        )
     }
 
     override fun onBlueGemClick() {
         onDismissMessage()
-        emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = 1))
+        val state = _uiState.value
+        emitEvent(
+            ShopUiEvent.NavigateToCurrencyShop(
+                tabIndex = 1,
+                coinBalance = state.coinBalance ?: 0,
+                gemBalance = state.gemBalance ?: 0,
+            ),
+        )
     }
 
     /**
@@ -345,7 +359,13 @@ class ShopViewModel(
         val state = _uiState.value
         _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
         onDismissMessage()
-        emitEvent(ShopUiEvent.NavigateToCurrencyShop(tabIndex = if (state.isGemShort) 1 else 0))
+        emitEvent(
+            ShopUiEvent.NavigateToCurrencyShop(
+                tabIndex = if (state.isGemShort) 1 else 0,
+                coinBalance = state.coinBalance ?: 0,
+                gemBalance = state.gemBalance ?: 0,
+            ),
+        )
     }
 
     /** 고른 캐릭터를 서버에 저장함(`PUT /api/characters/selection`). 홈은 같은 캐시를 보고 바로 따라옴 */
