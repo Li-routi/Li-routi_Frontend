@@ -18,7 +18,10 @@ internal suspend fun <T> safeDataApiCall(apiCall: suspend () -> T): ResultState<
     } catch (e: CancellationException) {
         throw e
     } catch (e: Exception) {
-        ResultState.Error(e.toUserFacingMessage())
+        ResultState.Error(
+            message = e.toUserFacingMessage(),
+            errorCode = (e as? ApiException)?.errorCode,
+        )
     }
 }
 

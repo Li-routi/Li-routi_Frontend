@@ -16,12 +16,14 @@ private val errorBodyGson = Gson()
 private suspend fun <T> callOrThrowApiException(call: suspend () -> T): T = try {
     call()
 } catch (e: HttpException) {
+    val errorResponse = e.response()?.errorBody()?.string()
+        ?.let { body -> runCatching { errorBodyGson.fromJson(body, ApiResponse::class.java) }.getOrNull() }
     val message = e.retryAfterMessage()
-        ?: e.response()?.errorBody()?.string()
-            ?.let { body -> runCatching { errorBodyGson.fromJson(body, ApiResponse::class.java).message }.getOrNull() }
+        ?: errorResponse?.message
     throw ApiException(
         message = message ?: e.message(),
         statusCode = e.code(),
+        errorCode = errorResponse?.code,
         cause = e,
     )
 }
@@ -29,7 +31,9 @@ private suspend fun <T> callOrThrowApiException(call: suspend () -> T): T = try 
 suspend fun <T> apiCall(call: suspend () -> ApiResponse<T>): T {
     val response = callOrThrowApiException(call)
     val result = response.result
-    if (!response.isSuccess || result == null) throw ApiException(response.message)
+    if (!response.isSuccess || result == null) {
+        throw ApiException(message = response.message, errorCode = response.code)
+    }
     return result
 }
 
@@ -42,5 +46,7 @@ suspend fun <T> apiCall(call: suspend () -> ApiResponse<T>): T {
  */
 suspend fun apiCallUnit(call: suspend () -> ApiResponse<Unit?>) {
     val response = callOrThrowApiException(call)
-    if (!response.isSuccess) throw ApiException(response.message)
+    if (!response.isSuccess) {
+        throw ApiException(message = response.message, errorCode = response.code)
+    }
 }
