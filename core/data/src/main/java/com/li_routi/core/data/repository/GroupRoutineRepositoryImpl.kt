@@ -147,11 +147,19 @@ class GroupRoutineRepositoryImpl(
     }
 
     override suspend fun joinGroup(inviteCode: String): ResultState<GroupJoinResult> = safeApiCall {
-        api.joinGroup(JoinGroupRequest(inviteCode = inviteCode)).unwrap().toDomain()
+        try {
+            api.joinGroup(JoinGroupRequest(inviteCode = inviteCode)).unwrap().toDomain()
+        } catch (e: HttpException) {
+            throw e.toInviteCodeApiException()
+        }
     }
 
     override suspend fun getGroupJoinPreview(inviteCode: String): ResultState<GroupJoinPreview> = safeApiCall {
-        api.getJoinPreview(inviteCode).unwrap().toDomain()
+        try {
+            api.getJoinPreview(inviteCode).unwrap().toDomain()
+        } catch (e: HttpException) {
+            throw e.toInviteCodeApiException()
+        }
     }
 
     override suspend fun setGroupLock(groupId: Long, locked: Boolean): ResultState<Boolean> = safeApiCall {
@@ -293,6 +301,42 @@ private fun HttpException.errorCode(): String? = runCatching {
         Gson().fromJson(body, JsonObject::class.java)?.get("code")?.asString
     }
 }.getOrNull()
+
+/**
+ * 초대코드 관련 API(참여 Preview/실제 참여)는 존재하지 않는 코드를 입력하면 GROUP404_1로 404가,
+ * 비활성/잠긴 그룹이면 GROUP403_1·GROUP403_5로 403이 떨어진다. 이때 [HttpException.message]는
+ * (HTTP/2 응답이면 상태줄 reason phrase가 아예 비어 있어) 빈 문자열이 되기도 해 토스트가 빈 칸으로
+ * 뜨는 문제가 있었다 — 서버 에러 바디의 실제 message를 우선 쓰고, 그것도 비어 있으면 code/상태코드
+ * 기반의 고정 안내 문구로 대체해 항상 사용자에게 보이는 문구를 보장한다.
+ */
+private fun HttpException.toInviteCodeApiException(): ApiException {
+    if (code() == 404) {
+        return ApiException(
+            // 토스트가 한 줄(54dp) 고정 높이라 문장이 길면 잘려 보인다 — 한 줄에 들어가게 짧게 유지
+            message = "존재하지 않는 초대코드예요.",
+            statusCode = 404,
+            cause = this,
+        )
+    }
+
+    val errorBody = runCatching { response()?.errorBody()?.string() }.getOrNull()
+    val errorJson = errorBody?.let { runCatching { Gson().fromJson(it, JsonObject::class.java) }.getOrNull() }
+    val serverCode = errorJson?.get("code")?.takeIf { !it.isJsonNull }?.asString
+    val serverMessage = errorJson?.get("message")?.takeIf { !it.isJsonNull }?.asString?.takeIf(String::isNotBlank)
+
+    val fallbackMessage = when {
+        serverCode == "GROUP403_5" -> "잠겨 있어 참여할 수 없는 그룹방이에요."
+        serverCode == "GROUP403_1" -> "비활성화된 그룹이라 참여할 수 없어요."
+        code() == 403 -> "참여할 수 없는 그룹이에요."
+        else -> "요청에 실패했어요. (HTTP ${code()})"
+    }
+
+    return ApiException(
+        message = serverMessage ?: fallbackMessage,
+        statusCode = code(),
+        cause = this,
+    )
+}
 
 private fun <T> ApiResponse<T>.unwrap(): T {
     val result = result
