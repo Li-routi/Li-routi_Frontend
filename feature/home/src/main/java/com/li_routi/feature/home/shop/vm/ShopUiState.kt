@@ -156,8 +156,9 @@ sealed interface ShopUiEvent {
      */
     data class NavigateToCurrencyShop(
         val tabIndex: Int = 0,
-        val coinBalance: Int,
-        val gemBalance: Int,
+        /** 상점이 아직 조회 전이면 null — 여기서 0으로 바꾸면 재화상점이 "모름" 대신 진짜 0으로 잘못 표시한다. */
+        val coinBalance: Int?,
+        val gemBalance: Int?,
     ) : ShopUiEvent
     /** 하단 저장 버튼 탭. API 연동 전: ShoppingRoute에서 no-op. */
     data object SaveSelectedItems : ShopUiEvent

@@ -61,6 +61,24 @@ class CurrencyShopViewModel(
         loadBalances()
     }
 
+    /**
+     * 재진입 시(같은 화면 안에서 [CurrencyShopViewModel]이 재사용될 때) 호출부(상점 화면)가
+     * 이미 알고 있는 최신 잔액을 즉시 반영하고, 서버에도 다시 확인한다.
+     *
+     * `viewModel { }` 팩토리는 이 ViewModel이 재사용되면 다시 실행되지 않아 생성자 초기값이
+     * 무시된다 — 그래서 재진입마다 [com.li_routi.feature.home.shop.navigation.CurrencyShopRoute]가
+     * 이 메서드를 직접 호출해 값을 맞춘다.
+     */
+    fun syncKnownBalances(coinBalance: Int?, gemBalance: Int?) {
+        _uiState.update {
+            it.copy(
+                coinBalance = coinBalance ?: it.coinBalance,
+                gemBalance = gemBalance ?: it.gemBalance,
+            )
+        }
+        loadBalances()
+    }
+
     /** 상점 헤더 잔액 */
     private fun loadBalances() {
         viewModelScope.launch {

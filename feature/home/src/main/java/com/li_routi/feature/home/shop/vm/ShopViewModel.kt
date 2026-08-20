@@ -254,8 +254,8 @@ class ShopViewModel(
         emitEvent(
             ShopUiEvent.NavigateToCurrencyShop(
                 tabIndex = 0,
-                coinBalance = state.coinBalance ?: 0,
-                gemBalance = state.gemBalance ?: 0,
+                coinBalance = state.coinBalance,
+                gemBalance = state.gemBalance,
             ),
         )
     }
@@ -266,8 +266,8 @@ class ShopViewModel(
         emitEvent(
             ShopUiEvent.NavigateToCurrencyShop(
                 tabIndex = 1,
-                coinBalance = state.coinBalance ?: 0,
-                gemBalance = state.gemBalance ?: 0,
+                coinBalance = state.coinBalance,
+                gemBalance = state.gemBalance,
             ),
         )
     }
@@ -345,6 +345,9 @@ class ShopViewModel(
     /** 구매 확인 다이얼로그의 "구매하기" — 실제 결제를 진행함 */
     fun onPurchaseConfirmClick() {
         val state = _uiState.value
+        // 잔액 조회가 아직 안 끝났으면(드물지만 가능) 실제로는 부족한데 표시상 0으로 보여
+        // 통과됐을 수 있다 — 서버가 어차피 다시 검증하긴 하지만 클라이언트에서도 막아둔다.
+        if (state.coinBalance == null || state.gemBalance == null) return
         _uiState.update { it.copy(isPurchaseConfirmVisible = false) }
         viewModelScope.launch {
             if (persistPreviewCharacter()) purchaseAll(state.purchaseTargets)
@@ -362,8 +365,8 @@ class ShopViewModel(
         emitEvent(
             ShopUiEvent.NavigateToCurrencyShop(
                 tabIndex = if (state.isGemShort) 1 else 0,
-                coinBalance = state.coinBalance ?: 0,
-                gemBalance = state.gemBalance ?: 0,
+                coinBalance = state.coinBalance,
+                gemBalance = state.gemBalance,
             ),
         )
     }
