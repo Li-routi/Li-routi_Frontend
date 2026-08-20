@@ -110,6 +110,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import coil.compose.AsyncImage
 import com.li_routi.core.common.ui.nav.AppBottomNavBar
 import com.li_routi.core.common.ui.nav.AppBottomTab
+import com.li_routi.core.domain.grouproutine.GroupJoinPreview
 import com.li_routi.core.domain.shop.AvatarLayer
 import com.li_routi.core.domain.shop.hasCharacterLayer
 import com.li_routi.core.designsystem.component.CheckBoxState
@@ -260,6 +261,8 @@ fun GroupRoutineRoute(
         onCreateFlowCloseClick = viewModel::onCreateFlowCloseClick,
         onInviteCodeChange = viewModel::onInviteCodeChange,
         onInviteCodeConfirmClick = viewModel::onInviteCodeConfirmClick,
+        onDismissJoinPreviewDialog = viewModel::onDismissJoinPreviewDialog,
+        onJoinPreviewConfirmClick = viewModel::onJoinPreviewConfirmClick,
         onCreateRoutineOptionClick = viewModel::onCreateRoutineOptionClick,
         onCreateRoutineSelectAllClick = viewModel::onCreateRoutineSelectAllClick,
         onCategoryClick = viewModel::onCategoryClick,
@@ -385,6 +388,8 @@ private fun GroupRoutineScreen(
     onCreateFlowCloseClick: () -> Unit = onBackClick,
     onInviteCodeChange: (String) -> Unit,
     onInviteCodeConfirmClick: () -> Unit,
+    onDismissJoinPreviewDialog: () -> Unit,
+    onJoinPreviewConfirmClick: () -> Unit,
     onCreateRoutineOptionClick: (Long) -> Unit,
     onCreateRoutineSelectAllClick: () -> Unit,
     onCategoryClick: (String) -> Unit,
@@ -665,6 +670,16 @@ private fun GroupRoutineScreen(
             onDismissRequest = onDismissDeleteRoomDialog,
             onConfirmClick = onDeleteRoomConfirmClick,
         )
+    }
+
+    if (uiState.isJoinPreviewDialogVisible) {
+        uiState.joinPreview?.let { preview ->
+            GroupJoinPreviewDialog(
+                preview = preview,
+                onDismissRequest = onDismissJoinPreviewDialog,
+                onConfirmClick = onJoinPreviewConfirmClick,
+            )
+        }
     }
 
     if (uiState.isNewCertificationDialogVisible) {
@@ -1957,6 +1972,122 @@ private fun DangerConfirmDialog(
                 }
             }
         }
+    }
+}
+
+/** 초대코드 확인 후 실제 가입 전에 그룹 미리보기를 보여주고 참여 여부를 확인받는 팝업 */
+@Composable
+private fun GroupJoinPreviewDialog(
+    preview: GroupJoinPreview,
+    onDismissRequest: () -> Unit,
+    onConfirmClick: () -> Unit,
+) {
+    Dialog(
+        onDismissRequest = onDismissRequest,
+        properties = DialogProperties(usePlatformDefaultWidth = false),
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 38.dp)
+                .clip(RoundedCornerShape(6.dp))
+                .background(LiroutiTheme.colors.backgroundDefault)
+                .padding(24.dp),
+            verticalArrangement = Arrangement.spacedBy(24.dp),
+        ) {
+            Text(
+                text = "이 방에 참여할까요?",
+                color = LiroutiTheme.colors.labelDefault,
+                style = LiroutiTheme.typography.heading2Bold,
+            )
+
+            Column(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(6.dp))
+                    .background(LiroutiTheme.colors.backgroundAlternative)
+                    .padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
+            ) {
+                if (preview.memberAvatars.isNotEmpty()) {
+                    Row {
+                        preview.memberAvatars.take(3).forEachIndexed { index, layers ->
+                            Box(
+                                modifier = Modifier
+                                    .offset(x = (-8).dp * index)
+                                    .size(40.dp)
+                                    .border(1.5.dp, LiroutiTheme.colors.borderAlternative, CircleShape)
+                                    .clip(CircleShape)
+                                    .background(LiroutiTheme.colors.labelReverse),
+                                contentAlignment = Alignment.Center,
+                            ) {
+                                MemberAvatarImage(layers = layers, modifier = Modifier.size(40.dp))
+                            }
+                        }
+                    }
+                }
+
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                    Text(
+                        text = preview.name,
+                        color = LiroutiTheme.colors.labelDefault,
+                        style = LiroutiTheme.typography.body1SemiBold,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        GroupJoinPreviewInfoRow(label = "멤버", value = "${preview.activeMemberCount}명")
+                        GroupJoinPreviewInfoRow(label = "전체 루틴", value = "${preview.totalRoutineCount}개")
+                    }
+                }
+            }
+
+            Row(horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                Button(
+                    onClick = onDismissRequest,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LiroutiTheme.colors.backgroundAlternative,
+                        contentColor = LiroutiTheme.colors.labelDefault,
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                ) {
+                    Text(text = "취소")
+                }
+                Button(
+                    onClick = onConfirmClick,
+                    shape = RoundedCornerShape(6.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        containerColor = LiroutiTheme.colors.primaryNormal,
+                        contentColor = LiroutiTheme.colors.backgroundAlternative,
+                    ),
+                    modifier = Modifier
+                        .weight(1f)
+                        .height(44.dp),
+                ) {
+                    Text(text = "참여하기")
+                }
+            }
+        }
+    }
+}
+
+@Composable
+private fun GroupJoinPreviewInfoRow(label: String, value: String) {
+    Row(modifier = Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+        Text(
+            text = label,
+            color = LiroutiTheme.colors.labelSub,
+            style = LiroutiTheme.typography.body3Bold,
+            modifier = Modifier.width(80.dp),
+        )
+        Text(
+            text = value,
+            color = LiroutiTheme.colors.labelDefault,
+            style = LiroutiTheme.typography.body2LongRegular,
+        )
     }
 }
 
@@ -4590,6 +4721,8 @@ private fun GroupRoutineListPreview() {
             onCreateRoomNextClick = {},
             onInviteCodeChange = {},
             onInviteCodeConfirmClick = {},
+            onDismissJoinPreviewDialog = {},
+            onJoinPreviewConfirmClick = {},
             onCreateRoutineOptionClick = {},
             onCreateRoutineSelectAllClick = {},
             onCategoryClick = {},
@@ -4671,6 +4804,8 @@ private fun CreateRoomNamePreview() {
             onCreateRoomNextClick = {},
             onInviteCodeChange = {},
             onInviteCodeConfirmClick = {},
+            onDismissJoinPreviewDialog = {},
+            onJoinPreviewConfirmClick = {},
             onCreateRoutineOptionClick = {},
             onCreateRoutineSelectAllClick = {},
             onCategoryClick = {},
