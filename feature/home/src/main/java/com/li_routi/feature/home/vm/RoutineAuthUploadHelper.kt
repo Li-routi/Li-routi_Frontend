@@ -2,12 +2,14 @@ package com.li_routi.feature.home.vm
 
 import android.content.Context
 import android.net.Uri
+import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.core.common.kotlin.util.ResultState
 import com.li_routi.core.data.di.ChallengeContainer
 import com.li_routi.core.data.di.MediaContainer
 import com.li_routi.core.data.di.RoutineContainer
 import com.li_routi.core.domain.media.MediaPurpose
 import com.li_routi.core.domain.routine.GroupRoutineTarget
+import com.li_routi.core.domain.routine.isPersonalRoutineVerificationAllowed
 import com.li_routi.feature.home.component.RoutineChecklistItemUiModel
 import com.li_routi.feature.home.component.RoutineChecklistKind
 import kotlinx.coroutines.Dispatchers
@@ -21,6 +23,12 @@ private val GroupRoutineIdPattern = Regex("""^group_(\d+)_(\d+)$""")
 
 /** 챌린지 id 접두사: `challenge_{challengeId}`. `app` 모듈이 프리셀렉트 id를 만들 때도 재사용한다. */
 const val ChallengeIdPrefix = "challenge_"
+
+/** 개인 루틴이 현재 인증 가능 시간 밖일 때 서버가 반환하는 업무 오류 코드. */
+internal const val VerificationTimeRangeErrorCode = "VERIFICATION409_4"
+
+/** 개인 루틴 인증 시간 안내에 사용하는 서버 명세 메시지. */
+private const val VerificationTimeRangeErrorMessage = "현재는 루틴을 인증할 수 있는 시간이 아닙니다."
 
 internal fun parseMemberRoutineId(checklistId: String): Long? {
     if (!checklistId.startsWith(MemberRoutineIdPrefix)) return null
@@ -59,6 +67,9 @@ fun List<RoutineChecklistItemUiModel>.toAuthSelectables(): List<RoutineAuthSelec
                     RoutineChecklistKind.Member -> item.routineId
                     RoutineChecklistKind.Group -> null
                 },
+                memberStartTime = if (item.kind == RoutineChecklistKind.Member) item.memberStartTime else null,
+                memberEndTime = if (item.kind == RoutineChecklistKind.Member) item.memberEndTime else null,
+                memberCompletedToday = item.kind == RoutineChecklistKind.Member && item.completedToday,
                 groupId = item.groupId,
                 groupRoutineId = when (item.kind) {
                     RoutineChecklistKind.Group -> item.routineId
@@ -85,6 +96,28 @@ internal suspend fun submitRoutineAuthUpload(
     context: Context,
 ): Result<Unit> = withContext(Dispatchers.IO) {
     val selected = routines.filter { it.id in selectedRoutineIds }
+    val completedMemberRoutine = selected.firstOrNull { item ->
+        item.memberRoutineId != null && item.memberCompletedToday
+    }
+    if (completedMemberRoutine != null) {
+        return@withContext Result.failure(IllegalStateException("이미 오늘 인증한 루틴입니다."))
+    }
+    val unavailableMemberRoutine = selected.firstOrNull { item ->
+        item.memberRoutineId != null &&
+            !isPersonalRoutineVerificationAllowed(
+                completedToday = false,
+                startTime = item.memberStartTime,
+                endTime = item.memberEndTime ?: "23:59",
+            )
+    }
+    if (unavailableMemberRoutine != null) {
+        return@withContext Result.failure(
+            ApiException(
+                message = VerificationTimeRangeErrorMessage,
+                errorCode = VerificationTimeRangeErrorCode,
+            ),
+        )
+    }
     val memberIds = selected.mapNotNull { item ->
         item.memberRoutineId ?: parseMemberRoutineId(item.id)
     }.distinct()
@@ -167,7 +200,12 @@ internal suspend fun submitRoutineAuthUpload(
             )
         ) {
             is ResultState.Success -> Unit
-            is ResultState.Error -> return@withContext Result.failure(IllegalStateException(result.message))
+            is ResultState.Error -> return@withContext Result.failure(
+                ApiException(
+                    message = result.message,
+                    errorCode = result.errorCode,
+                ),
+            )
             ResultState.Loading ->
                 return@withContext Result.failure(IllegalStateException("업로드가 완료되지 않았습니다."))
         }

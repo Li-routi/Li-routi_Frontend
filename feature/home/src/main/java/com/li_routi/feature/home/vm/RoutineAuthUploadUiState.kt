@@ -46,6 +46,9 @@ data class RoutineAuthUploadUiState(
  * @param badgeTone Challenge면 Orange Badge, Secondary면 방 이름 Blue Badge.
  * @param categoryColor 제목 앞 category-dot. null이면 미표시(챌린지 등).
  * @param memberRoutineId 개인 루틴 서버 id. 있으면 문자열 id 파싱보다 우선한다.
+ * @param memberStartTime 개인 루틴의 nullable 인증 시작 시각.
+ * @param memberEndTime 개인 루틴의 인증 종료 시각. 이전 응답에서는 null일 수 있다.
+ * @param memberCompletedToday 개인 루틴의 오늘 인증 완료 여부.
  * @param groupId 그룹방 id (그룹 루틴만).
  * @param groupRoutineId 그룹 루틴 서버 id (그룹 루틴만).
  * @param challengeId 챌린지 서버 id. 있으면 문자열 id 파싱보다 우선한다.
@@ -59,6 +62,9 @@ data class RoutineAuthSelectableUiModel(
     val badgeTone: RoutineAuthBadgeTone = RoutineAuthBadgeTone.Secondary,
     val categoryColor: CategoryColor? = null,
     val memberRoutineId: Long? = null,
+    val memberStartTime: String? = null,
+    val memberEndTime: String? = null,
+    val memberCompletedToday: Boolean = false,
     val groupId: Long? = null,
     val groupRoutineId: Long? = null,
     val groupRoutineVerificationId: Long? = null,
@@ -81,6 +87,9 @@ private fun RoutineChecklistItemUiModel.toAuthSelectable(
     badgeTone = badgeTone,
     categoryColor = categoryColor,
     memberRoutineId = if (kind == RoutineChecklistKind.Member) routineId else null,
+    memberStartTime = if (kind == RoutineChecklistKind.Member) memberStartTime else null,
+    memberEndTime = if (kind == RoutineChecklistKind.Member) memberEndTime else null,
+    memberCompletedToday = kind == RoutineChecklistKind.Member && completedToday,
     groupId = groupId,
     groupRoutineId = if (kind == RoutineChecklistKind.Group) routineId else null,
 )
@@ -131,6 +140,9 @@ sealed interface RoutineAuthUploadUiEvent {
 
     /** 상단 X → 인증 플로우 종료(홈 등) */
     data object NavigateClose : RoutineAuthUploadUiEvent
+
+    /** 개인 루틴 인증 시간이 아니어서 서버 또는 업로드 직전 검사에서 거절됨. */
+    data object RoutineTimeRangeRejected : RoutineAuthUploadUiEvent
 
     /** 업로드 성공 → 홈 화면으로 */
     data class NavigateToHome(

@@ -3,6 +3,7 @@ package com.li_routi.feature.home.vm
 import android.net.Uri
 import androidx.lifecycle.viewModelScope
 import com.li_routi.core.common.android.architecture.BaseViewModel
+import com.li_routi.core.common.kotlin.util.ApiException
 import com.li_routi.feature.home.navigation.RoutineAuthUploadScreenActions
 import com.li_routi.feature.home.navigation.RoutineAuthUploadScreenActions.Companion.MEMO_MAX_LENGTH
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -88,11 +89,15 @@ class RoutineAuthUploadViewModel(
                     )
                 }
             } else {
+                val failure = result.exceptionOrNull()
                 _uiState.update {
                     it.copy(
                         isUploading = false,
-                        toastMessage = result.exceptionOrNull()?.message ?: "업로드 실패",
+                        toastMessage = failure?.message ?: "업로드 실패",
                     )
+                }
+                if ((failure as? ApiException)?.errorCode == VerificationTimeRangeErrorCode) {
+                    emitEvent(RoutineAuthUploadUiEvent.RoutineTimeRangeRejected)
                 }
             }
         }

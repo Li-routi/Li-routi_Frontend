@@ -75,6 +75,12 @@ data class RoutineChecklistItemUiModel(
     val categoryId: Long? = null,
     /** 카메라/업로드 선택 가능 여부. 완료·MISSED 등은 false. */
     val canVerify: Boolean = !isDone,
+    /** 개인 루틴 수행 시작 시각. 그룹 루틴이면 null이다. */
+    val memberStartTime: String? = null,
+    /** 개인 루틴 수행 종료 시각. 그룹 루틴이면 null이다. */
+    val memberEndTime: String? = null,
+    /** 개인 루틴의 오늘 완료 여부. 업로드 직전 재검증에 사용한다. */
+    val completedToday: Boolean = isDone,
     /**
      * 카테고리 색. 도메인 매핑용으로 유지한다.
      * 홈 체크리스트 List UI(Figma `3962:11700`)에는 색 닷을 그리지 않는다.

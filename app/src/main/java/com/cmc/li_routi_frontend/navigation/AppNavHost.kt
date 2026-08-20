@@ -430,6 +430,10 @@ fun AppNavHost(
                                 capturedVerificationPhotoUri = null
                             }
                             RoutineAuthUploadUiEvent.NavigateClose -> closeVerificationFlow()
+                            RoutineAuthUploadUiEvent.RoutineTimeRangeRejected -> {
+                                homeRefreshSignal++
+                                verificationLoadRetryTick++
+                            }
                             is RoutineAuthUploadUiEvent.NavigateToHome -> {
                                 val shouldReturnToGroupRoutine = isGroupRoutineVerification
                                 val selectedRoutineIds = event.selectedRoutineIds.ifEmpty {
