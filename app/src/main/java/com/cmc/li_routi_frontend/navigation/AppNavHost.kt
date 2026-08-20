@@ -74,7 +74,7 @@ private fun TodayGroupRoutine.toAuthSelectable() = RoutineAuthSelectableUiModel(
 private fun GroupRoutineVerificationTarget.toAuthSelectable() = RoutineAuthSelectableUiModel(
     id = "group_${groupId}_$routineId",
     title = title,
-    dueLabel = formatRoutineTimeRange(startTime = null, endTime = deadline).takeIf { it.isNotBlank() },
+    dueLabel = formatRoutineTimeRange(startTime = startTime, endTime = deadline).takeIf { it.isNotBlank() },
     subtitle = roomName,
     categoryLabel = category,
     categoryColor = categoryColor,

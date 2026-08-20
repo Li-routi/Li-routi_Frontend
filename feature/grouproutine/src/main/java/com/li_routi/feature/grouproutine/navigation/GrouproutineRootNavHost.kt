@@ -15,6 +15,7 @@ data class GroupRoutineVerificationTarget(
     val roomName: String,
     val title: String,
     val category: String,
+    val startTime: String,
     val deadline: String,
     val categoryColor: CategoryColor?,
 )
