@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
+import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.sizeIn
 import androidx.compose.foundation.layout.statusBarsPadding
+import androidx.compose.foundation.layout.statusBars
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyRow
@@ -118,6 +120,7 @@ import com.li_routi.core.designsystem.component.CustomCheckBox
 import com.li_routi.core.common.ui.routine.CategoryAddBottomSheet
 import com.li_routi.core.common.ui.routine.CategoryColor
 import com.li_routi.core.designsystem.foundation.color.ChatSendBackground
+import com.li_routi.core.designsystem.foundation.color.DragHandleColor
 import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeBackground
 import com.li_routi.core.designsystem.foundation.color.RepresentativeBadgeText
 import com.li_routi.core.designsystem.foundation.color.MemberHeroGradientEnd
@@ -168,7 +171,7 @@ fun GroupRoutineRoute(
     onTabSelected: (AppBottomTab) -> Unit = {},
     onStartVerification: (GroupRoutineVerificationTarget) -> Unit = {},
     verificationRefreshSignal: Int = 0,
-    verifiedRoutineId: Long? = null,
+    verifiedRoutineIdsByGroup: Map<Long, Set<Long>> = emptyMap(),
     modifier: Modifier = Modifier,
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -232,7 +235,7 @@ fun GroupRoutineRoute(
 
     LaunchedEffect(verificationRefreshSignal) {
         if (verificationRefreshSignal > 0) {
-            viewModel.markRoutineVerified(verifiedRoutineId)
+            viewModel.markRoutinesVerified(verifiedRoutineIdsByGroup)
         }
     }
 
@@ -1018,23 +1021,31 @@ private fun CreateRoutineSelectScreen(
             }
         }
 
-        Column(
-            modifier = Modifier
-                .fillMaxWidth()
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
                 .background(LiroutiTheme.colors.backgroundDefault)
                 .navigationBarsPadding()
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             DashedRoutineAddButton(onClick = onRoutineAddClick)
+        Text(
+            text = "총 ${selectedCount}개 선택됨",
+            color = LiroutiTheme.colors.labelSub,
+            style = LiroutiTheme.typography.body3,
+            modifier = Modifier.align(Alignment.CenterHorizontally),
+        )
+        uiState.createRoutineSelectionOverLimitMessage?.let { message ->
             Text(
-                text = "총 ${selectedCount}개 선택됨",
+                text = message,
                 color = LiroutiTheme.colors.labelSub,
                 style = LiroutiTheme.typography.body3,
                 modifier = Modifier.align(Alignment.CenterHorizontally),
             )
-            PrimaryButton(text = "방 만들기", enabled = true, onClick = onDoneClick)
         }
+        PrimaryButton(text = "방 만들기", enabled = uiState.canCreateRoom, onClick = onDoneClick)
+    }
     }
 }
 
@@ -2142,7 +2153,7 @@ private fun NewCertificationDialog(
                     contentScale = ContentScale.Crop,
                     modifier = Modifier
                         .fillMaxWidth()
-                        .height(146.dp)
+                    .height(180.dp)
                         .clip(RoundedCornerShape(4.dp)),
                 )
             }
@@ -2372,7 +2383,10 @@ private fun GroupRoutineCard(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.SpaceBetween,
         ) {
-            AvatarStack(memberCount = routine.memberCount)
+            AvatarStack(
+                memberCount = routine.memberCount,
+                profileImageKeys = routine.memberProfileImageKeys,
+            )
             Text(
                 text = "오늘 ${routine.todayCompletedCount}/${routine.todayTotalCount} 완료",
                 color = LiroutiTheme.colors.labelInfo,
@@ -2403,10 +2417,12 @@ private fun StatusBadge(
 @Composable
 private fun AvatarStack(
     memberCount: Int,
+    profileImageKeys: List<String?>,
     modifier: Modifier = Modifier,
 ) {
     Row(modifier = modifier, horizontalArrangement = Arrangement.spacedBy((-8).dp)) {
-        repeat(memberCount.coerceIn(1, 3)) {
+        repeat(memberCount.coerceIn(1, 3)) { index ->
+            val profileImageUrl = profileImageKeys.getOrNull(index)?.takeIf { it.isNotBlank() }
             Box(
                 modifier = Modifier
                     .size(24.dp)
@@ -2415,11 +2431,21 @@ private fun AvatarStack(
                     .border(0.6.dp, LiroutiTheme.colors.borderDefault, CircleShape),
                 contentAlignment = Alignment.Center,
             ) {
-                Image(
-                    painter = painterResource(id = R.drawable.ic_group_routine_member),
-                    contentDescription = null,
-                    modifier = Modifier.size(24.dp),
-                )
+                if (profileImageUrl != null) {
+                    AsyncImage(
+                        model = profileImageUrl,
+                        contentDescription = "참여 멤버 프로필",
+                        modifier = Modifier.size(24.dp),
+                        contentScale = ContentScale.Crop,
+                        error = painterResource(DesignSystemR.drawable.default_character),
+                    )
+                } else {
+                    Image(
+                        painter = painterResource(id = DesignSystemR.drawable.default_character),
+                        contentDescription = null,
+                        modifier = Modifier.size(24.dp),
+                    )
+                }
             }
         }
     }
@@ -2436,22 +2462,33 @@ private fun RoutineStatsRow(
             .height(66.dp)
             .clip(RoundedCornerShape(8.dp))
             .background(LiroutiTheme.colors.backgroundFill)
-            .padding(horizontal = 16.dp, vertical = 10.dp),
+            .padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.SpaceBetween,
     ) {
-        StatItem(value = "${routine.streakDays}일", label = "연속 달성")
+        StatItem(
+            value = "${routine.streakDays}일",
+            label = "연속 달성",
+            modifier = Modifier.weight(1f),
+        )
         VerticalStatDivider()
-        StatItem(value = "${routine.monthlyAchievementRate}%", label = "이번 달 달성률")
+        StatItem(
+            value = "${routine.monthlyAchievementRate}%",
+            label = "이번 달 달성률",
+            modifier = Modifier.weight(1f),
+        )
         VerticalStatDivider()
-        StatItem(value = "${routine.todayCertificationCount}건", label = "오늘 인증")
+        StatItem(
+            value = "${routine.todayCertificationCount}건",
+            label = "오늘 인증",
+            modifier = Modifier.weight(1f),
+        )
     }
 }
 
 @Composable
 private fun StatItem(value: String, label: String, modifier: Modifier = Modifier) {
     Column(
-        modifier = modifier.width(76.dp),
+        modifier = modifier.fillMaxHeight(),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.Center,
     ) {
@@ -2460,6 +2497,7 @@ private fun StatItem(value: String, label: String, modifier: Modifier = Modifier
             color = LiroutiTheme.colors.labelSub,
             style = LiroutiTheme.typography.body1.copy(fontWeight = FontWeight.Bold),
             textAlign = TextAlign.Center,
+            modifier = Modifier.fillMaxWidth(),
         )
         Spacer(modifier = Modifier.height(4.dp))
         Text(
@@ -2468,6 +2506,7 @@ private fun StatItem(value: String, label: String, modifier: Modifier = Modifier
             style = LiroutiTheme.typography.body3,
             textAlign = TextAlign.Center,
             maxLines = 1,
+            modifier = Modifier.fillMaxWidth(),
         )
     }
 }
@@ -2481,6 +2520,8 @@ private fun VerticalStatDivider() {
             .background(LiroutiTheme.colors.borderDefault),
     )
 }
+
+private val GroupRoutineSheetPeekHeight = 432.dp
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -2525,25 +2566,29 @@ private fun GroupRoutineDetailScreen(
                     onSettingsClick = onSettingsClick,
                 )
             },
-            sheetPeekHeight = if (uiState.members.size in 1..3) 480.dp else 400.dp,
+            sheetPeekHeight = GroupRoutineSheetPeekHeight,
             sheetShape = RoundedCornerShape(topStart = 20.dp, topEnd = 20.dp),
             sheetContainerColor = LiroutiTheme.colors.backgroundDefault,
             containerColor = LiroutiTheme.colors.backgroundSecondary,
             sheetDragHandle = { GroupRoutineSheetDragHandle() },
             sheetContent = {
-                DetailRoutineTabSheet(
-                    title = "오늘의 루틴",
-                    todos = uiState.todos,
-                    categories = uiState.categories,
-                    selectedCategory = uiState.selectedCategory,
-                    categoryColors = uiState.categoryColors,
-                    progressLabel = uiState.todoProgressLabel,
-                    onRoutineVerificationClick = { routineId ->
-                        onRoutineVerificationClick(routine.id, routineId)
-                    },
-                    onRoutineColorLongClick = onRoutineColorLongClick,
-                    onCategoryClick = onCategoryClick,
-                )
+                val statusBarHeight = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+                BoxWithConstraints(modifier = Modifier.fillMaxWidth()) {
+                    DetailRoutineTabSheet(
+                        title = "오늘의 루틴",
+                        todos = uiState.todos,
+                        categories = uiState.categories,
+                        selectedCategory = uiState.selectedCategory,
+                        categoryColors = uiState.categoryColors,
+                        progressLabel = uiState.todoProgressLabel,
+                        onRoutineVerificationClick = { routineId ->
+                            onRoutineVerificationClick(routine.id, routineId)
+                        },
+                        onRoutineColorLongClick = onRoutineColorLongClick,
+                        onCategoryClick = onCategoryClick,
+                        modifier = Modifier.heightIn(max = maxHeight - statusBarHeight),
+                    )
+                }
             },
         ) { innerPadding ->
             Box(
@@ -2587,15 +2632,14 @@ private fun GroupRoutineSheetDragHandle(modifier: Modifier = Modifier) {
     Box(
         modifier = modifier
             .fillMaxWidth()
-            .height(20.dp),
+            .padding(vertical = 8.dp),
         contentAlignment = Alignment.Center,
     ) {
         Box(
             modifier = Modifier
-                .width(44.dp)
-                .height(4.dp)
-                .clip(RoundedCornerShape(100.dp))
-                .background(LiroutiTheme.colors.borderDefault),
+                .size(width = 44.dp, height = 4.dp)
+                .clip(RoundedCornerShape(4.dp))
+                .background(DragHandleColor),
         )
     }
 }
@@ -2919,7 +2963,7 @@ private fun CertificationCollectionScreen(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .background(LiroutiTheme.colors.backgroundSecondary),
+            .background(LiroutiTheme.colors.backgroundDefault),
     ) {
         GroupRoutineTopBar(
             title = "인증 모아보기",
@@ -4313,9 +4357,10 @@ private fun CertificationPostItem(
             if (post.isMine) {
                 Box {
                     Text(
-                        text = "...",
+                        text = "⋮",
                         color = LiroutiTheme.colors.labelInfo,
-                        fontSize = 18.sp,
+                        fontSize = 24.sp,
+                        lineHeight = 24.sp,
                         textAlign = TextAlign.Center,
                         modifier = Modifier
                             .size(40.dp)
@@ -4338,8 +4383,6 @@ private fun CertificationPostItem(
                         )
                     }
                 }
-            } else {
-                Text(text = "...", color = LiroutiTheme.colors.labelInfo, fontSize = 18.sp)
             }
         }
         Text(
@@ -4355,7 +4398,7 @@ private fun CertificationPostItem(
             contentScale = ContentScale.Crop,
             modifier = Modifier
                 .fillMaxWidth()
-                .height(144.dp)
+                .height(180.dp)
                 .clip(RoundedCornerShape(6.dp)),
         )
         Row(

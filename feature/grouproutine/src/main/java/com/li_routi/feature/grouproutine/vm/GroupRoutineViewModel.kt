@@ -231,21 +231,44 @@ class GroupRoutineViewModel(
     }
 
     fun markRoutineVerified(routineId: Long?) {
-        if (routineId == null) return
         val groupId = currentGroupId() ?: return
-        val state = _uiState.value
-        val memberCount = state.members.size.takeIf { it > 0 }
-            ?: state.routines.firstOrNull { it.id == groupId }?.memberCount
-            ?: 0
-        val verificationScore = 1.5
-        val completionThreshold = memberCount / 2.0
+        val routineIds = listOfNotNull(routineId).toSet()
+        if (routineIds.isNotEmpty()) {
+            markRoutinesVerified(mapOf(groupId to routineIds))
+        }
+    }
 
-        if (memberCount > 0 && verificationScore > completionThreshold) {
-            locallyCompletedRoutineKeys += VerifiedRoutineKey(groupId, routineId)
+    fun markRoutinesVerified(routineIdsByGroup: Map<Long, Set<Long>>) {
+        if (routineIdsByGroup.isEmpty()) return
+        val selectedGroupId = currentGroupId()
+        val state = _uiState.value
+        val verificationScore = 1.5
+        val completedKeys = routineIdsByGroup.flatMap { (groupId, routineIds) ->
+            val memberCount = if (groupId == selectedGroupId) {
+                state.members.size.takeIf { it > 0 }
+                    ?: state.routines.firstOrNull { it.id == groupId }?.memberCount
+            } else {
+                state.routines.firstOrNull { it.id == groupId }?.memberCount
+            }
+            val isLocallyCompleted = memberCount != null &&
+                memberCount > 0 &&
+                verificationScore > memberCount / 2.0
+            if (isLocallyCompleted) {
+                routineIds.map { routineId -> VerifiedRoutineKey(groupId, routineId) }
+            } else {
+                emptyList()
+            }
+        }.toSet()
+
+        if (completedKeys.isNotEmpty()) {
+            locallyCompletedRoutineKeys.addAll(completedKeys)
+            val selectedGroupRoutineIds = completedKeys
+                .filter { it.groupId == selectedGroupId }
+                .mapTo(mutableSetOf()) { it.routineId }
             _uiState.update { state ->
                 state.copy(
                     todos = state.todos.map { todo ->
-                        if (todo.id == routineId) todo.copy(isDone = true) else todo
+                        if (todo.id in selectedGroupRoutineIds) todo.copy(isDone = true) else todo
                     },
                 )
             }
@@ -275,6 +298,7 @@ class GroupRoutineViewModel(
                                 ?.plus(" \uD65C\uB3D9")
                                 .orEmpty(),
                             memberCount = group.activeMemberCount,
+                            memberProfileImageKeys = group.profileImageKeys,
                             routineCount = group.activeRoutineCount,
                             statusLabel = if (
                                 group.todayAssignedRoutineCount > 0 &&
@@ -2111,6 +2135,9 @@ class GroupRoutineViewModel(
     fun onRoutineSettingClick(optionId: Long) {
         _uiState.update { state ->
             val option = state.routineOptions.firstOrNull { it.id == optionId } ?: return@update state
+            if (option.isDefaultRoutine) {
+                return@update state.copy(actionMessage = "기본 루틴은 수정할 수 없습니다.")
+            }
             state.copy(
                 isRoutineSettingSheetVisible = true,
                 editingRoutineId = optionId,
@@ -2126,7 +2153,11 @@ class GroupRoutineViewModel(
 
     fun onRoutineColorLongClick(optionId: Long) {
         _uiState.update { state ->
-            val option = state.routineOptions.firstOrNull { it.id == optionId }
+            val routineOption = state.routineOptions.firstOrNull { it.id == optionId }
+            if (routineOption?.isDefaultRoutine == true) {
+                return@update state.copy(actionMessage = "기본 루틴은 수정할 수 없습니다.")
+            }
+            val option = routineOption
                 ?: state.todos.firstOrNull { it.id == optionId }?.let { todo ->
                     CreateRoutineOptionUiModel(
                         id = todo.id,
@@ -2159,6 +2190,14 @@ class GroupRoutineViewModel(
     fun onRoutineColorSelected(color: CategoryColor) {
         _uiState.update { state ->
             val targetId = state.routineColorTargetId ?: return@update state
+            if (state.routineOptions.any { it.id == targetId && it.isDefaultRoutine }) {
+                return@update state.copy(
+                    isRoutineColorSheetVisible = false,
+                    routineColorTargetId = null,
+                    routineColorInput = null,
+                    actionMessage = "기본 루틴은 수정할 수 없습니다.",
+                )
+            }
             val categoryName = state.routineOptions.firstOrNull { it.id == targetId }?.category
                 ?: state.todos.firstOrNull { it.id == targetId }?.category
                 ?: return@update state
@@ -2280,11 +2319,6 @@ class GroupRoutineViewModel(
             _uiState.update { it.copy(isSubmitting = false, actionMessage = "\"$categoryName\" 카테고리 ID를 찾을 수 없습니다. 카테고리를 다시 선택해 주세요.") }
             return
         }
-        if (editingId != null && DefaultCreateRoutineOptions.any { it.id == editingId }) {
-            _uiState.update { it.copy(isSubmitting = false, actionMessage = "기본 제공 루틴은 서버에 수정할 수 없습니다.") }
-            return
-        }
-
         viewModelScope.launch {
             try {
                 val result = if (editingId == null) {
@@ -2401,9 +2435,21 @@ class GroupRoutineViewModel(
     }
 
     fun onRoutineDeleteClick() {
-        _uiState.update {
-            it.copy(
-                editingRoutineId = it.editingRoutineId ?: it.routineColorTargetId,
+        _uiState.update { state ->
+            val targetId = state.editingRoutineId ?: state.routineColorTargetId
+            if (state.routineOptions.any { it.id == targetId && it.isDefaultRoutine }) {
+                return@update state.copy(
+                    isRoutineSettingSheetVisible = false,
+                    isRoutineColorSheetVisible = false,
+                    isDeleteRoutineDialogVisible = false,
+                    editingRoutineId = null,
+                    routineColorTargetId = null,
+                    routineColorInput = null,
+                    actionMessage = "기본 루틴은 삭제할 수 없습니다.",
+                )
+            }
+            state.copy(
+                editingRoutineId = targetId,
                 isRoutineColorSheetVisible = false,
                 isDeleteRoutineDialogVisible = true,
             )
@@ -2417,6 +2463,20 @@ class GroupRoutineViewModel(
     fun onConfirmDeleteRoutineClick() {
         val state = _uiState.value
         val editingId = state.editingRoutineId
+        if (state.routineOptions.any { it.id == editingId && it.isDefaultRoutine }) {
+            _uiState.update {
+                it.copy(
+                    isRoutineSettingSheetVisible = false,
+                    isRoutineColorSheetVisible = false,
+                    isDeleteRoutineDialogVisible = false,
+                    editingRoutineId = null,
+                    routineColorTargetId = null,
+                    routineColorInput = null,
+                    actionMessage = "기본 루틴은 삭제할 수 없습니다.",
+                )
+            }
+            return
+        }
         val groupId = currentGroupId()
         val shouldCallApi = state.screenMode == GroupRoutineScreenMode.GroupRoutineManage &&
             editingId != null && editingId > 0L && groupId != null
@@ -2478,6 +2538,10 @@ class GroupRoutineViewModel(
         val state = _uiState.value
         val selectedOptions = state.routineOptions.filter { it.isSelected }
         val roomName = state.roomNameInput.trim()
+        state.createRoutineSelectionOverLimitMessage?.let { message ->
+            _uiState.update { it.copy(actionMessage = message) }
+            return
+        }
         if (selectedOptions.isEmpty()) {
             _uiState.update { it.copy(actionMessage = "함께할 루틴을 선택해 주세요.") }
             return
@@ -2699,14 +2763,13 @@ private fun String?.toRelativeTimeLabel(nowMillis: Long = System.currentTimeMill
 }
 
 private fun String.toGroupJoinMessage(): String {
-    return if (
+    return when {
+        equals("HTTP 404", ignoreCase = true) -> "초대코드를 잘못 입력하였습니다."
         equals("HTTP 403", ignoreCase = true) ||
         contains("잠금") ||
         contains("잠긴")
-    ) {
-        "잠겨 있어 참여할 수 없는 그룹방이에요."
-    } else {
-        this
+        -> "잠겨 있어 참여할 수 없는 그룹방이에요."
+        else -> this
     }
 }
 

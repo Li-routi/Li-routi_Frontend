@@ -63,7 +63,7 @@ class RoutineAuthUploadViewModel(
     override fun onUploadClick() {
         val state = _uiState.value
         if (state.isUploadCompleted) {
-            emitEvent(RoutineAuthUploadUiEvent.NavigateToHome)
+            emitEvent(RoutineAuthUploadUiEvent.NavigateToHome(state.selectedRoutineIds))
             return
         }
         if (!state.isUploadEnabled) return
@@ -125,7 +125,7 @@ class RoutineAuthUploadViewModel(
         val state = _uiState.value
         if (state.isUploading) return
         if (state.isUploadCompleted) {
-            emitEvent(RoutineAuthUploadUiEvent.NavigateToHome)
+            emitEvent(RoutineAuthUploadUiEvent.NavigateToHome(state.selectedRoutineIds))
             return
         }
         _pendingNavigateBack = navigateBack
