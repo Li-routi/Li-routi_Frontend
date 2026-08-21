@@ -275,9 +275,10 @@ class ShopViewModel(
     /**
      * 셀 탭. 안 산 것도 캐릭터에 바로 올려서 입어볼 수 있게 함.
      *
-     * 구매 선택은 선택한 집합으로 판단함. 같은 자리 미리보기는 마지막에 고른 것만 올라감 —
-     * 다른 옷을 고른 뒤 이전 옷을 다시 누르면 구매 목록에서만 빠지고, 미리보기는 그대로 둠.
-     * 보유중은 구매 선택에 넣지 않음
+     * 구매 선택은 선택한 집합으로 판단함. 같은 자리에 새 아이템을 고르면 이전에 고른(안 산) 아이템은
+     * 미리보기뿐 아니라 구매 선택(파란 테두리)에서도 같이 빠진다 — 안 그러면 화면엔 한 자리에
+     * 하나만 입혀지는데 이전 선택 테두리가 안 풀린 것처럼 남고, 구매 목록에도 안 입을 아이템이
+     * 같이 끼어 있게 된다. 보유중은 애초에 구매 선택에 넣지 않음
      */
     override fun onItemClick(itemId: String) {
         hasUserPreviewed = true
@@ -313,7 +314,17 @@ class ShopViewModel(
             val selectedItems = when {
                 item.owned -> state.selectedItems - itemId
                 unselecting -> state.selectedItems - itemId
-                else -> state.selectedItems + (itemId to item.copy(slot = slot))
+                else -> {
+                    // 같은 자리를 차지하던 이전 선택(안 산 것)이 있으면 같이 빼야 파란 테두리가
+                    // 하나만 남고 구매 목록에도 실제로 입을 것만 남는다.
+                    val previousInSlot = if (slot.isEmpty()) {
+                        null
+                    } else {
+                        state.selectedItems.values.firstOrNull { it.slot == slot && it.id != itemId }?.id
+                    }
+                    val withoutPrevious = previousInSlot?.let { state.selectedItems - it } ?: state.selectedItems
+                    withoutPrevious + (itemId to item.copy(slot = slot))
+                }
             }
             state.copy(selectedItems = selectedItems, equipped = equipped)
         }
