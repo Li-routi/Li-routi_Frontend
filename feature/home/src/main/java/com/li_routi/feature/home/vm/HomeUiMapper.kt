@@ -91,7 +91,7 @@ private fun MyRoutine.toChecklistItem(): RoutineChecklistItemUiModel = RoutineCh
 private fun GroupRoutine.toChecklistItem(): RoutineChecklistItemUiModel = RoutineChecklistItemUiModel(
     id = "group_${groupId}_$routineId",
     title = title,
-    dueLabel = formatRoutineTimeRange(scheduledStartTime, scheduledEndTime),
+    dueLabel = formatGroupRoutineTimeRange(scheduledStartTime, scheduledEndTime),
     categoryLabel = categoryName.trim(),
     isDone = status.isDone,
     roomLabel = groupName.trim(),
@@ -148,3 +148,6 @@ fun formatRoutineTimeRange(startTime: String?, endTime: String?): String {
         else -> ""
     }
 }
+
+fun formatGroupRoutineTimeRange(startTime: String?, endTime: String?): String =
+    formatRoutineTimeRange(startTime, endTime).replace(" - ", " ~ ")

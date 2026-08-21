@@ -1467,7 +1467,7 @@ private fun CreateRoutineOptionRow(
                             .background(LiroutiTheme.colors.borderStrong),
                     )
                     Text(
-                        text = "${option.startTime} - ${option.deadline}",
+                        text = "${option.startTime} ~ ${option.deadline}",
                         color = LiroutiTheme.colors.labelInfo,
                         style = LiroutiTheme.typography.caption.copy(fontSize = 11.sp, lineHeight = 14.sp),
                     )
@@ -2935,7 +2935,7 @@ private fun DetailRoutineTodoRow(
                                 .background(LiroutiTheme.colors.borderStrong),
                         )
                         Text(
-                            text = "${todo.startTime} - ${todo.deadline}",
+                            text = "${todo.startTime} ~ ${todo.deadline}",
                             color = LiroutiTheme.colors.labelInfo,
                             style = LiroutiTheme.typography.caption,
                             maxLines = 1,
@@ -4249,7 +4249,7 @@ private fun TodoRow(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
                     Text(
-                        text = "${todo.startTime} - ${todo.deadline}",
+                        text = "${todo.startTime} ~ ${todo.deadline}",
                         color = LiroutiTheme.colors.labelInfo,
                         style = LiroutiTheme.typography.caption,
                         maxLines = 1,
