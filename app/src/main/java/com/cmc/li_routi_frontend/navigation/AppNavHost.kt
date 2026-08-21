@@ -51,7 +51,7 @@ import com.li_routi.feature.home.vm.ChallengeIdPrefix
 import com.li_routi.feature.home.vm.RoutineAuthCameraUiEvent
 import com.li_routi.feature.home.vm.RoutineAuthSelectableUiModel
 import com.li_routi.feature.home.vm.RoutineAuthUploadUiEvent
-import com.li_routi.feature.home.vm.formatRoutineTimeRange
+import com.li_routi.feature.home.vm.formatGroupRoutineTimeRange
 import com.li_routi.feature.home.vm.toAuthSelectables
 import com.li_routi.feature.home.vm.toHomeUiState
 import com.li_routi.feature.mypage.navigation.MyPageRoute
@@ -61,7 +61,7 @@ private const val DoubleBackPressIntervalMillis = 2000L
 private fun TodayGroupRoutine.toAuthSelectable() = RoutineAuthSelectableUiModel(
     id = "group_${groupId}_$routineId",
     title = title,
-    dueLabel = formatRoutineTimeRange(scheduledStartTime, scheduledEndTime).takeIf { it.isNotBlank() },
+    dueLabel = formatGroupRoutineTimeRange(scheduledStartTime, scheduledEndTime).takeIf { it.isNotBlank() },
     subtitle = groupName,
     categoryLabel = categoryName,
     categoryColor = CategoryColor.entries[
@@ -74,7 +74,7 @@ private fun TodayGroupRoutine.toAuthSelectable() = RoutineAuthSelectableUiModel(
 private fun GroupRoutineVerificationTarget.toAuthSelectable() = RoutineAuthSelectableUiModel(
     id = "group_${groupId}_$routineId",
     title = title,
-    dueLabel = formatRoutineTimeRange(startTime = startTime, endTime = deadline).takeIf { it.isNotBlank() },
+    dueLabel = formatGroupRoutineTimeRange(startTime = startTime, endTime = deadline).takeIf { it.isNotBlank() },
     subtitle = roomName,
     categoryLabel = category,
     categoryColor = categoryColor,
