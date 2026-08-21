@@ -311,20 +311,19 @@ class ShopViewModel(
                     owned = item.owned,
                 ))
             }
+            // 같은 자리를 차지하던 이전 선택(안 산 것)이 있으면 같이 뺀다 — 안 그러면 화면엔 새
+            // 아이템만 입혀지는데 이전 선택 테두리는 안 풀린 것처럼 남고, 구매 목록에도 실제로
+            // 안 입을 아이템이 같이 끼어 있게 된다. 보유 아이템으로 착용을 바꿀 때도 마찬가지다.
+            fun MutableMap<String, ShopItemUiModel>.withoutPreviousInSlot() = apply {
+                if (slot.isEmpty()) return@apply
+                val previousId = values.firstOrNull { it.slot == slot && it.id != itemId }?.id
+                if (previousId != null) remove(previousId)
+            }
             val selectedItems = when {
-                item.owned -> state.selectedItems - itemId
+                item.owned -> state.selectedItems.toMutableMap().withoutPreviousInSlot() - itemId
                 unselecting -> state.selectedItems - itemId
-                else -> {
-                    // 같은 자리를 차지하던 이전 선택(안 산 것)이 있으면 같이 빼야 파란 테두리가
-                    // 하나만 남고 구매 목록에도 실제로 입을 것만 남는다.
-                    val previousInSlot = if (slot.isEmpty()) {
-                        null
-                    } else {
-                        state.selectedItems.values.firstOrNull { it.slot == slot && it.id != itemId }?.id
-                    }
-                    val withoutPrevious = previousInSlot?.let { state.selectedItems - it } ?: state.selectedItems
-                    withoutPrevious + (itemId to item.copy(slot = slot))
-                }
+                else -> state.selectedItems.toMutableMap().withoutPreviousInSlot() +
+                    (itemId to item.copy(slot = slot))
             }
             state.copy(selectedItems = selectedItems, equipped = equipped)
         }
